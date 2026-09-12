@@ -1,0 +1,12 @@
+# ==========================================
+# WorkDesk - Dependencias de desarrollo
+# ==========================================
+
+# Incluye las dependencias necesarias para ejecutar WorkDesk.
+-r requirements.txt
+
+# Testing
+pytest==9.1.1
+
+# Calidad y análisis estático de código
+ruff==0.16.7
