@@ -10,3 +10,4 @@ class Config:
     APP_ENV = os.getenv("APP_ENV", "development")
     APP_TIMEZONE = os.getenv("APP_TIMEZONE", "America/Santiago")
     SECRET_KEY = os.getenv("SECRET_KEY")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
