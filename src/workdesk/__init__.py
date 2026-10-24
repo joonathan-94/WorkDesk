@@ -1,8 +1,9 @@
 from flask import Flask
 
+from .auth.session import load_user
 from .cli import register_commands
 from .config import Config
-from .extensions import db, migrate
+from .extensions import db, login_manager, migrate
 
 
 def create_app() -> Flask:
@@ -11,6 +12,8 @@ def create_app() -> Flask:
     
     db.init_app(app)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
+    login_manager.user_loader(load_user)
     
     register_commands(app)
 

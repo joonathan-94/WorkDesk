@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from flask_login import UserMixin
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..extensions import db
 
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     __tablename__ = "usuarios"
     __table_args__ = (
         CheckConstraint(
@@ -146,3 +147,10 @@ class User(db.Model):
     )
 
     rol = relationship("Role")
+    
+    @property
+    def is_active(self) -> bool:
+        return self.activo
+
+    def get_id(self) -> str:
+        return str(self.id)
