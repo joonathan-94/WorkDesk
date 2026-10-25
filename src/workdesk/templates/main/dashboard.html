@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard | WorkDesk</title>
+</head>
+
+<body>
+    <h1>WorkDesk</h1>
+
+    <h2>Dashboard</h2>
+
+    <p>
+        Bienvenido,
+        {{ current_user.nombre }} {{ current_user.apellido }}.
+    </p>
+
+    <p>
+        Usuario: {{ current_user.username }}
+    </p>
+
+    <p>
+        Rol: {{ current_user.rol.nombre }}
+    </p>
+
+    <form method="post" action="{{ url_for('auth.logout') }}">
+        <button type="submit">
+            Cerrar sesión
+        </button>
+    </form>
+</body>
+</html>
