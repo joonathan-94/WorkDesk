@@ -1,0 +1,46 @@
+:root {
+    --wd-primary: #1d4ed8;
+    --wd-primary-hover: #1e40af;
+
+    --wd-background: #f1f5f9;
+    --wd-surface: #fcfcfd;
+
+    --wd-text-primary: #111827;
+    --wd-text-secondary: #64748b;
+
+    --wd-border: #dde3ea;
+
+    --wd-success: #16a34a;
+    --wd-warning: #f59e0b;
+    --wd-danger: #ef4444;
+
+    --wd-radius: 8px;
+
+    --wd-shadow:
+        0 1px 2px rgb(15 23 42 / 4%),
+        0 8px 24px rgb(15 23 42 / 6%);
+
+    --wd-font:
+        Inter,
+        Roboto,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-family: var(--wd-font);
+    color: var(--wd-text-primary);
+}
+
+body {
+    margin: 0;
+}
