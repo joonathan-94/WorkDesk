@@ -46,6 +46,21 @@ def register_commands(app: Flask) -> None:
         username = click.prompt("Username").strip().lower()
         email = click.prompt("Email").strip().lower()
 
+        if not nombre or not apellido or not username or not email:
+            raise click.ClickException(
+                "Nombre, apellido, username y email son obligatorios."
+            )
+
+        if len(username) > 50:
+            raise click.ClickException(
+                "El username no puede superar los 50 caracteres."
+            )
+
+        if len(email) > 254:
+            raise click.ClickException(
+                "El email no puede superar los 254 caracteres."
+            )
+
         existing_username = db.session.scalar(
             db.select(User).where(User.username == username)
         )
