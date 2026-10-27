@@ -12,6 +12,8 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    _validate_required_config(app)
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -29,3 +31,23 @@ def create_app() -> Flask:
     app.register_blueprint(main_bp)
 
     return app
+
+
+def _validate_required_config(app: Flask) -> None:
+    required_config = (
+        "SECRET_KEY",
+        "SQLALCHEMY_DATABASE_URI",
+    )
+
+    missing_config = [
+        key
+        for key in required_config
+        if not app.config.get(key)
+    ]
+
+    if missing_config:
+        missing_names = ", ".join(missing_config)
+
+        raise RuntimeError(
+            f"Falta configuración obligatoria: {missing_names}"
+        )
