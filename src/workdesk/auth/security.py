@@ -31,3 +31,7 @@ def register_failed_login(
 def reset_login_failures(user: User) -> None:
     user.intentos_fallidos = 0
     user.bloqueado_hasta = None
+
+
+def invalidate_user_sessions(user: User) -> None:
+    user.token_version += 1

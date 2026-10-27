@@ -153,4 +153,4 @@ class User(UserMixin, db.Model):
         return self.activo
 
     def get_id(self) -> str:
-        return str(self.id)
+        return f"{self.id}:{self.token_version}"
