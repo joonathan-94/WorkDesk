@@ -19,3 +19,7 @@ class Config:
     LOGIN_LOCK_MINUTES = int(
         os.getenv("LOGIN_LOCK_MINUTES", "15")
     )
+    
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = False

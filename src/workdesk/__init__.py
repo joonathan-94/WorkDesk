@@ -17,6 +17,7 @@ def create_app() -> Flask:
     login_manager.init_app(app)
     csrf.init_app(app)
 
+    login_manager.session_protection = "strong"
     login_manager.user_loader(load_user)
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Debes iniciar sesión para acceder."
