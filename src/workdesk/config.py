@@ -41,3 +41,16 @@ class Config:
         "SESSION_COOKIE_SECURE",
         default=False,
     )
+
+    LOG_LEVEL = os.getenv(
+        "LOG_LEVEL",
+        "DEBUG" if APP_ENV == "development" else "INFO",
+    ).upper()
+
+    LOG_MAX_BYTES = int(
+        os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024))
+    )
+
+    LOG_BACKUP_COUNT = int(
+        os.getenv("LOG_BACKUP_COUNT", "5")
+    )

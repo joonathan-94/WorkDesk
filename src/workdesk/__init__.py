@@ -4,8 +4,11 @@ from .auth import bp as auth_bp
 from .auth.session import load_user
 from .cli import register_commands
 from .config import Config
+from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
+from .logging_config import configure_logging
 from .main import bp as main_bp
+from .system import bp as system_bp
 
 
 def create_app() -> Flask:
@@ -13,6 +16,7 @@ def create_app() -> Flask:
     app.config.from_object(Config)
 
     _validate_required_config(app)
+    configure_logging(app)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -26,9 +30,11 @@ def create_app() -> Flask:
     login_manager.login_message_category = "warning"
 
     register_commands(app)
+    register_error_handlers(app)
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(system_bp)
 
     return app
 
