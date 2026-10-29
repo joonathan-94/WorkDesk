@@ -2,8 +2,8 @@
 
 # WorkDesk — Roadmap de implementación
 
-**Versión:** 1.0  
-**Estado:** DEFINITIVO — planificación inicial de implementación  
+**Versión:** 1.1  
+**Estado:** ACTUALIZADO — `v0.1.0` implementado y validado en `feature/flask-foundation`, pendiente de integración a `main`  
 **Proyecto:** WorkDesk  
 **Horizonte objetivo del MVP:** máximo 3 meses  
 **Modalidad inicial:** desarrollo local, sin despliegue externo  
@@ -28,6 +28,30 @@ El roadmap debe servir para:
 - llegar a un MVP funcional y profesional sin intentar implementar simultáneamente todo el sistema.
 
 Este roadmap no reemplaza los documentos anteriores. La implementación de cada fase debe respetar las definiciones aprobadas en requisitos, reglas de negocio, casos de uso, flujo de tickets, modelo de datos, arquitectura y diseño de pantallas.
+
+## 1.1. Estado actual de ejecución
+
+La primera versión técnica del proyecto se encuentra implementada y validada en la rama:
+
+```text
+feature/flask-foundation
+```
+
+El alcance ejecutado para `v0.1.0` incluye la fundación Flask, PostgreSQL, migraciones, configuración por entorno, manejo de errores, health check, logging, pruebas automatizadas y una base técnica de autenticación adelantada respecto de la planificación inicial.
+
+La validación actual incluye:
+
+```text
+✓ Ruff sin errores
+✓ 20 tests automatizados aprobados
+✓ modelos y migraciones sincronizados
+✓ PostgreSQL de desarrollo operativo
+✓ PostgreSQL de testing aislado
+✓ rutas y comandos CLI verificados
+✓ revisión técnica final completada
+```
+
+Antes de comenzar `v0.2.0`, corresponde integrar `feature/flask-foundation` en `main` mediante Pull Request y cerrar documentalmente el incremento `v0.1.0`.
 
 ---
 
@@ -540,7 +564,7 @@ Propuesta:
 
 ```text
 v0.1.0   Fundación técnica
-v0.2.0   Autenticación y RBAC
+v0.2.0   Usuarios, autenticación completa y RBAC
 v0.3.0   Núcleo de tickets
 v0.4.0   Colaboración y adjuntos
 v0.5.0   SLA y notificaciones
@@ -631,6 +655,7 @@ El proyecto puede clonarse, configurarse localmente e iniciar su entorno de desa
 
 **Semana:** 1  
 **Versión:** `v0.1.0`
+**Estado de ejecución:** implementada y validada en `feature/flask-foundation`
 
 ### Aprendizaje principal
 
@@ -641,20 +666,46 @@ El proyecto puede clonarse, configurarse localmente e iniciar su entorno de desa
 - SQLAlchemy;
 - PostgreSQL;
 - migraciones;
-- variables de entorno.
+- variables de entorno;
+- testing con pytest;
+- seguridad de sesión y autenticación básica.
 
-### Implementación
+### Implementación completada
 
-- inicialización Flask;
+- inicialización Flask mediante Application Factory;
 - configuración Development/Test;
 - conexión PostgreSQL;
-- SQLAlchemy;
+- base independiente `workdesk_test`;
+- SQLAlchemy y Flask-SQLAlchemy;
 - Flask-Migrate/Alembic;
-- manejo base de errores;
-- logging;
-- estructura modular;
-- página inicial temporal;
-- health/status básico.
+- migraciones iniciales de `roles` y `usuarios`;
+- estructura modular proporcional al alcance actual;
+- seed idempotente de roles estructurales;
+- comando CLI para crear el Administrador inicial;
+- modelo inicial de usuarios y roles;
+- login por username;
+- logout;
+- Argon2id;
+- Flask-Login;
+- protección de rutas;
+- CSRF;
+- usuario activo/inactivo;
+- bloqueo temporal por intentos fallidos;
+- invalidación de sesiones mediante `token_version`;
+- endurecimiento básico de cookies y sesión;
+- interfaz visual de login;
+- manejo controlado de errores `400`, `404` y `500`;
+- health check de aplicación y PostgreSQL;
+- logging persistente con rotación configurable;
+- configuración sensible fuera del repositorio;
+- suite inicial de 20 tests automatizados;
+- análisis estático mediante Ruff.
+
+### Ajuste respecto de la planificación inicial
+
+Durante `v0.1.0` se adelantó parte de la base técnica prevista originalmente para la fase de autenticación. Esta decisión permitió validar tempranamente sesiones, hashing, CSRF, bloqueo de acceso, estructura modular y pruebas automatizadas antes de comenzar los módulos funcionales.
+
+Este adelanto **no reemplaza `v0.2.0`**: la siguiente fase continúa siendo responsable de completar la gestión de usuarios y la autorización RBAC.
 
 ### Criterio de salida
 
@@ -664,40 +715,60 @@ El proyecto puede clonarse, configurarse localmente e iniciar su entorno de desa
 ✓ migraciones funcionan
 ✓ configuración no contiene secretos
 ✓ estructura modular creada
-✓ página de prueba responde
-✓ tests pueden ejecutarse
+✓ autenticación base funciona
+✓ errores se manejan de forma controlada
+✓ health check responde
+✓ logging funciona
+✓ base de testing está aislada
+✓ 20 tests automatizados pasan
+✓ Ruff pasa sin errores
+✓ revisión técnica final completada
 ```
 
 ---
 
-# 15. FASE 2 — Usuarios, autenticación y RBAC
+# 15. FASE 2 — Usuarios, autenticación completa y RBAC
 
 **Semana:** 2  
 **Versión:** `v0.2.0`
 
 ### Aprendizaje
 
-- hashing;
-- sesiones;
-- Flask-Login;
 - decorators;
 - autorización;
-- formularios;
-- CSRF.
+- políticas RBAC;
+- gestión de usuarios;
+- formularios administrativos;
+- navegación condicionada por rol;
+- cierre del ciclo de autenticación y sesión.
 
-### Implementación
+### Base ya disponible desde `v0.1.0`
 
 - modelo Usuario;
-- roles;
+- roles estructurales;
 - login por username;
 - logout;
-- sesión;
+- sesión mediante Flask-Login;
 - contraseña Argon2id;
-- protección de rutas;
-- navegación según rol;
+- protección inicial de rutas;
+- CSRF;
 - usuarios activos/inactivos;
+- bloqueo temporal por intentos fallidos;
+- `token_version` para invalidación de sesiones;
+- tests básicos de autenticación y seguridad.
+
+### Implementación pendiente para `v0.2.0`
+
+- gestión administrativa de usuarios;
+- autorización RBAC completa;
+- políticas centralizadas de acceso;
+- protección de rutas según rol;
+- navegación y sidebar según rol;
+- restricciones de acceso administrativo;
 - cuenta propia básica;
-- datos demo de usuarios.
+- completar las políticas de sesión previstas para esta etapa cuando corresponda;
+- datos demo de usuarios;
+- ampliar tests de autorización y permisos.
 
 ### Roles
 
@@ -1420,37 +1491,32 @@ La numeración exacta se definirá cuando exista una necesidad real.
 
 # 29. Próximo paso inmediato
 
-Con la aprobación de este documento queda finalizada la documentación inicial:
+La documentación inicial, la preparación del repositorio y la implementación de `v0.1.0 — Fundación técnica` ya fueron realizadas.
+
+El estado inmediato del proyecto es:
 
 ```text
-01_vision_del_proyecto.md
-02_objetivos.md
-03_roles_y_permisos.md
-04_requisitos_funcionales.md
-05_requisitos_no_funcionales.md
-06_reglas_de_negocio.md
-07_casos_de_uso.md
-08_flujo_de_tickets.md
-09_modelo_de_datos.md
-10_arquitectura.md
-11_diseno_de_pantallas.md
-12_roadmap.md
+feature/flask-foundation
+→ implementación v0.1.0 completada
+→ revisión técnica final aprobada
+→ README / arquitectura / roadmap actualizados
+→ pendiente integración a main
 ```
 
 El siguiente paso del proyecto será:
 
 ```text
-1. revisar estructura del repositorio;
-2. crear estructura definitiva de carpetas;
-3. preparar README inicial;
-4. crear .gitignore;
-5. crear .env.example;
-6. inicializar Git;
-7. crear repositorio GitHub;
-8. realizar commit inicial de documentación;
-9. comenzar FASE 0;
-10. iniciar v0.1.0.
+1. realizar la revisión documental final;
+2. ejecutar Ruff y pytest una última vez;
+3. realizar el commit de documentación;
+4. abrir Pull Request feature/flask-foundation → main;
+5. revisar y fusionar la PR;
+6. consolidar v0.1.0 como hito de Fundación técnica;
+7. preparar la rama correspondiente a v0.2.0;
+8. comenzar Usuarios, autenticación completa y RBAC.
 ```
+
+La siguiente fase deberá reutilizar la base de autenticación ya implementada y concentrarse en completar gestión de usuarios, autorización y comportamiento por rol, evitando rehacer componentes que ya fueron validados en `v0.1.0`.
 
 ---
 

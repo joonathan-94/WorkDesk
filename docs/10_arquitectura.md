@@ -11,8 +11,8 @@
 | Proyecto | WorkDesk |
 | Documento | Arquitectura |
 | Archivo | `10_arquitectura.md` |
-| Versión | 1.0 |
-| Estado | Definitivo |
+| Versión | 1.1 |
+| Estado | Definitivo — actualizado tras `v0.1.0` |
 | Alcance | MVP |
 | Tipo de arquitectura | Monolito modular en capas |
 | Backend | Python + Flask |
@@ -61,6 +61,29 @@ La arquitectura define principalmente:
 - La preparación para evolución futura.
 
 Este documento define **cómo será construido técnicamente WorkDesk**, pero no reemplaza los requisitos funcionales, reglas de negocio, casos de uso, flujo de tickets ni modelo de datos.
+
+## 2.1. Estado de implementación
+
+La arquitectura descrita en este documento representa la **arquitectura objetivo del MVP**.
+
+A partir de `v0.1.0 — Fundación técnica`, algunas decisiones ya se encuentran implementadas y validadas, entre ellas:
+
+- patrón Application Factory;
+- configuración mediante variables de entorno;
+- PostgreSQL + SQLAlchemy + Flask-SQLAlchemy;
+- migraciones mediante Alembic / Flask-Migrate;
+- módulos iniciales `auth`, `main`, `models`, `security`, `seeds` y `system`;
+- Flask-Login;
+- Argon2id;
+- CSRF mediante Flask-WTF;
+- protección básica de sesión e invalidación mediante `token_version`;
+- manejo global de errores;
+- health check de aplicación + PostgreSQL;
+- logging persistente con rotación;
+- suite de pruebas aislada sobre `workdesk_test`;
+- Ruff como herramienta de calidad estática.
+
+Las capas, módulos y servicios que todavía no poseen una necesidad concreta se incorporarán progresivamente. La arquitectura objetivo no obliga a crear anticipadamente carpetas o abstracciones vacías.
 
 ---
 
@@ -693,9 +716,51 @@ Responsabilidades:
 
 ---
 
-# 28. Estructura objetivo del repositorio
+# 28. Estructura actual y evolución objetivo
 
-La estructura actual del proyecto se conservará y evolucionará aproximadamente hacia:
+## 28.1. Estructura implementada en `v0.1.0`
+
+La fundación técnica utiliza actualmente una estructura proporcional al alcance real del proyecto:
+
+```text
+WorkDesk/
+│
+├── docs/
+├── instance/
+│   ├── backups/
+│   ├── logs/
+│   └── uploads/
+├── migrations/
+├── scripts/
+├── src/
+│   └── workdesk/
+│       ├── auth/
+│       ├── main/
+│       ├── models/
+│       ├── security/
+│       ├── seeds/
+│       ├── static/
+│       ├── system/
+│       ├── templates/
+│       ├── __init__.py
+│       ├── cli.py
+│       ├── config.py
+│       ├── errors.py
+│       ├── extensions.py
+│       └── logging_config.py
+├── tests/
+├── .env.example
+├── .gitignore
+├── requirements.txt
+├── requirements-dev.txt
+└── README.md
+```
+
+Esta estructura no contradice la arquitectura por capas. Las capas de aplicación, dominio y persistencia se materializarán explícitamente cuando la complejidad funcional lo justifique.
+
+## 28.2. Evolución objetivo
+
+La estructura se conservará y evolucionará aproximadamente hacia:
 
 ```text
 WorkDesk/
@@ -778,14 +843,15 @@ WorkDesk/
 │
 ├── scripts/
 │
-├── var/
+├── instance/
 │   ├── uploads/
 │   ├── backups/
 │   └── logs/
 │
 ├── .env.example
 ├── .gitignore
-├── pyproject.toml
+├── requirements.txt
+├── requirements-dev.txt
 └── README.md
 ```
 
@@ -795,18 +861,20 @@ Los módulos deberán incorporarse progresivamente.
 
 ---
 
-# 29. Directorio `var`
+# 29. Directorio `instance`
 
-Los datos generados durante la ejecución se mantendrán separados del código.
+Los datos generados durante la ejecución se mantendrán separados del código utilizando el directorio local de instancia de Flask.
 
 ```text
-var/
+instance/
 ├── uploads/
 ├── backups/
 └── logs/
 ```
 
-El contenido operativo de `var/` no deberá almacenarse normalmente en Git.
+El contenido operativo de `instance/` no deberá almacenarse normalmente en Git.
+
+Esta decisión concreta reemplaza la propuesta inicial de utilizar un directorio `var/` y mantiene el mismo principio arquitectónico: separar datos locales de ejecución del código fuente versionado.
 
 ---
 
@@ -1332,6 +1400,8 @@ sesión inválida
 ```
 
 Los valores podrán parametrizarse posteriormente.
+
+Estos límites forman parte de la estrategia objetivo de autenticación y todavía no se consideran implementados en `v0.1.0`. Su incorporación corresponde a la evolución de autenticación y RBAC.
 
 ---
 
@@ -2191,22 +2261,30 @@ CRITICAL
 
 # 98. Archivo de logs
 
-Ejemplo:
+La implementación inicial utiliza:
 
 ```text
-var/logs/workdesk.log
+instance/logs/workdesk.log
 ```
 
-La configuración podrá utilizar rotación temporal.
+La rotación se realiza mediante `RotatingFileHandler` del módulo estándar `logging`.
 
-Como configuración inicial:
+Como configuración predeterminada de `v0.1.0`:
 
 ```text
-rotación diaria
-retención aproximada de 14 archivos
+tamaño máximo por archivo: 5 MB
+backups conservados: 5
 ```
 
-Los valores podrán modificarse.
+Los valores son configurables mediante:
+
+```text
+LOG_LEVEL
+LOG_MAX_BYTES
+LOG_BACKUP_COUNT
+```
+
+Una estrategia temporal diferente podrá adoptarse posteriormente si aparece una necesidad operacional que la justifique.
 
 ---
 
@@ -2312,28 +2390,30 @@ No se continuará trabajando con una transacción fallida.
 
 # 104. Health Check
 
-Se proporcionarán mecanismos básicos como:
+Desde `v0.1.0` se proporciona:
 
 ```text
-/health
+GET /health
 ```
 
-o equivalentes.
+El endpoint comprueba:
 
-Podrán diferenciarse:
+```text
+aplicación Flask
++
+PostgreSQL
+```
+
+Cuando ambos componentes responden devuelve estado `200`. Si PostgreSQL no está disponible, devuelve `503 Service Unavailable` con una respuesta pública mínima y registra el detalle técnico en logs.
+
+En una evolución posterior podrán diferenciarse endpoints como:
 
 ```text
 /health/live
 /health/ready
 ```
 
-`live` confirmará que el proceso responde.
-
-`ready` podrá comprobar PostgreSQL.
-
-La información pública deberá ser mínima.
-
-Los detalles técnicos adicionales quedarán restringidos al Administrador o logs.
+si la topología de ejecución requiere separar liveness y readiness.
 
 ---
 
@@ -2351,16 +2431,23 @@ Se utilizarán:
 
 # 106. Variables de entorno
 
-Podrán incluirse:
+La configuración técnica utilizada desde `v0.1.0` contempla:
 
 ```text
-WORKDESK_ENV
+APP_ENV
+APP_TIMEZONE
 SECRET_KEY
+SESSION_COOKIE_SECURE
 DATABASE_URL
-UPLOAD_ROOT
-BACKUP_ROOT
+TEST_DATABASE_URL
+LOGIN_MAX_FAILED_ATTEMPTS
+LOGIN_LOCK_MINUTES
 LOG_LEVEL
+LOG_MAX_BYTES
+LOG_BACKUP_COUNT
 ```
+
+Variables adicionales como raíces de uploads o backups podrán incorporarse cuando dichos módulos sean implementados.
 
 Los secretos reales no deberán almacenarse en Git.
 
@@ -2422,26 +2509,22 @@ Reservado para futuras instalaciones reales.
 
 # 109. Bootstrap e inicialización
 
-WorkDesk deberá incluir un comando administrativo para inicializar el sistema.
+La inicialización se implementará mediante comandos administrativos explícitos e idempotentes cuando corresponda.
 
-Conceptualmente:
+Desde `v0.1.0` existen:
 
 ```text
-flask workdesk init
+python -m flask --app src.workdesk seed-roles
+python -m flask --app src.workdesk create-admin
 ```
 
-El comando deberá:
+`seed-roles` crea los roles estructurales iniciales de forma idempotente.
 
-1. verificar migraciones;
-2. crear registros estructurales;
-3. crear roles;
-4. crear estados;
-5. crear prioridades iniciales;
-6. crear `SIN_CLASIFICAR`;
-7. crear configuraciones esenciales;
-8. solicitar el Administrador inicial.
+`create-admin` permite crear el Administrador inicial mediante un flujo controlado y validado.
 
-El proceso deberá ser idempotente cuando sea posible.
+A medida que se incorporen estados, prioridades, categorías y configuración esencial podrán añadirse comandos adicionales o consolidarse la inicialización en un comando superior si aporta valor real.
+
+No se creará anticipadamente un comando genérico de inicialización que oculte pasos todavía no implementados.
 
 ---
 
@@ -2670,9 +2753,9 @@ Evitar Docker inicialmente reduce complejidad adicional durante las primeras eta
 
 ---
 
-# 122. Dependencias principales previstas
+# 122. Dependencias principales
 
-Sin fijar en este documento versiones concretas, el proyecto podrá utilizar como conjunto inicial:
+## 122.1. Dependencias incorporadas en `v0.1.0`
 
 ```text
 Flask
@@ -2684,8 +2767,6 @@ SQLAlchemy
 Alembic
 psycopg
 argon2-cffi
-APScheduler
-openpyxl
 python-dotenv
 ```
 
@@ -2693,23 +2774,39 @@ Para desarrollo y pruebas:
 
 ```text
 pytest
-pytest-cov
 ruff
 ```
 
-Las versiones exactas se definirán en `pyproject.toml`.
+## 122.2. Dependencias previstas para fases posteriores
+
+Podrán incorporarse cuando la funcionalidad correspondiente sea implementada:
+
+```text
+APScheduler
+openpyxl
+Waitress
+```
+
+No deberán instalarse anticipadamente únicamente porque aparezcan en la arquitectura objetivo.
 
 ---
 
 # 123. Gestión de dependencias
 
-El archivo principal será:
+Durante la implementación inicial se utilizarán:
 
 ```text
-pyproject.toml
+requirements.txt
+requirements-dev.txt
 ```
 
-Las dependencias no deberán instalarse manualmente sin reflejar posteriormente el cambio en la configuración del proyecto.
+`requirements.txt` contendrá dependencias necesarias para ejecutar WorkDesk.
+
+`requirements-dev.txt` incluirá las dependencias de ejecución y las herramientas adicionales de desarrollo y testing.
+
+Las versiones deberán mantenerse reflejadas en estos archivos cuando se agregue o actualice una dependencia.
+
+La adopción futura de `pyproject.toml` podrá evaluarse si aporta una mejora concreta al empaquetado, tooling o mantenimiento del proyecto.
 
 ---
 
@@ -2777,13 +2874,28 @@ Las pruebas utilizarán principalmente:
 
 > `pytest`
 
-Se organizarán en:
+En `v0.1.0` la suite se mantiene deliberadamente simple dentro de `tests/`:
+
+```text
+tests/
+├── conftest.py
+├── test_app.py
+├── test_auth.py
+├── test_passwords.py
+└── test_system.py
+```
+
+La suite inicial contiene 20 tests automatizados sobre la fundación técnica, autenticación, seguridad, health check y errores.
+
+A medida que aumente el volumen de pruebas podrá evolucionar hacia una organización explícita por tipos:
 
 ```text
 unit
 integration
 functional
 ```
+
+sin crear carpetas vacías antes de que sean necesarias.
 
 ---
 
@@ -2854,14 +2966,16 @@ Podrán incorporarse posteriormente mediante una herramienta como Playwright par
 
 Las pruebas no deberán ejecutarse contra la base de datos de desarrollo.
 
-Se utilizará una base independiente.
-
-Ejemplo conceptual:
+Desde `v0.1.0` se utilizan bases separadas:
 
 ```text
-workdesk_dev
-workdesk_test
+workdesk_dev   → desarrollo
+workdesk_test  → pytest
 ```
+
+La configuración de tests valida explícitamente que `TEST_DATABASE_URL` apunte a `workdesk_test` antes de ejecutar operaciones destructivas como `drop_all()`.
+
+Esta protección reduce el riesgo de borrar accidentalmente el esquema de desarrollo durante una ejecución de pruebas.
 
 ---
 
@@ -3055,9 +3169,9 @@ Las contraseñas de PostgreSQL tampoco deberán encontrarse hardcodeadas en Pyth
 Las carpetas:
 
 ```text
-var/uploads
-var/backups
-var/logs
+instance/uploads
+instance/backups
+instance/logs
 ```
 
 no deberán formar parte de las rutas estáticas servidas directamente por Flask.
