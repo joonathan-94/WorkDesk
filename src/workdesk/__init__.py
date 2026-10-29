@@ -11,9 +11,14 @@ from .main import bp as main_bp
 from .system import bp as system_bp
 
 
-def create_app() -> Flask:
+def create_app(
+    config_overrides: dict[str, object] | None = None,
+) -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    if config_overrides:
+        app.config.update(config_overrides)
 
     _validate_required_config(app)
     configure_logging(app)

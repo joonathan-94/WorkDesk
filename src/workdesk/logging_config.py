@@ -6,6 +6,9 @@ from flask import Flask
 
 
 def configure_logging(app: Flask) -> None:
+    if app.config.get("TESTING"):
+        return
+
     log_directory = Path(app.instance_path) / "logs"
     log_directory.mkdir(parents=True, exist_ok=True)
 
