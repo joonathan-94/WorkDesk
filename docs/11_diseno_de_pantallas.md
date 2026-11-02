@@ -2,7 +2,7 @@
 
 # WorkDesk — Diseño de pantallas
 
-**Versión:** 1.0  
+**Versión:** 1.1
 **Estado:** DEFINITIVO  
 **Proyecto:** WorkDesk  
 **Tipo de aplicación:** Sistema web de gestión de tickets de soporte TI  
@@ -59,12 +59,12 @@ Esta especificación cubre:
 
 No se define todavía:
 
-- logotipo gráfico definitivo;
-- identidad gráfica avanzada;
 - tema oscuro final;
 - animaciones decorativas;
 - prototipos interactivos;
 - integraciones externas no contempladas por el MVP.
+
+La identidad visual oficial, el logotipo, el isotipo y los recursos de branding base ya se encuentran definidos y deben considerarse parte de la referencia visual vigente de WorkDesk.
 
 ---
 
@@ -116,21 +116,81 @@ La interfaz debe:
 
 ---
 
-## 3.3. Identidad gráfica provisional
+## 3.3. Identidad gráfica oficial
 
-Durante esta etapa no se define logotipo gráfico.
+WorkDesk dispone de una identidad visual oficial propia.
 
-El espacio de marca muestra únicamente:
+El isotipo está construido a partir de una `W` modular de formas redondeadas y superpuestas. Su lenguaje visual combina azul y cian, con una referencia sutil a un ticket mediante un ojal circular integrado en el módulo izquierdo.
+
+La identidad debe transmitir:
+
+- tecnología;
+- orden;
+- control;
+- simplicidad;
+- modernidad;
+- confiabilidad.
+
+El logotipo horizontal combina:
 
 ```text
-WorkDesk
+[Isotipo] WorkDesk
 ```
 
-En la sidebar oscura el texto se presenta en blanco.
+En la variante principal para fondos claros:
 
-En Login se utiliza únicamente el nombre de la aplicación hasta que se defina posteriormente un logotipo o imagen de acceso definitiva.
+- `Work` utiliza un tono oscuro coherente con `#111827`;
+- `Desk` utiliza azul;
+- el isotipo conserva su combinación azul/cian.
 
-No deben crearse isotipos, símbolos ni variantes multicolor provisionales.
+Para superficies oscuras existe una variante inversa:
+
+- `Work` en blanco o blanco suave;
+- `Desk` en azul;
+- isotipo adaptado para mantener contraste adecuado.
+
+Los recursos oficiales se encuentran en:
+
+```text
+src/workdesk/static/img/brand/
+```
+
+Archivos principales:
+
+```text
+workdesk-mark.svg
+workdesk-mark-inverse.svg
+workdesk-logo.svg
+workdesk-logo-inverse.svg
+workdesk-login-brand.svg
+workdesk-login-brand-inverse.svg
+favicon.svg
+favicon.ico
+favicon-32x32.png
+apple-touch-icon.png
+icon-192x192.png
+icon-512x512.png
+icon-maskable-512x512.png
+workdesk-social-preview.png
+```
+
+Estos recursos constituyen la identidad visual oficial y no deben rediseñarse, sustituirse ni recrearse de forma arbitraria durante la implementación.
+
+La variante clara es la utilizada actualmente por la interfaz implementada.
+
+Las variantes inversas quedan preparadas para una futura implementación del modo oscuro.
+
+### 3.3.1. Aplicación del branding
+
+El branding debe utilizarse de forma proporcional al contexto:
+
+- Login: composición vertical oficial `workdesk-login-brand.svg`.
+- Sidebar o cabeceras oscuras futuras: variantes inversas cuando corresponda.
+- Presentación general: `workdesk-logo.svg`.
+- Favicon: micro-isotipo optimizado para tamaños reducidos.
+- Material de presentación: `workdesk-social-preview.png`.
+
+No deben introducirse isotipos, símbolos, colores de marca o variantes de logotipo adicionales sin una decisión explícita de diseño.
 
 ---
 
@@ -1430,10 +1490,12 @@ Iniciar sesión
 
 - fondo `#F1F5F9`;
 - card central de 400–440 px;
-- `WorkDesk` como texto;
+- composición oficial `workdesk-login-brand.svg` centrada sobre la card;
 - botón primario full-width;
 - mostrar/ocultar contraseña;
 - Enter envía el formulario.
+
+La implementación actual utiliza la variante de branding para tema claro. La variante inversa queda reservada para una futura implementación del modo oscuro.
 
 ### Error
 
@@ -2844,7 +2906,8 @@ Una pantalla de WorkDesk se considera consistente cuando:
 - muestra labels reales;
 - aplica responsive según breakpoints;
 - no agrega funcionalidades no definidas;
-- no introduce un logotipo provisional;
+- utiliza únicamente los recursos oficiales de identidad visual cuando corresponda;
+- no introduce logotipos, isotipos o variantes de marca no aprobadas;
 - mantiene la terminología funcional oficial.
 
 ---
@@ -2892,9 +2955,7 @@ Estas reglas de interfaz deben verificarse siempre contra la autorización real 
 
 Quedan abiertas para evolución:
 
-- logotipo gráfico;
-- imagen/logo específica de Login;
-- tema oscuro;
+- tema oscuro y cambio dinámico hacia variantes inversas de branding;
 - fotografías de perfil;
 - sidebar compacta persistida por usuario;
 - recuperación de contraseña;
@@ -2906,7 +2967,9 @@ Quedan abiertas para evolución:
 - comportamiento multi-tenant;
 - nuevas integraciones.
 
-Ninguna de estas decisiones debe asumirse implementada por aparecer como posibilidad futura.
+La identidad visual, el logotipo, el isotipo, el branding específico de Login y los favicons ya se encuentran definidos y no forman parte de las decisiones pendientes.
+
+Ninguna de las decisiones futuras restantes debe asumirse implementada por aparecer como posibilidad futura.
 
 ---
 
@@ -2925,6 +2988,9 @@ Accesibilidad                      ✅
 8 wireframes                       ✅
 13 mockups                         ✅
 Revisión global de consistencia    ✅
+Identidad visual oficial            ✅
+Branding de Login                    ✅
+Favicons e iconos base               ✅
 ```
 
 Los wireframes definen la estructura.

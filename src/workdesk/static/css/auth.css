@@ -19,16 +19,17 @@
 }
 
 .login-brand {
+    display: flex;
+    justify-content: center;
+
     margin-bottom: 22px;
+}
 
-    text-align: center;
+.login-brand__image {
+    display: block;
 
-    color: var(--wd-text-primary);
-
-    font-size: 32px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.5px;
+    width: min(220px, 70%);
+    height: auto;
 }
 
 .login-card {
@@ -231,8 +232,10 @@
 
     .login-brand {
         margin-bottom: 20px;
+    }
 
-        font-size: 29px;
+    .login-brand__image {
+        width: min(190px, 72%);
     }
 
     .login-card {

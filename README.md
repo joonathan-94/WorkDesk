@@ -1,5 +1,25 @@
 # WorkDesk
 
+<p align="center">
+  <img
+    src="src/workdesk/static/img/brand/workdesk-logo.svg"
+    alt="WorkDesk"
+    width="360"
+  >
+</p>
+
+<p align="center">
+  <strong>Gestión de tickets de soporte TI con foco en seguridad, trazabilidad y evolución progresiva.</strong>
+</p>
+
+<p align="center">
+  <img
+    src="src/workdesk/static/img/brand/workdesk-social-preview.png"
+    alt="Vista previa de WorkDesk"
+    width="100%"
+  >
+</p>
+
 > Plataforma web para la gestión y seguimiento de tickets de soporte TI, diseñada para evolucionar progresivamente hacia una solución más amplia de gestión del trabajo.
 
 WorkDesk es un proyecto personal de desarrollo de software orientado inicialmente a la gestión integral de solicitudes de soporte TI.
@@ -33,7 +53,9 @@ Actualmente el proyecto dispone de:
 - Invalidación de sesiones mediante `token_version`.
 - Protección de cookies de sesión.
 - Usuario activo/inactivo integrado al flujo de autenticación.
-- Interfaz visual de login.
+- Interfaz visual de login con identidad gráfica oficial de WorkDesk.
+- Identidad visual propia con isotipo, logotipo y variantes para fondos claros y oscuros.
+- Favicons e iconos de aplicación integrados globalmente en los templates actuales.
 - Manejo controlado de errores HTTP.
 - Health check de aplicación y PostgreSQL.
 - Logging persistente con rotación configurable.
@@ -160,6 +182,9 @@ La estructura continuará creciendo de manera progresiva, evitando crear capas o
 ```text
 WorkDesk/
 │
+├── .github/
+│   └── copilot-instructions.md
+│
 ├── docs/
 │   ├── assets/
 │   ├── 01_vision_del_proyecto.md
@@ -193,8 +218,29 @@ WorkDesk/
 │       ├── security/
 │       ├── seeds/
 │       ├── static/
+│       │   ├── css/
+│       │   ├── img/
+│       │   │   └── brand/
+│       │   │       ├── apple-touch-icon.png
+│       │   │       ├── favicon-32x32.png
+│       │   │       ├── favicon.ico
+│       │   │       ├── favicon.svg
+│       │   │       ├── icon-192x192.png
+│       │   │       ├── icon-512x512.png
+│       │   │       ├── icon-maskable-512x512.png
+│       │   │       ├── workdesk-login-brand-inverse.svg
+│       │   │       ├── workdesk-login-brand.svg
+│       │   │       ├── workdesk-logo-inverse.svg
+│       │   │       ├── workdesk-logo.svg
+│       │   │       ├── workdesk-mark-inverse.svg
+│       │   │       ├── workdesk-mark.svg
+│       │   │       └── workdesk-social-preview.png
+│       │   └── js/
 │       ├── system/
 │       ├── templates/
+│       │   ├── auth/
+│       │   ├── errors/
+│       │   └── main/
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── config.py
@@ -211,6 +257,9 @@ WorkDesk/
 │
 ├── .env.example
 ├── .gitignore
+├── AGENTS.md
+├── CLAUDE.md
+├── PROJECT_CONTEXT.md
 ├── README.md
 ├── requirements.txt
 └── requirements-dev.txt
@@ -698,6 +747,27 @@ Los recursos definidos durante la etapa de diseño se encuentran en:
 Los mockups constituyen la referencia visual para la implementación progresiva del frontend.
 
 Las capturas definitivas del producto reemplazarán progresivamente estas referencias a medida que las pantallas reales sean implementadas.
+
+### Identidad visual
+
+La identidad visual oficial de WorkDesk se encuentra en:
+
+[`src/workdesk/static/img/brand/`](src/workdesk/static/img/brand/)
+
+Los recursos actuales incluyen:
+
+- isotipo principal e inverso;
+- logotipo horizontal principal e inverso;
+- composición específica para la pantalla de login;
+- favicon SVG, ICO y PNG;
+- iconos de aplicación en 192 × 192 y 512 × 512;
+- icono `maskable` de 512 × 512;
+- `apple-touch-icon`;
+- imagen de presentación `workdesk-social-preview.png`.
+
+La interfaz actual utiliza la variante para tema claro. Las variantes inversas quedan preparadas para una futura implementación de modo oscuro.
+
+Los favicons se encuentran integrados en los templates actuales de login, dashboard y páginas de error.
 
 ---
 
