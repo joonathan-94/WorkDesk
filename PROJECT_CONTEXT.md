@@ -78,6 +78,32 @@ main
 
 `main` debe representar siempre el estado estable del proyecto.
 
+## Rama de trabajo actual
+
+```text
+feature/branding-login
+```
+
+Al momento de actualizar este contexto, esta rama contiene la identidad visual oficial y su integración inicial.
+
+Trabajo completado en la rama:
+
+- isotipo y logotipo oficial;
+- variantes principal e inversa;
+- branding específico de Login;
+- favicon SVG;
+- favicon ICO;
+- favicon PNG 32 × 32;
+- `apple-touch-icon`;
+- iconos de aplicación de 192 × 192 y 512 × 512;
+- icono `maskable` de 512 × 512;
+- integración global de favicons en los templates actuales;
+- imagen `workdesk-social-preview.png`;
+- actualización de README;
+- actualización de `docs/11_diseno_de_pantallas.md`.
+
+Esta rama todavía debe completar la revisión documental final, pruebas finales, Pull Request y merge antes de considerar estos cambios parte de `main`.
+
 ## Próximo hito
 
 ```text
@@ -214,6 +240,24 @@ WorkDesk/
 │       ├── security/
 │       ├── seeds/
 │       ├── static/
+│       │   ├── css/
+│       │   ├── img/
+│       │   │   └── brand/
+│       │   │       ├── apple-touch-icon.png
+│       │   │       ├── favicon-32x32.png
+│       │   │       ├── favicon.ico
+│       │   │       ├── favicon.svg
+│       │   │       ├── icon-192x192.png
+│       │   │       ├── icon-512x512.png
+│       │   │       ├── icon-maskable-512x512.png
+│       │   │       ├── workdesk-login-brand-inverse.svg
+│       │   │       ├── workdesk-login-brand.svg
+│       │   │       ├── workdesk-logo-inverse.svg
+│       │   │       ├── workdesk-logo.svg
+│       │   │       ├── workdesk-mark-inverse.svg
+│       │   │       ├── workdesk-mark.svg
+│       │   │       └── workdesk-social-preview.png
+│       │   └── js/
 │       ├── system/
 │       ├── templates/
 │       ├── __init__.py
@@ -228,8 +272,13 @@ WorkDesk/
 │   ├── test_auth.py
 │   ├── test_passwords.py
 │   └── test_system.py
+├── .github/
+│   └── copilot-instructions.md
 ├── .env.example
 ├── .gitignore
+├── AGENTS.md
+├── CLAUDE.md
+├── PROJECT_CONTEXT.md
 ├── README.md
 ├── requirements.txt
 └── requirements-dev.txt
@@ -569,19 +618,26 @@ No representa todavía los dashboards finales del MVP.
 
 # 18. Login visual
 
-Existe una primera interfaz visual de login.
+Existe una interfaz visual de login implementada y validada.
 
 Características:
 
-- texto `WorkDesk`;
+- branding oficial mediante `workdesk-login-brand.svg`;
 - username;
 - contraseña;
-- botón principal;
+- botón principal full-width;
 - mostrar/ocultar contraseña;
 - mensajes de error;
 - conservación de username después de fallo;
 - protección CSRF;
-- diseño responsive básico.
+- diseño responsive;
+- fondo `#F1F5F9`;
+- card central clara;
+- integración del favicon oficial.
+
+La variante actual utiliza branding para tema claro.
+
+Existe `workdesk-login-brand-inverse.svg` como recurso preparado para una futura implementación de modo oscuro, pero todavía no se conmuta dinámicamente en código.
 
 No añadir sin una decisión funcional previa:
 
@@ -952,7 +1008,54 @@ Para detalle completo consultar:
 docs/11_diseno_de_pantallas.md
 ```
 
+## Identidad visual oficial
+
+WorkDesk dispone de una identidad visual propia y aprobada.
+
+Principios:
+
+- isotipo basado en una `W` modular de formas redondeadas;
+- referencia sutil a ticket mediante un ojal circular;
+- combinación principal azul/cian;
+- wordmark con `Work` oscuro y `Desk` azul para tema claro;
+- variantes inversas preparadas para superficies oscuras;
+- el branding oficial no debe rediseñarse ni sustituirse arbitrariamente.
+
+Directorio oficial:
+
+```text
+src/workdesk/static/img/brand/
+```
+
+Recursos principales:
+
+```text
+workdesk-mark.svg
+workdesk-mark-inverse.svg
+workdesk-logo.svg
+workdesk-logo-inverse.svg
+workdesk-login-brand.svg
+workdesk-login-brand-inverse.svg
+favicon.svg
+favicon.ico
+favicon-32x32.png
+apple-touch-icon.png
+icon-192x192.png
+icon-512x512.png
+icon-maskable-512x512.png
+workdesk-social-preview.png
+```
+
+Uso actual:
+
+- Login → `workdesk-login-brand.svg`;
+- favicon global → integrado en Login, Dashboard y páginas de error;
+- variantes inversas → reservadas para modo oscuro futuro;
+- `workdesk-social-preview.png` → presentación visual del proyecto;
+- iconos 192/512/maskable → preparados para uso futuro; no existe todavía manifest ni PWA.
+
 ---
+
 
 # 28. Fuentes de verdad
 
@@ -1071,7 +1174,8 @@ Usuarios, autenticación completa y RBAC
 - usuario activo/inactivo;
 - bloqueo por intentos fallidos;
 - `token_version`;
-- login visual;
+- login visual con branding oficial;
+- favicons integrados en los templates actuales;
 - tests de autenticación base.
 
 ## Pendiente principal
@@ -1138,13 +1242,14 @@ Al finalizar una versión importante:
 1. actualizar este archivo;
 2. actualizar `README.md`;
 3. actualizar `docs/10_arquitectura.md` si cambió una decisión arquitectónica;
-4. actualizar `docs/12_roadmap.md`;
-5. ejecutar Ruff;
-6. ejecutar pytest;
-7. revisar Git;
-8. crear Pull Request;
-9. mergear;
-10. volver a `main` limpia.
+4. actualizar `docs/11_diseno_de_pantallas.md` si cambió UI, UX, Design System o branding;
+5. actualizar `docs/12_roadmap.md` cuando corresponda;
+6. ejecutar Ruff;
+7. ejecutar pytest;
+8. revisar Git;
+9. crear Pull Request;
+10. mergear;
+11. volver a `main` limpia.
 
 Las conversaciones con asistentes NO deben ser la única fuente de decisiones importantes.
 

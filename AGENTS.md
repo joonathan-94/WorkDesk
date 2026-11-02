@@ -12,6 +12,12 @@ Antes de modificar código, leer como mínimo:
 4. `docs/12_roadmap.md`
 5. los documentos funcionales relevantes para la tarea
 
+Si la tarea afecta frontend, UI, UX, Design System, branding, logos, favicons o recursos visuales, leer también:
+
+```text
+docs/11_diseno_de_pantallas.md
+```
+
 `PROJECT_CONTEXT.md` describe el estado real actual del proyecto.
 
 Los documentos dentro de `docs/` contienen la especificación funcional y técnica completa.
@@ -255,7 +261,7 @@ Toda migración nueva debe revisarse antes de considerarse terminada.
 
 ---
 
-# 11. Frontend y JavaScript
+# 11. Frontend, JavaScript e identidad visual
 
 WorkDesk utiliza renderizado server-side mediante Jinja2.
 
@@ -270,6 +276,57 @@ Respetar:
 ```text
 docs/11_diseno_de_pantallas.md
 ```
+
+## Identidad visual oficial
+
+WorkDesk dispone de una identidad visual oficial ya aprobada.
+
+Los recursos oficiales se encuentran en:
+
+```text
+src/workdesk/static/img/brand/
+```
+
+Recursos principales:
+
+```text
+workdesk-mark.svg
+workdesk-mark-inverse.svg
+workdesk-logo.svg
+workdesk-logo-inverse.svg
+workdesk-login-brand.svg
+workdesk-login-brand-inverse.svg
+favicon.svg
+favicon.ico
+favicon-32x32.png
+apple-touch-icon.png
+icon-192x192.png
+icon-512x512.png
+icon-maskable-512x512.png
+workdesk-social-preview.png
+```
+
+Reglas obligatorias:
+
+- utilizar los assets oficiales existentes antes de crear recursos nuevos;
+- no rediseñar el logotipo, isotipo o wordmark sin una decisión explícita del proyecto;
+- no alterar arbitrariamente proporciones, geometría, colores o composición de los logos;
+- no introducir variantes de marca no documentadas;
+- utilizar la variante principal sobre fondos claros;
+- utilizar variantes inversas cuando el contexto visual lo requiera;
+- mantener la combinación azul/cian y la semántica visual aprobada;
+- no sustituir el favicon oficial por iconos genéricos;
+- reutilizar `workdesk-login-brand.svg` en el Login mientras no exista una decisión de diseño distinta;
+- preservar `workdesk-social-preview.png` como recurso de presentación aprobado;
+- no asumir que los iconos 192/512/maskable implican que WorkDesk sea una PWA;
+- no crear `manifest.webmanifest` ni funcionalidades PWA sin una necesidad explícita.
+
+Si una tarea requiere modificar branding, primero explicar:
+
+1. qué problema concreto existe;
+2. por qué el asset actual no es suficiente;
+3. qué recurso se propone modificar;
+4. qué pantallas o documentos resultarían afectados.
 
 ---
 
@@ -350,8 +407,14 @@ Consultar la fuente adecuada según la tarea:
 - flujo de tickets: `docs/08_flujo_de_tickets.md`
 - modelo de datos: `docs/09_modelo_de_datos.md`
 - arquitectura: `docs/10_arquitectura.md`
-- UI/UX: `docs/11_diseno_de_pantallas.md`
+- UI/UX y branding: `docs/11_diseno_de_pantallas.md`
 - roadmap: `docs/12_roadmap.md`
+
+Para conocer el inventario real de assets de marca y su estado de integración, consultar también:
+
+```text
+PROJECT_CONTEXT.md
+```
 
 No reinterpretar silenciosamente decisiones consolidadas.
 
@@ -434,4 +497,5 @@ Toda propuesta debe respetar primero:
 - reglas de negocio;
 - roadmap;
 - seguridad;
+- Design System e identidad visual aprobada;
 - estado real del repositorio.
