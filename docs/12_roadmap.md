@@ -2,8 +2,8 @@
 
 # WorkDesk — Roadmap de implementación
 
-**Versión:** 1.1  
-**Estado:** ACTUALIZADO — `v0.1.0` implementado y validado en `feature/flask-foundation`, pendiente de integración a `main`  
+**Versión:** 1.2  
+**Estado:** ACTUALIZADO — `v0.1.0` integrado en `main` (PR #1); identidad visual integrada (PR #3); `v0.2.0` ampliado y dividido en entregas  
 **Proyecto:** WorkDesk  
 **Horizonte objetivo del MVP:** máximo 3 meses  
 **Modalidad inicial:** desarrollo local, sin despliegue externo  
@@ -31,11 +31,7 @@ Este roadmap no reemplaza los documentos anteriores. La implementación de cada 
 
 ## 1.1. Estado actual de ejecución
 
-La primera versión técnica del proyecto se encuentra implementada y validada en la rama:
-
-```text
-feature/flask-foundation
-```
+La primera versión técnica del proyecto está implementada, validada e integrada en `main` mediante el Pull Request #1 (rama `feature/flask-foundation`). Posteriormente se integraron la documentación de contexto (PR #2) y la identidad visual oficial con su integración inicial en el Login (PR #3, rama `feature/branding-login`). El hito `v0.1.0` todavía no tiene tag Git.
 
 El alcance ejecutado para `v0.1.0` incluye la fundación Flask, PostgreSQL, migraciones, configuración por entorno, manejo de errores, health check, logging, pruebas automatizadas y una base técnica de autenticación adelantada respecto de la planificación inicial.
 
@@ -51,7 +47,7 @@ La validación actual incluye:
 ✓ revisión técnica final completada
 ```
 
-Antes de comenzar `v0.2.0`, corresponde integrar `feature/flask-foundation` en `main` mediante Pull Request y cerrar documentalmente el incremento `v0.1.0`.
+Antes de comenzar `v0.2.0`, la rama `docs/sync-project-state` sincroniza la documentación con las decisiones consolidadas (prioridad y SLA, grupos, contraseñas, sesiones, auditoría mínima, rutas y Bootstrap). Después de integrarla se puede crear el tag `v0.1.0`.
 
 ---
 
@@ -655,7 +651,7 @@ El proyecto puede clonarse, configurarse localmente e iniciar su entorno de desa
 
 **Semana:** 1  
 **Versión:** `v0.1.0`
-**Estado de ejecución:** implementada y validada en `feature/flask-foundation`
+**Estado de ejecución:** implementada, validada e integrada en `main` (PR #1)
 
 ### Aprendizaje principal
 
@@ -765,10 +761,25 @@ Este adelanto **no reemplaza `v0.2.0`**: la siguiente fase continúa siendo resp
 - protección de rutas según rol;
 - navegación y sidebar según rol;
 - restricciones de acceso administrativo;
-- cuenta propia básica;
-- completar las políticas de sesión previstas para esta etapa cuando corresponda;
+- cuenta propia básica ("Mi cuenta") con cambio de contraseña;
+- creación de cuentas y restablecimiento de contraseña por el Administrador mediante contraseña temporal (escrita o generada), con cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`);
+- límites de sesión: 30 minutos de inactividad y 8 horas de duración máxima, configurables por variables de entorno (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`);
+- tabla `auditoria_administrativa` con el esquema completo de `09_modelo_de_datos.md` (sección 25.1), usada desde esta fase para las acciones sobre usuarios; la pantalla de consulta queda para `v0.8.0`;
+- incorporación local de Bootstrap con las primeras pantallas administrativas, respetando el Design System;
 - datos demo de usuarios;
 - ampliar tests de autorización y permisos.
+
+### Entregas de `v0.2.0`
+
+Dado el tamaño de esta fase, se implementa en entregas incrementales, cada una en su propia rama, con tests y Pull Request:
+
+1. **Base RBAC:** políticas centralizadas, decorador de roles, manejador 403 y una ruta administrativa mínima protegida, con tests de autorización.
+2. **Límites de sesión:** inactividad y duración máxima por variables de entorno.
+3. **Auditoría mínima:** migración y modelo de `auditoria_administrativa` con su servicio de registro.
+4. **Usuarios y contraseñas:** gestión de usuarios por el Administrador, contraseñas temporales, restablecimiento y cambio obligatorio, con su migración (`debe_cambiar_password`).
+5. **Interfaz administrativa:** Bootstrap local, sidebar y navegación por rol, "Mi cuenta" y datos demo.
+
+Las rutas internas se escriben en inglés (`/users`, `/account`, etc.) y la interfaz permanece en español.
 
 ### Roles
 
@@ -835,9 +846,10 @@ Cerrado
 ### Reglas críticas
 
 - Solicitante solo accede a tickets autorizados;
-- prioridad modificable según permisos;
+- prioridad modificable por Técnico, Supervisor y Administrador, con motivo obligatorio y registro en el historial (la política de continuidad del SLA se aplica en `v0.5.0`);
+- no se modifica la prioridad de un ticket cerrado sin reabrirlo;
 - eliminación física reservada;
-- Cancelar no equivale a eliminar;
+- cancelar no equivale a eliminar: la cancelación se representa como motivo de cierre (`CANCELACION`), no como estado;
 - Reabierto no se implementa como estado estructural.
 
 ### Criterio de salida
@@ -863,9 +875,9 @@ y cada rol ve únicamente lo autorizado.
 
 ### Implementación
 
-- grupos;
+- grupos (opcionales) y supervisores responsables de cada grupo (`grupos_supervisores`), con gestión de membresías por el Administrador y por el Supervisor en sus grupos;
 - múltiples técnicos;
-- asignación;
+- asignación directa a técnicos, con o sin grupo;
 - cambio de estado;
 - comentarios públicos;
 - notas internas;
@@ -935,7 +947,8 @@ Implementar:
 - próximo a vencer;
 - vencido;
 - visualización;
-- configuración básica.
+- configuración básica;
+- política de continuidad ante cambios de prioridad (RN-88): el consumo ya acumulado se conserva, el incumplimiento registrado no se borra, un cambio nunca reinicia el reloj, y la bajada de prioridad con el SLA en riesgo exige motivo y avisa a los Supervisores.
 
 ### Notificaciones internas
 
@@ -1039,6 +1052,8 @@ Implementar CRUD/configuración necesaria para:
 
 Las configuraciones más avanzadas podrán incorporarse progresivamente.
 
+En esta fase se crea la tabla `configuracion`; los valores de sesión y autenticación que hasta entonces se leen de variables de entorno pasan a ser sus valores iniciales.
+
 ## 20.2. Base de conocimiento
 
 Implementar:
@@ -1087,7 +1102,7 @@ Evitar un diseñador dinámico de reportes.
 
 ## 21.2. Auditoría
 
-Registrar y consultar como mínimo:
+La tabla `auditoria_administrativa` ya existe desde `v0.2.0` y registra las acciones sobre usuarios. En esta fase se incorpora la pantalla de consulta, `eventos_autenticacion` y el registro del resto de acciones. Registrar y consultar como mínimo:
 
 - cambios de estado;
 - asignaciones;
@@ -1389,7 +1404,7 @@ Cierre
 
 ---
 
-# 29. Definición de MVP terminado
+# 30. Definición de MVP terminado
 
 WorkDesk se considerará MVP `v1.0.0` cuando pueda demostrarse de principio a fin:
 
@@ -1440,7 +1455,7 @@ Además:
 
 ---
 
-# 29. Presentación para portafolio
+# 31. Presentación para portafolio
 
 La versión `v1.0.0` debe ser presentable visual y técnicamente.
 
@@ -1464,7 +1479,7 @@ Los mockups son referencia de diseño; las capturas finales del README deben mos
 
 ---
 
-# 29. Qué ocurre después del MVP
+# 32. Qué ocurre después del MVP
 
 Ejemplo de evolución:
 
@@ -1489,38 +1504,36 @@ La numeración exacta se definirá cuando exista una necesidad real.
 
 ---
 
-# 29. Próximo paso inmediato
+# 33. Próximo paso inmediato
 
-La documentación inicial, la preparación del repositorio y la implementación de `v0.1.0 — Fundación técnica` ya fueron realizadas.
+La documentación inicial, la preparación del repositorio, la implementación de `v0.1.0 — Fundación técnica` y la identidad visual oficial ya fueron realizadas e integradas en `main`.
 
 El estado inmediato del proyecto es:
 
 ```text
-feature/flask-foundation
-→ implementación v0.1.0 completada
-→ revisión técnica final aprobada
-→ README / arquitectura / roadmap actualizados
-→ pendiente integración a main
+main
+→ v0.1.0 integrado (PR #1)
+→ documentación de contexto integrada (PR #2)
+→ identidad visual integrada (PR #3)
+
+docs/sync-project-state
+→ sincronización documental previa a v0.2.0
 ```
 
 El siguiente paso del proyecto será:
 
 ```text
-1. realizar la revisión documental final;
-2. ejecutar Ruff y pytest una última vez;
-3. realizar el commit de documentación;
-4. abrir Pull Request feature/flask-foundation → main;
-5. revisar y fusionar la PR;
-6. consolidar v0.1.0 como hito de Fundación técnica;
-7. preparar la rama correspondiente a v0.2.0;
-8. comenzar Usuarios, autenticación completa y RBAC.
+1. revisar y fusionar docs/sync-project-state;
+2. crear el tag v0.1.0 sobre main;
+3. ejecutar Ruff y pytest como línea base;
+4. comenzar la primera entrega de v0.2.0: base RBAC.
 ```
 
 La siguiente fase deberá reutilizar la base de autenticación ya implementada y concentrarse en completar gestión de usuarios, autorización y comportamiento por rol, evitando rehacer componentes que ya fueron validados en `v0.1.0`.
 
 ---
 
-# 29. Cierre
+# 34. Cierre
 
 Este roadmap busca equilibrar:
 

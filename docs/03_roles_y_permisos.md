@@ -2,9 +2,11 @@
 
 > **Proyecto:** WorkDesk
 > **Documento:** Roles y Permisos
-> **Versión:** 1.0
-> **Estado:** Definición inicial
-> **Última actualización:** 2026-08-26
+> **Versión:** 1.1
+> **Estado:** Definitivo para el MVP — sincronizado con `04` a `12`
+> **Última actualización:** 2026-11-08
+
+> **Nota de precedencia:** este documento define el modelo general de roles y permisos. Cuando un documento posterior (`04` a `09`) concrete una regla con mayor detalle, prevalece el documento más específico y reciente. La matriz de la sección 5 no enumera todas las acciones del sistema (por ejemplo cierre directo, escalamiento, adjuntos, SLA, conocimiento o reportes); esas acciones se definen en `04_requisitos_funcionales.md` y `06_reglas_de_negocio.md`.
 
 ---
 
@@ -193,6 +195,7 @@ Representa un nivel de responsabilidad superior al Técnico dentro de la operaci
 * Registrar notas internas.
 * Intervenir cuando una situación requiera coordinación o supervisión.
 * Revisar información necesaria para controlar la operación.
+* Gestionar las membresías de técnicos y las asignaciones de los grupos de los que sea responsable.
 
 ### Alcance general
 
@@ -208,6 +211,7 @@ El Supervisor no podrá:
 * Administrar globalmente los usuarios.
 * Modificar configuraciones administrativas reservadas al Administrador.
 * Administrar los permisos estructurales del sistema.
+* Crear, desactivar o configurar grupos, ni designar supervisores responsables de un grupo.
 
 ---
 
@@ -226,6 +230,8 @@ Es responsable de la administración general de la plataforma y posee las capaci
 * Editar usuarios.
 * Activar o desactivar usuarios.
 * Asignar roles.
+* Restablecer contraseñas de otros usuarios.
+* Crear, desactivar y configurar grupos, y designar a los supervisores responsables de cada grupo.
 * Gestionar información administrativa.
 * Gestionar configuraciones disponibles para el Administrador.
 * Gestionar tickets cuando sea necesario.
@@ -275,10 +281,17 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Gestionar usuarios                        |        ❌       |    ❌    |      ❌     |       ✅       |
 | Asignar roles                             |        ❌       |    ❌    |      ❌     |       ✅       |
 | Activar/desactivar usuarios               |        ❌       |    ❌    |      ❌     |       ✅       |
+| Restablecer contraseña de otro usuario    |        ❌       |    ❌    |      ❌     |       ✅       |
+| Cambiar la contraseña propia              |        ✅       |    ✅    |      ✅     |       ✅       |
+| Crear, desactivar y configurar grupos     |        ❌       |    ❌    |      ❌     |       ✅       |
+| Designar supervisores responsables de grupo |      ❌       |    ❌    |      ❌     |       ✅       |
+| Gestionar membresías de grupos propios    |        ❌       |    ❌    |  ✅ (1)    |       ✅       |
 | Gestionar configuración administrativa    |        ❌       |    ❌    |      ❌     |       ✅       |
 | Consultar auditoría                       |        ❌       |    ❌    |      ❌     |       ✅       |
 
 > **Nota:** La matriz representa la autorización general. Las condiciones exactas bajo las cuales una acción puede ejecutarse serán especificadas posteriormente en los requisitos funcionales.
+>
+> **(1)** El Supervisor solo gestiona las membresías de técnicos y las asignaciones de los grupos en los que figura como supervisor responsable. Un grupo puede tener varios supervisores responsables.
 
 ---
 
@@ -388,6 +401,8 @@ El Solicitante no podrá modificar directamente la prioridad de un ticket despu�
 
 Esta restricción busca evitar modificaciones arbitrarias de la prioridad y mantener un criterio de gestión controlado.
 
+Todo cambio de prioridad realizado por Técnico, Supervisor o Administrador exige indicar un motivo y queda registrado con la prioridad anterior, la nueva, el usuario responsable y la fecha. El efecto sobre el SLA se define en `06_reglas_de_negocio.md` (RN-88).
+
 Las reglas detalladas relacionadas con niveles de prioridad, impacto, urgencia y cálculo de prioridad serán definidas posteriormente.
 
 ---
@@ -436,7 +451,9 @@ El Administrador podrá gestionar, como mínimo:
 
 Un usuario desactivado no deberá poder utilizar WorkDesk como usuario activo.
 
-La gestión detallada de usuarios, autenticación, recuperación de credenciales y sesiones será especificada posteriormente.
+El Administrador crea las cuentas y restablece las contraseñas; cada usuario puede cambiar la suya. Cuando se entrega una contraseña temporal, el usuario debe cambiarla en su primer inicio de sesión. No existe recuperación pública de contraseña en el MVP.
+
+La gestión detallada de usuarios, autenticación y sesiones se especifica en `04_requisitos_funcionales.md`, `06_reglas_de_negocio.md` y `10_arquitectura.md`.
 
 ---
 
@@ -599,7 +616,7 @@ Para el MVP de WorkDesk se establecen las siguientes decisiones:
 | #  | Decisión                                                                                      |
 | -- | --------------------------------------------------------------------------------------------- |
 | 1  | El MVP tendrá cuatro roles principales: Solicitante, Técnico, Supervisor y Administrador.     |
-| 2  | No se incorporarán grupos o colas de técnicos en el MVP.                                      |
+| 2  | Los grupos o colas de técnicos forman parte del MVP con carácter opcional: un ticket puede asignarse directamente a técnicos sin grupo. El Administrador crea, desactiva y configura los grupos; el Supervisor gestiona las membresías y asignaciones de los grupos de los que es responsable. |
 | 3  | Un ticket podrá tener múltiples técnicos asignados.                                           |
 | 4  | Los técnicos podrán participar en tickets asignados a otros técnicos.                         |
 | 5  | Técnicos, Supervisores y Administradores podrán modificar la prioridad.                       |

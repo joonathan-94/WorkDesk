@@ -251,9 +251,13 @@ Los grupos representan unidades organizativas de atención.
 
 ## RF-009 — Asociación de técnicos a grupos
 
-**Actor:** Administrador.
+**Actor:** Administrador / Supervisor responsable del grupo.
 
 El sistema debe permitir asociar un técnico a uno o más grupos.
+
+El Administrador puede gestionar las membresías de cualquier grupo. El Supervisor puede gestionar únicamente las membresías y asignaciones de los grupos en los que figura como supervisor responsable.
+
+Un grupo puede tener varios supervisores responsables. La designación de supervisores responsables corresponde al Administrador (RF-117).
 
 **Alcance:** MVP.
 
@@ -491,11 +495,15 @@ La prioridad inicial podrá ser indicada por el solicitante y posteriormente rev
 
 ## RF-025 — Modificación de prioridad
 
-**Actor:** Supervisor / Administrador.
+**Actor:** Técnico / Supervisor / Administrador.
 
 El sistema debe permitir modificar la prioridad durante el ciclo de vida del ticket.
 
-El cambio debe quedar registrado en el historial.
+El cambio exige indicar un motivo y debe quedar registrado en el historial con la prioridad anterior, la prioridad nueva, el usuario responsable, la fecha y el motivo.
+
+No se permite modificar la prioridad de un ticket en estado `Cerrado`; primero debe reabrirse.
+
+El efecto del cambio sobre el SLA se rige por RN-88 y no constituye una alteración administrativa del SLA en los términos de RF-083.
 
 **Alcance:** MVP.
 
@@ -1270,6 +1278,8 @@ El Administrador tendrá privilegios superiores y podrá:
 
 El Técnico no podrá modificar, reiniciar o alterar administrativamente el SLA.
 
+El cambio de prioridad permitido a Técnico, Supervisor y Administrador (RF-025) no se considera una alteración administrativa del SLA: no reinicia el tiempo consumido y sigue la política de continuidad definida en RN-88.
+
 Las acciones de gestión manual del SLA deberán quedar registradas en la trazabilidad correspondiente.
 
 **Alcance:** MVP.
@@ -1676,7 +1686,9 @@ El Administrador debe poder gestionar las ubicaciones disponibles y su obligator
 
 ## RF-117 — Configuración de grupos
 
-El Administrador debe poder gestionar grupos y asociaciones de técnicos.
+El Administrador debe poder crear, desactivar y configurar grupos, designar a sus supervisores responsables y gestionar las asociaciones de técnicos.
+
+Los grupos no se eliminan físicamente; se desactivan conservando su historial.
 
 **Alcance:** MVP.
 
@@ -1845,6 +1857,56 @@ El sistema debe proporcionar mecanismos básicos para conocer el estado de compo
 
 ---
 
+## RF-131 — Creación de cuentas con contraseña temporal
+
+**Actor:** Administrador.
+
+Al crear un usuario, el Administrador debe poder definir su contraseña temporal de dos maneras: escribiéndola o solicitando que el sistema la genere.
+
+Una contraseña generada por el sistema se muestra al Administrador una sola vez. Toda contraseña debe cumplir la longitud mínima de 12 caracteres.
+
+La contraseña nunca se almacena en texto plano ni se registra en logs, auditoría o historial.
+
+**Alcance:** MVP.
+
+---
+
+## RF-132 — Restablecimiento de contraseña por el Administrador
+
+**Actor:** Administrador.
+
+El sistema debe permitir al Administrador restablecer la contraseña de otro usuario mediante una contraseña temporal, con el mismo mecanismo de RF-131.
+
+El restablecimiento invalida las sesiones activas del usuario, limpia sus intentos fallidos y cualquier bloqueo temporal, exige el cambio de contraseña en su siguiente inicio de sesión y queda registrado en la auditoría administrativa sin incluir la contraseña.
+
+**Alcance:** MVP.
+
+---
+
+## RF-133 — Cambio de contraseña propia
+
+**Actor:** Todos los usuarios autenticados.
+
+El sistema debe permitir a cada usuario cambiar su propia contraseña desde "Mi cuenta", indicando su contraseña actual.
+
+La nueva contraseña debe cumplir la longitud mínima y ser distinta de la actual. El cambio invalida las demás sesiones del usuario y mantiene activa la sesión desde la que se realizó (RNF-014).
+
+**Alcance:** MVP.
+
+---
+
+## RF-134 — Cambio obligatorio de contraseña temporal
+
+**Actor:** Sistema.
+
+Cuando un usuario recibe una contraseña temporal, el sistema debe exigir que la cambie en su primer inicio de sesión posterior.
+
+Mientras el cambio esté pendiente, el usuario solo puede acceder a la pantalla de cambio de contraseña y cerrar sesión. Esta restricción debe aplicarse en backend y no depender de la interfaz.
+
+**Alcance:** MVP.
+
+---
+
 # 33. Funcionalidades expresamente fuera del MVP
 
 Las siguientes funcionalidades no forman parte de los requisitos funcionales obligatorios del MVP:
@@ -1908,6 +1970,7 @@ Estas capacidades podrán incorporarse posteriormente de acuerdo con el roadmap 
 | Inicialización        | RF-124 a RF-126 | Sí  |
 | Respaldo              | RF-127 a RF-128 | Sí  |
 | Estado del sistema    | RF-129 a RF-130 | Sí  |
+| Contraseñas           | RF-131 a RF-134 | Sí  |
 
 ---
 

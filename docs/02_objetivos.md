@@ -1,8 +1,8 @@
 # Documento de Objetivos — WorkDesk
 
-> **Estado:** En elaboración
-> **Versión:** 0.1.0
-> **Última actualización:** 26 de agosto de 2026
+> **Estado:** Vigente como marco de objetivos (las decisiones detalladas se definen en `03` a `12`)
+> **Versión:** 0.2.0
+> **Última actualización:** 8 de noviembre de 2026
 
 ---
 
@@ -503,15 +503,8 @@ La capacidad de implementar una funcionalidad no será, por sí sola, suficiente
 
 ## 13. Decisiones deliberadamente abiertas
 
-Las siguientes decisiones no se consideran cerradas en esta etapa y deberán definirse posteriormente:
+Las siguientes decisiones no se consideran cerradas y deberán definirse posteriormente:
 
-* definición detallada de roles y permisos;
-* reglas definitivas de prioridad;
-* modelo exacto de SLA;
-* reglas de transición entre estados;
-* reglas de escalamiento;
-* definición detallada de grupos y colas;
-* profundidad de la auditoría;
 * estrategia definitiva de búsqueda;
 * comportamiento de automatizaciones;
 * modelo de relación entre tickets, tareas y proyectos;
@@ -524,6 +517,8 @@ Las siguientes decisiones no se consideran cerradas en esta etapa y deberán def
 * modelo de negocio o eventual comercialización.
 
 Estas decisiones deberán resolverse durante las etapas posteriores de análisis, requisitos y arquitectura.
+
+> **Decisiones ya cerradas.** Las siguientes decisiones que este documento mencionaba como abiertas se resolvieron en documentos posteriores: roles y permisos (`03`), reglas de prioridad (`06`, RN-19 a RN-23), modelo de SLA (`06`, `09` y `10`), transiciones entre estados (`08`), escalamiento manual (`04`), grupos y colas (`04`, `06` y `09`) y profundidad de la auditoría (`09`).
 
 ---
 

@@ -552,7 +552,7 @@ La eliminación de un solicitante no elimina la identidad del creador original n
 
 ## CU-011 — Establecer o modificar prioridad
 
-**Actores:** Solicitante, Supervisor, Administrador.
+**Actores:** Solicitante (solo al crear), Técnico, Supervisor, Administrador.
 
 **Objetivo:** Establecer o corregir la prioridad de un ticket.
 
@@ -560,14 +560,15 @@ La eliminación de un solicitante no elimina la identidad del creador original n
 
 1. El usuario crea o abre un ticket.
 2. WorkDesk determina si posee permisos para modificar la prioridad.
-3. El usuario selecciona la prioridad.
-4. WorkDesk valida que la prioridad esté activa.
-5. Se actualiza el ticket.
-6. El cambio queda registrado.
+3. El usuario selecciona la prioridad e indica el motivo del cambio (obligatorio al modificar un ticket existente).
+4. WorkDesk valida que la prioridad esté activa y que el ticket no esté `Cerrado`.
+5. Se actualiza el ticket y se aplica la política de continuidad del SLA (RN-88).
+6. El cambio queda registrado con prioridad anterior, nueva, usuario, fecha y motivo.
 
 ### Reglas especiales
 
 * La prioridad es manual.
+* Si se baja la prioridad con el SLA en riesgo o vencido, se notifica a los Supervisores.
 * Impacto y urgencia no determinan automáticamente la prioridad.
 * La prioridad no impone un orden obligatorio de atención.
 * La existencia de tickets de mayor prioridad no bloquea la gestión de otros tickets.

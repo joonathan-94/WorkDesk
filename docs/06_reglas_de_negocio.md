@@ -303,9 +303,11 @@ No constituye una obligación de atender tickets en un orden estricto.
 
 La prioridad inicial podrá ser establecida durante la creación de acuerdo con los permisos definidos.
 
-Una vez creado el ticket, la modificación de la prioridad quedará reservada a Supervisor y Administrador. El Técnico podrá consultarla y utilizarla como referencia operativa, pero no modificarla.
+Una vez creado el ticket, la modificación de la prioridad estará permitida a Técnico, Supervisor y Administrador. El Solicitante no puede modificarla después de la creación.
 
-Toda modificación deberá quedar registrada.
+Toda modificación exige indicar un motivo y deberá quedar registrada con la prioridad anterior, la prioridad nueva, el usuario responsable, la fecha y el motivo.
+
+No se puede modificar la prioridad de un ticket `Cerrado`; primero debe reabrirse. Establecer la misma prioridad que ya tiene el ticket no genera cambio ni registro.
 
 ---
 
@@ -978,7 +980,16 @@ La existencia de múltiples tickets asignados a un Técnico no detendrá automá
 
 El SLA podrá estar asociado a la prioridad configurada.
 
-Cuando cambie la prioridad, el comportamiento del SLA deberá seguir la política configurada.
+Cuando cambie la prioridad se cierra el período de SLA vigente y se abre uno nuevo con la política de la nueva prioridad. El cambio nunca reinicia el reloj:
+
+* **Continuidad del consumo.** El tiempo de SLA ya consumido se conserva. El nuevo vencimiento es el momento del cambio más la diferencia entre el objetivo de la nueva prioridad y el consumo acumulado, calculada en horario laboral.
+* **Incumplimiento permanente.** Un vencimiento ya registrado (RN-91) no se borra por un cambio posterior de prioridad.
+* **Subida de prioridad.** Si el consumo acumulado ya supera el nuevo objetivo, el ticket pasa de inmediato a vencido y se generan las notificaciones correspondientes.
+* **Bajada de prioridad con SLA en riesgo.** Si el SLA está en "próximo a vencer" o "vencido", la bajada está permitida a los tres roles con motivo obligatorio y se notifica a los Supervisores.
+* **Ticket en espera.** Si el SLA está pausado por `En espera`, el período nuevo nace pausado y no consume tiempo hasta reanudarse.
+* **Primera respuesta.** Si ya se cumplió, no se vuelve a evaluar; si no, conserva su tiempo consumido.
+
+El período nuevo registra como usuario y motivo del cambio los del cambio de prioridad. Estos cambios no son excepciones de SLA (RN-92) y no requieren permisos de Supervisor.
 
 ---
 
@@ -1014,7 +1025,7 @@ Las acciones automáticas avanzadas no serán obligatorias en el MVP.
 
 ## RN-92 — Gestión del SLA por rol
 
-El Técnico podrá consultar la situación de SLA de los tickets sobre los que tenga acceso, pero no podrá alterar administrativamente el SLA.
+El Técnico podrá consultar la situación de SLA de los tickets sobre los que tenga acceso, pero no podrá alterar administrativamente el SLA. Cambiar la prioridad (RN-22) no es una alteración administrativa: sus efectos sobre el SLA están acotados por RN-88.
 
 El Supervisor podrá:
 
@@ -1111,6 +1122,18 @@ El Supervisor deberá contar con visibilidad suficiente para:
 ## RN-101 — Acceso del Administrador
 
 El Administrador contará con acceso administrativo amplio de acuerdo con sus privilegios.
+
+---
+
+## RN-146 — Gestión de grupos por el Supervisor
+
+Los grupos son opcionales: un ticket puede asignarse directamente a técnicos sin pertenecer a ningún grupo.
+
+El Administrador crea, desactiva y configura los grupos y designa a sus supervisores responsables. Un grupo puede tener varios supervisores responsables.
+
+Un Supervisor puede gestionar las membresías de técnicos y las asignaciones únicamente de los grupos en los que figura como supervisor responsable. No puede crear, desactivar ni configurar grupos, ni modificar los supervisores responsables.
+
+Los grupos no se eliminan físicamente; se desactivan. Las membresías y designaciones finalizadas se conservan como histórico. Si un usuario deja de tener el rol Supervisor, sus designaciones vigentes finalizan.
 
 ---
 
@@ -1230,6 +1253,20 @@ Entre ellas:
 * Desactivación de usuarios.
 * Restauraciones.
 * Operaciones administrativas críticas.
+
+---
+
+## RN-147 — Contraseñas temporales y cambio obligatorio
+
+El Administrador crea las cuentas y restablece contraseñas mediante una contraseña temporal, que puede escribir o solicitar que el sistema genere. Una contraseña generada se muestra una sola vez.
+
+Una cuenta con contraseña temporal queda marcada para cambio obligatorio. Hasta que el usuario cambie su contraseña solo puede acceder a la pantalla de cambio de contraseña y cerrar sesión; el sistema lo aplica en backend.
+
+Al crear o restablecer una contraseña, las sesiones anteriores del usuario quedan invalidadas. El restablecimiento además limpia los intentos fallidos y el bloqueo temporal.
+
+Al cambiar su contraseña, el usuario debe indicar la actual; la nueva debe tener al menos 12 caracteres y ser distinta de la actual. La sesión desde la que se realizó el cambio se mantiene y las demás se invalidan.
+
+Las contraseñas, temporales o definitivas, nunca se almacenan en texto plano ni se registran en logs, auditoría ni historial. Los hechos (creación de cuenta, restablecimiento, cambio) sí se auditan sin incluir la contraseña.
 
 ---
 
@@ -1533,7 +1570,10 @@ La evolución futura del producto deberá realizarse sin sacrificar la estabilid
 | Técnicos                | Uno o más técnicos por ticket                    |
 | Carga                   | Sin límite obligatorio                           |
 | Reasignación masiva     | Permitida y parte del MVP                        |
-| Prioridad               | Manual y modificable                             |
+| Prioridad               | Manual; Técnico, Supervisor y Administrador pueden modificarla con motivo |
+| SLA y prioridad         | Cambio de prioridad no reinicia el consumo       |
+| Grupos                  | Opcionales; el Supervisor gestiona los suyos     |
+| Contraseñas             | Temporal con cambio obligatorio al primer login  |
 | Orden de atención       | Flexible                                         |
 | Estados                 | Seis estados estructurales                       |
 | Estados configurables   | Solo atributos no estructurales                  |
@@ -1550,7 +1590,7 @@ La evolución futura del producto deberá realizarse sin sacrificar la estabilid
 | Duplicados              | Vinculación + motivo de cierre                   |
 | En espera               | Dependencia externa                              |
 | SLA                     | Asociado al ticket                               |
-| SLA                     | Solo Supervisor/Admin pueden gestionarlo         |
+| SLA                     | Solo Supervisor/Admin gestionan excepciones      |
 | SLA en espera           | Comportamiento configurable                      |
 | Notificaciones          | Internas                                         |
 | Auditoría               | Protegida e histórica                            |

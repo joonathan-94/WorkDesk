@@ -594,7 +594,9 @@ Responsabilidades:
 - activación;
 - desactivación;
 - información del perfil;
-- cambios administrativos.
+- cambios administrativos;
+- contraseñas temporales y restablecimiento por el Administrador;
+- cambio obligatorio de contraseña (`debe_cambiar_password`), aplicado en backend mediante una comprobación previa a cada petición que solo permite la pantalla de cambio de contraseña, el cierre de sesión y los recursos técnicos (`static`, `/health`).
 
 ---
 
@@ -605,6 +607,7 @@ Responsabilidades:
 - grupos;
 - membresías;
 - técnicos asociados;
+- supervisores responsables de cada grupo;
 - historial temporal de pertenencia.
 
 ---
@@ -964,21 +967,25 @@ Navegador
 
 La interfaz principal utilizará rutas HTML.
 
+**Convención de rutas.** Las rutas internas se escriben en inglés; el texto visible de la interfaz permanece en español. Las rutas ya implementadas (`/login`, `/logout`, `/dashboard`, `/health`) no se modifican.
+
 Ejemplos conceptuales:
 
 ```text
-/auth/login
-/auth/logout
+/login
+/logout
+/dashboard
 
 /tickets
-/tickets/nuevo
+/tickets/new
 /tickets/<public_id>
 
-/usuarios
-/grupos
+/users
+/groups
 
-/admin/configuracion
-/admin/auditoria
+/account
+/admin/settings
+/admin/audit
 /admin/backups
 ```
 
@@ -1401,7 +1408,9 @@ sesión inválida
 
 Los valores podrán parametrizarse posteriormente.
 
-Estos límites forman parte de la estrategia objetivo de autenticación y todavía no se consideran implementados en `v0.1.0`. Su incorporación corresponde a la evolución de autenticación y RBAC.
+Estos límites no estaban implementados en `v0.1.0`. Se incorporan en `v0.2.0` como una entrega propia, con 30 minutos de inactividad y 8 horas de duración máxima como valores predeterminados, configurables mediante las variables de entorno `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. Pasarán a la tabla `configuracion` cuando exista la administración (`v0.7.0`).
+
+Implementación prevista: la sesión conserva el instante de inicio y el de última actividad; en cada petición autenticada se comprueban ambos límites antes de aceptar la sesión. Las rutas técnicas (`/health` y `static`) no renuevan la actividad.
 
 ---
 
@@ -1605,7 +1614,7 @@ Los adjuntos se mantendrán fuera de `static/`.
 Ejemplo:
 
 ```text
-var/
+instance/
 └── uploads/
     ├── 2026/
     │   ├── 01/
@@ -1957,6 +1966,8 @@ Los períodos históricos permanecerán persistidos según `09_modelo_de_datos.m
 Cuando las condiciones aplicables cambien, no deberá reescribirse arbitrariamente el SLA histórico.
 
 El período anterior se cerrará y se creará uno nuevo cuando corresponda.
+
+El cierre de un período no reinicia el consumo: `SLAService` suma los `segundos_consumidos` de los períodos anteriores y calcula el vencimiento del período nuevo a partir de ese acumulado (ver RN-88 y `09_modelo_de_datos.md`, sección 20.3). Esta política se implementa junto con el SLA (`v0.5.0`).
 
 Esto permite reconstruir las condiciones aplicadas al ticket durante su vida.
 
@@ -2445,6 +2456,13 @@ LOGIN_LOCK_MINUTES
 LOG_LEVEL
 LOG_MAX_BYTES
 LOG_BACKUP_COUNT
+```
+
+Se incorporan en `v0.2.0` las variables de límites de sesión:
+
+```text
+SESSION_IDLE_MINUTES   (30 por defecto)
+SESSION_MAX_HOURS      (8 por defecto)
 ```
 
 Variables adicionales como raíces de uploads o backups podrán incorporarse cuando dichos módulos sean implementados.

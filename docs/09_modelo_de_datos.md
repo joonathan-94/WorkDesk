@@ -281,7 +281,7 @@ El modelo se organiza en los siguientes dominios:
 | Dominio | Entidades principales |
 | --- | --- |
 | Identidad y seguridad | `roles`, `usuarios`, `eventos_autenticacion` |
-| Organización operativa | `grupos`, `usuarios_grupos` |
+| Organización operativa | `grupos`, `usuarios_grupos`, `grupos_supervisores` |
 | Clasificación | `categorias`, `prioridades`, `impactos`, `urgencias`, `ubicaciones` |
 | Flujo | `estados`, `transiciones_estados`, `motivos_espera`, `motivos_cierre` |
 | Ticket | `tickets`, `tickets_solicitantes`, `tickets_tecnicos` |
@@ -399,6 +399,7 @@ Representa las cuentas de usuario de WorkDesk.
 | `token_version` | INTEGER | No | Soporte para invalidación global de credenciales/sesiones stateless. Default 1. |
 | `intentos_fallidos` | INTEGER | No | Soporte de política de bloqueo. Default 0. |
 | `bloqueado_hasta` | TIMESTAMPTZ | Sí | Fin de bloqueo temporal de autenticación. |
+| `debe_cambiar_password` | BOOLEAN | No | TRUE cuando el usuario tiene una contraseña temporal y debe cambiarla antes de usar el sistema. Default FALSE. |
 | `activo` | BOOLEAN | No | Indica si la cuenta está habilitada. |
 | `fecha_creacion` | TIMESTAMPTZ | No | Creación. |
 | `usuario_creacion_id` | BIGINT | Sí | Administrador creador; nullable para usuario inicial del sistema. |
@@ -415,6 +416,7 @@ Representa las cuentas de usuario de WorkDesk.
 - Un usuario desactivado conserva todas sus referencias históricas.
 - Un cambio de rol no crea una tabla de historial de roles; se registra en `auditoria_administrativa`.
 - `token_version` no implica una tabla persistente de sesiones.
+- `debe_cambiar_password` pasa a TRUE cuando el Administrador crea la cuenta o restablece la contraseña con una contraseña temporal, y a FALSE cuando el usuario completa su cambio de contraseña. Ambas operaciones incrementan `token_version`. Mientras sea TRUE, el backend solo permite la pantalla de cambio de contraseña y el cierre de sesión. El Administrador inicial creado por CLI define su propia contraseña y queda en FALSE. Los usuarios existentes en el momento de añadir la columna quedan en FALSE.
 
 ### Nota sobre campos de seguridad
 
@@ -505,7 +507,7 @@ Tabla temporal N:M entre técnicos y grupos.
 | `grupo_id` | BIGINT | No | FK a `grupos`. |
 | `fecha_inicio` | TIMESTAMPTZ | No | Inicio de pertenencia. |
 | `fecha_fin` | TIMESTAMPTZ | Sí | Fin; NULL indica pertenencia vigente. |
-| `asignado_por_usuario_id` | BIGINT | Sí | Administrador que realizó la asociación. |
+| `asignado_por_usuario_id` | BIGINT | Sí | Administrador o Supervisor responsable del grupo que realizó la asociación. |
 | `retirado_por_usuario_id` | BIGINT | Sí | Responsable del retiro. |
 | `motivo_retiro` | TEXT | Sí | Contexto opcional. |
 
@@ -532,6 +534,40 @@ fecha_fin IS NULL OR fecha_fin >= fecha_inicio
 ```
 
 La creación de una membresía activa deberá validar en backend que `usuario_id` corresponda a un usuario habilitado para desempeñarse como Técnico. Si posteriormente cambia de rol, no se elimina el historial: se cierran las membresías activas cuando corresponda y se conserva la trazabilidad.
+
+Un Supervisor solo puede crear o cerrar membresías de los grupos en los que tiene una designación vigente en `grupos_supervisores`; el Administrador puede hacerlo en cualquier grupo.
+
+## 10.3 `grupos_supervisores`
+
+Tabla temporal N:M entre grupos y los Supervisores responsables de gestionarlos. Un grupo puede tener varios supervisores responsables y un Supervisor puede serlo de varios grupos. Sigue el mismo patrón de vigencia que `usuarios_grupos`. Se crea junto con `grupos` (`v0.4.0`).
+
+### Campos
+
+| Campo | Tipo | Nulo | Descripción |
+| --- | --- | --- | --- |
+| `id` | BIGINT | No | PK. |
+| `grupo_id` | BIGINT | No | FK a `grupos`. |
+| `supervisor_id` | BIGINT | No | FK a `usuarios`. |
+| `fecha_inicio` | TIMESTAMPTZ | No | Inicio de la designación. |
+| `fecha_fin` | TIMESTAMPTZ | Sí | Fin; NULL indica designación vigente. |
+| `asignado_por_usuario_id` | BIGINT | Sí | Administrador que designó. |
+| `retirado_por_usuario_id` | BIGINT | Sí | Responsable del retiro. |
+| `motivo_retiro` | TEXT | Sí | Contexto opcional. |
+
+### Restricciones
+
+```text
+UNIQUE (grupo_id, supervisor_id) WHERE fecha_fin IS NULL
+fecha_fin IS NULL OR fecha_fin >= fecha_inicio
+```
+
+### Reglas
+
+- Solo el Administrador crea o cierra designaciones.
+- El backend valida que `supervisor_id` corresponda a un usuario con rol Supervisor activo.
+- Si un usuario deja de ser Supervisor o se desactiva, sus designaciones vigentes se cierran y el cambio se audita; el historial se conserva.
+- Un grupo sin supervisor responsable es válido: solo el Administrador gestiona sus membresías.
+- Las designaciones y sus cambios se registran en `auditoria_administrativa`.
 
 ---
 
@@ -602,7 +638,7 @@ Crítica
 - Cada ticket debe poseer prioridad desde la creación.
 - La prioridad es manual.
 - No se calcula obligatoriamente desde impacto y urgencia.
-- Después de creado el ticket, el Técnico no puede modificar la prioridad; Supervisor y Administrador sí.
+- Después de creado el ticket, Técnico, Supervisor y Administrador pueden modificar la prioridad, siempre con motivo; el Solicitante no. El cambio se registra en `historial_ticket` (`PRIORIDAD_CAMBIADA`, ver sección 24.1) y abre un nuevo período en `tickets_sla_periodos`.
 - `nivel > 0`.
 - Los niveles activos no deberán duplicarse.
 - El nivel es una referencia ordinal para ordenamiento, filtros, métricas y alertas; no impide atender tickets de menor prioridad.
@@ -1241,6 +1277,8 @@ Historial de períodos de SLA aplicados a cada ticket.
 
 Cuando cambia la prioridad o cualquier condición que modifica el SLA aplicable, se cierra el período vigente y se crea uno nuevo. Nunca se sobrescribe un período anterior para simular una nueva configuración.
 
+**Continuidad del consumo.** El cierre de un período no reinicia el reloj. `segundos_consumidos` se guarda por período y el consumo acumulado del ticket es la suma de los períodos anteriores más el consumido en el vigente. Al abrir el período nuevo, su vencimiento se calcula como el momento del cambio más la diferencia entre el objetivo de la nueva política y el consumo acumulado (en horario laboral); si el consumo acumulado ya lo supera, el período nace vencido. Si el ticket está en una espera con pausa, el período nace pausado. Cuando el cambio lo origina un cambio de prioridad, `usuario_cambio_id` y `motivo_cambio` copian los del evento `PRIORIDAD_CAMBIADA`. Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-88). No requiere columnas adicionales.
+
 ### Campos
 
 | Campo | Tipo | Nulo | Descripción |
@@ -1571,6 +1609,8 @@ Una corrección posterior se representa mediante un nuevo evento compensatorio; 
 
 `actor_tipo` y `tipo_evento` utilizarán códigos controlados por la aplicación. Entre otros, el historial podrá manejar códigos como `TICKET_CREADO`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `PRIORIDAD_CAMBIADA`, `COMENTARIO_EDITADO`, `ARCHIVO_ADJUNTADO`, `TICKET_RESUELTO`, `TICKET_CERRADO` y `TICKET_REABIERTO`.
 
+**Evento `PRIORIDAD_CAMBIADA`.** Registra la prioridad anterior en `valor_anterior`, la nueva en `valor_nuevo` (por ejemplo `{"prioridad_id": 2, "codigo": "MEDIA"}`), el usuario en `actor_usuario_id`, la fecha en `fecha_hora` y el motivo, obligatorio, en `contexto` como `{"motivo": "..."}`. `detalle` puede contener una descripción legible. No requiere columnas nuevas.
+
 ---
 
 # 25. Auditoría administrativa
@@ -1582,6 +1622,8 @@ Registra acciones administrativas y de seguridad de alcance general, diferenciad
 ### Ejemplos
 
 - Creación/modificación/desactivación de usuarios.
+- Restablecimiento y cambio de contraseña (solo el hecho, nunca la contraseña).
+- Altas y bajas de membresías de grupos y de supervisores responsables.
 - Cambios de rol.
 - Cambios de catálogos.
 - Cambios de estados visuales/transiciones permitidas.
@@ -1636,6 +1678,8 @@ Esto no crea una nueva regla funcional; únicamente elimina una ambigüedad téc
 
 `actor_tipo`, `accion` y `resultado` utilizarán códigos controlados. Los eventos de autenticación continúan fuera de esta tabla para evitar duplicidad sistemática.
 
+**Momento de implementación.** La tabla se crea con este esquema completo en `v0.2.0` y desde entonces registra las acciones sobre usuarios. La pantalla de consulta y el registro de las demás acciones administrativas se incorporan progresivamente hasta `v0.8.0`. `eventos_autenticacion` se implementa en `v0.8.0`.
+
 ---
 
 # 26. Configuración central
@@ -1670,6 +1714,8 @@ UNIQUE (clave)
 La configuración vigente corresponde al valor actual de la clave.
 
 El historial de cambios se conserva en `auditoria_administrativa`.
+
+**Implementación inicial.** La tabla `configuracion` se implementa cuando exista la administración (`v0.7.0`). Hasta entonces, los parámetros de sesión y de autenticación se leen de variables de entorno (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`) y esas variables pasan a ser los valores iniciales de las claves equivalentes.
 
 ### Ejemplos de parámetros
 

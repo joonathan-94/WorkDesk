@@ -429,7 +429,8 @@ El Técnico:
 - consulta SLA;
 - puede resolver;
 - puede ejecutar cierre manual cuando corresponda;
-- consulta prioridad, pero no la modifica después de la creación.
+- puede modificar la prioridad indicando un motivo obligatorio;
+- si baja la prioridad con el SLA en riesgo o vencido, la interfaz lo advierte antes de confirmar.
 
 ---
 
@@ -437,7 +438,8 @@ El Técnico:
 
 Además de las capacidades operacionales correspondientes:
 
-- puede modificar prioridad;
+- puede modificar prioridad (con motivo obligatorio, igual que el Técnico y el Administrador);
+- gestiona membresías y asignaciones de los grupos de los que es responsable;
 - puede ejecutar escalamiento manual;
 - puede utilizar reasignación;
 - accede a reportes amplios;
@@ -2105,8 +2107,10 @@ Debe permitir:
 
 - visualizar datos básicos;
 - editar campos autorizados;
-- cambiar contraseña cuando corresponda;
+- cambiar la contraseña propia, indicando la actual;
 - cerrar sesión.
+
+**Cambio obligatorio de contraseña.** Cuando el usuario tiene una contraseña temporal, tras iniciar sesión es dirigido a esta pantalla en modo de cambio obligatorio: solo muestra el formulario de cambio de contraseña y la opción de cerrar sesión, sin sidebar ni navegación. El acceso al resto del sistema se bloquea también en backend.
 
 Preparación futura:
 
@@ -2189,6 +2193,8 @@ Debe reutilizar:
 - select de rol;
 - estado;
 - grupos cuando aplique;
+- contraseña temporal al crear: campo para escribirla o botón "Generar", con indicación de la longitud mínima de 12 caracteres. Una contraseña generada se muestra una sola vez, con aviso de que no podrá consultarse después;
+- acción "Restablecer contraseña" al editar, con confirmación explícita y el mismo mecanismo de contraseña temporal;
 - botones Descartar / Guardar.
 
 ---
@@ -2201,7 +2207,11 @@ Debe permitir:
 - crear;
 - editar;
 - consultar miembros;
-- activar/desactivar según reglas.
+- activar/desactivar según reglas;
+- consultar y, el Administrador, designar a los supervisores responsables (puede haber varios);
+- gestionar membresías: el Administrador en cualquier grupo y el Supervisor solo en los grupos de los que es responsable.
+
+Crear, desactivar y configurar grupos es exclusivo del Administrador.
 
 No asumir un único grupo por Técnico.
 
@@ -2799,6 +2809,8 @@ Se recomienda:
 - encapsular componentes visuales reutilizables;
 - evitar depender completamente de estilos Bootstrap por defecto;
 - mantener el Design System como fuente visual de verdad.
+
+**Momento de incorporación.** El Login actual utiliza CSS propio y no depende de Bootstrap. Bootstrap (y Bootstrap Icons) se incorporan con las primeras pantallas administrativas de `v0.2.0`, siempre servidos localmente desde `static/vendor/` sin CDN (ver `10_arquitectura.md`, sección 31). El Login existente no se reescribe por este motivo.
 
 ---
 

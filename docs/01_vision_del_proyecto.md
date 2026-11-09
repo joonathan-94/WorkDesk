@@ -1,8 +1,8 @@
 # Documento de Visión — WorkDesk
 
-> **Estado:** Borrador  
-> **Versión:** 0.2.0  
-> **Última actualización:** 24 de agosto de 2026
+> **Estado:** Vigente como marco de visión (las decisiones funcionales y técnicas detalladas se definen en `03` a `12`)  
+> **Versión:** 0.3.0  
+> **Última actualización:** 8 de noviembre de 2026
 
 ---
 
