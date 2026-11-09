@@ -81,12 +81,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/branding-login
+docs/sync-project-state
 ```
 
-Al momento de actualizar este contexto, esta rama contiene la identidad visual oficial y su integración inicial.
+Rama exclusiva para sincronizar la documentación antes de comenzar `v0.2.0`: resolución de contradicciones entre documentos, decisiones funcionales sobre prioridad y SLA, grupos y contraseñas, y actualización del seguimiento del proyecto. No contiene código ni migraciones.
 
-Trabajo completado en la rama:
+## Identidad visual (integrada en `main`)
+
+La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. Incorporó:
 
 - isotipo y logotipo oficial;
 - variantes principal e inversa;
@@ -102,7 +104,7 @@ Trabajo completado en la rama:
 - actualización de README;
 - actualización de `docs/11_diseno_de_pantallas.md`.
 
-Esta rama todavía debe completar la revisión documental final, pruebas finales, Pull Request y merge antes de considerar estos cambios parte de `main`.
+El hito `v0.1.0` todavía no tiene tag Git.
 
 ## Próximo hito
 
@@ -128,7 +130,12 @@ La fase `v0.2.0` debe completar especialmente:
 - restricciones administrativas;
 - cuenta propia básica;
 - datos demo relacionados con usuarios;
-- pruebas específicas de autorización.
+- pruebas específicas de autorización;
+- límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno);
+- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`);
+- tabla `auditoria_administrativa` mínima para las acciones sobre usuarios.
+
+`docs/12_roadmap.md` divide `v0.2.0` en cinco entregas incrementales, cada una con su rama y Pull Request.
 
 ---
 
@@ -156,7 +163,9 @@ La fase `v0.2.0` debe completar especialmente:
 - JavaScript
 - Jinja2
 
-Bootstrap forma parte de la arquitectura prevista para el MVP y podrá incorporarse progresivamente cuando corresponda.
+Bootstrap forma parte de la arquitectura prevista para el MVP y **todavía no está integrado**: el Login actual usa CSS propio. Se incorporará, servido localmente (sin CDN), con las primeras pantallas administrativas de `v0.2.0`, respetando el Design System.
+
+Convención de rutas: las rutas internas se escriben en inglés (`/login`, `/dashboard`, `/users`, etc.) y la interfaz de usuario permanece en español.
 
 ## Desarrollo y calidad
 
@@ -327,6 +336,13 @@ SESSION_COOKIE_SECURE=false
 LOG_LEVEL=DEBUG
 LOG_MAX_BYTES=5242880
 LOG_BACKUP_COUNT=5
+```
+
+Variables previstas para `v0.2.0` (todavía no implementadas):
+
+```text
+SESSION_IDLE_MINUTES=30
+SESSION_MAX_HOURS=8
 ```
 
 Los secretos reales permanecen fuera del repositorio.
@@ -1185,10 +1201,16 @@ Usuarios, autenticación completa y RBAC
 - navegación adaptada por rol;
 - rutas administrativas protegidas;
 - gestión de usuarios;
-- cuenta propia básica;
+- contraseñas temporales, restablecimiento por el Administrador y cambio obligatorio en el primer inicio de sesión;
+- cuenta propia básica ("Mi cuenta", con cambio de contraseña);
+- límites de sesión por inactividad y duración máxima;
+- tabla `auditoria_administrativa` mínima;
+- incorporación local de Bootstrap con las primeras pantallas administrativas;
 - datos demo;
 - pruebas específicas de autorización;
 - completar UI correspondiente a esta fase.
+
+Orden propuesto de entregas en `docs/12_roadmap.md`.
 
 Documentos especialmente relevantes:
 

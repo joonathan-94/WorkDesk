@@ -2,7 +2,7 @@
 
 <p align="center">
   <img
-    src="src/workdesk/static/img/brand/workdesk-logo.svg"
+    src="src/workdesk/static/img/brand/workdesk-logo-inverse.svg"
     alt="WorkDesk"
     width="360"
   >

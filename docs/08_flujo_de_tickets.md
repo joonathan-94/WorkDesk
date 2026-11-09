@@ -911,7 +911,9 @@ Los niveles iniciales son:
 * Media.
 * Baja.
 
-La prioridad puede modificarse durante el ciclo de vida por usuarios autorizados.
+La prioridad puede modificarse durante el ciclo de vida por Técnicos, Supervisores y Administradores, indicando un motivo. No puede modificarse en un ticket `Cerrado` sin reabrirlo antes.
+
+Cada cambio queda en el historial con prioridad anterior, nueva, usuario, fecha y motivo, y sigue la política de continuidad del SLA (RN-88).
 
 Una prioridad inferior no impide:
 
@@ -955,6 +957,8 @@ Cuando el ticket se encuentre en `En espera`, el SLA podrá:
 La política aplicable debe ser coherente con la configuración administrativa.
 
 El cambio de estado no debe eliminar la trazabilidad del tiempo acumulado.
+
+Lo mismo aplica a los cambios de prioridad: se abre un período de SLA nuevo, pero el tiempo ya consumido se conserva y nunca se reinicia (RN-88).
 
 ---
 
@@ -1082,7 +1086,7 @@ Puede:
 * Reasignar.
 * Escalar.
 * Intervenir en situaciones excepcionales.
-* Modificar prioridades.
+* Modificar prioridades (al igual que el Técnico y el Administrador).
 * Redistribuir trabajo.
 
 ---
