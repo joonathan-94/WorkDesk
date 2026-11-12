@@ -986,6 +986,7 @@ Ejemplos conceptuales:
 /groups
 
 /account
+/account/password
 /admin/settings
 /admin/audit
 /admin/backups

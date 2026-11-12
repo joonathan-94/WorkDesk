@@ -31,6 +31,8 @@ from .security import (
 )
 from .session import (
     EXEMPT_ENDPOINTS,
+    PASSWORD_CHANGE_ALLOWED_ENDPOINTS,
+    PASSWORD_CHANGE_ENDPOINT,
     clear_session_clock,
     session_has_expired,
     start_session_clock,
@@ -65,6 +67,27 @@ def enforce_session_limits():
     touch_session(now)
 
     return None
+
+
+@bp.before_app_request
+def require_password_change():
+    """Obliga a cambiar la contraseña temporal antes de usar el sistema.
+
+    Se aplica en backend a cualquier ruta, no solo ocultando enlaces:
+    mientras `debe_cambiar_password` sea verdadero, solo se permite la
+    pantalla de cambio de contraseña, el cierre de sesión y las rutas
+    técnicas. Se ejecuta después de `enforce_session_limits`.
+    """
+    if not current_user.is_authenticated:
+        return None
+
+    if not current_user.debe_cambiar_password:
+        return None
+
+    if request.endpoint in PASSWORD_CHANGE_ALLOWED_ENDPOINTS:
+        return None
+
+    return redirect(url_for(PASSWORD_CHANGE_ENDPOINT))
 
 
 @bp.route("/login", methods=["GET", "POST"])

@@ -12,6 +12,14 @@ SESSION_ACTIVITY_KEY = "session_last_activity"
 # ni deben provocar la expiración de su sesión.
 EXEMPT_ENDPOINTS = frozenset({"static", "system.health"})
 
+# Pantalla donde se cambia la contraseña. Un usuario con cambio obligatorio
+# pendiente solo puede acceder a ella, cerrar sesión y a las rutas técnicas.
+PASSWORD_CHANGE_ENDPOINT = "account.change_password"
+PASSWORD_CHANGE_ALLOWED_ENDPOINTS = EXEMPT_ENDPOINTS | {
+    PASSWORD_CHANGE_ENDPOINT,
+    "auth.logout",
+}
+
 
 def load_user(session_id: str) -> User | None:
     user_id, separator, token_version = session_id.partition(":")

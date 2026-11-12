@@ -1264,7 +1264,7 @@ Una cuenta con contraseña temporal queda marcada para cambio obligatorio. Hasta
 
 Al crear o restablecer una contraseña, las sesiones anteriores del usuario quedan invalidadas. El restablecimiento además limpia los intentos fallidos y el bloqueo temporal.
 
-Al cambiar su contraseña, el usuario debe indicar la actual; la nueva debe cumplir la política de contraseñas (longitud mínima configurada, 12 por defecto) y ser distinta de la actual. La sesión desde la que se realizó el cambio se mantiene y las demás se invalidan.
+Al cambiar su contraseña, el usuario debe indicar la actual; la nueva debe cumplir la política de contraseñas (longitud mínima configurada, 12 por defecto) y ser distinta de la actual. La sesión desde la que se realizó el cambio se mantiene y las demás se invalidan. Indicar una contraseña actual incorrecta cuenta como un intento fallido y respeta el bloqueo temporal: si se alcanza el máximo de intentos, la sesión se cierra, y mientras la cuenta esté bloqueada no se acepta ningún cambio de contraseña.
 
 Las contraseñas, temporales o definitivas, nunca se almacenan en texto plano ni se registran en logs, auditoría ni historial. Los hechos (creación de cuenta, restablecimiento, cambio) sí se auditan sin incluir la contraseña.
 
