@@ -699,6 +699,8 @@ Responsabilidades:
 
 La creación de eventos podrá ser invocada desde otros módulos.
 
+Implementación inicial (`v0.2.0`): el paquete `audit` expone `record_admin_event` y el vocabulario controlado `AuditAction`. La función añade el evento a la sesión de base de datos sin hacer commit, de modo que la operación auditada y su registro se confirmen o se reviertan juntos (sección 40). La pantalla de consulta se incorpora en `v0.8.0`.
+
 ---
 
 # 27. Módulo `admin`

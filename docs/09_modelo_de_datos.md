@@ -1680,6 +1680,8 @@ Esto no crea una nueva regla funcional; únicamente elimina una ambigüedad téc
 
 **Momento de implementación.** La tabla se crea con este esquema completo en `v0.2.0` y desde entonces registra las acciones sobre usuarios. La pantalla de consulta y el registro de las demás acciones administrativas se incorporan progresivamente hasta `v0.8.0`. `eventos_autenticacion` se implementa en `v0.8.0`.
 
+**Detalles de la implementación inicial.** `actor_tipo` y `resultado` se restringen en base de datos mediante CHECK (`USUARIO`/`SISTEMA` y `EXITOSO`/`FALLIDO`). Un CHECK adicional exige coherencia entre `actor_tipo` y `actor_usuario_id` (`SISTEMA` sin actor, `USUARIO` con actor) y entre `entidad_id` y `entidad_tipo`. `accion` no tiene CHECK: su vocabulario controlado vive en la aplicación (`AuditAction`) para poder ampliarlo sin migraciones. El registro es append-only a nivel de aplicación: el ORM rechaza actualizaciones y eliminaciones, y las correcciones se registran como eventos nuevos. Los valores previo y nuevo nunca incluyen contraseñas, hashes, secretos, cookies ni tokens.
+
 ---
 
 # 26. Configuración central

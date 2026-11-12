@@ -81,12 +81,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/session-limits
+feature/admin-audit-log
 ```
 
-Segunda entrega de `v0.2.0`: límites de sesión (30 minutos de inactividad y 8 horas de duración máxima, configurables por variables de entorno). No incluye migraciones.
+Tercera entrega de `v0.2.0`: auditoría administrativa mínima. Incluye el modelo `AdminAuditLog` (tabla `auditoria_administrativa`), su migración, el servicio `record_admin_event` y sus tests. La interfaz de consulta de la auditoría queda para `v0.8.0`.
 
-Ya integradas en `main`: la sincronización documental (`docs/sync-project-state`) y la base RBAC (`feature/rbac-foundation`, PR #5). El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5) y los límites de sesión (PR #6). El tag `v0.1.0` existe.
 
 ## Identidad visual (integrada en `main`)
 
@@ -131,9 +131,9 @@ La fase `v0.2.0` debe completar especialmente:
 - cuenta propia básica;
 - datos demo relacionados con usuarios;
 - pruebas específicas de autorización;
-- límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado en `feature/session-limits`;
+- límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado;
 - contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`);
-- tabla `auditoria_administrativa` mínima para las acciones sobre usuarios.
+- tabla `auditoria_administrativa` mínima para las acciones sobre usuarios — implementada (modelo, migración y servicio); falta registrar eventos desde la gestión de usuarios.
 
 `docs/12_roadmap.md` divide `v0.2.0` en cinco entregas incrementales, cada una con su rama y Pull Request.
 
@@ -243,6 +243,8 @@ WorkDesk/
 ├── scripts/
 ├── src/
 │   └── workdesk/
+│       ├── admin/
+│       ├── audit/
 │       ├── auth/
 │       ├── main/
 │       ├── models/
@@ -278,8 +280,11 @@ WorkDesk/
 ├── tests/
 │   ├── conftest.py
 │   ├── test_app.py
+│   ├── test_audit.py
 │   ├── test_auth.py
+│   ├── test_authorization.py
 │   ├── test_passwords.py
+│   ├── test_session_limits.py
 │   └── test_system.py
 ├── .github/
 │   └── copilot-instructions.md
@@ -377,11 +382,12 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente dos migraciones principales:
+Existen actualmente tres migraciones:
 
 ```text
 create_roles_table
 create_users_table
+create_admin_audit_log_table
 ```
 
 La revisión técnica final de `v0.1.0` confirmó:
@@ -474,6 +480,48 @@ id + token_version
 ```
 
 para permitir invalidación de sesiones.
+
+## Auditoría administrativa
+
+Existe el modelo `AdminAuditLog` sobre la tabla:
+
+```text
+auditoria_administrativa
+```
+
+Registra acciones administrativas y de seguridad (quién, cuándo, sobre qué, qué cambió y por qué). Los eventos de autenticación quedan fuera de esta tabla (`eventos_autenticacion`, previsto para `v0.8.0`).
+
+Campos: `id`, `fecha_hora`, `actor_usuario_id` (NULL si actúa el sistema), `actor_tipo` (`USUARIO` o `SISTEMA`), `accion`, `entidad_tipo` + `entidad_id` (referencia lógica, sin FK), `detalle`, `valor_anterior` y `valor_nuevo` (JSONB), `ip_origen`, `user_agent`, `resultado` (`EXITOSO` o `FALLIDO`) y `motivo`.
+
+Integridad en base de datos:
+
+- CHECK de coherencia entre `actor_tipo` y `actor_usuario_id`, de valores válidos de `actor_tipo` y `resultado`, y de `entidad_id` con `entidad_tipo`;
+- FK del actor con `ON DELETE RESTRICT`;
+- índices `(fecha_hora)`, `(actor_usuario_id, fecha_hora)` y `(entidad_tipo, entidad_id)`.
+
+Uso desde el código (`src/workdesk/audit/service.py`):
+
+```python
+record_admin_event(
+    AuditAction.CAMBIO_ROL,
+    actor=current_user,
+    entity_type="usuario",
+    entity_id=user.id,
+    old_value={"rol": "TECNICO"},
+    new_value={"rol": "SUPERVISOR"},
+    reason="...",
+)
+```
+
+Reglas:
+
+- **No hace commit:** el evento se confirma o se revierte junto con la operación auditada; el commit lo realiza quien llama.
+- **Vocabulario controlado:** `AuditAction` define las acciones válidas; cualquier otra se rechaza.
+- **Sin datos sensibles:** se rechazan claves que sugieran contraseñas, hashes, secretos, cookies o tokens en `valor_anterior` y `valor_nuevo` (se permite `token_version`).
+- **Origen de la petición:** la IP y el user agent se toman de la petición actual y se truncan al tamaño de la columna.
+- **Append-only:** el ORM rechaza actualizar o eliminar registros existentes (`AuditLogImmutableError`). Una corrección se registra como un evento nuevo.
+
+Todavía no se invoca desde ninguna funcionalidad: la gestión de usuarios (siguiente entrega) será la primera que la use.
 
 ---
 
@@ -845,6 +893,14 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega de auditoría administrativa:
+
+```text
+69 tests passing
+```
+
+`tests/test_audit.py` (24 tests) cubre: registro de eventos de usuario y de sistema, captura de IP y user agent dentro y fuera de una petición, truncado del user agent, ausencia de commit en el servicio, vocabulario controlado de acciones, rechazo de claves sensibles (incluidas las anidadas), inmutabilidad (no se actualiza ni se elimina), restricciones CHECK y FK de la base de datos y existencia de los índices documentados.
 
 Estado tras la entrega de límites de sesión:
 
@@ -1223,7 +1279,9 @@ Usuarios, autenticación completa y RBAC
 - login visual con branding oficial;
 - favicons integrados en los templates actuales;
 - tests de autenticación base;
-- base RBAC (`feature/rbac-foundation`): `RoleCode`, `has_any_role`, políticas `can_manage_users` y `can_view_audit`, decorador `roles_required` (en `src/workdesk/security/authorization.py`), manejador 403 y área `/admin` protegida.
+- base RBAC: `RoleCode`, `has_any_role`, políticas `can_manage_users` y `can_view_audit`, decorador `roles_required` (en `src/workdesk/security/authorization.py`), manejador 403 y área `/admin` protegida;
+- límites de sesión por inactividad y duración máxima;
+- auditoría administrativa mínima: modelo `AdminAuditLog`, migración y servicio `record_admin_event`.
 
 ## Pendiente principal
 
@@ -1233,8 +1291,7 @@ Usuarios, autenticación completa y RBAC
 - gestión de usuarios;
 - contraseñas temporales, restablecimiento por el Administrador y cambio obligatorio en el primer inicio de sesión;
 - cuenta propia básica ("Mi cuenta", con cambio de contraseña);
-- límites de sesión por inactividad y duración máxima;
-- tabla `auditoria_administrativa` mínima;
+- registrar en la auditoría las acciones sobre usuarios (el servicio ya existe);
 - incorporación local de Bootstrap con las primeras pantallas administrativas;
 - datos demo;
 - pruebas específicas de autorización;

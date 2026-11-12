@@ -212,6 +212,8 @@ WorkDesk/
 │
 ├── src/
 │   └── workdesk/
+│       ├── admin/
+│       ├── audit/
 │       ├── auth/
 │       ├── main/
 │       ├── models/
@@ -238,6 +240,7 @@ WorkDesk/
 │       │   └── js/
 │       ├── system/
 │       ├── templates/
+│       │   ├── admin/
 │       │   ├── auth/
 │       │   ├── errors/
 │       │   └── main/
@@ -251,8 +254,11 @@ WorkDesk/
 ├── tests/
 │   ├── conftest.py
 │   ├── test_app.py
+│   ├── test_audit.py
 │   ├── test_auth.py
+│   ├── test_authorization.py
 │   ├── test_passwords.py
+│   ├── test_session_limits.py
 │   └── test_system.py
 │
 ├── .env.example
