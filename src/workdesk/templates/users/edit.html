@@ -1,65 +1,68 @@
-{% extends "base_admin.html" %}
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
 {% from "_form_macros.html" import text_field %}
 
 {% block title %}Editar usuario{% endblock %}
 
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1 class="page-title">Editar usuario</h1>
-
-            <p class="page-description">
-                {{ user.nombre }} {{ user.apellido }}
-            </p>
-        </div>
-    </header>
+    {{ page_header("Editar usuario", user.nombre ~ " " ~ user.apellido) }}
 
     <form
-        class="form-card form-stack"
+        class="card form-card"
         method="post"
         action="{{ url_for('users.edit_user', user_id=user.id) }}"
         novalidate
     >
-        {{ form.csrf_token }}
+        <div class="card-body">
+            {{ form.csrf_token }}
 
-        <div class="form-row">
-            {{ text_field(form.nombre, required=True, autocomplete="given-name", maxlength=100, autofocus=True) }}
-            {{ text_field(form.apellido, required=True, autocomplete="family-name", maxlength=100) }}
-        </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(form.nombre, required=True, autocomplete="given-name", maxlength=100, autofocus=True) }}
+                </div>
+                <div class="col-md-6">
+                    {{ text_field(form.apellido, required=True, autocomplete="family-name", maxlength=100) }}
+                </div>
+            </div>
 
-        <div class="form-field">
-            <span class="form-label">Usuario</span>
+            <div class="mb-3">
+                <span class="form-label d-block">Usuario</span>
 
-            <p class="form-static">{{ user.username }}</p>
+                <p class="mb-1">{{ user.username }}</p>
 
-            <p class="form-hint">
-                El nombre de usuario no se puede cambiar.
-            </p>
-        </div>
+                <div class="form-text">
+                    El nombre de usuario no se puede cambiar.
+                </div>
+            </div>
 
-        {{ text_field(form.email, required=True, autocomplete="off", maxlength=254) }}
+            {{ text_field(form.email, required=True, autocomplete="off", maxlength=254) }}
 
-        <div class="form-row">
-            {{ text_field(form.telefono, autocomplete="off", maxlength=30) }}
-            {{ text_field(form.cargo, maxlength=100) }}
-        </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(form.telefono, autocomplete="off", maxlength=30) }}
+                </div>
+                <div class="col-md-6">
+                    {{ text_field(form.cargo, maxlength=100) }}
+                </div>
+            </div>
 
-        {{ text_field(form.departamento_area, maxlength=100) }}
+            {{ text_field(form.departamento_area, maxlength=100) }}
 
-        <div class="form-actions">
-            <button
-                class="btn btn--primary"
-                type="submit"
-            >
-                Guardar cambios
-            </button>
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Guardar cambios
+                </button>
 
-            <a
-                class="btn btn--secondary"
-                href="{{ url_for('users.detail', user_id=user.id) }}"
-            >
-                Cancelar
-            </a>
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('users.detail', user_id=user.id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
         </div>
     </form>
 {% endblock %}

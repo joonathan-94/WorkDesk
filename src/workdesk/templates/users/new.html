@@ -1,105 +1,77 @@
-{% extends "base_admin.html" %}
-{% from "_form_macros.html" import field_errors, temporary_password_fields, text_field %}
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
+{% from "_form_macros.html" import select_field, temporary_password_fields, text_field %}
 
 {% block title %}Nuevo usuario{% endblock %}
 
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1 class="page-title">Nuevo usuario</h1>
-
-            <p class="page-description">
-                Crea una cuenta con una contraseña temporal. El usuario
-                deberá cambiarla en su primer inicio de sesión.
-            </p>
-        </div>
-    </header>
+    {{ page_header(
+        "Nuevo usuario",
+        "Crea una cuenta con una contraseña temporal. El usuario deberá cambiarla en su primer inicio de sesión.",
+    ) }}
 
     <form
-        class="form-card form-stack"
+        class="card form-card"
         method="post"
         action="{{ url_for('users.new_user') }}"
         novalidate
     >
-        {{ form.csrf_token }}
+        <div class="card-body">
+            {{ form.csrf_token }}
 
-        <div class="form-row">
-            {{ text_field(form.nombre, required=True, autocomplete="given-name", maxlength=100, autofocus=True) }}
-            {{ text_field(form.apellido, required=True, autocomplete="family-name", maxlength=100) }}
-        </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(form.nombre, required=True, autocomplete="given-name", maxlength=100, autofocus=True) }}
+                </div>
+                <div class="col-md-6">
+                    {{ text_field(form.apellido, required=True, autocomplete="family-name", maxlength=100) }}
+                </div>
+            </div>
 
-        <div class="form-row">
-            {{ text_field(
-                form.username,
-                required=True,
-                maxlength=50,
-                hint="Minúsculas, números, punto, guion y guion bajo. No se puede cambiar después.",
-            ) }}
-            {{ text_field(form.email, required=True, autocomplete="off", maxlength=254) }}
-        </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(
+                        form.username,
+                        required=True,
+                        maxlength=50,
+                        hint="Minúsculas, números, punto, guion y guion bajo. No se puede cambiar después.",
+                    ) }}
+                </div>
+                <div class="col-md-6">
+                    {{ text_field(form.email, required=True, autocomplete="off", maxlength=254) }}
+                </div>
+            </div>
 
-        <div class="form-row">
-            {{ text_field(form.telefono, autocomplete="off", maxlength=30) }}
-            {{ text_field(form.cargo, maxlength=100) }}
-        </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(form.telefono, autocomplete="off", maxlength=30) }}
+                </div>
+                <div class="col-md-6">
+                    {{ text_field(form.cargo, maxlength=100) }}
+                </div>
+            </div>
 
-        {{ text_field(form.departamento_area, maxlength=100) }}
+            {{ text_field(form.departamento_area, maxlength=100) }}
 
-        <div class="form-field">
-            <label
-                class="form-label"
-                for="{{ form.rol.id }}"
-            >
-                {{ form.rol.label.text }}
-                <span
-                    class="required-mark"
-                    aria-hidden="true"
+            {{ select_field(form.rol, form.role_choices, placeholder="Selecciona un rol", required=True) }}
+
+            {{ temporary_password_fields(form, password_modes) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
                 >
-                    *
-                </span>
-            </label>
+                    Crear usuario
+                </button>
 
-            <select
-                class="form-control{% if form.rol.errors %} form-control--invalid{% endif %}"
-                id="{{ form.rol.id }}"
-                name="{{ form.rol.name }}"
-                required
-                {% if form.rol.errors %}
-                    aria-invalid="true"
-                    aria-describedby="{{ form.rol.id }}-error"
-                {% endif %}
-            >
-                <option value="">Selecciona un rol</option>
-
-                {% for code, name in form.role_choices %}
-                    <option
-                        value="{{ code }}"
-                        {% if code == form.rol.data %}selected{% endif %}
-                    >
-                        {{ name }}
-                    </option>
-                {% endfor %}
-            </select>
-
-            {{ field_errors(form.rol) }}
-        </div>
-
-        {{ temporary_password_fields(form, password_modes) }}
-
-        <div class="form-actions">
-            <button
-                class="btn btn--primary"
-                type="submit"
-            >
-                Crear usuario
-            </button>
-
-            <a
-                class="btn btn--secondary"
-                href="{{ url_for('users.list_users_page') }}"
-            >
-                Descartar
-            </a>
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('users.list_users_page') }}"
+                >
+                    Descartar
+                </a>
+            </div>
         </div>
     </form>
 {% endblock %}

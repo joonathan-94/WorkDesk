@@ -1,26 +1,75 @@
-{% extends "base_admin.html" %}
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
 
 {% block title %}Administración{% endblock %}
 
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1 class="page-title">Administración</h1>
+    {{ page_header(
+        "Administración",
+        "Configura WorkDesk y administra sus cuentas.",
+    ) }}
 
-            <p class="page-description">
-                Área reservada al rol Administrador.
-            </p>
-        </div>
-    </header>
+    {% for section in sections %}
+        <section
+            class="mb-4"
+            aria-labelledby="hub-section-{{ loop.index }}"
+        >
+            <h2
+                class="hub-section-title"
+                id="hub-section-{{ loop.index }}"
+            >
+                {{ section.title }}
+            </h2>
 
-    <ul class="link-list">
-        <li>
-            <a href="{{ url_for('users.list_users_page') }}">
-                Usuarios
-            </a>
-            <span class="muted">
-                Consulta, crea y administra las cuentas de WorkDesk.
-            </span>
-        </li>
-    </ul>
+            <div class="row g-3">
+                {% for card in section.cards %}
+                    <div class="col-md-6 col-xl-4">
+                        {% if card.endpoint %}
+                            <a
+                                class="hub-card"
+                                href="{{ url_for(card.endpoint) }}"
+                            >
+                                <span
+                                    class="hub-card__icon"
+                                    aria-hidden="true"
+                                >
+                                    <i class="bi bi-{{ card.icon }}"></i>
+                                </span>
+
+                                <span>
+                                    <span class="hub-card__title d-block">
+                                        {{ card.title }}
+                                    </span>
+                                    <span class="hub-card__description d-block">
+                                        {{ card.description }}
+                                    </span>
+                                </span>
+                            </a>
+                        {% else %}
+                            <div class="hub-card hub-card--soon">
+                                <span
+                                    class="hub-card__icon"
+                                    aria-hidden="true"
+                                >
+                                    <i class="bi bi-{{ card.icon }}"></i>
+                                </span>
+
+                                <span>
+                                    <span class="hub-card__title d-block">
+                                        {{ card.title }}
+                                        <span class="badge badge-soft badge-soft-neutral ms-1">
+                                            Próximamente
+                                        </span>
+                                    </span>
+                                    <span class="hub-card__description d-block">
+                                        {{ card.description }}
+                                    </span>
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endfor %}
 {% endblock %}

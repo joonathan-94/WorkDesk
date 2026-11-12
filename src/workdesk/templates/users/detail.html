@@ -1,4 +1,5 @@
-{% extends "base_admin.html" %}
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import status_badges %}
 
 {% block title %}{{ user.nombre }} {{ user.apellido }}{% endblock %}
 
@@ -12,22 +13,12 @@
             <p class="page-description">
                 {{ user.rol.nombre }}
                 ·
-                {% if user.activo %}
-                    <span class="badge badge--success">Activo</span>
-                {% else %}
-                    <span class="badge badge--neutral">Inactivo</span>
-                {% endif %}
-
-                {% if user.debe_cambiar_password %}
-                    <span class="badge badge--warning">
-                        Cambio de contraseña pendiente
-                    </span>
-                {% endif %}
+                {{ status_badges(user) }}
             </p>
         </div>
 
         <a
-            class="btn btn--secondary"
+            class="btn btn-outline-secondary"
             href="{{ url_for('users.list_users_page') }}"
         >
             Volver al listado
@@ -35,118 +26,126 @@
     </header>
 
     <section
-        class="result-card"
+        class="card mb-4"
         aria-labelledby="data-title"
     >
-        <h2
-            class="section-title"
-            id="data-title"
-        >
-            Datos
-        </h2>
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="data-title"
+            >
+                Datos
+            </h2>
 
-        <dl class="summary-list">
-            <dt>Usuario</dt>
-            <dd>{{ user.username }}</dd>
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-secondary fw-normal">Usuario</dt>
+                <dd class="col-sm-9">{{ user.username }}</dd>
 
-            <dt>Correo</dt>
-            <dd>{{ user.email }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">Correo</dt>
+                <dd class="col-sm-9">{{ user.email }}</dd>
 
-            <dt>Teléfono</dt>
-            <dd>{{ user.telefono or '—' }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">Teléfono</dt>
+                <dd class="col-sm-9">{{ user.telefono or '—' }}</dd>
 
-            <dt>Cargo</dt>
-            <dd>{{ user.cargo or '—' }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">Cargo</dt>
+                <dd class="col-sm-9">{{ user.cargo or '—' }}</dd>
 
-            <dt>Departamento o área</dt>
-            <dd>{{ user.departamento_area or '—' }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">
+                    Departamento o área
+                </dt>
+                <dd class="col-sm-9">{{ user.departamento_area or '—' }}</dd>
 
-            <dt>Rol</dt>
-            <dd>{{ user.rol.nombre }}</dd>
-        </dl>
+                <dt class="col-sm-3 text-secondary fw-normal">Rol</dt>
+                <dd class="col-sm-9">{{ user.rol.nombre }}</dd>
+            </dl>
+        </div>
     </section>
 
     <section
-        class="result-card section-spaced"
+        class="card"
         aria-labelledby="actions-title"
     >
-        <h2
-            class="section-title"
-            id="actions-title"
-        >
-            Acciones
-        </h2>
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="actions-title"
+            >
+                Acciones
+            </h2>
 
-        {% if is_self %}
-            <p class="alert alert--warning">
-                Esta es tu cuenta. No puedes cambiar tu propio rol,
-                desactivarla ni restablecer su contraseña desde aquí; para
-                cambiar tu contraseña usa «Cambiar contraseña».
-            </p>
-        {% endif %}
-
-        <ul class="action-list">
-            <li>
-                <a
-                    class="btn btn--secondary"
-                    href="{{ url_for('users.edit_user', user_id=user.id) }}"
-                >
-                    Editar datos
-                </a>
-                <span class="muted">
-                    Nombre, correo, teléfono, cargo y área.
-                </span>
-            </li>
-
-            {% if not is_self %}
-                <li>
-                    <a
-                        class="btn btn--secondary"
-                        href="{{ url_for('users.change_user_role', user_id=user.id) }}"
-                    >
-                        Cambiar rol
-                    </a>
-                    <span class="muted">
-                        El usuario deberá iniciar sesión de nuevo.
-                    </span>
-                </li>
-
-                <li>
-                    <a
-                        class="btn btn--secondary"
-                        href="{{ url_for('users.reset_password_page', user_id=user.id) }}"
-                    >
-                        Restablecer contraseña
-                    </a>
-                    <span class="muted">
-                        Asigna una contraseña temporal y cierra sus sesiones.
-                    </span>
-                </li>
-
-                <li>
-                    {% if user.activo %}
-                        <a
-                            class="btn btn--danger"
-                            href="{{ url_for('users.deactivate', user_id=user.id) }}"
-                        >
-                            Desactivar cuenta
-                        </a>
-                        <span class="muted">
-                            No podrá iniciar sesión. Su historial se conserva.
-                        </span>
-                    {% else %}
-                        <a
-                            class="btn btn--primary"
-                            href="{{ url_for('users.activate', user_id=user.id) }}"
-                        >
-                            Reactivar cuenta
-                        </a>
-                        <span class="muted">
-                            Podrá iniciar sesión de nuevo.
-                        </span>
-                    {% endif %}
-                </li>
+            {% if is_self %}
+                <div class="alert alert-warning">
+                    Esta es tu cuenta. No puedes cambiar tu propio rol,
+                    desactivarla ni restablecer su contraseña desde aquí;
+                    para cambiar tu contraseña usa «Cambiar contraseña».
+                </div>
             {% endif %}
-        </ul>
+
+            <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+                <li class="d-flex flex-wrap align-items-center gap-2 gap-md-3">
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('users.edit_user', user_id=user.id) }}"
+                    >
+                        Editar datos
+                    </a>
+                    <span class="small text-secondary">
+                        Nombre, correo, teléfono, cargo y área.
+                    </span>
+                </li>
+
+                {% if not is_self %}
+                    <li class="d-flex flex-wrap align-items-center gap-2 gap-md-3">
+                        <a
+                            class="btn btn-outline-secondary"
+                            href="{{ url_for('users.change_user_role', user_id=user.id) }}"
+                        >
+                            Cambiar rol
+                        </a>
+                        <span class="small text-secondary">
+                            El usuario deberá iniciar sesión de nuevo.
+                        </span>
+                    </li>
+
+                    <li class="d-flex flex-wrap align-items-center gap-2 gap-md-3">
+                        <a
+                            class="btn btn-outline-secondary"
+                            href="{{ url_for('users.reset_password_page', user_id=user.id) }}"
+                        >
+                            Restablecer contraseña
+                        </a>
+                        <span class="small text-secondary">
+                            Asigna una contraseña temporal y cierra sus
+                            sesiones.
+                        </span>
+                    </li>
+
+                    <li class="d-flex flex-wrap align-items-center gap-2 gap-md-3">
+                        {% if user.activo %}
+                            <a
+                                class="btn btn-danger"
+                                href="{{ url_for('users.deactivate', user_id=user.id) }}"
+                            >
+                                Desactivar cuenta
+                            </a>
+                            <span class="small text-secondary">
+                                No podrá iniciar sesión. Su historial se
+                                conserva.
+                            </span>
+                        {% else %}
+                            <a
+                                class="btn btn-primary"
+                                href="{{ url_for('users.activate', user_id=user.id) }}"
+                            >
+                                Reactivar cuenta
+                            </a>
+                            <span class="small text-secondary">
+                                Podrá iniciar sesión de nuevo.
+                            </span>
+                        {% endif %}
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
     </section>
 {% endblock %}

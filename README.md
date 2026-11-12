@@ -136,7 +136,7 @@ Implementado actualmente con:
 - JavaScript
 - Jinja2
 
-La arquitectura del MVP contempla además Bootstrap para la construcción progresiva de los componentes principales de la interfaz.
+Las pantallas administrativas usan Bootstrap 5 y Bootstrap Icons, servidos localmente (sin CDN) desde `src/workdesk/static/vendor/`, con la paleta del Design System de WorkDesk. Las pantallas de acceso (login y cambio de contraseña) usan CSS propio.
 
 ### Desarrollo y calidad
 
@@ -238,13 +238,15 @@ WorkDesk/
 │       │   │       ├── workdesk-mark-inverse.svg
 │       │   │       ├── workdesk-mark.svg
 │       │   │       └── workdesk-social-preview.png
-│       │   └── js/
+│       │   ├── js/
+│       │   └── vendor/
 │       ├── system/
 │       ├── templates/
 │       │   ├── account/
 │       │   ├── admin/
 │       │   ├── auth/
 │       │   ├── errors/
+│       │   ├── layouts/
 │       │   ├── main/
 │       │   └── users/
 │       ├── users/
@@ -253,7 +255,8 @@ WorkDesk/
 │       ├── config.py
 │       ├── errors.py
 │       ├── extensions.py
-│       └── logging_config.py
+│       ├── logging_config.py
+│       └── navigation.py
 │
 ├── tests/
 │   ├── conftest.py
@@ -264,6 +267,7 @@ WorkDesk/
 │   ├── test_authorization.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
+│   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_session_limits.py

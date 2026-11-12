@@ -5,15 +5,26 @@
 #}
 
 {% macro field_errors(field) %}
-    {% for error in field.errors %}
-        <p
-            class="form-error"
+    {% if field.errors %}
+        <div
+            class="invalid-feedback d-block"
             id="{{ field.id }}-error"
             role="alert"
         >
-            {{ error }}
-        </p>
-    {% endfor %}
+            {% for error in field.errors %}
+                <div>{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro required_mark() %}
+    <span
+        class="text-danger"
+        aria-hidden="true"
+    >
+        *
+    </span>
 {% endmacro %}
 
 {% macro text_field(
@@ -24,24 +35,17 @@
     autofocus=False,
     maxlength=None
 ) %}
-    <div class="form-field">
+    <div class="mb-3">
         <label
             class="form-label"
             for="{{ field.id }}"
         >
             {{ field.label.text }}
-            {% if required %}
-                <span
-                    class="required-mark"
-                    aria-hidden="true"
-                >
-                    *
-                </span>
-            {% endif %}
+            {% if required %}{{ required_mark() }}{% endif %}
         </label>
 
         <input
-            class="form-control{% if field.errors %} form-control--invalid{% endif %}"
+            class="form-control{% if field.errors %} is-invalid{% endif %}"
             id="{{ field.id }}"
             name="{{ field.name }}"
             type="text"
@@ -57,15 +61,54 @@
         >
 
         {% if hint %}
-            <p class="form-hint">{{ hint }}</p>
+            <div class="form-text">{{ hint }}</div>
         {% endif %}
 
         {{ field_errors(field) }}
     </div>
 {% endmacro %}
 
+{# Selector de opciones (rol). `choices` son pares (código, nombre). #}
+{% macro select_field(field, choices, label=None, placeholder=None, required=False) %}
+    <div class="mb-3">
+        <label
+            class="form-label"
+            for="{{ field.id }}"
+        >
+            {{ label or field.label.text }}
+            {% if required %}{{ required_mark() }}{% endif %}
+        </label>
+
+        <select
+            class="form-select{% if field.errors %} is-invalid{% endif %}"
+            id="{{ field.id }}"
+            name="{{ field.name }}"
+            {% if required %}required{% endif %}
+            {% if field.errors %}
+                aria-invalid="true"
+                aria-describedby="{{ field.id }}-error"
+            {% endif %}
+        >
+            {% if placeholder %}
+                <option value="">{{ placeholder }}</option>
+            {% endif %}
+
+            {% for code, name in choices %}
+                <option
+                    value="{{ code }}"
+                    {% if code == field.data %}selected{% endif %}
+                >
+                    {{ name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}
+
 {% macro textarea_field(field, hint=None, maxlength=None, rows=3) %}
-    <div class="form-field">
+    <div class="mb-3">
         <label
             class="form-label"
             for="{{ field.id }}"
@@ -74,7 +117,7 @@
         </label>
 
         <textarea
-            class="form-control form-control--textarea{% if field.errors %} form-control--invalid{% endif %}"
+            class="form-control{% if field.errors %} is-invalid{% endif %}"
             id="{{ field.id }}"
             name="{{ field.name }}"
             rows="{{ rows }}"
@@ -86,7 +129,7 @@
         >{{ field.data or '' }}</textarea>
 
         {% if hint %}
-            <p class="form-hint">{{ hint }}</p>
+            <div class="form-text">{{ hint }}</div>
         {% endif %}
 
         {{ field_errors(field) }}
@@ -100,29 +143,37 @@
 #}
 {% macro temporary_password_fields(form, password_modes) %}
     <fieldset
-        class="form-fieldset"
+        class="mb-3"
         id="password-mode-group"
     >
-        <legend>Contraseña temporal</legend>
+        <legend class="form-label fs-6">Contraseña temporal</legend>
 
         {% for value, label in password_modes %}
-            <label class="radio-option">
+            <div class="form-check">
                 <input
+                    class="form-check-input"
                     type="radio"
+                    id="password-mode-{{ value }}"
                     name="{{ form.password_mode.name }}"
                     value="{{ value }}"
                     data-password-mode
                     {% if value == (form.password_mode.data or 'generate') %}checked{% endif %}
                 >
-                {{ label }}
-            </label>
+
+                <label
+                    class="form-check-label"
+                    for="password-mode-{{ value }}"
+                >
+                    {{ label }}
+                </label>
+            </div>
         {% endfor %}
 
         {{ field_errors(form.password_mode) }}
     </fieldset>
 
     <div
-        class="form-field"
+        class="mb-3"
         id="manual-password-field"
     >
         <label
@@ -132,9 +183,9 @@
             {{ form.temporary_password.label.text }}
         </label>
 
-        <div class="password-field">
+        <div class="input-group">
             <input
-                class="form-control{% if form.temporary_password.errors %} form-control--invalid{% endif %}"
+                class="form-control{% if form.temporary_password.errors %} is-invalid{% endif %}"
                 id="{{ form.temporary_password.id }}"
                 name="{{ form.temporary_password.name }}"
                 type="password"
@@ -146,7 +197,7 @@
             >
 
             <button
-                class="password-toggle"
+                class="btn btn-outline-secondary"
                 type="button"
                 data-password-toggle
                 aria-controls="{{ form.temporary_password.id }}"
@@ -157,10 +208,10 @@
             </button>
         </div>
 
-        <p class="form-hint">
+        <div class="form-text">
             Mínimo {{ config['PASSWORD_MIN_LENGTH'] }} caracteres.
             Solo se usa si eliges escribirla.
-        </p>
+        </div>
 
         {{ field_errors(form.temporary_password) }}
     </div>
@@ -172,22 +223,22 @@
 #}
 {% macro temporary_password_notice(generated_password) %}
     {% if generated_password %}
-        <div class="secret-box">
-            <p class="secret-box__label">Contraseña temporal</p>
+        <div class="alert alert-warning">
+            <p class="fw-semibold small mb-0">Contraseña temporal</p>
 
             <code
-                class="secret-box__value"
+                class="secret-value"
                 id="temporary-password"
             >{{ generated_password }}</code>
 
-            <p class="secret-box__note">
+            <p class="small mb-0">
                 Cópiala y entrégasela al usuario ahora: no podrá
                 consultarse después. Deberá cambiarla en su primer
                 inicio de sesión.
             </p>
         </div>
     {% else %}
-        <p class="muted">
+        <p class="text-secondary">
             Se usó la contraseña temporal que escribiste. El usuario
             deberá cambiarla en su primer inicio de sesión.
         </p>

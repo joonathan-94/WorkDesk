@@ -1,4 +1,5 @@
-{% extends "base_admin.html" %}
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
 {% from "_form_macros.html" import textarea_field %}
 
 {% set deactivating = mode == 'deactivate' %}
@@ -8,69 +9,59 @@
 {% endblock %}
 
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1 class="page-title">
-                {% if deactivating %}
-                    Desactivar cuenta
-                {% else %}
-                    Reactivar cuenta
-                {% endif %}
-            </h1>
-
-            <p class="page-description">
-                {{ user.nombre }} {{ user.apellido }}
-                · {{ user.username }}
-            </p>
-        </div>
-    </header>
+    {{ page_header(
+        "Desactivar cuenta" if deactivating else "Reactivar cuenta",
+        user.nombre ~ " " ~ user.apellido ~ " · " ~ user.username,
+    ) }}
 
     <form
-        class="form-card form-stack"
+        class="card form-card"
         method="post"
         action="{{ url_for('users.deactivate' if deactivating else 'users.activate', user_id=user.id) }}"
         novalidate
     >
-        {{ form.csrf_token }}
+        <div class="card-body">
+            {{ form.csrf_token }}
 
-        {% if deactivating %}
-            <p class="alert alert--warning">
-                El usuario no podrá iniciar sesión y se cerrarán sus
-                sesiones abiertas. Su historial se conserva y podrás
-                reactivar la cuenta más adelante.
-            </p>
-        {% else %}
-            <p class="alert alert--warning">
-                El usuario podrá volver a iniciar sesión con su contraseña
-                actual. Se limpian sus intentos fallidos y su bloqueo
-                temporal.
-            </p>
-        {% endif %}
+            {% if deactivating %}
+                <div class="alert alert-warning">
+                    El usuario no podrá iniciar sesión y se cerrarán sus
+                    sesiones abiertas. Su historial se conserva y podrás
+                    reactivar la cuenta más adelante.
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    El usuario podrá volver a iniciar sesión con su
+                    contraseña actual. Se limpian sus intentos fallidos y
+                    su bloqueo temporal.
+                </div>
+            {% endif %}
 
-        {{ textarea_field(
-            form.motivo,
-            hint="Opcional. Queda registrado en la auditoría.",
-            maxlength=500,
-        ) }}
+            {{ textarea_field(
+                form.motivo,
+                hint="Opcional. Queda registrado en la auditoría.",
+                maxlength=500,
+            ) }}
 
-        <div class="form-actions">
-            <button
-                class="btn {% if deactivating %}btn--danger{% else %}btn--primary{% endif %}"
-                type="submit"
-            >
-                {% if deactivating %}
-                    Desactivar cuenta
-                {% else %}
-                    Reactivar cuenta
-                {% endif %}
-            </button>
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn {% if deactivating %}btn-danger{% else %}btn-primary{% endif %}"
+                    type="submit"
+                >
+                    {% if deactivating %}
+                        Desactivar cuenta
+                    {% else %}
+                        Reactivar cuenta
+                    {% endif %}
+                </button>
 
-            <a
-                class="btn btn--secondary"
-                href="{{ url_for('users.detail', user_id=user.id) }}"
-            >
-                Cancelar
-            </a>
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('users.detail', user_id=user.id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
         </div>
     </form>
 {% endblock %}

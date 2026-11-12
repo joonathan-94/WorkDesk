@@ -10,6 +10,7 @@ from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
 from .logging_config import configure_logging
 from .main import bp as main_bp
+from .navigation import layout_context
 from .security import MAX_LENGTH, MIN_LENGTH_FLOOR, can_manage_users
 from .system import bp as system_bp
 from .users import bp as users_bp
@@ -53,6 +54,7 @@ def create_app(
     # Las plantillas consultan las políticas para decidir qué mostrar. Eso
     # es solo presentación: la autorización real se aplica en las rutas.
     app.context_processor(lambda: {"can_manage_users": can_manage_users})
+    app.context_processor(layout_context)
 
     return app
 
