@@ -81,12 +81,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/rbac-foundation
+feature/session-limits
 ```
 
-Primera entrega de `v0.2.0`: base de autorización por roles (RBAC). Incluye políticas centralizadas, decorador `roles_required`, manejador 403, un área administrativa mínima protegida (`/admin`) y tests de autorización. No incluye migraciones.
+Segunda entrega de `v0.2.0`: límites de sesión (30 minutos de inactividad y 8 horas de duración máxima, configurables por variables de entorno). No incluye migraciones.
 
-La documentación de `v0.1.0` a `v0.2.0` se sincronizó previamente en `docs/sync-project-state`, ya integrada en `main`. El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (`docs/sync-project-state`) y la base RBAC (`feature/rbac-foundation`, PR #5). El tag `v0.1.0` existe.
 
 ## Identidad visual (integrada en `main`)
 
@@ -131,7 +131,7 @@ La fase `v0.2.0` debe completar especialmente:
 - cuenta propia básica;
 - datos demo relacionados con usuarios;
 - pruebas específicas de autorización;
-- límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno);
+- límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado en `feature/session-limits`;
 - contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`);
 - tabla `auditoria_administrativa` mínima para las acciones sobre usuarios.
 
@@ -320,6 +320,8 @@ TEST_DATABASE_URL
 LOGIN_MAX_FAILED_ATTEMPTS
 LOGIN_LOCK_MINUTES
 SESSION_COOKIE_SECURE
+SESSION_IDLE_MINUTES
+SESSION_MAX_HOURS
 LOG_LEVEL
 LOG_MAX_BYTES
 LOG_BACKUP_COUNT
@@ -333,16 +335,11 @@ APP_TIMEZONE=America/Santiago
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_LOCK_MINUTES=15
 SESSION_COOKIE_SECURE=false
+SESSION_IDLE_MINUTES=30
+SESSION_MAX_HOURS=8
 LOG_LEVEL=DEBUG
 LOG_MAX_BYTES=5242880
 LOG_BACKUP_COUNT=5
-```
-
-Variables previstas para `v0.2.0` (todavía no implementadas):
-
-```text
-SESSION_IDLE_MINUTES=30
-SESSION_MAX_HOURS=8
 ```
 
 Los secretos reales permanecen fuera del repositorio.
@@ -574,6 +571,19 @@ En una futura ejecución HTTPS deberá utilizarse:
 ```text
 SESSION_COOKIE_SECURE=true
 ```
+
+## Límites de sesión
+
+```text
+Inactividad máxima:  SESSION_IDLE_MINUTES (30 por defecto)
+Duración máxima:     SESSION_MAX_HOURS    (8 por defecto)
+```
+
+Al iniciar sesión se guardan en la cookie firmada el instante de inicio y el de última actividad. En cada petición autenticada se comprueban ambos límites (`before_app_request` en `auth/routes.py`; lógica en `auth/session.py`). Si alguno se supera, se cierra la sesión y se redirige al login con el aviso "Tu sesión expiró".
+
+- Una sesión autenticada sin marcas de tiempo válidas se considera expirada.
+- `/health` y `static` no renuevan la actividad ni provocan la expiración.
+- Valores menores o iguales a cero impiden iniciar la aplicación.
 
 ## token_version
 
@@ -835,6 +845,14 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega de límites de sesión:
+
+```text
+45 tests passing
+```
+
+`tests/test_session_limits.py` (13 tests) cubre: marcas de tiempo al iniciar sesión, renovación de la actividad, expiración por inactividad y por duración máxima, aviso en el login, sesión sin marcas de tiempo, límites tomados de la configuración, `/health` sin efecto sobre la sesión, limpieza al cerrar sesión, nuevo login tras expirar y rechazo de límites no positivos.
 
 Estado tras la entrega RBAC base:
 

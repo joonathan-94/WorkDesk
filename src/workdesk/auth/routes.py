@@ -6,6 +6,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 from flask_login import (
@@ -28,6 +29,42 @@ from .security import (
     register_failed_login,
     reset_login_failures,
 )
+from .session import (
+    EXEMPT_ENDPOINTS,
+    clear_session_clock,
+    session_has_expired,
+    start_session_clock,
+    touch_session,
+)
+
+
+@bp.before_app_request
+def enforce_session_limits():
+    """Aplica la inactividad y la duración máxima a toda petición."""
+    if request.endpoint in EXEMPT_ENDPOINTS:
+        return None
+
+    if not current_user.is_authenticated:
+        return None
+
+    now = datetime.now(UTC)
+
+    if session_has_expired(now):
+        current_app.logger.info(
+            "Sesión expirada: usuario_id=%s",
+            current_user.id,
+        )
+
+        logout_user()
+        session.clear()
+
+        flash("Tu sesión expiró. Inicia sesión nuevamente.", "warning")
+
+        return redirect(url_for("auth.login"))
+
+    touch_session(now)
+
+    return None
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -76,6 +113,7 @@ def login():
         db.session.commit()
 
         login_user(user)
+        start_session_clock(now)
 
         return redirect(url_for("main.dashboard"))
 
@@ -86,5 +124,6 @@ def login():
 @login_required
 def logout():
     logout_user()
+    clear_session_clock()
 
     return redirect(url_for("auth.login"))

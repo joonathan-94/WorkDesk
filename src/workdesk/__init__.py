@@ -22,6 +22,7 @@ def create_app(
         app.config.update(config_overrides)
 
     _validate_required_config(app)
+    _validate_session_limits(app)
     configure_logging(app)
 
     db.init_app(app)
@@ -64,3 +65,13 @@ def _validate_required_config(app: Flask) -> None:
         raise RuntimeError(
             f"Falta configuración obligatoria: {missing_names}"
         )
+
+
+def _validate_session_limits(app: Flask) -> None:
+    # Un límite de 0 o negativo invalidaría todas las sesiones
+    # en cada petición, por lo que se rechaza al iniciar.
+    for key in ("SESSION_IDLE_MINUTES", "SESSION_MAX_HOURS"):
+        if app.config[key] <= 0:
+            raise RuntimeError(
+                f"{key} debe ser un entero mayor que cero."
+            )
