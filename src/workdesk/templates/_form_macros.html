@@ -1,0 +1,65 @@
+{#
+    Macros de formulario compartidas por las pantallas administrativas.
+    Cada campo muestra su etiqueta, su ayuda opcional y sus errores junto
+    al control, vinculados con aria-describedby para lectores de pantalla.
+#}
+
+{% macro field_errors(field) %}
+    {% for error in field.errors %}
+        <p
+            class="form-error"
+            id="{{ field.id }}-error"
+            role="alert"
+        >
+            {{ error }}
+        </p>
+    {% endfor %}
+{% endmacro %}
+
+{% macro text_field(
+    field,
+    required=False,
+    autocomplete="off",
+    hint=None,
+    autofocus=False,
+    maxlength=None
+) %}
+    <div class="form-field">
+        <label
+            class="form-label"
+            for="{{ field.id }}"
+        >
+            {{ field.label.text }}
+            {% if required %}
+                <span
+                    class="required-mark"
+                    aria-hidden="true"
+                >
+                    *
+                </span>
+            {% endif %}
+        </label>
+
+        <input
+            class="form-control{% if field.errors %} form-control--invalid{% endif %}"
+            id="{{ field.id }}"
+            name="{{ field.name }}"
+            type="text"
+            value="{{ field.data or '' }}"
+            autocomplete="{{ autocomplete }}"
+            {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+            {% if required %}required{% endif %}
+            {% if autofocus %}autofocus{% endif %}
+            {% if field.errors %}
+                aria-invalid="true"
+                aria-describedby="{{ field.id }}-error"
+            {% endif %}
+        >
+
+        {% if hint %}
+            <p class="form-hint">{{ hint }}</p>
+        {% endif %}
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}

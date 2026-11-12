@@ -7,6 +7,7 @@ from src.workdesk import create_app
 from src.workdesk.extensions import db
 from src.workdesk.models import Role, User
 from src.workdesk.security import hash_password
+from src.workdesk.seeds import seed_roles
 
 TEST_PASSWORD = "WorkDeskTest123!"
 
@@ -48,10 +49,22 @@ def app():
         db.session.remove()
         db.drop_all()
 
+        # Cada test crea su propia app y su propio engine. Sin cerrar su
+        # pool, las conexiones se acumulan hasta agotar max_connections de
+        # PostgreSQL a medida que crece la suite.
+        db.engine.dispose()
+
 
 @pytest.fixture()
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture()
+def seeded_roles(app):
+    """Carga los cuatro roles estructurales en la base de pruebas."""
+    with app.app_context():
+        seed_roles()
 
 
 @pytest.fixture()

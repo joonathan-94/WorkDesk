@@ -1270,6 +1270,23 @@ Las contraseñas, temporales o definitivas, nunca se almacenan en texto plano ni
 
 ---
 
+## RN-148 — Identificadores de usuario
+
+El **username** identifica al usuario en el inicio de sesión y en los registros históricos:
+
+* Tiene entre 3 y 50 caracteres.
+* Solo admite letras minúsculas, números, punto, guion y guion bajo, y empieza por una letra o un número.
+* Se normaliza a minúsculas y es único.
+* No se puede cambiar después de crear la cuenta.
+
+El **correo electrónico** es único, se normaliza a minúsculas y se valida solo en su forma (`algo@dominio.tld`); no se comprueba que la dirección exista. Tiene un máximo de 254 caracteres.
+
+Las comparaciones de unicidad ignoran mayúsculas y minúsculas. El nombre y el apellido son obligatorios; teléfono, cargo y departamento o área son opcionales.
+
+Cuando el Administrador crea una cuenta, el usuario queda activo y con el cambio de contraseña pendiente (RN-147). Si la contraseña temporal fue generada por el sistema, se muestra una sola vez, en la respuesta de la creación: no se guarda ni se puede consultar después, y la respuesta no se almacena en caché del navegador.
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

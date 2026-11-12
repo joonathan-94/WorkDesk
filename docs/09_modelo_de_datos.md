@@ -412,6 +412,7 @@ Representa las cuentas de usuario de WorkDesk.
 
 - `username` UNIQUE.
 - `email` UNIQUE.
+- `username` y `email` se almacenan en minúsculas (formato del username en `06_reglas_de_negocio.md`, RN-148).
 - `rol_id` obligatorio.
 - Un usuario desactivado conserva todas sus referencias históricas.
 - Un cambio de rol no crea una tabla de historial de roles; se registra en `auditoria_administrativa`.
