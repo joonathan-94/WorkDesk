@@ -81,12 +81,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/admin-audit-log
+feature/password-security
 ```
 
-Tercera entrega de `v0.2.0`: auditoría administrativa mínima. Incluye el modelo `AdminAuditLog` (tabla `auditoria_administrativa`), su migración, el servicio `record_admin_event` y sus tests. La interfaz de consulta de la auditoría queda para `v0.8.0`.
+Paso 4.1 de `v0.2.0` (primer paso de la entrega "Usuarios y contraseñas"): base de seguridad de contraseñas, sin pantallas. Incluye la política de contraseñas (longitud mínima configurable), el generador de contraseñas temporales, la columna `usuarios.debe_cambiar_password` con su migración, las operaciones de cambio propio y restablecimiento, y el ajuste de `create-admin` para usar la misma regla.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5) y los límites de sesión (PR #6). El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6) y la auditoría administrativa (PR #7). El tag `v0.1.0` existe.
+
+Pasos siguientes de la entrega: 4.2 cambio de contraseña propio y cambio obligatorio (`feature/account-password-change`), 4.3 listado y creación de usuarios (`feature/users-list-create`) y 4.4 edición y administración de usuarios (`feature/users-manage`). Después, la entrega 5 (interfaz administrativa y cierre de `v0.2.0`).
 
 ## Identidad visual (integrada en `main`)
 
@@ -132,7 +134,7 @@ La fase `v0.2.0` debe completar especialmente:
 - datos demo relacionados con usuarios;
 - pruebas específicas de autorización;
 - límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado;
-- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`);
+- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`) — base implementada (política, generador, columna, operaciones de dominio); faltan las pantallas y la guardia de cambio obligatorio;
 - tabla `auditoria_administrativa` mínima para las acciones sobre usuarios — implementada (modelo, migración y servicio); falta registrar eventos desde la gestión de usuarios.
 
 `docs/12_roadmap.md` divide `v0.2.0` en cinco entregas incrementales, cada una con su rama y Pull Request.
@@ -283,6 +285,9 @@ WorkDesk/
 │   ├── test_audit.py
 │   ├── test_auth.py
 │   ├── test_authorization.py
+│   ├── test_cli.py
+│   ├── test_credentials.py
+│   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_session_limits.py
 │   └── test_system.py
@@ -324,6 +329,7 @@ DATABASE_URL
 TEST_DATABASE_URL
 LOGIN_MAX_FAILED_ATTEMPTS
 LOGIN_LOCK_MINUTES
+PASSWORD_MIN_LENGTH
 SESSION_COOKIE_SECURE
 SESSION_IDLE_MINUTES
 SESSION_MAX_HOURS
@@ -339,6 +345,7 @@ APP_ENV=development
 APP_TIMEZONE=America/Santiago
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_LOCK_MINUTES=15
+PASSWORD_MIN_LENGTH=12
 SESSION_COOKIE_SECURE=false
 SESSION_IDLE_MINUTES=30
 SESSION_MAX_HOURS=8
@@ -382,12 +389,13 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente tres migraciones:
+Existen actualmente cuatro migraciones:
 
 ```text
 create_roles_table
 create_users_table
 create_admin_audit_log_table
+add_must_change_password_flag_to_users
 ```
 
 La revisión técnica final de `v0.1.0` confirmó:
@@ -460,6 +468,7 @@ Campos principales:
 - `token_version`
 - `intentos_fallidos`
 - `bloqueado_hasta`
+- `debe_cambiar_password`
 - `activo`
 - `fecha_creacion`
 - campos de auditoría de creación, modificación y desactivación
@@ -592,6 +601,28 @@ Las funciones actuales permiten:
 - detectar necesidad de rehash.
 
 Nunca almacenar ni registrar contraseñas en texto plano.
+
+## Política de contraseñas
+
+Implementada en `src/workdesk/security/password_policy.py`. Es la única fuente de la regla: la usan el cambio propio, las contraseñas temporales y `create-admin`.
+
+- Longitud mínima: `PASSWORD_MIN_LENGTH` (12 por defecto). La aplicación no arranca si el valor está fuera del rango 8 a 128.
+- Longitud máxima: 128 caracteres.
+- Sin reglas de composición (mayúsculas, números, símbolos).
+- No se recortan espacios; una contraseña solo de espacios no es válida.
+- En un cambio propio, la nueva debe ser distinta de la actual.
+- `generate_temporary_password`: 16 caracteres aleatorios (`secrets`), sin caracteres ambiguos.
+
+## Operaciones de contraseña
+
+Implementadas en `src/workdesk/auth/credentials.py`. Ninguna hace commit: se confirman junto con la operación que las invoca.
+
+- `change_own_password`: verifica la contraseña actual, valida la nueva, limpia `debe_cambiar_password`, sube `token_version` (invalida todas las sesiones, incluida la actual: quien llama debe reiniciar la sesión actual) y audita `PASSWORD_CAMBIADA`.
+- `set_temporary_password`: asigna una contraseña temporal y marca `debe_cambiar_password` (para crear usuarios).
+- `reset_password`: restablecimiento por un Administrador. Asigna la temporal, exige el cambio, invalida las sesiones, limpia intentos fallidos y bloqueo, y audita `PASSWORD_RESTABLECIDA`.
+- La auditoría nunca incluye contraseñas ni hashes.
+
+Todavía no se invocan desde ninguna ruta: las pantallas y la guardia de cambio obligatorio llegan en los pasos 4.2 a 4.4.
 
 ---
 
@@ -857,7 +888,7 @@ python -m flask --app src.workdesk create-admin
 
 - crea el Administrador inicial;
 - valida datos básicos;
-- exige contraseña mínima de 12 caracteres.
+- exige la longitud mínima de contraseña configurada (`PASSWORD_MIN_LENGTH`, 12 por defecto).
 
 ---
 
@@ -893,6 +924,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la base de seguridad de contraseñas (paso 4.1):
+
+```text
+109 tests passing
+```
+
+Los 40 tests nuevos cubren:
+
+- `tests/test_password_policy.py`: límites de longitud, ausencia de reglas de composición, espacios, contraseña igual a la actual, generador de contraseñas temporales (longitud, alfabeto sin ambiguos, unicidad) y validación del rango de `PASSWORD_MIN_LENGTH` al iniciar;
+- `tests/test_credentials.py`: cambio propio (credenciales, invalidación de sesiones, auditoría sin secretos, contraseña actual incorrecta, contraseña nueva inválida o igual), contraseña temporal y restablecimiento (cambio obligatorio, sesiones, bloqueo, auditoría);
+- `tests/test_cli.py`: `create-admin` con contraseña válida, demasiado corta y con longitud mínima configurada.
 
 Estado tras la entrega de auditoría administrativa:
 
@@ -1281,7 +1324,8 @@ Usuarios, autenticación completa y RBAC
 - tests de autenticación base;
 - base RBAC: `RoleCode`, `has_any_role`, políticas `can_manage_users` y `can_view_audit`, decorador `roles_required` (en `src/workdesk/security/authorization.py`), manejador 403 y área `/admin` protegida;
 - límites de sesión por inactividad y duración máxima;
-- auditoría administrativa mínima: modelo `AdminAuditLog`, migración y servicio `record_admin_event`.
+- auditoría administrativa mínima: modelo `AdminAuditLog`, migración y servicio `record_admin_event`;
+- base de seguridad de contraseñas: política, generador de contraseñas temporales, columna `debe_cambiar_password` y operaciones de cambio propio y restablecimiento.
 
 ## Pendiente principal
 
@@ -1289,7 +1333,8 @@ Usuarios, autenticación completa y RBAC
 - navegación adaptada por rol;
 - hub de administración y rutas administrativas definitivas;
 - gestión de usuarios;
-- contraseñas temporales, restablecimiento por el Administrador y cambio obligatorio en el primer inicio de sesión;
+- pantalla de cambio de contraseña propio y guardia de cambio obligatorio en el primer inicio de sesión;
+- contraseñas temporales y restablecimiento por el Administrador desde la gestión de usuarios;
 - cuenta propia básica ("Mi cuenta", con cambio de contraseña);
 - registrar en la auditoría las acciones sobre usuarios (el servicio ya existe);
 - incorporación local de Bootstrap con las primeras pantallas administrativas;

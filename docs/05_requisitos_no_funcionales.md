@@ -179,6 +179,16 @@ Como referencia inicial podrá establecerse:
 
 Los parámetros deberán poder evolucionar hacia una configuración administrativa cuando corresponda.
 
+**Decisión adoptada (`v0.2.0`):**
+
+* **Longitud mínima:** 12 caracteres por defecto, configurable mediante `PASSWORD_MIN_LENGTH`. Se rechazan valores menores que 8 (suelo) o mayores que 128 (tope) al iniciar la aplicación. Pasará a la configuración administrativa en `v0.7.0`.
+* **Longitud máxima:** 128 caracteres, para evitar entradas desproporcionadas.
+* **Sin reglas de composición:** no se exigen mayúsculas, minúsculas, números ni caracteres especiales; se prioriza la longitud, en línea con las guías actuales de autenticación.
+* **Sin recorte:** los espacios iniciales y finales forman parte de la contraseña; una contraseña formada solo por espacios no es válida.
+* **Cambio de contraseña:** la nueva debe ser distinta de la actual.
+* **Contraseñas temporales generadas:** 16 caracteres aleatorios (o la longitud mínima si es mayor) obtenidos con un generador criptográficamente seguro, sin caracteres ambiguos (`0`, `O`, `o`, `1`, `l`, `I`).
+* La misma regla se aplica al cambio propio, a las contraseñas temporales y a la creación del Administrador inicial.
+
 ---
 
 ## RNF-010 — Control de acceso basado en roles

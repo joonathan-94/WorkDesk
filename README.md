@@ -257,6 +257,9 @@ WorkDesk/
 │   ├── test_audit.py
 │   ├── test_auth.py
 │   ├── test_authorization.py
+│   ├── test_cli.py
+│   ├── test_credentials.py
+│   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_session_limits.py
 │   └── test_system.py
@@ -399,6 +402,8 @@ TEST_DATABASE_URL=
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_LOCK_MINUTES=15
 
+PASSWORD_MIN_LENGTH=12
+
 SESSION_IDLE_MINUTES=30
 SESSION_MAX_HOURS=8
 
@@ -479,7 +484,7 @@ El comando solicita:
 - email;
 - contraseña.
 
-La contraseña debe contener al menos 12 caracteres y se almacena utilizando Argon2id.
+La contraseña debe cumplir la longitud mínima configurada (`PASSWORD_MIN_LENGTH`, 12 caracteres por defecto) y se almacena utilizando Argon2id.
 
 El comando impide crear accidentalmente más de un Administrador inicial mediante este mecanismo de bootstrap.
 

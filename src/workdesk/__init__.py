@@ -9,6 +9,7 @@ from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
 from .logging_config import configure_logging
 from .main import bp as main_bp
+from .security import MAX_LENGTH, MIN_LENGTH_FLOOR
 from .system import bp as system_bp
 
 
@@ -23,6 +24,7 @@ def create_app(
 
     _validate_required_config(app)
     _validate_session_limits(app)
+    _validate_password_policy(app)
     configure_logging(app)
 
     db.init_app(app)
@@ -64,6 +66,18 @@ def _validate_required_config(app: Flask) -> None:
 
         raise RuntimeError(
             f"Falta configuración obligatoria: {missing_names}"
+        )
+
+
+def _validate_password_policy(app: Flask) -> None:
+    # Una longitud mínima fuera de rango dejaría contraseñas débiles
+    # (por debajo del suelo) o imposibles de cumplir (por encima del tope).
+    min_length = app.config["PASSWORD_MIN_LENGTH"]
+
+    if not MIN_LENGTH_FLOOR <= min_length <= MAX_LENGTH:
+        raise RuntimeError(
+            "PASSWORD_MIN_LENGTH debe estar entre "
+            f"{MIN_LENGTH_FLOOR} y {MAX_LENGTH}."
         )
 
 
