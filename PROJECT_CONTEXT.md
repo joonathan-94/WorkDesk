@@ -81,14 +81,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/password-security
+feature/account-password-change
 ```
 
-Paso 4.1 de `v0.2.0` (primer paso de la entrega "Usuarios y contraseñas"): base de seguridad de contraseñas, sin pantallas. Incluye la política de contraseñas (longitud mínima configurable), el generador de contraseñas temporales, la columna `usuarios.debe_cambiar_password` con su migración, las operaciones de cambio propio y restablecimiento, y el ajuste de `create-admin` para usar la misma regla.
+Paso 4.2 de `v0.2.0` (entrega "Usuarios y contraseñas"): pantalla de cambio de contraseña propio (`/account/password`) y cambio obligatorio de la contraseña temporal en el primer inicio de sesión, aplicado en backend. No incluye migraciones.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6) y la auditoría administrativa (PR #7). El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7) y la base de seguridad de contraseñas (PR #8). El tag `v0.1.0` existe.
 
-Pasos siguientes de la entrega: 4.2 cambio de contraseña propio y cambio obligatorio (`feature/account-password-change`), 4.3 listado y creación de usuarios (`feature/users-list-create`) y 4.4 edición y administración de usuarios (`feature/users-manage`). Después, la entrega 5 (interfaz administrativa y cierre de `v0.2.0`).
+Pasos siguientes de la entrega: 4.3 listado y creación de usuarios (`feature/users-list-create`) y 4.4 edición y administración de usuarios (`feature/users-manage`). Después, la entrega 5 (interfaz administrativa y cierre de `v0.2.0`).
 
 ## Identidad visual (integrada en `main`)
 
@@ -134,7 +134,7 @@ La fase `v0.2.0` debe completar especialmente:
 - datos demo relacionados con usuarios;
 - pruebas específicas de autorización;
 - límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado;
-- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`) — base implementada (política, generador, columna, operaciones de dominio); faltan las pantallas y la guardia de cambio obligatorio;
+- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`) — implementados la política, el generador, la columna, las operaciones de dominio, la pantalla de cambio propio y la guardia de cambio obligatorio; falta que el Administrador cree usuarios y restablezca contraseñas desde la interfaz;
 - tabla `auditoria_administrativa` mínima para las acciones sobre usuarios — implementada (modelo, migración y servicio); falta registrar eventos desde la gestión de usuarios.
 
 `docs/12_roadmap.md` divide `v0.2.0` en cinco entregas incrementales, cada una con su rama y Pull Request.
@@ -245,6 +245,7 @@ WorkDesk/
 ├── scripts/
 ├── src/
 │   └── workdesk/
+│       ├── account/
 │       ├── admin/
 │       ├── audit/
 │       ├── auth/
@@ -281,6 +282,7 @@ WorkDesk/
 │       └── logging_config.py
 ├── tests/
 │   ├── conftest.py
+│   ├── test_account_password.py
 │   ├── test_app.py
 │   ├── test_audit.py
 │   ├── test_auth.py
@@ -622,7 +624,18 @@ Implementadas en `src/workdesk/auth/credentials.py`. Ninguna hace commit: se con
 - `reset_password`: restablecimiento por un Administrador. Asigna la temporal, exige el cambio, invalida las sesiones, limpia intentos fallidos y bloqueo, y audita `PASSWORD_RESTABLECIDA`.
 - La auditoría nunca incluye contraseñas ni hashes.
 
-Todavía no se invocan desde ninguna ruta: las pantallas y la guardia de cambio obligatorio llegan en los pasos 4.2 a 4.4.
+`change_own_password` se invoca desde `/account/password`. `set_temporary_password` y `reset_password` todavía no se invocan desde ninguna ruta: llegan con la gestión de usuarios (pasos 4.3 y 4.4).
+
+## Cambio de contraseña propio y cambio obligatorio
+
+Blueprint `account` (`src/workdesk/account/`), ruta `GET, POST /account/password` con formulario Flask-WTF (CSRF) de contraseña actual, nueva y confirmación. El formulario solo valida su forma; las reglas de la contraseña las aplica la política (`security/password_policy.py`).
+
+- **Contraseña actual incorrecta:** cuenta como intento fallido y respeta el bloqueo temporal. Al alcanzar el máximo de intentos se cierra la sesión; con la cuenta bloqueada no se acepta ningún cambio, ni siquiera con la contraseña correcta.
+- **Cambio correcto:** sube `token_version` (invalida las demás sesiones), reinicia los intentos fallidos y vuelve a iniciar la sesión actual para no desconectar al usuario. El inicio de la sesión no se reinicia: cambiar la contraseña no amplía la duración máxima (8 horas por defecto).
+- **Cambio obligatorio:** mientras `debe_cambiar_password` sea verdadero, un `before_app_request` (`require_password_change`, en `auth/routes.py`) redirige cualquier ruta a `/account/password`. Solo se permiten esa pantalla, `POST /logout` y las rutas técnicas (`/health`, `static`). Se aplica en backend, no solo ocultando enlaces, y se ejecuta después de los límites de sesión.
+- La pantalla muestra el modo obligatorio (aviso de contraseña temporal, sin enlace de retorno y con opción de cerrar sesión) o el modo normal (con enlace al dashboard).
+- Los errores se muestran junto a cada campo y nunca se devuelven las contraseñas enviadas.
+- El botón "Mostrar/Ocultar" es una mejora progresiva (`static/js/account/password-toggle.js`): el formulario funciona sin JavaScript.
 
 ---
 
@@ -709,12 +722,15 @@ GET        /
 GET, POST  /login
 POST       /logout
 GET        /dashboard
+GET, POST  /account/password
 GET        /admin
 GET        /health
 GET        /static/<path:filename>
 ```
 
-`/dashboard` requiere autenticación.
+`/dashboard` y `/account/password` requieren autenticación.
+
+`/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
 `/admin` requiere el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). Es una página mínima de prueba de la autorización; el hub de administración definitivo llegará con las siguientes entregas de `v0.2.0`.
 
@@ -924,6 +940,14 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras el cambio de contraseña propio y obligatorio (paso 4.2):
+
+```text
+134 tests passing
+```
+
+`tests/test_account_password.py` (25 tests) cubre: acceso anónimo, CSRF, cambio correcto (credenciales, sesión que se mantiene, mensaje de confirmación, auditoría, nuevo login, invalidación de otras sesiones, duración máxima no ampliada y reinicio de intentos fallidos), contraseña actual incorrecta (conteo, bloqueo y cierre de sesión, cuenta bloqueada), confirmación distinta, contraseña demasiado corta o igual a la actual, campos vacíos, que nunca se devuelvan las contraseñas, y la guardia de cambio obligatorio (rutas redirigidas, pantalla de cambio y cierre de sesión permitidos, rutas técnicas permitidas, restricción que se libera al completar el cambio y que permanece tras un intento fallido).
 
 Estado tras la base de seguridad de contraseñas (paso 4.1):
 
@@ -1325,7 +1349,8 @@ Usuarios, autenticación completa y RBAC
 - base RBAC: `RoleCode`, `has_any_role`, políticas `can_manage_users` y `can_view_audit`, decorador `roles_required` (en `src/workdesk/security/authorization.py`), manejador 403 y área `/admin` protegida;
 - límites de sesión por inactividad y duración máxima;
 - auditoría administrativa mínima: modelo `AdminAuditLog`, migración y servicio `record_admin_event`;
-- base de seguridad de contraseñas: política, generador de contraseñas temporales, columna `debe_cambiar_password` y operaciones de cambio propio y restablecimiento.
+- base de seguridad de contraseñas: política, generador de contraseñas temporales, columna `debe_cambiar_password` y operaciones de cambio propio y restablecimiento;
+- cambio de contraseña propio (`/account/password`) y cambio obligatorio de la contraseña temporal aplicado en backend.
 
 ## Pendiente principal
 
@@ -1333,7 +1358,6 @@ Usuarios, autenticación completa y RBAC
 - navegación adaptada por rol;
 - hub de administración y rutas administrativas definitivas;
 - gestión de usuarios;
-- pantalla de cambio de contraseña propio y guardia de cambio obligatorio en el primer inicio de sesión;
 - contraseñas temporales y restablecimiento por el Administrador desde la gestión de usuarios;
 - cuenta propia básica ("Mi cuenta", con cambio de contraseña);
 - registrar en la auditoría las acciones sobre usuarios (el servicio ya existe);

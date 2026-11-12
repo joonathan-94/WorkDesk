@@ -212,6 +212,7 @@ WorkDesk/
 │
 ├── src/
 │   └── workdesk/
+│       ├── account/
 │       ├── admin/
 │       ├── audit/
 │       ├── auth/
@@ -240,6 +241,7 @@ WorkDesk/
 │       │   └── js/
 │       ├── system/
 │       ├── templates/
+│       │   ├── account/
 │       │   ├── admin/
 │       │   ├── auth/
 │       │   ├── errors/
@@ -253,6 +255,7 @@ WorkDesk/
 │
 ├── tests/
 │   ├── conftest.py
+│   ├── test_account_password.py
 │   ├── test_app.py
 │   ├── test_audit.py
 │   ├── test_auth.py
@@ -508,17 +511,21 @@ http://127.0.0.1:5000
 
 ## Rutas actuales
 
-La fundación técnica registra actualmente:
+Rutas registradas actualmente:
 
 ```text
 GET       /
 GET POST  /login
 POST      /logout
 GET       /dashboard
+GET POST  /account/password
+GET       /admin
 GET       /health
 ```
 
-`/dashboard` requiere una sesión autenticada.
+`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin` requiere el rol Administrador.
+
+Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 
 La pantalla actual de dashboard es temporal y será reemplazada progresivamente durante la implementación de los módulos funcionales.
 

@@ -1889,7 +1889,9 @@ El restablecimiento invalida las sesiones activas del usuario, limpia sus intent
 
 El sistema debe permitir a cada usuario cambiar su propia contraseña desde "Mi cuenta", indicando su contraseña actual.
 
-La nueva contraseña debe cumplir la longitud mínima y ser distinta de la actual. El cambio invalida las demás sesiones del usuario y mantiene activa la sesión desde la que se realizó (RNF-014).
+La nueva contraseña debe cumplir la longitud mínima y ser distinta de la actual. El cambio invalida las demás sesiones del usuario y mantiene activa la sesión desde la que se realizó (RNF-014). Esa sesión conserva su inicio original: cambiar la contraseña no amplía la duración máxima de la sesión.
+
+Una contraseña actual incorrecta cuenta como intento fallido de autenticación (RNF-015) y respeta el bloqueo temporal de la cuenta.
 
 **Alcance:** MVP.
 

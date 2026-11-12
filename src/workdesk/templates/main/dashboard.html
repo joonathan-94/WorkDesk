@@ -39,6 +39,12 @@
 
     <h2>Dashboard</h2>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <p role="status">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
     <p>
         Bienvenido,
         {{ current_user.nombre }} {{ current_user.apellido }}.
@@ -50,6 +56,12 @@
 
     <p>
         Rol: {{ current_user.rol.nombre }}
+    </p>
+
+    <p>
+        <a href="{{ url_for('account.change_password') }}">
+            Cambiar contraseña
+        </a>
     </p>
 
     <form method="post" action="{{ url_for('auth.logout') }}">
