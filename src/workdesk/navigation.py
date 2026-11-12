@@ -65,7 +65,7 @@ MAIN_NAVIGATION = (
 ACCOUNT_NAVIGATION = (
     NavItem(
         label="Mi cuenta",
-        endpoint="account.change_password",
+        endpoint="account.index",
         icon="person",
         active_prefixes=("account.",),
     ),

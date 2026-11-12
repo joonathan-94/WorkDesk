@@ -97,7 +97,8 @@ def test_page_is_shown_to_an_authenticated_user(client, app, make_user):
     assert response.status_code == 200
     assert "Cambiar contraseña" in content
     assert "contraseña temporal" not in content
-    assert "Volver al dashboard" in content
+    assert "Volver a Mi cuenta" in content
+    assert "Volver al dashboard" not in content
     assert f"Mínimo {min_length} caracteres." in visible_text
 
 

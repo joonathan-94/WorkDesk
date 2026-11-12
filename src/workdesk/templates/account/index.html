@@ -1,0 +1,107 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
+{% from "_form_macros.html" import text_field %}
+
+{% block title %}Mi cuenta{% endblock %}
+
+{% block content %}
+    {{ page_header(
+        "Mi cuenta",
+        "Consulta tus datos y mantén actualizada tu información de contacto.",
+    ) }}
+
+    <section
+        class="card form-card mb-4"
+        aria-labelledby="data-title"
+    >
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="data-title"
+            >
+                Mis datos
+            </h2>
+
+            <dl class="row mb-2">
+                <dt class="col-sm-4 text-secondary fw-normal">Nombre</dt>
+                <dd class="col-sm-8">{{ user.nombre }} {{ user.apellido }}</dd>
+
+                <dt class="col-sm-4 text-secondary fw-normal">Usuario</dt>
+                <dd class="col-sm-8">{{ user.username }}</dd>
+
+                <dt class="col-sm-4 text-secondary fw-normal">Correo</dt>
+                <dd class="col-sm-8">{{ user.email }}</dd>
+
+                <dt class="col-sm-4 text-secondary fw-normal">Rol</dt>
+                <dd class="col-sm-8">{{ user.rol.nombre }}</dd>
+            </dl>
+
+            <p class="form-text mb-0">
+                Tu nombre, usuario, correo y rol los gestiona un
+                Administrador.
+            </p>
+        </div>
+    </section>
+
+    <form
+        class="card form-card mb-4"
+        method="post"
+        action="{{ url_for('account.index') }}"
+        aria-labelledby="contact-title"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <h2
+                class="h6 mb-3"
+                id="contact-title"
+            >
+                Información de contacto
+            </h2>
+
+            {{ text_field(form.telefono, autocomplete="tel", maxlength=30) }}
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(form.cargo, autocomplete="organization-title", maxlength=100) }}
+                </div>
+                <div class="col-md-6">
+                    {{ text_field(form.departamento_area, maxlength=100) }}
+                </div>
+            </div>
+
+            <button
+                class="btn btn-primary mt-2"
+                type="submit"
+            >
+                Guardar cambios
+            </button>
+        </div>
+    </form>
+
+    <section
+        class="card form-card"
+        aria-labelledby="security-title"
+    >
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="security-title"
+            >
+                Seguridad
+            </h2>
+
+            <p class="text-secondary small">
+                Cambiar tu contraseña cierra tus otras sesiones abiertas.
+            </p>
+
+            <a
+                class="btn btn-outline-secondary"
+                href="{{ url_for('account.change_password') }}"
+            >
+                Cambiar contraseña
+            </a>
+        </div>
+    </section>
+{% endblock %}

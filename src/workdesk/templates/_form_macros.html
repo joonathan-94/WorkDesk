@@ -244,3 +244,49 @@
         </p>
     {% endif %}
 {% endmacro %}
+
+{# Campo de contraseña con botón para mostrarla u ocultarla. #}
+{% macro password_field(field, autocomplete, hint=None, autofocus=False) %}
+    <div class="mb-3">
+        <label
+            class="form-label"
+            for="{{ field.id }}"
+        >
+            {{ field.label.text }}
+            {{ required_mark() }}
+        </label>
+
+        <div class="input-group">
+            <input
+                class="form-control{% if field.errors %} is-invalid{% endif %}"
+                id="{{ field.id }}"
+                name="{{ field.name }}"
+                type="password"
+                autocomplete="{{ autocomplete }}"
+                required
+                {% if autofocus %}autofocus{% endif %}
+                {% if field.errors %}
+                    aria-invalid="true"
+                    aria-describedby="{{ field.id }}-error"
+                {% endif %}
+            >
+
+            <button
+                class="btn btn-outline-secondary"
+                type="button"
+                data-password-toggle
+                aria-controls="{{ field.id }}"
+                aria-pressed="false"
+                aria-label="Mostrar contraseña"
+            >
+                Mostrar
+            </button>
+        </div>
+
+        {% if hint %}
+            <div class="form-text">{{ hint }}</div>
+        {% endif %}
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}

@@ -18,8 +18,39 @@ from ..auth.security import (
 )
 from ..extensions import db
 from ..security import PasswordPolicyError
+from ..users.forms import ContactForm
 from . import bp
 from .forms import ChangePasswordForm
+from .service import update_own_contact
+
+
+@bp.route("", methods=["GET", "POST"])
+@login_required
+def index():
+    """Mi cuenta: datos del usuario y edición de su información de contacto."""
+    user = current_user._get_current_object()
+
+    # En GET rellena el formulario con los datos actuales; en POST manda
+    # lo enviado.
+    form = ContactForm(obj=user)
+
+    if form.validate_on_submit():
+        changed = update_own_contact(
+            user,
+            telefono=form.telefono.data,
+            cargo=form.cargo.data,
+            departamento_area=form.departamento_area.data,
+        )
+        db.session.commit()
+
+        if changed:
+            flash("Tus datos se actualizaron.", "success")
+        else:
+            flash("No había cambios que guardar.", "warning")
+
+        return redirect(url_for("account.index"))
+
+    return render_template("account/index.html", form=form, user=user)
 
 
 @bp.route("/password", methods=["GET", "POST"])
@@ -33,11 +64,16 @@ def change_password():
         if response is not None:
             return response
 
-    return render_template(
-        "account/change_password.html",
-        form=form,
-        mandatory=current_user.debe_cambiar_password,
+    # Con el cambio obligatorio pendiente se muestra una pantalla aislada,
+    # sin la navegación (el usuario no puede ir a ninguna otra parte).
+    mandatory = current_user.debe_cambiar_password
+    template = (
+        "account/password_required.html"
+        if mandatory
+        else "account/password.html"
     )
+
+    return render_template(template, form=form, mandatory=mandatory)
 
 
 def _handle_password_change(form: ChangePasswordForm):

@@ -30,6 +30,21 @@ El sistema busca centralizar el ciclo de vida de los tickets, facilitar la colab
 
 ## Estado del proyecto
 
+### `v0.2.0 — Usuarios, autenticación completa y RBAC`
+
+La segunda versión de WorkDesk está implementada y validada. Suma a la fundación:
+
+- Autorización por roles (Solicitante, Técnico, Supervisor y Administrador) comprobada en backend, con error 403 y navegación filtrada por rol.
+- Límites de sesión por inactividad (30 minutos) y por duración máxima (8 horas), configurables.
+- Política de contraseñas configurable, contraseñas temporales y cambio obligatorio en el primer inicio de sesión.
+- Administración de usuarios por el Administrador: listado con búsqueda, filtros y paginación; creación; edición; cambio de rol; desactivación y reactivación; y restablecimiento de contraseña, con salvaguardas (nadie actúa sobre sí mismo y siempre queda un Administrador activo).
+- Auditoría administrativa inmutable de todas las acciones sobre usuarios.
+- Pantalla "Mi cuenta": datos del usuario, edición de su información de contacto y cambio de contraseña.
+- Interfaz administrativa con Bootstrap servido localmente (sin CDN): sidebar y topbar, navegación por rol y hub de administración.
+- Comando `seed-demo` para cargar un equipo de soporte ficticio con el que mostrar el sistema.
+
+La suite cuenta con **385 tests automatizados**.
+
 ### `v0.1.0 — Fundación técnica`
 
 La fundación técnica de WorkDesk se encuentra implementada y validada.
@@ -67,19 +82,9 @@ La suite de fundación cuenta actualmente con **20 tests automatizados**.
 
 ### Próximo hito
 
-`v0.2.0 — Usuarios, autenticación completa y RBAC`
+`v0.3.0 — Núcleo de tickets`
 
-Parte de la base técnica de autenticación prevista originalmente para `v0.2.0` fue adelantada durante la fundación para consolidar desde el inicio la seguridad, las sesiones y las pruebas.
-
-La siguiente versión completará principalmente:
-
-- gestión de usuarios;
-- autorización basada en roles;
-- políticas de acceso;
-- navegación según rol;
-- cuenta propia básica;
-- restricciones de acceso administrativas;
-- datos de demostración relacionados con usuarios.
+La siguiente versión incorpora el núcleo del producto: creación, listado, búsqueda, filtros y detalle de tickets, con sus catálogos (estados, prioridades, categorías y ubicaciones) y la visibilidad de cada rol sobre ellos.
 
 ---
 
@@ -261,6 +266,7 @@ WorkDesk/
 ├── tests/
 │   ├── conftest.py
 │   ├── test_account_password.py
+│   ├── test_account_profile.py
 │   ├── test_app.py
 │   ├── test_audit.py
 │   ├── test_auth.py
@@ -270,6 +276,7 @@ WorkDesk/
 │   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
+│   ├── test_seed_demo.py
 │   ├── test_session_limits.py
 │   ├── test_system.py
 │   ├── test_users_manage_routes.py
@@ -503,6 +510,21 @@ El comando impide crear accidentalmente más de un Administrador inicial mediant
 
 ---
 
+### Cargar datos de demostración (opcional)
+
+```bash
+python -m flask --app src.workdesk seed-demo
+```
+
+Crea un equipo de soporte ficticio de 12 personas (2 supervisores, 4 técnicos y 6 solicitantes) con correos `@workdesk.local`, útil para mostrar el sistema. No crea ningún Administrador: usa `create-admin` para crear el tuyo.
+
+- La contraseña común de los usuarios demo se pide al ejecutar el comando (oculta). Para ejecutarlo sin interacción se puede definir la variable de entorno `WORKDESK_DEMO_PASSWORD`. Nunca se muestra ni se guarda.
+- Es idempotente: omite a quien ya exista, sin modificarlo.
+- No se ejecuta con `APP_ENV=production`.
+- Los usuarios quedan activos y sin cambio de contraseña obligatorio, para poder entrar directamente.
+
+---
+
 ## Ejecutar WorkDesk
 
 Con el entorno virtual activado:
@@ -528,6 +550,7 @@ GET       /
 GET POST  /login
 POST      /logout
 GET       /dashboard
+GET POST  /account
 GET POST  /account/password
 GET       /admin
 GET       /users
@@ -610,7 +633,7 @@ La base técnica de autenticación utiliza:
 - Invalidación de sesiones mediante `token_version`.
 - Mensajes de autenticación genéricos para evitar revelar información innecesaria.
 
-La autorización completa basada en roles y políticas de acceso forma parte de `v0.2.0`.
+La autorización basada en roles se comprueba en backend (`security/authorization.py`) y se aplica a las rutas administrativas; la navegación se filtra por rol.
 
 ---
 
@@ -744,6 +767,9 @@ python -m flask --app src.workdesk seed-roles
 
 # Crear Administrador inicial
 python -m flask --app src.workdesk create-admin
+
+# Cargar datos de demostración (opcional)
+python -m flask --app src.workdesk seed-demo
 
 # Ver rutas
 python -m flask --app src.workdesk routes
