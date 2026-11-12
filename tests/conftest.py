@@ -55,6 +55,48 @@ def client(app):
 
 
 @pytest.fixture()
+def make_user(app):
+    """Crea un usuario de pruebas con el rol indicado por su código."""
+
+    def _make_user(role_code: str):
+        with app.app_context():
+            role = db.session.scalar(
+                db.select(Role).where(Role.codigo == role_code)
+            )
+
+            if role is None:
+                role = Role(
+                    codigo=role_code,
+                    nombre=role_code.capitalize(),
+                    descripcion="Rol para pruebas.",
+                )
+                db.session.add(role)
+                db.session.flush()
+
+            username = f"{role_code.lower()}_test"
+
+            user = User(
+                nombre=role_code.capitalize(),
+                apellido="Pruebas",
+                username=username,
+                email=f"{username}@workdesk.local",
+                password_hash=hash_password(TEST_PASSWORD),
+                rol_id=role.id,
+            )
+
+            db.session.add(user)
+            db.session.commit()
+
+            return {
+                "id": user.id,
+                "username": user.username,
+                "password": TEST_PASSWORD,
+            }
+
+    return _make_user
+
+
+@pytest.fixture()
 def admin_user(app):
     with app.app_context():
         admin_role = Role(

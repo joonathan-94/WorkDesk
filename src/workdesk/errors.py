@@ -17,6 +17,20 @@ def register_error_handlers(app: Flask) -> None:
             400,
         )
 
+    @app.errorhandler(403)
+    def forbidden(error: Exception):
+        return (
+            render_template(
+                "errors/error.html",
+                status_code=403,
+                title="Acceso denegado",
+                message=(
+                    "No tienes permiso para acceder a esta página."
+                ),
+            ),
+            403,
+        )
+
     @app.errorhandler(404)
     def not_found(error: Exception):
         return (

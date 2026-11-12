@@ -81,10 +81,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-docs/sync-project-state
+feature/rbac-foundation
 ```
 
-Rama exclusiva para sincronizar la documentación antes de comenzar `v0.2.0`: resolución de contradicciones entre documentos, decisiones funcionales sobre prioridad y SLA, grupos y contraseñas, y actualización del seguimiento del proyecto. No contiene código ni migraciones.
+Primera entrega de `v0.2.0`: base de autorización por roles (RBAC). Incluye políticas centralizadas, decorador `roles_required`, manejador 403, un área administrativa mínima protegida (`/admin`) y tests de autorización. No incluye migraciones.
+
+La documentación de `v0.1.0` a `v0.2.0` se sincronizó previamente en `docs/sync-project-state`, ya integrada en `main`. El tag `v0.1.0` existe.
 
 ## Identidad visual (integrada en `main`)
 
@@ -103,8 +105,6 @@ La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. I
 - imagen `workdesk-social-preview.png`;
 - actualización de README;
 - actualización de `docs/11_diseno_de_pantallas.md`.
-
-El hito `v0.1.0` todavía no tiene tag Git.
 
 ## Próximo hito
 
@@ -620,11 +620,14 @@ GET        /
 GET, POST  /login
 POST       /logout
 GET        /dashboard
+GET        /admin
 GET        /health
 GET        /static/<path:filename>
 ```
 
 `/dashboard` requiere autenticación.
+
+`/admin` requiere el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). Es una página mínima de prueba de la autorización; el hub de administración definitivo llegará con las siguientes entregas de `v0.2.0`.
 
 El dashboard actual es temporal.
 
@@ -719,6 +722,7 @@ Existen handlers globales para:
 
 ```text
 400
+403
 404
 500
 ```
@@ -831,6 +835,14 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega RBAC base:
+
+```text
+32 tests passing
+```
+
+Los 12 tests nuevos (`tests/test_authorization.py`) cubren: anónimo redirigido al login, 403 para Solicitante, Técnico y Supervisor en `/admin`, acceso del Administrador, pérdida de acceso al desactivar al Administrador, políticas `can_manage_users` y `can_view_audit` por rol y comportamiento ante usuario anónimo.
 
 ## Protección crítica de testing
 
@@ -1192,14 +1204,14 @@ Usuarios, autenticación completa y RBAC
 - `token_version`;
 - login visual con branding oficial;
 - favicons integrados en los templates actuales;
-- tests de autenticación base.
+- tests de autenticación base;
+- base RBAC (`feature/rbac-foundation`): `RoleCode`, `has_any_role`, políticas `can_manage_users` y `can_view_audit`, decorador `roles_required` (en `src/workdesk/security/authorization.py`), manejador 403 y área `/admin` protegida.
 
 ## Pendiente principal
 
-- políticas RBAC;
-- control de acceso por rol;
+- políticas RBAC adicionales según se incorporen los módulos;
 - navegación adaptada por rol;
-- rutas administrativas protegidas;
+- hub de administración y rutas administrativas definitivas;
 - gestión de usuarios;
 - contraseñas temporales, restablecimiento por el Administrador y cambio obligatorio en el primer inicio de sesión;
 - cuenta propia básica ("Mi cuenta", con cambio de contraseña);
