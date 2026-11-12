@@ -1,4 +1,5 @@
 {% extends "base_admin.html" %}
+{% from "_form_macros.html" import temporary_password_notice %}
 
 {% block title %}Usuario creado{% endblock %}
 
@@ -28,27 +29,7 @@
             <dd>{{ user.rol.nombre }}</dd>
         </dl>
 
-        {% if generated_password %}
-            <div class="secret-box">
-                <p class="secret-box__label">Contraseña temporal</p>
-
-                <code
-                    class="secret-box__value"
-                    id="temporary-password"
-                >{{ generated_password }}</code>
-
-                <p class="secret-box__note">
-                    Cópiala y entrégasela al usuario ahora: no podrá
-                    consultarse después. Deberá cambiarla en su primer
-                    inicio de sesión.
-                </p>
-            </div>
-        {% else %}
-            <p class="muted">
-                Se usó la contraseña temporal que escribiste. El usuario
-                deberá cambiarla en su primer inicio de sesión.
-            </p>
-        {% endif %}
+        {{ temporary_password_notice(generated_password) }}
 
         <div class="form-actions">
             <a
@@ -60,6 +41,13 @@
 
             <a
                 class="btn btn--secondary"
+                href="{{ url_for('users.detail', user_id=user.id) }}"
+            >
+                Ver usuario
+            </a>
+
+            <a
+                class="btn btn--link"
                 href="{{ url_for('users.list_users_page') }}"
             >
                 Ver usuarios

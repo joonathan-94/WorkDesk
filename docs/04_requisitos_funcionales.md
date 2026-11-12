@@ -209,7 +209,7 @@ El sistema debe permitir:
 
 El sistema debe permitir modificar el rol de un usuario.
 
-El cambio deberá aplicarse al siguiente acceso u operación correspondiente de acuerdo con las reglas del sistema.
+El cambio se aplica de inmediato: se cierran las sesiones abiertas del usuario y vuelve a iniciar sesión con los permisos del nuevo rol. Un Administrador no puede cambiar su propio rol y debe quedar siempre al menos un Administrador activo (RN-149).
 
 **Alcance:** MVP.
 

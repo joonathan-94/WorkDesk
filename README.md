@@ -268,6 +268,8 @@ WorkDesk/
 │   ├── test_passwords.py
 │   ├── test_session_limits.py
 │   ├── test_system.py
+│   ├── test_users_manage_routes.py
+│   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
 │   └── test_users_service.py
 │
@@ -526,10 +528,16 @@ GET POST  /account/password
 GET       /admin
 GET       /users
 GET POST  /users/new
+GET       /users/<id>
+GET POST  /users/<id>/edit
+GET POST  /users/<id>/role
+GET POST  /users/<id>/deactivate
+GET POST  /users/<id>/activate
+GET POST  /users/<id>/reset-password
 GET       /health
 ```
 
-`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin`, `/users` y `/users/new` requieren el rol Administrador.
+`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin` y todas las rutas `/users` requieren el rol Administrador.
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 

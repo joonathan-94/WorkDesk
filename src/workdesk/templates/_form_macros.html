@@ -63,3 +63,133 @@
         {{ field_errors(field) }}
     </div>
 {% endmacro %}
+
+{% macro textarea_field(field, hint=None, maxlength=None, rows=3) %}
+    <div class="form-field">
+        <label
+            class="form-label"
+            for="{{ field.id }}"
+        >
+            {{ field.label.text }}
+        </label>
+
+        <textarea
+            class="form-control form-control--textarea{% if field.errors %} form-control--invalid{% endif %}"
+            id="{{ field.id }}"
+            name="{{ field.name }}"
+            rows="{{ rows }}"
+            {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+            {% if field.errors %}
+                aria-invalid="true"
+                aria-describedby="{{ field.id }}-error"
+            {% endif %}
+        >{{ field.data or '' }}</textarea>
+
+        {% if hint %}
+            <p class="form-hint">{{ hint }}</p>
+        {% endif %}
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}
+
+{#
+    Elección de la contraseña temporal: generarla o escribirla. Compartida
+    por el alta de usuarios y el restablecimiento. Con JavaScript, el campo
+    manual solo se ve al elegir esa opción (common/temporary-password.js).
+#}
+{% macro temporary_password_fields(form, password_modes) %}
+    <fieldset
+        class="form-fieldset"
+        id="password-mode-group"
+    >
+        <legend>Contraseña temporal</legend>
+
+        {% for value, label in password_modes %}
+            <label class="radio-option">
+                <input
+                    type="radio"
+                    name="{{ form.password_mode.name }}"
+                    value="{{ value }}"
+                    data-password-mode
+                    {% if value == (form.password_mode.data or 'generate') %}checked{% endif %}
+                >
+                {{ label }}
+            </label>
+        {% endfor %}
+
+        {{ field_errors(form.password_mode) }}
+    </fieldset>
+
+    <div
+        class="form-field"
+        id="manual-password-field"
+    >
+        <label
+            class="form-label"
+            for="{{ form.temporary_password.id }}"
+        >
+            {{ form.temporary_password.label.text }}
+        </label>
+
+        <div class="password-field">
+            <input
+                class="form-control{% if form.temporary_password.errors %} form-control--invalid{% endif %}"
+                id="{{ form.temporary_password.id }}"
+                name="{{ form.temporary_password.name }}"
+                type="password"
+                autocomplete="new-password"
+                {% if form.temporary_password.errors %}
+                    aria-invalid="true"
+                    aria-describedby="{{ form.temporary_password.id }}-error"
+                {% endif %}
+            >
+
+            <button
+                class="password-toggle"
+                type="button"
+                data-password-toggle
+                aria-controls="{{ form.temporary_password.id }}"
+                aria-pressed="false"
+                aria-label="Mostrar contraseña"
+            >
+                Mostrar
+            </button>
+        </div>
+
+        <p class="form-hint">
+            Mínimo {{ config['PASSWORD_MIN_LENGTH'] }} caracteres.
+            Solo se usa si eliges escribirla.
+        </p>
+
+        {{ field_errors(form.temporary_password) }}
+    </div>
+{% endmacro %}
+
+{#
+    Aviso con el resultado de una contraseña temporal. Si fue generada, se
+    muestra una sola vez; si la escribió el Administrador, no se repite.
+#}
+{% macro temporary_password_notice(generated_password) %}
+    {% if generated_password %}
+        <div class="secret-box">
+            <p class="secret-box__label">Contraseña temporal</p>
+
+            <code
+                class="secret-box__value"
+                id="temporary-password"
+            >{{ generated_password }}</code>
+
+            <p class="secret-box__note">
+                Cópiala y entrégasela al usuario ahora: no podrá
+                consultarse después. Deberá cambiarla en su primer
+                inicio de sesión.
+            </p>
+        </div>
+    {% else %}
+        <p class="muted">
+            Se usó la contraseña temporal que escribiste. El usuario
+            deberá cambiarla en su primer inicio de sesión.
+        </p>
+    {% endif %}
+{% endmacro %}

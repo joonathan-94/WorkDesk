@@ -319,6 +319,17 @@
     background: #f8fafc;
 }
 
+.table-link {
+    color: var(--wd-primary);
+
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.table-link:hover {
+    text-decoration: underline;
+}
+
 .badge {
     display: inline-block;
 
@@ -492,6 +503,62 @@
 
     font-size: 13px;
     line-height: 1.4;
+}
+
+/* --- Detalle y acciones de usuario ---------------------------------- */
+
+.btn--danger {
+    border-color: var(--wd-danger);
+
+    background: var(--wd-danger);
+    color: #fff;
+}
+
+.btn--danger:hover {
+    border-color: #dc2626;
+
+    background: #dc2626;
+}
+
+.section-title {
+    margin: 0 0 16px;
+
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.section-spaced {
+    margin-top: 24px;
+}
+
+.action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.action-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.form-static {
+    margin: 0;
+
+    font-size: 15px;
+}
+
+.form-control--textarea {
+    min-height: 88px;
+
+    resize: vertical;
 }
 
 @media (max-width: 640px) {

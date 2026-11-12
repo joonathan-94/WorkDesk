@@ -1,0 +1,91 @@
+{% extends "base_admin.html" %}
+{% from "_form_macros.html" import field_errors, textarea_field %}
+
+{% block title %}Cambiar rol{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Cambiar rol</h1>
+
+            <p class="page-description">
+                {{ user.nombre }} {{ user.apellido }}
+                · rol actual: {{ user.rol.nombre }}
+            </p>
+        </div>
+    </header>
+
+    <form
+        class="form-card form-stack"
+        method="post"
+        action="{{ url_for('users.change_user_role', user_id=user.id) }}"
+        novalidate
+    >
+        {{ form.csrf_token }}
+
+        <p class="alert alert--warning">
+            Al cambiar el rol se cierran las sesiones abiertas del usuario:
+            deberá iniciar sesión de nuevo y entrará con los permisos del
+            nuevo rol.
+        </p>
+
+        <div class="form-field">
+            <label
+                class="form-label"
+                for="{{ form.rol.id }}"
+            >
+                Nuevo rol
+                <span
+                    class="required-mark"
+                    aria-hidden="true"
+                >
+                    *
+                </span>
+            </label>
+
+            <select
+                class="form-control{% if form.rol.errors %} form-control--invalid{% endif %}"
+                id="{{ form.rol.id }}"
+                name="{{ form.rol.name }}"
+                required
+                {% if form.rol.errors %}
+                    aria-invalid="true"
+                    aria-describedby="{{ form.rol.id }}-error"
+                {% endif %}
+            >
+                {% for code, name in form.role_choices %}
+                    <option
+                        value="{{ code }}"
+                        {% if code == form.rol.data %}selected{% endif %}
+                    >
+                        {{ name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            {{ field_errors(form.rol) }}
+        </div>
+
+        {{ textarea_field(
+            form.motivo,
+            hint="Opcional. Queda registrado en la auditoría.",
+            maxlength=500,
+        ) }}
+
+        <div class="form-actions">
+            <button
+                class="btn btn--primary"
+                type="submit"
+            >
+                Cambiar rol
+            </button>
+
+            <a
+                class="btn btn--secondary"
+                href="{{ url_for('users.detail', user_id=user.id) }}"
+            >
+                Cancelar
+            </a>
+        </div>
+    </form>
+{% endblock %}

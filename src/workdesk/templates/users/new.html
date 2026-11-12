@@ -1,5 +1,5 @@
 {% extends "base_admin.html" %}
-{% from "_form_macros.html" import field_errors, text_field %}
+{% from "_form_macros.html" import field_errors, temporary_password_fields, text_field %}
 
 {% block title %}Nuevo usuario{% endblock %}
 
@@ -84,71 +84,7 @@
             {{ field_errors(form.rol) }}
         </div>
 
-        <fieldset
-            class="form-fieldset"
-            id="password-mode-group"
-        >
-            <legend>Contraseña temporal</legend>
-
-            {% for value, label in password_modes %}
-                <label class="radio-option">
-                    <input
-                        type="radio"
-                        name="{{ form.password_mode.name }}"
-                        value="{{ value }}"
-                        data-password-mode
-                        {% if value == (form.password_mode.data or 'generate') %}checked{% endif %}
-                    >
-                    {{ label }}
-                </label>
-            {% endfor %}
-
-            {{ field_errors(form.password_mode) }}
-        </fieldset>
-
-        <div
-            class="form-field"
-            id="manual-password-field"
-        >
-            <label
-                class="form-label"
-                for="{{ form.temporary_password.id }}"
-            >
-                {{ form.temporary_password.label.text }}
-            </label>
-
-            <div class="password-field">
-                <input
-                    class="form-control{% if form.temporary_password.errors %} form-control--invalid{% endif %}"
-                    id="{{ form.temporary_password.id }}"
-                    name="{{ form.temporary_password.name }}"
-                    type="password"
-                    autocomplete="new-password"
-                    {% if form.temporary_password.errors %}
-                        aria-invalid="true"
-                        aria-describedby="{{ form.temporary_password.id }}-error"
-                    {% endif %}
-                >
-
-                <button
-                    class="password-toggle"
-                    type="button"
-                    data-password-toggle
-                    aria-controls="{{ form.temporary_password.id }}"
-                    aria-pressed="false"
-                    aria-label="Mostrar contraseña"
-                >
-                    Mostrar
-                </button>
-            </div>
-
-            <p class="form-hint">
-                Mínimo {{ config['PASSWORD_MIN_LENGTH'] }} caracteres.
-                Solo se usa si eliges escribirla.
-            </p>
-
-            {{ field_errors(form.temporary_password) }}
-        </div>
+        {{ temporary_password_fields(form, password_modes) }}
 
         <div class="form-actions">
             <button
@@ -174,6 +110,6 @@
     ></script>
 
     <script
-        src="{{ url_for('static', filename='js/users/new-user.js') }}"
+        src="{{ url_for('static', filename='js/common/temporary-password.js') }}"
     ></script>
 {% endblock %}

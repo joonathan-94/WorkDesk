@@ -1287,6 +1287,24 @@ Cuando el Administrador crea una cuenta, el usuario queda activo y con el cambio
 
 ---
 
+## RN-149 — Administración de usuarios existentes
+
+Solo el Administrador administra usuarios. Cada acción se comprueba en backend y deja un registro en la auditoría administrativa.
+
+* **Edición de datos:** nombre, apellido, correo, teléfono, cargo y departamento o área. El username no se puede cambiar. Si no hay cambios, no se registra nada. La auditoría guarda el valor anterior y el nuevo de cada campo modificado.
+* **Cambio de rol:** requiere una pantalla de confirmación explícita y admite un motivo opcional. Cierra las sesiones abiertas del usuario, que entra de nuevo con los permisos del nuevo rol. Cuando existan los grupos, un Técnico que cambie de rol dejará de ser miembro de sus grupos conservando el historial (`docs/09`, sección 9.2).
+* **Desactivación:** requiere confirmación explícita y admite un motivo opcional. El usuario no puede iniciar sesión y se cierran sus sesiones abiertas. Su historial se conserva, y se registra quién desactivó la cuenta y cuándo. Nunca se elimina físicamente a un usuario.
+* **Reactivación:** limpia los datos de la desactivación, los intentos fallidos y el bloqueo temporal. Conserva la contraseña anterior y las sesiones cerradas no reviven.
+* **Restablecimiento de contraseña:** sigue la regla RN-147. No se aplica a la propia cuenta del Administrador, que usa el cambio de contraseña propio.
+
+Salvaguardas:
+
+* Un Administrador **no puede** cambiar su propio rol, desactivar su propia cuenta ni restablecer su propia contraseña desde la administración.
+* **Siempre debe quedar al menos un Administrador activo.** No se permite desactivar a un Administrador ni cambiarle el rol si no quedaría otro activo; los Administradores inactivos no cuentan. La comprobación bloquea las filas de los Administradores activos para que dos Administradores no puedan dejar el sistema sin ninguno actuando a la vez.
+* El correo no puede coincidir con el de otro usuario (sin distinguir mayúsculas).
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia
