@@ -1305,6 +1305,35 @@ Salvaguardas:
 
 ---
 
+## RN-150 — Mi cuenta
+
+Todo usuario autenticado, sea cual sea su rol, dispone de una pantalla "Mi cuenta" donde:
+
+* Consulta sus datos: nombre, usuario, correo y rol.
+* Edita su **información de contacto**: teléfono, cargo y departamento o área.
+* Accede al cambio de su contraseña (RN-147).
+
+El nombre, el apellido, el correo, el username y el rol **solo los gestiona el Administrador**: aunque el envío del formulario incluya esos campos, se ignoran.
+
+El usuario solo puede editar su propia cuenta; la pantalla no recibe el identificador de ningún usuario. Los cambios se validan igual que cuando los realiza el Administrador (RN-148) y quedan en la auditoría administrativa como una modificación de usuario realizada por el propio usuario, con los valores anteriores y nuevos de los campos que cambiaron. Si no hay cambios, no se registra nada.
+
+"Mi cuenta" no muestra acciones administrativas ni permisos del rol. Mientras el usuario tenga un cambio de contraseña obligatorio pendiente (RN-147), no puede acceder a ella.
+
+---
+
+## RN-151 — Datos de demostración
+
+Los datos de demostración son opcionales y nunca forman parte de la instalación normal. Se cargan con un comando explícito (`seed-demo`) y:
+
+* Son personas ficticias, con correos en el dominio reservado `workdesk.local`.
+* No incluyen ningún Administrador: el Administrador real lo crea la instalación (`create-admin`).
+* Comparten una contraseña que se indica al ejecutar el comando; no se guarda en el repositorio, ni se muestra, ni se registra.
+* Se cargan de forma idempotente: quien ya existe se omite sin modificarse.
+* No se pueden cargar cuando el entorno es de producción.
+* Cada creación se audita como una acción del sistema.
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

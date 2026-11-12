@@ -59,16 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.1.0 — Fundación técnica
+v0.2.0 — Usuarios, autenticación completa y RBAC
 ```
 
-La versión `v0.1.0` está:
+La versión `v0.2.0` está:
 
 - implementada;
-- revisada técnicamente;
-- testeada;
+- testeada (385 tests);
 - documentada;
-- mergeada en `main`.
+- mergeada en `main` (PR #4 a #13).
+
+Cuando se cree el tag `v0.2.0` sobre `main` queda cerrada. La versión anterior, `v0.1.0 — Fundación técnica`, ya está etiquetada.
 
 ## Rama estable
 
@@ -81,14 +82,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/admin-ui-foundation
+feature/account-and-demo-data
 ```
 
-Paso 5.1 de `v0.2.0` (primero de la entrega "Interfaz administrativa"): Bootstrap local, app shell con sidebar y topbar, navegación por rol y hub de administración. No incluye migraciones.
+Paso 5.2 de `v0.2.0` (último): pantalla "Mi cuenta", comando de datos demo y cierre documental de la versión. No incluye migraciones.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10) y la administración de usuarios existentes (PR #11). El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11) y la base de la interfaz administrativa (PR #12).
 
-Paso siguiente: 5.2 (`feature/account-and-demo-data`): "Mi cuenta", comando de datos demo, cierre de documentación y tag `v0.2.0`.
+Paso siguiente: crear el tag `v0.2.0` sobre `main` y planificar `v0.3.0`.
 
 ## Identidad visual (integrada en `main`)
 
@@ -111,8 +112,12 @@ La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. I
 ## Próximo hito
 
 ```text
-v0.2.0 — Usuarios, autenticación completa y RBAC
+v0.3.0 — Núcleo de tickets
 ```
+
+Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de tickets, con sus catálogos (estados, prioridades, categorías y ubicaciones). Conviene dividirla en entregas pequeñas, como se hizo con `v0.2.0`; el plan está en `docs/12_roadmap.md` (sección "Próximo paso inmediato"). Reutiliza la infraestructura de `v0.2.0` (autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio y listado).
+
+## Hito completado: v0.2.0
 
 Durante `v0.1.0` se adelantó intencionalmente parte de la base técnica de autenticación para consolidar desde el comienzo:
 
@@ -123,21 +128,21 @@ Durante `v0.1.0` se adelantó intencionalmente parte de la base técnica de aute
 - invalidación de sesiones;
 - testing automatizado.
 
-La fase `v0.2.0` debe completar especialmente:
+La fase `v0.2.0` completó:
 
 - gestión de usuarios (listado, creación, detalle, edición, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña) — implementada;
 - autorización basada en roles;
 - políticas de acceso;
 - navegación según rol;
 - restricciones administrativas;
-- cuenta propia básica;
-- datos demo relacionados con usuarios;
+- cuenta propia ("Mi cuenta") — implementada;
+- datos demo (comando `seed-demo`) — implementados;
 - pruebas específicas de autorización;
 - límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado;
 - contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`) — implementados la política, el generador, la columna, las operaciones de dominio, la pantalla de cambio propio y la guardia de cambio obligatorio; el Administrador crea usuarios con contraseña temporal y restablece contraseñas desde la interfaz;
 - tabla `auditoria_administrativa` mínima para las acciones sobre usuarios — implementada (modelo, migración y servicio), y todas las acciones sobre usuarios ya registran su evento.
 
-`docs/12_roadmap.md` divide `v0.2.0` en cinco entregas incrementales, cada una con su rama y Pull Request.
+`docs/12_roadmap.md` documenta las cinco entregas incrementales de `v0.2.0`, cada una con su rama y Pull Request.
 
 ---
 
@@ -287,6 +292,7 @@ WorkDesk/
 ├── tests/
 │   ├── conftest.py
 │   ├── test_account_password.py
+│   ├── test_account_profile.py
 │   ├── test_app.py
 │   ├── test_audit.py
 │   ├── test_auth.py
@@ -296,6 +302,7 @@ WorkDesk/
 │   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
+│   ├── test_seed_demo.py
 │   ├── test_session_limits.py
 │   ├── test_system.py
 │   ├── test_users_manage_routes.py
@@ -670,7 +677,18 @@ Blueprint `account` (`src/workdesk/account/`), ruta `GET, POST /account/password
 - **Contraseña actual incorrecta:** cuenta como intento fallido y respeta el bloqueo temporal. Al alcanzar el máximo de intentos se cierra la sesión; con la cuenta bloqueada no se acepta ningún cambio, ni siquiera con la contraseña correcta.
 - **Cambio correcto:** sube `token_version` (invalida las demás sesiones), reinicia los intentos fallidos y vuelve a iniciar la sesión actual para no desconectar al usuario. El inicio de la sesión no se reinicia: cambiar la contraseña no amplía la duración máxima (8 horas por defecto).
 - **Cambio obligatorio:** mientras `debe_cambiar_password` sea verdadero, un `before_app_request` (`require_password_change`, en `auth/routes.py`) redirige cualquier ruta a `/account/password`. Solo se permiten esa pantalla, `POST /logout` y las rutas técnicas (`/health`, `static`). Se aplica en backend, no solo ocultando enlaces, y se ejecuta después de los límites de sesión.
-- La pantalla muestra el modo obligatorio (aviso de contraseña temporal, sin enlace de retorno y con opción de cerrar sesión) o el modo normal (con enlace al dashboard).
+- La pantalla tiene dos modos. En modo obligatorio (`account/password_required.html`) es una pantalla aislada, con el estilo del login, sin navegación y con la opción de cerrar sesión. En modo normal (`account/password.html`) usa el layout principal con Bootstrap y el botón "Volver a Mi cuenta".
+
+## Mi cuenta
+
+`GET, POST /account` (`src/workdesk/account/`), disponible para todos los roles (RN-150). Usa el layout principal y se enlaza desde la sidebar y desde el menú del avatar.
+
+- **Mis datos:** nombre, usuario, correo y rol, de solo lectura (los gestiona el Administrador).
+- **Información de contacto:** el usuario edita su teléfono, cargo y departamento o área. `account/service.py` (`update_own_contact`) delega en `users.service.update_profile`, así que reutiliza su validación y su auditoría (`USUARIO_MODIFICADO` con el propio usuario como actor y solo los campos cambiados). Aunque el formulario reciba nombre, apellido, correo, username o rol, se ignoran.
+- La pantalla no recibe el identificador de ningún usuario: solo edita la cuenta de la sesión actual.
+- **Seguridad:** enlace al cambio de contraseña.
+- Con el cambio de contraseña obligatorio pendiente, `/account` se redirige a `/account/password` (guardia de `auth/routes.py`).
+- `ContactForm` (`users/forms.py`) comparte los campos de contacto con el formulario de edición del Administrador.
 - Los errores se muestran junto a cada campo y nunca se devuelven las contraseñas enviadas.
 - El botón "Mostrar/Ocultar" es una mejora progresiva (`static/js/common/password-toggle.js`, compartido con la creación de usuarios): el formulario funciona sin JavaScript.
 
@@ -759,6 +777,7 @@ GET        /
 GET, POST  /login
 POST       /logout
 GET        /dashboard
+GET, POST  /account
 GET, POST  /account/password
 GET        /admin
 GET        /users
@@ -773,11 +792,11 @@ GET        /health
 GET        /static/<path:filename>
 ```
 
-`/dashboard` y `/account/password` requieren autenticación.
+`/dashboard`, `/account` y `/account/password` requieren autenticación.
 
-`/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
+`/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin` y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es todavía una página mínima con un enlace a Usuarios; el hub de administración definitivo llegará con las siguientes entregas de `v0.2.0`.
+`/admin` y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación").
 
 El dashboard actual es temporal.
 
@@ -801,8 +820,8 @@ No representa todavía los dashboards finales del MVP.
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Administración (Administrador) y Mi cuenta (todos, que por ahora enlaza con el cambio de contraseña).
-- Administración se marca activa en el hub y en todas las pantallas de usuarios.
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Administración (Administrador) y Mi cuenta (todos).
+- Administración se marca activa en el hub y en todas las pantallas de usuarios; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
 
@@ -977,6 +996,7 @@ Comandos propios actuales:
 ```bash
 python -m flask --app src.workdesk seed-roles
 python -m flask --app src.workdesk create-admin
+python -m flask --app src.workdesk seed-demo
 ```
 
 `create-admin`:
@@ -984,6 +1004,16 @@ python -m flask --app src.workdesk create-admin
 - crea el Administrador inicial;
 - valida datos básicos;
 - exige la longitud mínima de contraseña configurada (`PASSWORD_MIN_LENGTH`, 12 por defecto).
+
+`seed-demo` (`src/workdesk/seeds/demo.py`, RN-151):
+
+- carga un equipo de soporte ficticio de 12 personas: 2 supervisores, 4 técnicos y 6 solicitantes, con correos `@workdesk.local`;
+- **no crea ningún Administrador** (el real se crea con `create-admin`);
+- pide la contraseña común al ejecutarse (oculta, con confirmación) o la toma de la variable `WORKDESK_DEMO_PASSWORD`; la valida con la política de contraseñas y nunca la muestra ni la guarda;
+- carga antes los roles estructurales (`seed-roles`);
+- es idempotente: omite a quien ya tenga ese username o ese correo, sin modificarlo;
+- se niega a ejecutarse con `APP_ENV=production`;
+- los usuarios quedan activos y sin cambio de contraseña obligatorio, y cada creación se audita como acción del sistema.
 
 ---
 
@@ -1019,6 +1049,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras "Mi cuenta" y los datos demo (paso 5.2, cierre de `v0.2.0`):
+
+```text
+385 tests passing
+```
+
+Los 40 tests nuevos cubren:
+
+- `tests/test_account_profile.py` (24): acceso (anónimo, todos los roles, bloqueo mientras haya un cambio de contraseña pendiente), contenido (datos propios, campos precargados, enlace al cambio de contraseña, sin acciones administrativas), edición (actualiza el contacto, auditoría por el propio usuario con solo los campos cambiados, sin cambios, vaciado de opcionales, los campos que gestiona el Administrador no se pueden cambiar, solo se edita la propia cuenta, validaciones y CSRF), navegación (Mi cuenta activa, menú del avatar) y las dos modalidades de la pantalla de contraseña (con layout en modo normal y aislada en modo obligatorio);
+- `tests/test_seed_demo.py` (16): coherencia de los datos con las reglas de username, correo y longitudes, solo roles operativos, creación del equipo y carga de roles, la contraseña nunca se muestra, usuarios activos que pueden entrar sin cambio obligatorio, ningún Administrador, auditoría como acción del sistema, idempotencia, no modifica a quien ya existe, correo ocupado, ejecución sin interacción por variable de entorno, rechazo en producción, contraseña débil o con confirmación distinta, y respeto de un Administrador existente.
+
+Dos tests existentes se ajustaron por el cambio de diseño: en modo normal, la pantalla de cambio de contraseña ya no ofrece "Volver al dashboard" sino "Volver a Mi cuenta".
 
 Estado tras la base de la interfaz administrativa (paso 5.1):
 
@@ -1441,15 +1484,11 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 ---
 
-# 30. Próxima fase — v0.2.0
+# 30. Fase v0.2.0 (completada) y siguiente fase
 
-Objetivo:
+`v0.2.0 — Usuarios, autenticación completa y RBAC` está completa. Este apartado resume lo que dejó implementado; la siguiente fase es `v0.3.0 — Núcleo de tickets` (ver "Próximo hito").
 
-```text
-Usuarios, autenticación completa y RBAC
-```
-
-## Ya implementado
+## Implementado hasta `v0.2.0`
 
 - modelo Role;
 - modelo User;
@@ -1473,20 +1512,21 @@ Usuarios, autenticación completa y RBAC
 - cambio de contraseña propio (`/account/password`) y cambio obligatorio de la contraseña temporal aplicado en backend;
 - listado de usuarios (búsqueda, filtros y paginación) y creación de usuarios con contraseña temporal, solo para el Administrador;
 - administración de usuarios existentes: detalle, edición de datos, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con salvaguardas (nadie actúa sobre sí mismo, siempre queda un Administrador activo) y auditoría;
-- Bootstrap y Bootstrap Icons locales, app shell (sidebar, topbar, avatar), navegación por rol filtrada en backend y hub de administración.
+- Bootstrap y Bootstrap Icons locales, app shell (sidebar, topbar, avatar), navegación por rol filtrada en backend y hub de administración;
+- "Mi cuenta" (`/account`): datos propios, edición de la información de contacto y acceso al cambio de contraseña;
+- comando `seed-demo`: equipo de soporte ficticio, sin Administrador.
 
-## Pendiente principal
+## Pendiente para la siguiente fase
 
-- políticas RBAC adicionales según se incorporen los módulos;
-- navegación adaptada por rol;
-- hub de administración y rutas administrativas definitivas;
-- cuenta propia básica ("Mi cuenta", con cambio de contraseña);
-- "Mi cuenta" completa (hoy el enlace lleva al cambio de contraseña);
-- datos demo;
-- pruebas específicas de autorización;
-- completar UI correspondiente a esta fase.
+Nada de `v0.2.0`. Lo que sigue pertenece a `v0.3.0` y a las fases posteriores:
 
-Orden propuesto de entregas en `docs/12_roadmap.md`.
+- catálogos de tickets (estados, prioridades, categorías y ubicaciones);
+- modelo Ticket y su identificador público;
+- creación, listado, búsqueda, filtros y detalle de tickets;
+- las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
+- las políticas de autorización adicionales se incorporan con cada módulo.
+
+El orden propuesto de entregas está en `docs/12_roadmap.md`.
 
 Documentos especialmente relevantes:
 

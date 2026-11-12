@@ -1,3 +1,5 @@
+import os
+
 import click
 from flask import Flask, current_app
 
@@ -8,7 +10,11 @@ from .security import (
     hash_password,
     validate_password_policy,
 )
-from .seeds import seed_roles
+from .seeds import seed_demo_users, seed_roles
+
+# Variable de entorno opcional con la contraseña de los usuarios demo, para
+# ejecutar `seed-demo` sin interacción. Nunca se guarda ni se muestra.
+DEMO_PASSWORD_ENV = "WORKDESK_DEMO_PASSWORD"
 
 
 def register_commands(app: Flask) -> None:
@@ -111,4 +117,44 @@ def register_commands(app: Flask) -> None:
 
         click.echo(
             f"Administrador '{username}' creado correctamente."
+        )
+
+    @app.cli.command("seed-demo")
+    def seed_demo_command() -> None:
+        """Carga usuarios de demostración (equipo de soporte ficticio).
+
+        La contraseña de los usuarios demo se pide al ejecutar el comando
+        (oculta) o se toma de la variable de entorno WORKDESK_DEMO_PASSWORD.
+        No se ejecuta con APP_ENV=production. No crea ningún Administrador.
+        """
+
+        if current_app.config["APP_ENV"] == "production":
+            raise click.ClickException(
+                "Los datos de demostración no se cargan en producción."
+            )
+
+        password = os.getenv(DEMO_PASSWORD_ENV) or click.prompt(
+            "Contraseña para los usuarios demo",
+            hide_input=True,
+            confirmation_prompt=True,
+        )
+
+        try:
+            validate_password_policy(
+                password,
+                min_length=current_app.config["PASSWORD_MIN_LENGTH"],
+            )
+        except PasswordPolicyError as error:
+            raise click.ClickException(str(error)) from error
+
+        seed_roles()
+        created, skipped = seed_demo_users(password)
+
+        click.echo(
+            f"Usuarios demo creados: {created}. "
+            f"Omitidos (ya existían): {skipped}."
+        )
+        click.echo(
+            "No se creó ningún Administrador: usa create-admin para crear "
+            "el tuyo."
         )

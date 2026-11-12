@@ -3,7 +3,7 @@
 # WorkDesk — Roadmap de implementación
 
 **Versión:** 1.2  
-**Estado:** ACTUALIZADO — `v0.1.0` integrado en `main` (PR #1); identidad visual integrada (PR #3); `v0.2.0` ampliado y dividido en entregas  
+**Estado:** ACTUALIZADO — `v0.1.0` y `v0.2.0` implementados e integrados en `main`; siguiente hito `v0.3.0` (núcleo de tickets)  
 **Proyecto:** WorkDesk  
 **Horizonte objetivo del MVP:** máximo 3 meses  
 **Modalidad inicial:** desarrollo local, sin despliegue externo  
@@ -47,7 +47,7 @@ La validación actual incluye:
 ✓ revisión técnica final completada
 ```
 
-Antes de comenzar `v0.2.0`, la rama `docs/sync-project-state` sincroniza la documentación con las decisiones consolidadas (prioridad y SLA, grupos, contraseñas, sesiones, auditoría mínima, rutas y Bootstrap). Después de integrarla se puede crear el tag `v0.1.0`.
+`v0.1.0` está etiquetado. Antes de comenzar `v0.2.0` se sincronizó la documentación con las decisiones consolidadas (prioridad y SLA, grupos, contraseñas, sesiones, auditoría mínima, rutas y Bootstrap, PR #4). `v0.2.0` se completó después, mediante entregas incrementales (PR #5 a #13); ver la fase 2.
 
 ---
 
@@ -753,7 +753,9 @@ Este adelanto **no reemplaza `v0.2.0`**: la siguiente fase continúa siendo resp
 - `token_version` para invalidación de sesiones;
 - tests básicos de autenticación y seguridad.
 
-### Implementación pendiente para `v0.2.0`
+**Estado de ejecución:** implementada, validada e integrada en `main` (PR #4 a #13). 385 tests automatizados.
+
+### Implementación de `v0.2.0` (completada)
 
 - gestión administrativa de usuarios;
 - autorización RBAC completa;
@@ -771,13 +773,21 @@ Este adelanto **no reemplaza `v0.2.0`**: la siguiente fase continúa siendo resp
 
 ### Entregas de `v0.2.0`
 
-Dado el tamaño de esta fase, se implementa en entregas incrementales, cada una en su propia rama, con tests y Pull Request:
+Dado el tamaño de esta fase, se implementó en entregas incrementales, cada una en su propia rama, con tests y Pull Request:
 
-1. **Base RBAC:** políticas centralizadas, decorador de roles, manejador 403 y una ruta administrativa mínima protegida, con tests de autorización.
-2. **Límites de sesión:** inactividad y duración máxima por variables de entorno.
-3. **Auditoría mínima:** migración y modelo de `auditoria_administrativa` con su servicio de registro.
-4. **Usuarios y contraseñas:** gestión de usuarios por el Administrador, contraseñas temporales, restablecimiento y cambio obligatorio, con su migración (`debe_cambiar_password`).
-5. **Interfaz administrativa:** Bootstrap local, sidebar y navegación por rol, "Mi cuenta" y datos demo.
+1. **Base RBAC** ✓ (PR #5): políticas centralizadas, decorador de roles, manejador 403 y una ruta administrativa mínima protegida, con tests de autorización.
+2. **Límites de sesión** ✓ (PR #6): inactividad y duración máxima por variables de entorno.
+3. **Auditoría mínima** ✓ (PR #7): migración y modelo de `auditoria_administrativa` con su servicio de registro.
+4. **Usuarios y contraseñas**, en cuatro pasos:
+    1. ✓ (PR #8) política de contraseñas, generador de contraseñas temporales, columna `debe_cambiar_password` y operaciones de contraseña;
+    2. ✓ (PR #9) cambio de contraseña propio y cambio obligatorio;
+    3. ✓ (PR #10) listado y creación de usuarios;
+    4. ✓ (PR #11) edición, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con sus salvaguardas.
+5. **Interfaz administrativa**, en dos pasos:
+    1. ✓ (PR #12) Bootstrap local, app shell con sidebar y topbar, navegación por rol y hub de administración;
+    2. ✓ (PR #13) "Mi cuenta", comando de datos demo y cierre de la fase.
+
+La documentación de la fase se sincronizó previamente en el PR #4.
 
 Las rutas internas se escriben en inglés (`/users`, `/account`, etc.) y la interfaz permanece en español.
 
@@ -802,6 +812,8 @@ Administrador
 ✓ Solicitante no puede abrir rutas administrativas
 ✓ tests mínimos de autenticación y autorización
 ```
+
+Todos los criterios se cumplen. Además de lo previsto, la fase cierra con salvaguardas de administración (nadie actúa sobre sí mismo y siempre queda un Administrador activo), auditoría de las acciones sobre usuarios y verificación automática de que los activos de frontend se sirven localmente.
 
 ---
 
@@ -1506,30 +1518,38 @@ La numeración exacta se definirá cuando exista una necesidad real.
 
 # 33. Próximo paso inmediato
 
-La documentación inicial, la preparación del repositorio, la implementación de `v0.1.0 — Fundación técnica` y la identidad visual oficial ya fueron realizadas e integradas en `main`.
+La documentación inicial, la preparación del repositorio, `v0.1.0 — Fundación técnica`, la identidad visual oficial y `v0.2.0 — Usuarios, autenticación completa y RBAC` ya fueron realizadas e integradas en `main`.
 
 El estado inmediato del proyecto es:
 
 ```text
 main
-→ v0.1.0 integrado (PR #1)
-→ documentación de contexto integrada (PR #2)
-→ identidad visual integrada (PR #3)
-
-docs/sync-project-state
-→ sincronización documental previa a v0.2.0
+→ v0.1.0 integrado (PR #1) y etiquetado
+→ documentación de contexto (PR #2) e identidad visual (PR #3)
+→ v0.2.0 integrado (PR #4 a #13)
 ```
 
 El siguiente paso del proyecto será:
 
 ```text
-1. revisar y fusionar docs/sync-project-state;
-2. crear el tag v0.1.0 sobre main;
-3. ejecutar Ruff y pytest como línea base;
-4. comenzar la primera entrega de v0.2.0: base RBAC.
+1. crear el tag v0.2.0 sobre main;
+2. planificar v0.3.0 — Núcleo de tickets, dividiéndolo en entregas
+   pequeñas como se hizo con v0.2.0;
+3. empezar por los catálogos que los tickets necesitan.
 ```
 
-La siguiente fase deberá reutilizar la base de autenticación ya implementada y concentrarse en completar gestión de usuarios, autorización y comportamiento por rol, evitando rehacer componentes que ya fueron validados en `v0.1.0`.
+`v0.3.0` es la fase central del MVP. Conviene dividirla antes de empezar, con un orden como el siguiente (a confirmar al planificarla):
+
+```text
+1. catálogos: estados, prioridades, categorías y ubicaciones
+   (modelos, migraciones y datos iniciales);
+2. modelo Ticket y su identificador público;
+3. creación de tickets;
+4. listado con búsqueda, filtros, orden y paginación;
+5. detalle y edición autorizada.
+```
+
+La siguiente fase deberá reutilizar la infraestructura ya validada en `v0.2.0`: autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio, listado y confirmación, evitando rehacer componentes. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) están preparados para incorporar las nuevas opciones cuando existan sus pantallas.
 
 ---
 

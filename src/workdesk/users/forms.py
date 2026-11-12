@@ -34,7 +34,42 @@ def _normalize(value):
     return value.strip().lower() if isinstance(value, str) else value
 
 
-class ProfileForm(FlaskForm):
+class ContactForm(FlaskForm):
+    """Datos de contacto y de organización de un usuario.
+
+    Son los datos que el propio usuario puede editar en "Mi cuenta" y que
+    el Administrador también edita desde la administración de usuarios.
+    """
+
+    telefono = StringField(
+        "Teléfono",
+        filters=[_strip],
+        validators=[
+            Optional(),
+            Length(max=30, message="Máximo 30 caracteres."),
+        ],
+    )
+
+    cargo = StringField(
+        "Cargo",
+        filters=[_strip],
+        validators=[
+            Optional(),
+            Length(max=100, message="Máximo 100 caracteres."),
+        ],
+    )
+
+    departamento_area = StringField(
+        "Departamento o área",
+        filters=[_strip],
+        validators=[
+            Optional(),
+            Length(max=100, message="Máximo 100 caracteres."),
+        ],
+    )
+
+
+class ProfileForm(ContactForm):
     """Datos personales de un usuario (comunes al alta y a la edición).
 
     Valida la forma de los datos. Las reglas de negocio (unicidad, rol
@@ -72,32 +107,6 @@ class ProfileForm(FlaskForm):
         ],
     )
 
-    telefono = StringField(
-        "Teléfono",
-        filters=[_strip],
-        validators=[
-            Optional(),
-            Length(max=30, message="Máximo 30 caracteres."),
-        ],
-    )
-
-    cargo = StringField(
-        "Cargo",
-        filters=[_strip],
-        validators=[
-            Optional(),
-            Length(max=100, message="Máximo 100 caracteres."),
-        ],
-    )
-
-    departamento_area = StringField(
-        "Departamento o área",
-        filters=[_strip],
-        validators=[
-            Optional(),
-            Length(max=100, message="Máximo 100 caracteres."),
-        ],
-    )
 
 
 class TemporaryPasswordForm(FlaskForm):

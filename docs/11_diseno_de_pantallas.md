@@ -2118,6 +2118,15 @@ Preparación futura:
 
 No debe exponer permisos administrativos innecesarios.
 
+**Implementación (`v0.2.0`):**
+
+- `/account` usa el layout principal y está disponible para todos los roles. Se enlaza desde la opción "Mi cuenta" de la sidebar y desde el menú del avatar.
+- Tarjeta **Mis datos**: nombre, usuario, correo y rol, con el aviso de que los gestiona un Administrador.
+- Tarjeta **Información de contacto**: teléfono, cargo y departamento o área, editables. Muestra un aviso de éxito al guardar y otro informativo si no hubo cambios.
+- Tarjeta **Seguridad**: enlace al cambio de contraseña.
+- El cambio de contraseña en modo normal (`/account/password`) usa el layout principal con el botón "Volver a Mi cuenta". En modo obligatorio sigue siendo una pantalla aislada, sin navegación y con la opción de cerrar sesión.
+- La fotografía de perfil queda como preparación futura.
+
 ---
 
 ## UI-014 — Administración

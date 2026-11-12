@@ -283,6 +283,7 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Activar/desactivar usuarios               |        ❌       |    ❌    |      ❌     |       ✅       |
 | Restablecer contraseña de otro usuario    |        ❌       |    ❌    |      ❌     |       ✅       |
 | Cambiar la contraseña propia              |        ✅       |    ✅    |      ✅     |       ✅       |
+| Editar datos de contacto propios (teléfono, cargo, área) | ✅ | ✅ | ✅ | ✅ |
 | Crear, desactivar y configurar grupos     |        ❌       |    ❌    |      ❌     |       ✅       |
 | Designar supervisores responsables de grupo |      ❌       |    ❌    |      ❌     |       ✅       |
 | Gestionar membresías de grupos propios    |        ❌       |    ❌    |  ✅ (1)    |       ✅       |
