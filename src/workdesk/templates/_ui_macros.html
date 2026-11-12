@@ -1,0 +1,38 @@
+{#
+    Macros de interfaz compartidas por las pantallas con el layout principal.
+#}
+
+{# Encabezado de página. Si se usa con {% call %}, el contenido del bloque
+   se muestra a la derecha (acciones principales). #}
+{% macro page_header(title, description=None) %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">{{ title }}</h1>
+
+            {% if description %}
+                <p class="page-description">{{ description }}</p>
+            {% endif %}
+        </div>
+
+        {% if caller %}
+            <div class="d-flex flex-wrap gap-2">
+                {{ caller() }}
+            </div>
+        {% endif %}
+    </header>
+{% endmacro %}
+
+{# Insignias de estado de una cuenta de usuario. #}
+{% macro status_badges(user) %}
+    {% if user.activo %}
+        <span class="badge badge-soft badge-soft-success">Activo</span>
+    {% else %}
+        <span class="badge badge-soft badge-soft-neutral">Inactivo</span>
+    {% endif %}
+
+    {% if user.debe_cambiar_password %}
+        <span class="badge badge-soft badge-soft-warning">
+            Cambio de contraseña pendiente
+        </span>
+    {% endif %}
+{% endmacro %}

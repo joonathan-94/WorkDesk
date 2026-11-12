@@ -2162,6 +2162,8 @@ Cada card:
 - metadata opcional;
 - navegación completa desde la card.
 
+**Implementación inicial (`v0.2.0`):** el hub muestra las cuatro secciones con todas sus tarjetas (definidas en `admin/hub.py`). Solo "Usuarios" está implementada y enlaza con su pantalla; las demás se muestran atenuadas con la etiqueta "Próximamente" y sin enlace, para reflejar el diseño sin presentar como disponible algo que todavía no existe. Al implementar cada sección basta con indicar su ruta en `admin/hub.py`.
+
 La pantalla no debe convertirse en un formulario gigante.
 
 ---
@@ -2835,7 +2837,17 @@ Se recomienda:
 - evitar depender completamente de estilos Bootstrap por defecto;
 - mantener el Design System como fuente visual de verdad.
 
-**Momento de incorporación.** El Login actual utiliza CSS propio y no depende de Bootstrap. Bootstrap (y Bootstrap Icons) se incorporan con las primeras pantallas administrativas de `v0.2.0`, siempre servidos localmente desde `static/vendor/` sin CDN (ver `10_arquitectura.md`, sección 31). El Login existente no se reescribe por este motivo.
+**Estado (`v0.2.0`).** Bootstrap 5.3.8 y Bootstrap Icons 1.13.1 están integrados y se sirven localmente desde `static/vendor/`, sin CDN (ver `10_arquitectura.md`, sección 31). Las pantallas con el layout principal (administración, usuarios y dashboard) usan componentes de Bootstrap con la paleta del Design System, definida en `static/css/theme.css`. El Login, el cambio de contraseña y las páginas de error mantienen su CSS propio y no cargan Bootstrap; se migrarán cuando se rediseñe "Mi cuenta".
+
+**Implementación del app shell (`v0.2.0`):**
+
+- **Sidebar** de 248 px sobre fondo `#111827`, con icono y texto; se puede contraer a 72 px (solo iconos, con la etiqueta como tooltip) mediante el botón "Contraer". La preferencia se recuerda en el navegador (`localStorage`). En pantallas menores a 992 px se reemplaza por un `offcanvas` que se abre desde la topbar.
+- **Topbar** de 64 px con el avatar de iniciales, el nombre y el rol del usuario, y su menú (cambiar contraseña y cerrar sesión). En móvil muestra el botón de menú, la marca y el avatar.
+- **Estado activo:** fondo suave y acento azul a la izquierda, con `aria-current="page"`. La opción Administración se marca activa en el hub y en las pantallas de usuarios.
+- **Navegación por rol:** definida en `navigation.py` y filtrada en backend. Hoy incluye solo las pantallas que existen (Dashboard, Administración y Mi cuenta); el resto de las opciones de la sección 5 se añaden con su módulo. Las opciones no autorizadas no se muestran.
+- **Accesibilidad:** enlace "Saltar al contenido", navegación por teclado, foco visible y etiquetas ARIA.
+- La búsqueda global y las notificaciones de la topbar se incorporan con los módulos de tickets y notificaciones; no se muestran controles que todavía no funcionan.
+- **Avisos:** las categorías de mensaje (éxito, error, advertencia, información) se muestran como alertas de Bootstrap que se pueden cerrar.
 
 ---
 

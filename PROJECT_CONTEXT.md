@@ -81,14 +81,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/users-manage
+feature/admin-ui-foundation
 ```
 
-Paso 4.4 de `v0.2.0` (último de la entrega "Usuarios y contraseñas"): administración de usuarios existentes por el Administrador — detalle, edición de datos, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con sus salvaguardas. No incluye migraciones.
+Paso 5.1 de `v0.2.0` (primero de la entrega "Interfaz administrativa"): Bootstrap local, app shell con sidebar y topbar, navegación por rol y hub de administración. No incluye migraciones.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9) y el listado y creación de usuarios (PR #10). El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10) y la administración de usuarios existentes (PR #11). El tag `v0.1.0` existe.
 
-Paso siguiente: la entrega 5 (interfaz administrativa: Bootstrap local, sidebar y navegación por rol, "Mi cuenta", datos demo y cierre de `v0.2.0`).
+Paso siguiente: 5.2 (`feature/account-and-demo-data`): "Mi cuenta", comando de datos demo, cierre de documentación y tag `v0.2.0`.
 
 ## Identidad visual (integrada en `main`)
 
@@ -165,7 +165,7 @@ La fase `v0.2.0` debe completar especialmente:
 - JavaScript
 - Jinja2
 
-Bootstrap forma parte de la arquitectura prevista para el MVP y **todavía no está integrado**: el Login actual usa CSS propio. Se incorporará, servido localmente (sin CDN), con las primeras pantallas administrativas de `v0.2.0`, respetando el Design System.
+Bootstrap 5.3.8 y Bootstrap Icons 1.13.1 están integrados y se sirven **localmente** (sin CDN) desde `static/vendor/`, sin modificar y con su licencia MIT. `static/vendor/README.md` documenta versiones, origen y huellas SHA-256, y `.gitattributes` evita que Git altere sus saltos de línea. Las pantallas con el layout principal (administración, usuarios y dashboard) usan Bootstrap con la paleta del Design System (`static/css/theme.css`). El Login, el cambio de contraseña y las páginas de error mantienen su CSS propio (`auth.css`, `errors.css`) y no cargan Bootstrap.
 
 Convención de rutas: las rutas internas se escriben en inglés (`/login`, `/dashboard`, `/users`, etc.) y la interfaz de usuario permanece en español.
 
@@ -272,15 +272,18 @@ WorkDesk/
 │       │   │       ├── workdesk-mark-inverse.svg
 │       │   │       ├── workdesk-mark.svg
 │       │   │       └── workdesk-social-preview.png
-│       │   └── js/
+│       │   ├── js/
+│       │   └── vendor/
 │       ├── system/
 │       ├── templates/
+│       │   └── layouts/
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
 │       ├── extensions.py
-│       └── logging_config.py
+│       ├── logging_config.py
+│       └── navigation.py
 ├── tests/
 │   ├── conftest.py
 │   ├── test_account_password.py
@@ -290,6 +293,7 @@ WorkDesk/
 │   ├── test_authorization.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
+│   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_session_limits.py
@@ -549,7 +553,7 @@ Módulo `src/workdesk/users/` (blueprint `users`, prefijo `/users`), accesible s
 - **Contraseña temporal:** se genera automáticamente (por defecto) o la escribe el Administrador. La generada se muestra una sola vez en la propia respuesta del POST (no se redirige): no se guarda en la sesión (cookie firmada pero legible), en la base de datos ni en la auditoría, y la respuesta lleva `Cache-Control: no-store`.
 - **Reglas de datos:** formato del username y del correo en `docs/06` (RN-148). El username no se puede cambiar después de crearlo.
 - **Formularios:** el rol y el modo de contraseña se validan en el formulario sin usar `SelectField` ni `RadioField` de WTForms (sus opciones como tuplas están obsoletas en WTForms 3.3); las opciones se pasan como atributo (`role_choices`).
-- **Presentación:** `templates/base_admin.html` (cabecera con navegación, mensajes y bloques), `templates/_form_macros.html` y `static/css/admin.css`. Son provisionales: la entrega 5 los reemplaza por el layout con Bootstrap y sidebar por rol. Los estilos de formulario comunes viven ahora en `app.css`.
+- **Presentación:** las pantallas usan `templates/layouts/app.html` (ver "Layout y navegación") y los macros `templates/_form_macros.html` y `templates/_ui_macros.html`.
 - Las plantillas consultan la política `can_manage_users` (disponible vía `context_processor`) solo para decidir qué enlaces mostrar; la autorización real se aplica en las rutas.
 
 ### Administración de usuarios existentes (paso 4.4)
@@ -781,6 +785,40 @@ No representa todavía los dashboards finales del MVP.
 
 ---
 
+# 17 bis. Layout y navegación
+
+## App shell
+
+`templates/layouts/app.html` es el layout de las pantallas autenticadas (dashboard, administración y usuarios). Las pantallas de acceso y las páginas de error son independientes y no lo usan.
+
+- **Sidebar** de 248 px sobre `#111827` con icono y texto. Se contrae a 72 px (solo iconos, con tooltip) con el botón "Contraer"; la preferencia se guarda en `localStorage` (`static/js/common/layout.js`, mejora progresiva). Por debajo de 992 px se convierte en `offcanvas`.
+- **Topbar** de 64 px con avatar de iniciales, nombre, rol y menú de usuario (cambiar contraseña, cerrar sesión mediante POST con CSRF). En móvil: botón de menú, marca y avatar.
+- **Accesibilidad:** enlace "Saltar al contenido", `aria-current="page"` en la opción activa, foco visible y etiquetas ARIA.
+- **Avisos:** las categorías de `flash` (`success`, `error`, `warning`, `info`) se traducen a alertas de Bootstrap cerrables.
+- No se muestran controles que todavía no funcionan (búsqueda global, notificaciones).
+
+## Navegación por rol
+
+Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
+
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Administración (Administrador) y Mi cuenta (todos, que por ahora enlaza con el cambio de contraseña).
+- Administración se marca activa en el hub y en todas las pantallas de usuarios.
+- Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
+- Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
+
+## Hub de administración
+
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Solo "Usuarios" está implementada y enlaza con su pantalla; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+
+## Estilos
+
+- `static/css/app.css`: tokens del Design System (`--wd-*`) y base.
+- `static/css/theme.css`: mapea los tokens a las variables de Bootstrap (colores, radio, tipografía, botones, tarjetas, tablas, badges suaves). No se modifican los archivos de `static/vendor/`.
+- `static/css/layout.css`: sidebar, topbar y hub.
+- `static/css/auth.css`: login y cambio de contraseña (con sus estilos de formulario propios).
+
+---
+
 # 18. Login visual
 
 Existe una interfaz visual de login implementada y validada.
@@ -981,6 +1019,21 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la base de la interfaz administrativa (paso 5.1):
+
+```text
+345 tests passing
+```
+
+Los 46 tests nuevos (`tests/test_layout.py`) cubren:
+
+- la navegación por rol (opciones por rol, usuarios inactivos y anónimos, opción activa según el endpoint, que todos los endpoints existan) y las iniciales del avatar;
+- el layout renderizado (sidebar filtrada por rol, sección activa, avatar, nombre y rol en la topbar, enlace para saltar al contenido, menú móvil, correspondencia de las categorías de aviso con las alertas de Bootstrap);
+- el hub de administración (todas las secciones, solo Usuarios enlazada, el resto como "Próximamente", endpoints válidos);
+- los activos locales: Bootstrap y sus iconos se sirven desde el propio servidor, **las huellas SHA-256 de los archivos coinciden con las documentadas**, ninguna plantilla ni hoja de estilo propia carga recursos externos, y el login sigue usando su CSS propio sin Bootstrap.
+
+Un test existente se ajustó por el cambio de diseño: el dashboard ya no muestra un enlace directo a `/users` para el Administrador, sino a `/admin` (el hub), según `docs/11` sección 5.4.
 
 Estado tras la administración de usuarios (paso 4.4):
 
@@ -1419,7 +1472,8 @@ Usuarios, autenticación completa y RBAC
 - base de seguridad de contraseñas: política, generador de contraseñas temporales, columna `debe_cambiar_password` y operaciones de cambio propio y restablecimiento;
 - cambio de contraseña propio (`/account/password`) y cambio obligatorio de la contraseña temporal aplicado en backend;
 - listado de usuarios (búsqueda, filtros y paginación) y creación de usuarios con contraseña temporal, solo para el Administrador;
-- administración de usuarios existentes: detalle, edición de datos, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con salvaguardas (nadie actúa sobre sí mismo, siempre queda un Administrador activo) y auditoría.
+- administración de usuarios existentes: detalle, edición de datos, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con salvaguardas (nadie actúa sobre sí mismo, siempre queda un Administrador activo) y auditoría;
+- Bootstrap y Bootstrap Icons locales, app shell (sidebar, topbar, avatar), navegación por rol filtrada en backend y hub de administración.
 
 ## Pendiente principal
 
@@ -1427,7 +1481,7 @@ Usuarios, autenticación completa y RBAC
 - navegación adaptada por rol;
 - hub de administración y rutas administrativas definitivas;
 - cuenta propia básica ("Mi cuenta", con cambio de contraseña);
-- incorporación local de Bootstrap con las primeras pantallas administrativas;
+- "Mi cuenta" completa (hoy el enlace lleva al cambio de contraseña);
 - datos demo;
 - pruebas específicas de autorización;
 - completar UI correspondiente a esta fase.

@@ -1,87 +1,29 @@
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
 
-    <title>Dashboard | WorkDesk</title>
+{% block title %}Dashboard{% endblock %}
 
-    <link
-        rel="icon"
-        type="image/svg+xml"
-        href="{{ url_for('static', filename='img/brand/favicon.svg') }}"
-    >
+{% block content %}
+    {{ page_header("Dashboard", "Resumen de tu sesión.") }}
 
-    <link
-        rel="icon"
-        type="image/png"
-        sizes="32x32"
-        href="{{ url_for('static', filename='img/brand/favicon-32x32.png') }}"
-    >
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h5">
+                Bienvenido, {{ current_user.nombre }} {{ current_user.apellido }}.
+            </h2>
 
-    <link
-        rel="shortcut icon"
-        href="{{ url_for('static', filename='img/brand/favicon.ico') }}"
-    >
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-secondary fw-normal">Usuario</dt>
+                <dd class="col-sm-9">{{ current_user.username }}</dd>
 
-    <link
-        rel="apple-touch-icon"
-        sizes="180x180"
-        href="{{ url_for('static', filename='img/brand/apple-touch-icon.png') }}"
-    >
-</head>
+                <dt class="col-sm-3 text-secondary fw-normal">Rol</dt>
+                <dd class="col-sm-9">{{ current_user.rol.nombre }}</dd>
+            </dl>
 
-<body>
-    <h1>WorkDesk</h1>
-
-    <h2>Dashboard</h2>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <p role="status">{{ message }}</p>
-        {% endfor %}
-    {% endwith %}
-
-    <p>
-        Bienvenido,
-        {{ current_user.nombre }} {{ current_user.apellido }}.
-    </p>
-
-    <p>
-        Usuario: {{ current_user.username }}
-    </p>
-
-    <p>
-        Rol: {{ current_user.rol.nombre }}
-    </p>
-
-    <p>
-        <a href="{{ url_for('account.change_password') }}">
-            Cambiar contraseña
-        </a>
-    </p>
-
-    {% if can_manage_users(current_user) %}
-        <p>
-            <a href="{{ url_for('admin.index') }}">Administración</a>
-            ·
-            <a href="{{ url_for('users.list_users_page') }}">Usuarios</a>
-        </p>
-    {% endif %}
-
-    <form method="post" action="{{ url_for('auth.logout') }}">
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="{{ csrf_token() }}"
-        >
-
-        <button type="submit">
-            Cerrar sesión
-        </button>
-    </form>
-</body>
-</html>
+            <p class="small text-secondary mt-3 mb-0">
+                Este dashboard es provisional: se reemplazará por los
+                indicadores definidos para el MVP.
+            </p>
+        </div>
+    </div>
+{% endblock %}

@@ -934,6 +934,20 @@ static/
 
 La misma regla se aplicará a cualquier recurso imprescindible para el funcionamiento básico.
 
+## Implementación (`v0.2.0`)
+
+Bootstrap 5.3.8 y Bootstrap Icons 1.13.1 se sirven desde `static/vendor/`, sin modificar, con su licencia (MIT). `static/vendor/README.md` documenta versiones, origen y huellas SHA-256, y `.gitattributes` evita que Git altere sus saltos de línea. Los tests verifican que los archivos existan, que sus huellas coincidan con las documentadas y que ninguna plantilla ni hoja de estilo propia cargue recursos externos.
+
+Estructura de la presentación:
+
+- `static/css/app.css`: tokens del Design System (`--wd-*`) y base común.
+- `static/css/theme.css`: mapea esos tokens a las variables de Bootstrap (colores, radio, tipografía, botones, tarjetas, tablas, badges suaves). Es el único sitio donde se personaliza Bootstrap.
+- `static/css/layout.css`: app shell (sidebar, topbar, hub de administración).
+- `static/css/auth.css`: pantallas de acceso (login y cambio de contraseña), que no usan Bootstrap.
+- `templates/layouts/app.html`: layout principal con sidebar y topbar. Las pantallas de acceso y las páginas de error son independientes y no lo usan.
+
+La navegación se define en `navigation.py` y se filtra por rol en backend antes de llegar a la plantilla (ver `11_diseno_de_pantallas.md`, sección 5.5).
+
 ---
 
 # 32. Comunicación HTTP

@@ -165,8 +165,10 @@ def test_navigation_links_are_shown_only_to_administrators(
     login(other_client, make_user("ADMINISTRADOR"))
     admin_view = other_client.get("/dashboard").get_data(as_text=True)
 
-    assert "/users" not in technician_view
-    assert "/users" in admin_view
+    # La sidebar del Administrador enlaza con el hub de administración
+    # (docs/11, sección 5.4); Usuarios se alcanza desde ahí.
+    assert 'href="/admin"' not in technician_view
+    assert 'href="/admin"' in admin_view
 
 
 def test_admin_area_links_to_users(client, seeded_roles, make_user):

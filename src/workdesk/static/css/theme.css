@@ -1,0 +1,159 @@
+/* Tema de WorkDesk sobre Bootstrap.
+   Mapea la paleta del Design System (docs/11_diseno_de_pantallas.md,
+   sección 9) a las variables de Bootstrap. No modifica los archivos de
+   static/vendor: solo sobrescribe sus variables. Se carga después de
+   Bootstrap y de app.css (que define los tokens --wd-*). */
+
+:root {
+    --bs-primary: #1d4ed8;
+    --bs-primary-rgb: 29, 78, 216;
+    --bs-success: #16a34a;
+    --bs-success-rgb: 22, 163, 74;
+    --bs-warning: #f59e0b;
+    --bs-warning-rgb: 245, 158, 11;
+    --bs-danger: #ef4444;
+    --bs-danger-rgb: 239, 68, 68;
+
+    --bs-body-bg: #f1f5f9;
+    --bs-body-bg-rgb: 241, 245, 249;
+    --bs-body-color: #111827;
+    --bs-body-color-rgb: 17, 24, 39;
+    --bs-secondary-color: #64748b;
+    --bs-secondary-color-rgb: 100, 116, 139;
+    --bs-emphasis-color: #111827;
+    --bs-border-color: #dde3ea;
+
+    --bs-link-color: #1d4ed8;
+    --bs-link-color-rgb: 29, 78, 216;
+    --bs-link-hover-color: #1e40af;
+    --bs-link-hover-color-rgb: 30, 64, 175;
+
+    --bs-body-font-family: var(--wd-font);
+    --bs-body-font-size: 0.9375rem;
+
+    --bs-border-radius: 8px;
+    --bs-border-radius-sm: 6px;
+    --bs-border-radius-lg: 10px;
+
+    --bs-focus-ring-color: rgb(29 78 216 / 25%);
+}
+
+/* --- Botones ------------------------------------------------------- */
+
+.btn {
+    --bs-btn-font-weight: 600;
+    --bs-btn-font-size: 0.875rem;
+}
+
+.btn-primary {
+    --bs-btn-bg: #1d4ed8;
+    --bs-btn-border-color: #1d4ed8;
+    --bs-btn-hover-bg: #1e40af;
+    --bs-btn-hover-border-color: #1e40af;
+    --bs-btn-active-bg: #1e3a8a;
+    --bs-btn-active-border-color: #1e3a8a;
+    --bs-btn-disabled-bg: #1d4ed8;
+    --bs-btn-disabled-border-color: #1d4ed8;
+    --bs-btn-focus-shadow-rgb: 29, 78, 216;
+}
+
+/* El rojo se reserva para las acciones destructivas. */
+.btn-danger {
+    --bs-btn-bg: #ef4444;
+    --bs-btn-border-color: #ef4444;
+    --bs-btn-hover-bg: #dc2626;
+    --bs-btn-hover-border-color: #dc2626;
+    --bs-btn-active-bg: #b91c1c;
+    --bs-btn-active-border-color: #b91c1c;
+    --bs-btn-focus-shadow-rgb: 239, 68, 68;
+}
+
+.btn-outline-secondary {
+    --bs-btn-color: #111827;
+    --bs-btn-border-color: #dde3ea;
+    --bs-btn-bg: #ffffff;
+    --bs-btn-hover-color: #111827;
+    --bs-btn-hover-bg: #f1f5f9;
+    --bs-btn-hover-border-color: #c3ccd8;
+    --bs-btn-active-color: #111827;
+    --bs-btn-active-bg: #e2e8f0;
+    --bs-btn-active-border-color: #c3ccd8;
+    --bs-btn-focus-shadow-rgb: 100, 116, 139;
+}
+
+/* --- Tarjetas y tablas --------------------------------------------- */
+
+.card {
+    --bs-card-bg: #fcfcfd;
+    --bs-card-border-color: #dde3ea;
+    --bs-card-border-radius: 8px;
+    --bs-card-cap-bg: transparent;
+
+    box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: #f8fafc;
+    --bs-table-border-color: #dde3ea;
+}
+
+.table > thead > tr > th {
+    color: var(--bs-secondary-color);
+
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* --- Formularios --------------------------------------------------- */
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.form-control,
+.form-select {
+    min-height: 40px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #1d4ed8;
+
+    box-shadow: 0 0 0 3px rgb(29 78 216 / 12%);
+}
+
+.form-text {
+    font-size: 0.8125rem;
+}
+
+/* --- Badges suaves (docs/11: "badges suaves") ----------------------- */
+
+.badge-soft {
+    padding: 0.3em 0.65em;
+
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-soft-success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-soft-neutral {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.badge-soft-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-soft-primary {
+    background: #dbeafe;
+    color: #1e40af;
+}

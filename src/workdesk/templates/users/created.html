@@ -1,57 +1,52 @@
-{% extends "base_admin.html" %}
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
 {% from "_form_macros.html" import temporary_password_notice %}
 
 {% block title %}Usuario creado{% endblock %}
 
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1 class="page-title">Usuario creado</h1>
+    {{ page_header("Usuario creado", "La cuenta se creó correctamente.") }}
 
-            <p class="page-description">
-                La cuenta se creó correctamente.
-            </p>
-        </div>
-    </header>
+    <section class="card form-card">
+        <div class="card-body">
+            <dl class="row mb-4">
+                <dt class="col-sm-3 text-secondary fw-normal">Nombre</dt>
+                <dd class="col-sm-9">{{ user.nombre }} {{ user.apellido }}</dd>
 
-    <section class="result-card">
-        <dl class="summary-list">
-            <dt>Nombre</dt>
-            <dd>{{ user.nombre }} {{ user.apellido }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">Usuario</dt>
+                <dd class="col-sm-9">{{ user.username }}</dd>
 
-            <dt>Usuario</dt>
-            <dd>{{ user.username }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">Correo</dt>
+                <dd class="col-sm-9">{{ user.email }}</dd>
 
-            <dt>Correo</dt>
-            <dd>{{ user.email }}</dd>
+                <dt class="col-sm-3 text-secondary fw-normal">Rol</dt>
+                <dd class="col-sm-9">{{ user.rol.nombre }}</dd>
+            </dl>
 
-            <dt>Rol</dt>
-            <dd>{{ user.rol.nombre }}</dd>
-        </dl>
+            {{ temporary_password_notice(generated_password) }}
 
-        {{ temporary_password_notice(generated_password) }}
+            <div class="d-flex flex-wrap gap-2">
+                <a
+                    class="btn btn-primary"
+                    href="{{ url_for('users.new_user') }}"
+                >
+                    Crear otro usuario
+                </a>
 
-        <div class="form-actions">
-            <a
-                class="btn btn--primary"
-                href="{{ url_for('users.new_user') }}"
-            >
-                Crear otro usuario
-            </a>
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('users.detail', user_id=user.id) }}"
+                >
+                    Ver usuario
+                </a>
 
-            <a
-                class="btn btn--secondary"
-                href="{{ url_for('users.detail', user_id=user.id) }}"
-            >
-                Ver usuario
-            </a>
-
-            <a
-                class="btn btn--link"
-                href="{{ url_for('users.list_users_page') }}"
-            >
-                Ver usuarios
-            </a>
+                <a
+                    class="btn btn-link"
+                    href="{{ url_for('users.list_users_page') }}"
+                >
+                    Ver usuarios
+                </a>
+            </div>
         </div>
     </section>
 {% endblock %}
