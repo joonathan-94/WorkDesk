@@ -2180,6 +2180,14 @@ Debe permitir:
 
 Patrón de tabla reutiliza UI-003.
 
+**Implementación inicial (`v0.2.0`):**
+
+- Columnas: nombre, usuario, correo, rol y estado (con una marca "Cambio de contraseña pendiente").
+- Búsqueda por nombre, apellido, usuario o correo; filtros por rol y estado; orden por apellido y nombre.
+- Paginación de 20 usuarios por página en la base de datos; los enlaces conservan la búsqueda y los filtros.
+- Estado vacío ("No se encontraron usuarios con esos criterios.") y contador de resultados.
+- Acciones de edición, activación y desactivación se incorporan en la siguiente entrega.
+
 ---
 
 ## UI-016 — Crear / editar usuario
@@ -2196,6 +2204,14 @@ Debe reutilizar:
 - contraseña temporal al crear: campo para escribirla o botón "Generar", con indicación de la longitud mínima configurada (12 caracteres por defecto). Una contraseña generada se muestra una sola vez, con aviso de que no podrá consultarse después;
 - acción "Restablecer contraseña" al editar, con confirmación explícita y el mismo mecanismo de contraseña temporal;
 - botones Descartar / Guardar.
+
+**Implementación inicial de la creación (`v0.2.0`):**
+
+- Campos: nombre, apellido, usuario, correo, teléfono, cargo, departamento o área, rol y contraseña temporal. Nombre, apellido, usuario, correo y rol son obligatorios.
+- Contraseña temporal: opción "Generar automáticamente" (por defecto) o "Escribirla yo", con botón mostrar u ocultar. Con JavaScript el campo manual solo se ve al elegir esa opción; sin JavaScript funciona igualmente y el servidor valida según el modo.
+- Al crear, se muestra una pantalla de resultado con el resumen del usuario. Si la contraseña fue generada, aparece una sola vez con el aviso de que no podrá consultarse después; la respuesta no se guarda en caché.
+- Los errores se muestran junto a cada campo y el formulario conserva lo escrito, salvo las contraseñas.
+- Los campos de estado y de grupos se incorporan con la edición y con los grupos.
 
 ---
 

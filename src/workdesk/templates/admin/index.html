@@ -1,52 +1,26 @@
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
+{% extends "base_admin.html" %}
 
-    <title>Administración | WorkDesk</title>
+{% block title %}Administración{% endblock %}
 
-    <link
-        rel="icon"
-        type="image/svg+xml"
-        href="{{ url_for('static', filename='img/brand/favicon.svg') }}"
-    >
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Administración</h1>
 
-    <link
-        rel="icon"
-        type="image/png"
-        sizes="32x32"
-        href="{{ url_for('static', filename='img/brand/favicon-32x32.png') }}"
-    >
+            <p class="page-description">
+                Área reservada al rol Administrador.
+            </p>
+        </div>
+    </header>
 
-    <link
-        rel="shortcut icon"
-        href="{{ url_for('static', filename='img/brand/favicon.ico') }}"
-    >
-
-    <link
-        rel="apple-touch-icon"
-        sizes="180x180"
-        href="{{ url_for('static', filename='img/brand/apple-touch-icon.png') }}"
-    >
-</head>
-
-<body>
-    <h1>WorkDesk</h1>
-
-    <h2>Administración</h2>
-
-    <p>
-        Área reservada al rol Administrador.
-    </p>
-
-    <p>
-        <a href="{{ url_for('main.dashboard') }}">
-            Volver al dashboard
-        </a>
-    </p>
-</body>
-</html>
+    <ul class="link-list">
+        <li>
+            <a href="{{ url_for('users.list_users_page') }}">
+                Usuarios
+            </a>
+            <span class="muted">
+                Consulta, crea y administra las cuentas de WorkDesk.
+            </span>
+        </li>
+    </ul>
+{% endblock %}

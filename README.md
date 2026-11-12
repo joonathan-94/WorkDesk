@@ -245,7 +245,9 @@ WorkDesk/
 │       │   ├── admin/
 │       │   ├── auth/
 │       │   ├── errors/
-│       │   └── main/
+│       │   ├── main/
+│       │   └── users/
+│       ├── users/
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── config.py
@@ -265,7 +267,9 @@ WorkDesk/
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_session_limits.py
-│   └── test_system.py
+│   ├── test_system.py
+│   ├── test_users_routes.py
+│   └── test_users_service.py
 │
 ├── .env.example
 ├── .gitignore
@@ -520,10 +524,12 @@ POST      /logout
 GET       /dashboard
 GET POST  /account/password
 GET       /admin
+GET       /users
+GET POST  /users/new
 GET       /health
 ```
 
-`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin` requiere el rol Administrador.
+`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin`, `/users` y `/users/new` requieren el rol Administrador.
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 

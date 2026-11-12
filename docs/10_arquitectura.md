@@ -983,6 +983,7 @@ Ejemplos conceptuales:
 /tickets/<public_id>
 
 /users
+/users/new
 /groups
 
 /account

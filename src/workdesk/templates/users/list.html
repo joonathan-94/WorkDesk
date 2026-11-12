@@ -1,0 +1,206 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Usuarios{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Usuarios</h1>
+
+            <p class="page-description">
+                Consulta y administra las cuentas de WorkDesk.
+            </p>
+        </div>
+
+        <a
+            class="btn btn--primary"
+            href="{{ url_for('users.new_user') }}"
+        >
+            Nuevo usuario
+        </a>
+    </header>
+
+    <form
+        class="filters"
+        method="get"
+        action="{{ url_for('users.list_users_page') }}"
+        role="search"
+    >
+        <div class="form-field filters__search">
+            <label
+                class="form-label"
+                for="q"
+            >
+                Buscar
+            </label>
+
+            <input
+                class="form-control"
+                id="q"
+                name="q"
+                type="search"
+                value="{{ query_text }}"
+                maxlength="100"
+                placeholder="Nombre, usuario o correo"
+            >
+        </div>
+
+        <div class="form-field">
+            <label
+                class="form-label"
+                for="rol"
+            >
+                Rol
+            </label>
+
+            <select
+                class="form-control"
+                id="rol"
+                name="rol"
+            >
+                <option value="">Todos</option>
+
+                {% for role in roles %}
+                    <option
+                        value="{{ role.codigo }}"
+                        {% if role.codigo == role_code %}selected{% endif %}
+                    >
+                        {{ role.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label
+                class="form-label"
+                for="estado"
+            >
+                Estado
+            </label>
+
+            <select
+                class="form-control"
+                id="estado"
+                name="estado"
+            >
+                <option value="">Todos</option>
+                <option
+                    value="activo"
+                    {% if status == 'activo' %}selected{% endif %}
+                >
+                    Activos
+                </option>
+                <option
+                    value="inactivo"
+                    {% if status == 'inactivo' %}selected{% endif %}
+                >
+                    Inactivos
+                </option>
+            </select>
+        </div>
+
+        <div class="filters__actions">
+            <button
+                class="btn btn--primary"
+                type="submit"
+            >
+                Filtrar
+            </button>
+
+            <a
+                class="btn btn--link"
+                href="{{ url_for('users.list_users_page') }}"
+            >
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    <p
+        class="results-count"
+        aria-live="polite"
+    >
+        {{ pagination.total }}
+        {{ 'usuario' if pagination.total == 1 else 'usuarios' }}
+    </p>
+
+    {% if pagination.items %}
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">Usuario</th>
+                        <th scope="col">Correo</th>
+                        <th scope="col">Rol</th>
+                        <th scope="col">Estado</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for user in pagination.items %}
+                        <tr>
+                            <td>
+                                {{ user.nombre }} {{ user.apellido }}
+                            </td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.rol.nombre }}</td>
+                            <td>
+                                {% if user.activo %}
+                                    <span class="badge badge--success">
+                                        Activo
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge--neutral">
+                                        Inactivo
+                                    </span>
+                                {% endif %}
+
+                                {% if user.debe_cambiar_password %}
+                                    <span class="badge badge--warning">
+                                        Cambio de contraseña pendiente
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pagination.pages > 1 %}
+            <nav
+                class="pagination"
+                aria-label="Paginación"
+            >
+                {% if pagination.has_prev %}
+                    <a
+                        class="btn btn--secondary"
+                        href="{{ url_for('users.list_users_page', q=query_text or None, rol=role_code or None, estado=status or None, page=pagination.prev_num) }}"
+                    >
+                        Anterior
+                    </a>
+                {% endif %}
+
+                <span class="muted">
+                    Página {{ pagination.page }} de {{ pagination.pages }}
+                </span>
+
+                {% if pagination.has_next %}
+                    <a
+                        class="btn btn--secondary"
+                        href="{{ url_for('users.list_users_page', q=query_text or None, rol=role_code or None, estado=status or None, page=pagination.next_num) }}"
+                    >
+                        Siguiente
+                    </a>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="empty-state">
+            No se encontraron usuarios con esos criterios.
+        </p>
+    {% endif %}
+{% endblock %}

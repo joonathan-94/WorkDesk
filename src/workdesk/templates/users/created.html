@@ -1,0 +1,69 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Usuario creado{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Usuario creado</h1>
+
+            <p class="page-description">
+                La cuenta se creó correctamente.
+            </p>
+        </div>
+    </header>
+
+    <section class="result-card">
+        <dl class="summary-list">
+            <dt>Nombre</dt>
+            <dd>{{ user.nombre }} {{ user.apellido }}</dd>
+
+            <dt>Usuario</dt>
+            <dd>{{ user.username }}</dd>
+
+            <dt>Correo</dt>
+            <dd>{{ user.email }}</dd>
+
+            <dt>Rol</dt>
+            <dd>{{ user.rol.nombre }}</dd>
+        </dl>
+
+        {% if generated_password %}
+            <div class="secret-box">
+                <p class="secret-box__label">Contraseña temporal</p>
+
+                <code
+                    class="secret-box__value"
+                    id="temporary-password"
+                >{{ generated_password }}</code>
+
+                <p class="secret-box__note">
+                    Cópiala y entrégasela al usuario ahora: no podrá
+                    consultarse después. Deberá cambiarla en su primer
+                    inicio de sesión.
+                </p>
+            </div>
+        {% else %}
+            <p class="muted">
+                Se usó la contraseña temporal que escribiste. El usuario
+                deberá cambiarla en su primer inicio de sesión.
+            </p>
+        {% endif %}
+
+        <div class="form-actions">
+            <a
+                class="btn btn--primary"
+                href="{{ url_for('users.new_user') }}"
+            >
+                Crear otro usuario
+            </a>
+
+            <a
+                class="btn btn--secondary"
+                href="{{ url_for('users.list_users_page') }}"
+            >
+                Ver usuarios
+            </a>
+        </div>
+    </section>
+{% endblock %}
