@@ -1308,6 +1308,12 @@ password_hash
 
 La configuración deberá permitir actualizar progresivamente los parámetros de costo cuando sea necesario.
 
+## Política de contraseñas
+
+La política se implementa en `security/password_policy.py` y es la única fuente de la regla: la utilizan el cambio de contraseña propio, las contraseñas temporales y el comando `create-admin`. Sus parámetros (longitud mínima configurable, tope, ausencia de reglas de composición) están definidos en `05_requisitos_no_funcionales.md` (RNF-009).
+
+Las operaciones de contraseña de un usuario existente (`auth/credentials.py`) siguen el principio de transacción de la sección 40: no hacen commit y registran la auditoría en la misma transacción. Cambiar o restablecer una contraseña incrementa `token_version` e invalida las sesiones del usuario.
+
 ---
 
 # 48. Flask-Login
@@ -2465,6 +2471,12 @@ Se incorporan en `v0.2.0` las variables de límites de sesión:
 ```text
 SESSION_IDLE_MINUTES   (30 por defecto)
 SESSION_MAX_HOURS      (8 por defecto)
+```
+
+Y la longitud mínima de contraseña:
+
+```text
+PASSWORD_MIN_LENGTH    (12 por defecto; entre 8 y 128)
 ```
 
 Variables adicionales como raíces de uploads o backups podrán incorporarse cuando dichos módulos sean implementados.

@@ -2193,7 +2193,7 @@ Debe reutilizar:
 - select de rol;
 - estado;
 - grupos cuando aplique;
-- contraseña temporal al crear: campo para escribirla o botón "Generar", con indicación de la longitud mínima de 12 caracteres. Una contraseña generada se muestra una sola vez, con aviso de que no podrá consultarse después;
+- contraseña temporal al crear: campo para escribirla o botón "Generar", con indicación de la longitud mínima configurada (12 caracteres por defecto). Una contraseña generada se muestra una sola vez, con aviso de que no podrá consultarse después;
 - acción "Restablecer contraseña" al editar, con confirmación explícita y el mismo mecanismo de contraseña temporal;
 - botones Descartar / Guardar.
 

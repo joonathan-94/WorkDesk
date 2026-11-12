@@ -10,6 +10,7 @@ from sqlalchemy import (
     Identity,
     Integer,
     String,
+    false,
     func,
     true,
 )
@@ -103,6 +104,15 @@ class User(UserMixin, db.Model):
     bloqueado_hasta: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+    # TRUE mientras el usuario tenga una contraseña temporal: hasta que la
+    # cambie, solo puede acceder al cambio de contraseña y cerrar sesión.
+    debe_cambiar_password: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
     )
 
     activo: Mapped[bool] = mapped_column(

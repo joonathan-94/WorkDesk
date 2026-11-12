@@ -1,9 +1,13 @@
 import click
-from flask import Flask
+from flask import Flask, current_app
 
 from .extensions import db
 from .models import Role, User
-from .security import hash_password
+from .security import (
+    PasswordPolicyError,
+    hash_password,
+    validate_password_policy,
+)
 from .seeds import seed_roles
 
 
@@ -85,10 +89,13 @@ def register_commands(app: Flask) -> None:
             confirmation_prompt=True,
         )
 
-        if len(password) < 12:
-            raise click.ClickException(
-                "La contraseña debe tener al menos 12 caracteres."
+        try:
+            validate_password_policy(
+                password,
+                min_length=current_app.config["PASSWORD_MIN_LENGTH"],
             )
+        except PasswordPolicyError as error:
+            raise click.ClickException(str(error)) from error
 
         admin = User(
             nombre=nombre,

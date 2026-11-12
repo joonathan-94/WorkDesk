@@ -1863,7 +1863,7 @@ El sistema debe proporcionar mecanismos básicos para conocer el estado de compo
 
 Al crear un usuario, el Administrador debe poder definir su contraseña temporal de dos maneras: escribiéndola o solicitando que el sistema la genere.
 
-Una contraseña generada por el sistema se muestra al Administrador una sola vez. Toda contraseña debe cumplir la longitud mínima de 12 caracteres.
+Una contraseña generada por el sistema se muestra al Administrador una sola vez. Toda contraseña, escrita o generada, debe cumplir la política de contraseñas (RNF-009): longitud mínima configurada (12 caracteres por defecto).
 
 La contraseña nunca se almacena en texto plano ni se registra en logs, auditoría o historial.
 

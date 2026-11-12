@@ -35,6 +35,10 @@ class Config:
         os.getenv("LOGIN_LOCK_MINUTES", "15")
     )
 
+    PASSWORD_MIN_LENGTH = int(
+        os.getenv("PASSWORD_MIN_LENGTH", "12")
+    )
+
     SESSION_IDLE_MINUTES = int(
         os.getenv("SESSION_IDLE_MINUTES", "30")
     )
