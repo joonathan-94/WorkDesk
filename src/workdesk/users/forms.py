@@ -16,6 +16,8 @@ PASSWORD_MODE_CHOICES = (
     (PASSWORD_MODE_MANUAL, "Escribirla yo"),
 )
 
+MAX_REASON_LENGTH = 500
+
 # Minúsculas, números, punto, guion y guion bajo; empieza por letra o número.
 USERNAME_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
 
@@ -32,23 +34,12 @@ def _normalize(value):
     return value.strip().lower() if isinstance(value, str) else value
 
 
-class CreateUserForm(FlaskForm):
-    """Alta de usuario por el Administrador.
+class ProfileForm(FlaskForm):
+    """Datos personales de un usuario (comunes al alta y a la edición).
 
     Valida la forma de los datos. Las reglas de negocio (unicidad, rol
     existente, política de contraseñas) las aplica `users.service`.
-
-    `role_choices` son los pares (código, nombre) de los roles disponibles,
-    leídos de la base de datos por quien construye el formulario. Se guardan
-    como atributo y se validan aquí, sin usar los campos de selección de
-    WTForms: la plantilla dibuja el selector y los mensajes quedan en
-    español.
     """
-
-    def __init__(self, *args, role_choices, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.role_choices = list(role_choices)
 
     nombre = StringField(
         "Nombre",
@@ -65,26 +56,6 @@ class CreateUserForm(FlaskForm):
         validators=[
             DataRequired(message="Ingresa el apellido."),
             Length(max=100, message="Máximo 100 caracteres."),
-        ],
-    )
-
-    username = StringField(
-        "Usuario",
-        filters=[_normalize],
-        validators=[
-            DataRequired(message="Ingresa el nombre de usuario."),
-            Length(
-                min=3,
-                max=50,
-                message="Debe tener entre 3 y 50 caracteres.",
-            ),
-            Regexp(
-                USERNAME_PATTERN,
-                message=(
-                    "Usa solo letras minúsculas, números, punto, guion "
-                    "y guion bajo, empezando por una letra o un número."
-                ),
-            ),
         ],
     )
 
@@ -128,10 +99,12 @@ class CreateUserForm(FlaskForm):
         ],
     )
 
-    rol = StringField(
-        "Rol",
-        validators=[DataRequired(message="Selecciona un rol.")],
-    )
+
+class TemporaryPasswordForm(FlaskForm):
+    """Elección de la contraseña temporal: generada o escrita.
+
+    Común al alta de usuarios y al restablecimiento de contraseña.
+    """
 
     password_mode = StringField(
         "Contraseña temporal",
@@ -142,12 +115,6 @@ class CreateUserForm(FlaskForm):
     # exige en modo "manual" en `validate_temporary_password`.
     temporary_password = PasswordField("Contraseña temporal")
 
-    def validate_rol(self, field):
-        valid_codes = {code for code, _ in self.role_choices}
-
-        if field.data not in valid_codes:
-            raise ValidationError("Selecciona un rol válido.")
-
     def validate_password_mode(self, field):
         valid_modes = {code for code, _ in PASSWORD_MODE_CHOICES}
 
@@ -157,3 +124,98 @@ class CreateUserForm(FlaskForm):
     def validate_temporary_password(self, field):
         if self.password_mode.data == PASSWORD_MODE_MANUAL and not field.data:
             raise ValidationError("Ingresa la contraseña temporal.")
+
+
+class _RoleChoicesMixin:
+    """Guarda las opciones de rol y valida que el rol elegido exista.
+
+    `role_choices` son los pares (código, nombre) de los roles disponibles,
+    leídos de la base de datos por quien construye el formulario. Se validan
+    aquí, sin los campos de selección de WTForms: la plantilla dibuja el
+    selector y los mensajes quedan en español.
+    """
+
+    def __init__(self, *args, role_choices, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.role_choices = list(role_choices)
+
+    def validate_rol(self, field):
+        valid_codes = {code for code, _ in self.role_choices}
+
+        if field.data not in valid_codes:
+            raise ValidationError("Selecciona un rol válido.")
+
+
+class CreateUserForm(_RoleChoicesMixin, ProfileForm, TemporaryPasswordForm):
+    """Alta de usuario por el Administrador."""
+
+    username = StringField(
+        "Usuario",
+        filters=[_normalize],
+        validators=[
+            DataRequired(message="Ingresa el nombre de usuario."),
+            Length(
+                min=3,
+                max=50,
+                message="Debe tener entre 3 y 50 caracteres.",
+            ),
+            Regexp(
+                USERNAME_PATTERN,
+                message=(
+                    "Usa solo letras minúsculas, números, punto, guion "
+                    "y guion bajo, empezando por una letra o un número."
+                ),
+            ),
+        ],
+    )
+
+    rol = StringField(
+        "Rol",
+        validators=[DataRequired(message="Selecciona un rol.")],
+    )
+
+
+class EditUserForm(ProfileForm):
+    """Edición de los datos personales (el username no se puede cambiar)."""
+
+
+class ChangeRoleForm(_RoleChoicesMixin, FlaskForm):
+    """Cambio de rol, con un motivo opcional para la auditoría."""
+
+    rol = StringField(
+        "Rol",
+        validators=[DataRequired(message="Selecciona un rol.")],
+    )
+
+    motivo = StringField(
+        "Motivo",
+        filters=[_strip],
+        validators=[
+            Optional(),
+            Length(
+                max=MAX_REASON_LENGTH,
+                message=f"Máximo {MAX_REASON_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+
+class ReasonForm(FlaskForm):
+    """Confirmación de una acción (activar o desactivar) con motivo opcional."""
+
+    motivo = StringField(
+        "Motivo",
+        filters=[_strip],
+        validators=[
+            Optional(),
+            Length(
+                max=MAX_REASON_LENGTH,
+                message=f"Máximo {MAX_REASON_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+
+class ResetPasswordForm(TemporaryPasswordForm):
+    """Restablecimiento de contraseña por el Administrador."""

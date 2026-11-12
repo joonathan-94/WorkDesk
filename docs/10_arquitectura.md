@@ -984,6 +984,12 @@ Ejemplos conceptuales:
 
 /users
 /users/new
+/users/<id>
+/users/<id>/edit
+/users/<id>/role
+/users/<id>/deactivate
+/users/<id>/activate
+/users/<id>/reset-password
 /groups
 
 /account
@@ -1391,8 +1397,9 @@ El valor podrá incrementarse ante eventos de seguridad como:
 
 - cambio de contraseña;
 - invalidación administrativa;
+- cambio de rol;
 - determinadas modificaciones de seguridad;
-- desactivación/reactivación cuando corresponda.
+- desactivación (la reactivación no lo incrementa: las sesiones anteriores ya quedaron invalidadas al desactivar).
 
 Esto permite invalidar sesiones anteriores sin mantener obligatoriamente una tabla persistente de sesiones.
 

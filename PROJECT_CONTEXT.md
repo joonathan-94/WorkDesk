@@ -81,14 +81,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/users-list-create
+feature/users-manage
 ```
 
-Paso 4.3 de `v0.2.0` (entrega "Usuarios y contraseñas"): listado de usuarios y creación por el Administrador con contraseña temporal. No incluye migraciones.
+Paso 4.4 de `v0.2.0` (último de la entrega "Usuarios y contraseñas"): administración de usuarios existentes por el Administrador — detalle, edición de datos, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con sus salvaguardas. No incluye migraciones.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8) y el cambio de contraseña propio y obligatorio (PR #9). El tag `v0.1.0` existe.
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9) y el listado y creación de usuarios (PR #10). El tag `v0.1.0` existe.
 
-Paso siguiente de la entrega: 4.4 edición y administración de usuarios (`feature/users-manage`). Después, la entrega 5 (interfaz administrativa y cierre de `v0.2.0`).
+Paso siguiente: la entrega 5 (interfaz administrativa: Bootstrap local, sidebar y navegación por rol, "Mi cuenta", datos demo y cierre de `v0.2.0`).
 
 ## Identidad visual (integrada en `main`)
 
@@ -125,7 +125,7 @@ Durante `v0.1.0` se adelantó intencionalmente parte de la base técnica de aute
 
 La fase `v0.2.0` debe completar especialmente:
 
-- gestión de usuarios (listado y creación implementados; faltan edición, activación y desactivación, cambio de rol y restablecimiento de contraseña);
+- gestión de usuarios (listado, creación, detalle, edición, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña) — implementada;
 - autorización basada en roles;
 - políticas de acceso;
 - navegación según rol;
@@ -134,8 +134,8 @@ La fase `v0.2.0` debe completar especialmente:
 - datos demo relacionados con usuarios;
 - pruebas específicas de autorización;
 - límites de sesión (30 minutos de inactividad y 8 horas máximo, por variables de entorno) — implementado;
-- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`) — implementados la política, el generador, la columna, las operaciones de dominio, la pantalla de cambio propio y la guardia de cambio obligatorio; el Administrador ya puede crear usuarios con contraseña temporal; falta que restablezca contraseñas desde la interfaz;
-- tabla `auditoria_administrativa` mínima para las acciones sobre usuarios — implementada (modelo, migración y servicio); falta registrar eventos desde la gestión de usuarios.
+- contraseñas: creación de cuentas y restablecimiento por el Administrador con contraseña temporal, cambio propio y cambio obligatorio en el primer inicio de sesión (`usuarios.debe_cambiar_password`) — implementados la política, el generador, la columna, las operaciones de dominio, la pantalla de cambio propio y la guardia de cambio obligatorio; el Administrador crea usuarios con contraseña temporal y restablece contraseñas desde la interfaz;
+- tabla `auditoria_administrativa` mínima para las acciones sobre usuarios — implementada (modelo, migración y servicio), y todas las acciones sobre usuarios ya registran su evento.
 
 `docs/12_roadmap.md` divide `v0.2.0` en cinco entregas incrementales, cada una con su rama y Pull Request.
 
@@ -294,6 +294,8 @@ WorkDesk/
 │   ├── test_passwords.py
 │   ├── test_session_limits.py
 │   ├── test_system.py
+│   ├── test_users_manage_routes.py
+│   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
 │   └── test_users_service.py
 ├── .github/
@@ -535,7 +537,7 @@ Reglas:
 - **Origen de la petición:** la IP y el user agent se toman de la petición actual y se truncan al tamaño de la columna.
 - **Append-only:** el ORM rechaza actualizar o eliminar registros existentes (`AuditLogImmutableError`). Una corrección se registra como un evento nuevo.
 
-Se invoca desde la creación de usuarios (`USUARIO_CREADO`) y desde las operaciones de contraseña (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Las demás acciones del vocabulario se registrarán con la edición de usuarios (paso 4.4).
+Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Las acciones críticas admiten un motivo opcional.
 
 ## Gestión de usuarios (Administrador)
 
@@ -549,6 +551,21 @@ Módulo `src/workdesk/users/` (blueprint `users`, prefijo `/users`), accesible s
 - **Formularios:** el rol y el modo de contraseña se validan en el formulario sin usar `SelectField` ni `RadioField` de WTForms (sus opciones como tuplas están obsoletas en WTForms 3.3); las opciones se pasan como atributo (`role_choices`).
 - **Presentación:** `templates/base_admin.html` (cabecera con navegación, mensajes y bloques), `templates/_form_macros.html` y `static/css/admin.css`. Son provisionales: la entrega 5 los reemplaza por el layout con Bootstrap y sidebar por rol. Los estilos de formulario comunes viven ahora en `app.css`.
 - Las plantillas consultan la política `can_manage_users` (disponible vía `context_processor`) solo para decidir qué enlaces mostrar; la autorización real se aplica en las rutas.
+
+### Administración de usuarios existentes (paso 4.4)
+
+Rutas bajo `/users/<id>`, todas exclusivas del Administrador (`admin_only = roles_required(RoleCode.ADMINISTRADOR)`). Las reglas están en `users/service.py` y las rutas solo orquestan. Reglas completas en `docs/06` (RN-149).
+
+- **Detalle** (`GET /users/<id>`): datos, rol, estado y acciones. En la propia cuenta se omiten las acciones no permitidas.
+- **Edición de datos** (`/edit`): nombre, apellido, correo, teléfono, cargo y departamento. El username no se edita. Devuelve si hubo cambios; sin cambios no audita. La auditoría guarda solo los campos modificados con su valor anterior y nuevo. El correo se comprueba contra otros usuarios y una carrera se resuelve con la restricción UNIQUE y un savepoint.
+- **Cambio de rol** (`/role`): confirmación explícita y motivo opcional. Sube `token_version`, así que el usuario debe iniciar sesión de nuevo con el nuevo rol.
+- **Desactivar y reactivar** (`/deactivate`, `/activate`): confirmación y motivo opcional. Desactivar rellena `fecha_desactivacion` y `usuario_desactivacion_id` y sube `token_version`; reactivar los limpia y reinicia intentos fallidos y bloqueo (las sesiones anteriores no reviven). No existe borrado físico de usuarios.
+- **Restablecer contraseña** (`/reset-password`): mismo selector de contraseña temporal (generada o escrita) que el alta. La generada se muestra una vez, sin caché, y no se guarda en la auditoría.
+- **Salvaguardas:** un Administrador no puede cambiar su propio rol, desactivar su cuenta ni restablecer su propia contraseña desde la administración (se bloquea en el servicio y también en la ruta, desde el GET). Siempre debe quedar al menos un Administrador activo: la comprobación bloquea las filas de los Administradores activos (`SELECT ... FOR UPDATE`) para que dos Administradores no se desactiven mutuamente a la vez; los Administradores inactivos no cuentan.
+- Los errores de regla (`UserRuleError`: `SelfProtectionError`, `LastAdministratorError`, `NothingToChangeError`) se muestran como mensaje y se vuelve al detalle.
+- **Formularios** (`users/forms.py`): `ProfileForm` y `TemporaryPasswordForm` comparten campos entre alta, edición y restablecimiento; `ChangeRoleForm` y `ReasonForm` para las confirmaciones.
+- **Plantillas:** macros compartidos en `_form_macros.html` (campos, selector de contraseña temporal y aviso de contraseña); el script `static/js/common/temporary-password.js` muestra el campo manual solo al elegir esa opción.
+- **Modelo:** `User.mark_modified(actor)` registra quién y cuándo modificó el usuario por última vez.
 
 ---
 
@@ -640,7 +657,7 @@ Implementadas en `src/workdesk/auth/credentials.py`. Ninguna hace commit: se con
 - `reset_password`: restablecimiento por un Administrador. Asigna la temporal, exige el cambio, invalida las sesiones, limpia intentos fallidos y bloqueo, y audita `PASSWORD_RESTABLECIDA`.
 - La auditoría nunca incluye contraseñas ni hashes.
 
-`change_own_password` se invoca desde `/account/password`. `set_temporary_password` y `reset_password` todavía no se invocan desde ninguna ruta: llegan con la gestión de usuarios (pasos 4.3 y 4.4).
+`change_own_password` se invoca desde `/account/password`, `set_temporary_password` desde la creación de usuarios y `reset_password` desde el restablecimiento por el Administrador (`users.service.reset_user_password`, que además impide restablecer la propia contraseña).
 
 ## Cambio de contraseña propio y cambio obligatorio
 
@@ -742,6 +759,12 @@ GET, POST  /account/password
 GET        /admin
 GET        /users
 GET, POST  /users/new
+GET        /users/<id>
+GET, POST  /users/<id>/edit
+GET, POST  /users/<id>/role
+GET, POST  /users/<id>/deactivate
+GET, POST  /users/<id>/activate
+GET, POST  /users/<id>/reset-password
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -750,7 +773,7 @@ GET        /static/<path:filename>
 
 `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin`, `/users` y `/users/new` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es todavía una página mínima con un enlace a Usuarios; el hub de administración definitivo llegará con las siguientes entregas de `v0.2.0`.
+`/admin` y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es todavía una página mínima con un enlace a Usuarios; el hub de administración definitivo llegará con las siguientes entregas de `v0.2.0`.
 
 El dashboard actual es temporal.
 
@@ -958,6 +981,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la administración de usuarios (paso 4.4):
+
+```text
+299 tests passing
+```
+
+Los 93 tests nuevos cubren:
+
+- `tests/test_users_manage_service.py` (26): edición (solo los campos cambiados, sin cambios, normalización, correo de otro usuario, carrera por el correo), cambio de rol (efectos, sesiones, motivo, autoprotección, rol repetido o inexistente, protección del último Administrador activo, los inactivos no cuentan), desactivación y reactivación (efectos, sesiones, autoprotección, último Administrador, las sesiones anteriores no reviven) y restablecimiento de contraseña (medidas de seguridad, autoprotección, contraseña débil);
+- `tests/test_users_manage_routes.py` (67): control de acceso en todas las rutas (anónimo, roles sin permiso por GET y POST, usuario inexistente, CSRF), detalle, edición (precarga, validaciones, el username no cambia), cambio de rol (con cierre de sesión del usuario), desactivación (confirmación, bloqueo de acceso, filtro de inactivos), reactivación, restablecimiento (contraseña mostrada una vez, sin caché, sin quedar en la auditoría, cambio obligatorio al volver a entrar) y todas las autoprotecciones.
+
+`tests/conftest.py`: `make_user` admite un `username` y campos adicionales (por ejemplo `activo=False`) para crear varios usuarios del mismo rol.
 
 Estado tras el listado y la creación de usuarios (paso 4.3):
 
@@ -1382,16 +1418,15 @@ Usuarios, autenticación completa y RBAC
 - auditoría administrativa mínima: modelo `AdminAuditLog`, migración y servicio `record_admin_event`;
 - base de seguridad de contraseñas: política, generador de contraseñas temporales, columna `debe_cambiar_password` y operaciones de cambio propio y restablecimiento;
 - cambio de contraseña propio (`/account/password`) y cambio obligatorio de la contraseña temporal aplicado en backend;
-- listado de usuarios (búsqueda, filtros y paginación) y creación de usuarios con contraseña temporal, solo para el Administrador.
+- listado de usuarios (búsqueda, filtros y paginación) y creación de usuarios con contraseña temporal, solo para el Administrador;
+- administración de usuarios existentes: detalle, edición de datos, cambio de rol, desactivación y reactivación, y restablecimiento de contraseña, con salvaguardas (nadie actúa sobre sí mismo, siempre queda un Administrador activo) y auditoría.
 
 ## Pendiente principal
 
 - políticas RBAC adicionales según se incorporen los módulos;
 - navegación adaptada por rol;
 - hub de administración y rutas administrativas definitivas;
-- edición de usuarios, activación y desactivación, cambio de rol y restablecimiento de contraseña desde la gestión de usuarios;
 - cuenta propia básica ("Mi cuenta", con cambio de contraseña);
-- registrar en la auditoría las acciones sobre usuarios (el servicio ya existe);
 - incorporación local de Bootstrap con las primeras pantallas administrativas;
 - datos demo;
 - pruebas específicas de autorización;

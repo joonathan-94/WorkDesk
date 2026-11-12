@@ -417,6 +417,7 @@ Representa las cuentas de usuario de WorkDesk.
 - Un usuario desactivado conserva todas sus referencias históricas.
 - Un cambio de rol no crea una tabla de historial de roles; se registra en `auditoria_administrativa`.
 - `token_version` no implica una tabla persistente de sesiones.
+- `fecha_desactivacion` y `usuario_desactivacion_id` describen la desactivación **vigente**: se rellenan al desactivar la cuenta y se limpian al reactivarla. El historial completo de desactivaciones y reactivaciones, con su motivo, queda en `auditoria_administrativa`. Los cambios de rol y la desactivación incrementan `token_version`.
 - `debe_cambiar_password` pasa a TRUE cuando el Administrador crea la cuenta o restablece la contraseña con una contraseña temporal, y a FALSE cuando el usuario completa su cambio de contraseña. Ambas operaciones incrementan `token_version`. Mientras sea TRUE, el backend solo permite la pantalla de cambio de contraseña y el cierre de sesión. El Administrador inicial creado por CLI define su propia contraseña y queda en FALSE. Los usuarios existentes en el momento de añadir la columna quedan en FALSE.
 
 ### Nota sobre campos de seguridad

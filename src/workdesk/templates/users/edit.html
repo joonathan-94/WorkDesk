@@ -1,0 +1,65 @@
+{% extends "base_admin.html" %}
+{% from "_form_macros.html" import text_field %}
+
+{% block title %}Editar usuario{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">Editar usuario</h1>
+
+            <p class="page-description">
+                {{ user.nombre }} {{ user.apellido }}
+            </p>
+        </div>
+    </header>
+
+    <form
+        class="form-card form-stack"
+        method="post"
+        action="{{ url_for('users.edit_user', user_id=user.id) }}"
+        novalidate
+    >
+        {{ form.csrf_token }}
+
+        <div class="form-row">
+            {{ text_field(form.nombre, required=True, autocomplete="given-name", maxlength=100, autofocus=True) }}
+            {{ text_field(form.apellido, required=True, autocomplete="family-name", maxlength=100) }}
+        </div>
+
+        <div class="form-field">
+            <span class="form-label">Usuario</span>
+
+            <p class="form-static">{{ user.username }}</p>
+
+            <p class="form-hint">
+                El nombre de usuario no se puede cambiar.
+            </p>
+        </div>
+
+        {{ text_field(form.email, required=True, autocomplete="off", maxlength=254) }}
+
+        <div class="form-row">
+            {{ text_field(form.telefono, autocomplete="off", maxlength=30) }}
+            {{ text_field(form.cargo, maxlength=100) }}
+        </div>
+
+        {{ text_field(form.departamento_area, maxlength=100) }}
+
+        <div class="form-actions">
+            <button
+                class="btn btn--primary"
+                type="submit"
+            >
+                Guardar cambios
+            </button>
+
+            <a
+                class="btn btn--secondary"
+                href="{{ url_for('users.detail', user_id=user.id) }}"
+            >
+                Cancelar
+            </a>
+        </div>
+    </form>
+{% endblock %}

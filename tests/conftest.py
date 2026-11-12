@@ -71,7 +71,7 @@ def seeded_roles(app):
 def make_user(app):
     """Crea un usuario de pruebas con el rol indicado por su código."""
 
-    def _make_user(role_code: str):
+    def _make_user(role_code: str, username: str | None = None, **extra):
         with app.app_context():
             role = db.session.scalar(
                 db.select(Role).where(Role.codigo == role_code)
@@ -86,7 +86,7 @@ def make_user(app):
                 db.session.add(role)
                 db.session.flush()
 
-            username = f"{role_code.lower()}_test"
+            username = username or f"{role_code.lower()}_test"
 
             user = User(
                 nombre=role_code.capitalize(),
@@ -95,6 +95,7 @@ def make_user(app):
                 email=f"{username}@workdesk.local",
                 password_hash=hash_password(TEST_PASSWORD),
                 rol_id=role.id,
+                **extra,
             )
 
             db.session.add(user)

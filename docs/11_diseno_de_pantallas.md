@@ -2186,7 +2186,7 @@ Patrón de tabla reutiliza UI-003.
 - Búsqueda por nombre, apellido, usuario o correo; filtros por rol y estado; orden por apellido y nombre.
 - Paginación de 20 usuarios por página en la base de datos; los enlaces conservan la búsqueda y los filtros.
 - Estado vacío ("No se encontraron usuarios con esos criterios.") y contador de resultados.
-- Acciones de edición, activación y desactivación se incorporan en la siguiente entrega.
+- El nombre de cada usuario enlaza con su pantalla de detalle, desde donde se administra la cuenta.
 
 ---
 
@@ -2211,7 +2211,16 @@ Debe reutilizar:
 - Contraseña temporal: opción "Generar automáticamente" (por defecto) o "Escribirla yo", con botón mostrar u ocultar. Con JavaScript el campo manual solo se ve al elegir esa opción; sin JavaScript funciona igualmente y el servidor valida según el modo.
 - Al crear, se muestra una pantalla de resultado con el resumen del usuario. Si la contraseña fue generada, aparece una sola vez con el aviso de que no podrá consultarse después; la respuesta no se guarda en caché.
 - Los errores se muestran junto a cada campo y el formulario conserva lo escrito, salvo las contraseñas.
-- Los campos de estado y de grupos se incorporan con la edición y con los grupos.
+- Los campos de grupos se incorporan con los grupos.
+
+**Administración de usuarios existentes (`v0.2.0`):**
+
+- **Detalle** (`/users/<id>`): datos de la cuenta, rol, estado y las acciones disponibles, cada una en su propia pantalla. En la propia cuenta del Administrador se omiten las acciones que no puede ejecutar sobre sí mismo y se muestra el motivo.
+- **Editar datos:** nombre, apellido, correo, teléfono, cargo y departamento o área. El usuario se muestra como texto fijo con el aviso de que no se puede cambiar.
+- **Cambiar rol:** selector con el rol actual preseleccionado, aviso de que se cierran las sesiones del usuario y motivo opcional.
+- **Desactivar y reactivar:** pantalla de confirmación con el efecto de la acción y motivo opcional. El botón de desactivar usa el color de peligro (rojo), reservado a las acciones destructivas.
+- **Restablecer contraseña:** mismo selector de contraseña temporal que el alta (generada o escrita), con aviso de sus efectos. La contraseña generada se muestra una sola vez.
+- Cuando una regla impide la acción (por ejemplo, cambiar el propio rol), se vuelve al detalle con un mensaje de error.
 
 ---
 

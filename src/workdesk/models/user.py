@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask_login import UserMixin
 from sqlalchemy import (
@@ -164,3 +164,8 @@ class User(UserMixin, db.Model):
 
     def get_id(self) -> str:
         return f"{self.id}:{self.token_version}"
+
+    def mark_modified(self, actor: "User") -> None:
+        """Registra quién y cuándo modificó el usuario por última vez."""
+        self.fecha_modificacion = datetime.now(UTC)
+        self.usuario_modificacion_id = actor.id

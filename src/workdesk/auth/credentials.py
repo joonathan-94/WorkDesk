@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 from flask import current_app
 
 from ..audit import AuditAction, record_admin_event
@@ -52,7 +50,7 @@ def change_own_password(
     user.password_hash = hash_password(new_password)
     user.debe_cambiar_password = False
     invalidate_user_sessions(user)
-    _mark_modified(user, actor=user)
+    user.mark_modified(user)
 
     record_admin_event(
         AuditAction.PASSWORD_CAMBIADA,
@@ -101,7 +99,7 @@ def reset_password(
     set_temporary_password(user, temporary_password)
     invalidate_user_sessions(user)
     reset_login_failures(user)
-    _mark_modified(user, actor=actor)
+    user.mark_modified(actor)
 
     record_admin_event(
         AuditAction.PASSWORD_RESTABLECIDA,
@@ -114,8 +112,3 @@ def reset_password(
             "cambio_obligatorio": True,
         },
     )
-
-
-def _mark_modified(user: User, *, actor: User) -> None:
-    user.fecha_modificacion = datetime.now(UTC)
-    user.usuario_modificacion_id = actor.id

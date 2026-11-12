@@ -1,0 +1,76 @@
+{% extends "base_admin.html" %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% set deactivating = mode == 'deactivate' %}
+
+{% block title %}
+    {% if deactivating %}Desactivar cuenta{% else %}Reactivar cuenta{% endif %}
+{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">
+                {% if deactivating %}
+                    Desactivar cuenta
+                {% else %}
+                    Reactivar cuenta
+                {% endif %}
+            </h1>
+
+            <p class="page-description">
+                {{ user.nombre }} {{ user.apellido }}
+                · {{ user.username }}
+            </p>
+        </div>
+    </header>
+
+    <form
+        class="form-card form-stack"
+        method="post"
+        action="{{ url_for('users.deactivate' if deactivating else 'users.activate', user_id=user.id) }}"
+        novalidate
+    >
+        {{ form.csrf_token }}
+
+        {% if deactivating %}
+            <p class="alert alert--warning">
+                El usuario no podrá iniciar sesión y se cerrarán sus
+                sesiones abiertas. Su historial se conserva y podrás
+                reactivar la cuenta más adelante.
+            </p>
+        {% else %}
+            <p class="alert alert--warning">
+                El usuario podrá volver a iniciar sesión con su contraseña
+                actual. Se limpian sus intentos fallidos y su bloqueo
+                temporal.
+            </p>
+        {% endif %}
+
+        {{ textarea_field(
+            form.motivo,
+            hint="Opcional. Queda registrado en la auditoría.",
+            maxlength=500,
+        ) }}
+
+        <div class="form-actions">
+            <button
+                class="btn {% if deactivating %}btn--danger{% else %}btn--primary{% endif %}"
+                type="submit"
+            >
+                {% if deactivating %}
+                    Desactivar cuenta
+                {% else %}
+                    Reactivar cuenta
+                {% endif %}
+            </button>
+
+            <a
+                class="btn btn--secondary"
+                href="{{ url_for('users.detail', user_id=user.id) }}"
+            >
+                Cancelar
+            </a>
+        </div>
+    </form>
+{% endblock %}
