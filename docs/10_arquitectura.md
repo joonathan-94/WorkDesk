@@ -1410,7 +1410,7 @@ Los valores podrán parametrizarse posteriormente.
 
 Estos límites no estaban implementados en `v0.1.0`. Se incorporan en `v0.2.0` como una entrega propia, con 30 minutos de inactividad y 8 horas de duración máxima como valores predeterminados, configurables mediante las variables de entorno `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. Pasarán a la tabla `configuracion` cuando exista la administración (`v0.7.0`).
 
-Implementación prevista: la sesión conserva el instante de inicio y el de última actividad; en cada petición autenticada se comprueban ambos límites antes de aceptar la sesión. Las rutas técnicas (`/health` y `static`) no renuevan la actividad.
+Implementación: la sesión conserva el instante de inicio y el de última actividad (en la cookie firmada); un `before_app_request` comprueba ambos límites en cada petición autenticada y, si alguno se supera, cierra la sesión y redirige al login con un aviso. Una sesión autenticada sin marcas de tiempo válidas se considera expirada. Las rutas técnicas (`/health` y `static`) no renuevan la actividad ni provocan la expiración. Valores menores o iguales a cero se rechazan al iniciar la aplicación.
 
 ---
 

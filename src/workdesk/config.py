@@ -35,6 +35,14 @@ class Config:
         os.getenv("LOGIN_LOCK_MINUTES", "15")
     )
 
+    SESSION_IDLE_MINUTES = int(
+        os.getenv("SESSION_IDLE_MINUTES", "30")
+    )
+
+    SESSION_MAX_HOURS = int(
+        os.getenv("SESSION_MAX_HOURS", "8")
+    )
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = get_bool_env(
