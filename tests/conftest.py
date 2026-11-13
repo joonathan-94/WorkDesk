@@ -7,7 +7,7 @@ from src.workdesk import create_app
 from src.workdesk.extensions import db
 from src.workdesk.models import Role, User
 from src.workdesk.security import hash_password
-from src.workdesk.seeds import seed_roles
+from src.workdesk.seeds import seed_catalogs, seed_roles
 
 TEST_PASSWORD = "WorkDeskTest123!"
 
@@ -65,6 +65,13 @@ def seeded_roles(app):
     """Carga los cuatro roles estructurales en la base de pruebas."""
     with app.app_context():
         seed_roles()
+
+
+@pytest.fixture()
+def seeded_catalogs(app):
+    """Carga los catálogos iniciales de tickets en la base de pruebas."""
+    with app.app_context():
+        seed_catalogs()
 
 
 @pytest.fixture()
