@@ -10,7 +10,7 @@ from .security import (
     hash_password,
     validate_password_policy,
 )
-from .seeds import seed_demo_users, seed_roles
+from .seeds import seed_catalogs, seed_demo_users, seed_roles
 
 # Variable de entorno opcional con la contraseña de los usuarios demo, para
 # ejecutar `seed-demo` sin interacción. Nunca se guarda ni se muestra.
@@ -25,6 +25,20 @@ def register_commands(app: Flask) -> None:
         created = seed_roles()
 
         click.echo(f"Roles creados: {created}")
+
+    @app.cli.command("seed-catalogs")
+    def seed_catalogs_command() -> None:
+        """Carga los catálogos iniciales de tickets (idempotente)."""
+
+        created = seed_catalogs()
+
+        click.echo(
+            "Catálogos cargados. "
+            f"Estados: {created['estados']}, "
+            f"prioridades: {created['prioridades']}, "
+            f"categorías: {created['categorias']}, "
+            f"motivos de cierre: {created['motivos_cierre']}."
+        )
 
     @app.cli.command("create-admin")
     def create_admin_command() -> None:
