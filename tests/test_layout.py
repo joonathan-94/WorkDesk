@@ -73,19 +73,25 @@ def page(client, make_user, role_code, path="/dashboard"):
 # --- Navegación por rol (lógica) -------------------------------------
 
 
-@pytest.mark.parametrize(
-    "role_code",
-    ["SOLICITANTE", "TECNICO", "SUPERVISOR"],
-)
-def test_non_admin_roles_see_the_dashboard_and_create_ticket(role_code):
-    # Todos los roles pueden crear tickets; Administración es solo del
+@pytest.mark.parametrize("role_code", ["TECNICO", "SUPERVISOR"])
+def test_staff_sees_tickets_and_create_ticket(role_code):
+    # El personal ve todos los tickets; Administración es solo del
     # Administrador.
-    assert labels(stub(role_code)) == ["Dashboard", "Crear ticket"]
+    assert labels(stub(role_code)) == ["Dashboard", "Tickets", "Crear ticket"]
+
+
+def test_a_solicitante_sees_only_their_own_tickets_option():
+    assert labels(stub("SOLICITANTE")) == [
+        "Dashboard",
+        "Mis tickets",
+        "Crear ticket",
+    ]
 
 
 def test_administrator_sees_the_administration_hub():
     assert labels(stub("ADMINISTRADOR")) == [
         "Dashboard",
+        "Tickets",
         "Crear ticket",
         "Administración",
     ]
@@ -124,8 +130,10 @@ def test_anonymous_users_see_no_navigation():
         ("catalogs.priority_edit", ["Administración"]),
         ("catalogs.location_new", ["Administración"]),
         ("tickets.new_ticket", ["Crear ticket"]),
-        # El detalle de un ticket no pertenece a "Crear ticket".
-        ("tickets.detail", []),
+        # El listado y el detalle de un ticket pertenecen a "Tickets", no a
+        # "Crear ticket".
+        ("tickets.list_tickets_page", ["Tickets"]),
+        ("tickets.detail", ["Tickets"]),
         ("account.change_password", []),
         (None, []),
     ],

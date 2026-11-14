@@ -209,6 +209,42 @@
                     WorkDesk
                 </a>
 
+                {# Busca en todos los tickets visibles para el usuario. #}
+                <form
+                    class="app-topbar__search d-none d-md-block"
+                    method="get"
+                    action="{{ url_for('tickets.list_tickets_page') }}"
+                    role="search"
+                >
+                    <input
+                        type="hidden"
+                        name="vista"
+                        value="todos"
+                    >
+
+                    <label
+                        class="visually-hidden"
+                        for="topbar-search"
+                    >
+                        Buscar ticket
+                    </label>
+
+                    <i
+                        class="bi bi-search app-topbar__search-icon"
+                        aria-hidden="true"
+                    ></i>
+
+                    <input
+                        class="form-control"
+                        id="topbar-search"
+                        name="q"
+                        type="search"
+                        maxlength="100"
+                        placeholder="Buscar ticket por ID o texto..."
+                        autocomplete="off"
+                    >
+                </form>
+
                 <div class="app-topbar__spacer"></div>
 
                 <div class="dropdown user-menu">

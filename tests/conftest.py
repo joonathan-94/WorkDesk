@@ -174,3 +174,31 @@ def admin_user(app):
             "username": user.username,
             "password": TEST_PASSWORD,
         }
+
+
+@pytest.fixture()
+def catalog(app, seeded_roles, seeded_catalogs):
+    """Categorías, una ubicación y las prioridades ya cargadas."""
+    with app.app_context():
+        hardware = Categoria(nombre="Hardware", orden=1)
+        networks = Categoria(nombre="Redes", orden=2)
+        location = Ubicacion(nombre="Casa matriz", tipo="SUCURSAL")
+        db.session.add_all([hardware, networks, location])
+        db.session.commit()
+
+        return {
+            "hardware": hardware.id,
+            "networks": networks.id,
+            "fallback": db.session.scalar(
+                db.select(Categoria.id).where(
+                    Categoria.codigo == "SIN_CLASIFICAR"
+                )
+            ),
+            "location": location.id,
+            "medium": db.session.scalar(
+                db.select(Prioridad.id).where(Prioridad.codigo == "MEDIA")
+            ),
+            "high": db.session.scalar(
+                db.select(Prioridad.id).where(Prioridad.codigo == "ALTA")
+            ),
+        }

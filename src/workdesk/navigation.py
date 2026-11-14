@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from flask import request
 from flask_login import current_user
 
-from .security import RoleCode, has_any_role
+from .security import STAFF_ROLES, RoleCode, has_any_role
 
 
 @dataclass(frozen=True)
@@ -52,8 +52,24 @@ MAIN_NAVIGATION = (
         icon="speedometer2",
         active_prefixes=("main.",),
     ),
-    # Solo se marca activa en el formulario: el detalle de un ticket no
-    # pertenece a "Crear ticket". "Tickets" llegará con el listado.
+    # El personal ve todos los tickets ("Tickets"); el Solicitante, solo los
+    # suyos ("Mis tickets"). Ambas llevan al mismo listado, que filtra por rol
+    # en la consulta. El detalle de un ticket cuenta como parte de esta opción.
+    NavItem(
+        label="Tickets",
+        endpoint="tickets.list_tickets_page",
+        icon="card-list",
+        roles=STAFF_ROLES,
+        active_prefixes=("tickets.list_tickets_page", "tickets.detail"),
+    ),
+    NavItem(
+        label="Mis tickets",
+        endpoint="tickets.list_tickets_page",
+        icon="card-list",
+        roles=(RoleCode.SOLICITANTE,),
+        active_prefixes=("tickets.list_tickets_page", "tickets.detail"),
+    ),
+    # Solo se marca activa en el formulario de creación.
     NavItem(
         label="Crear ticket",
         endpoint="tickets.new_ticket",

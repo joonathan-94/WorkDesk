@@ -40,9 +40,11 @@ Es la fase central del MVP. Se construye en entregas pequeñas, cada una con su 
 
 - **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre un detalle de solo lectura, visible solo para quien corresponde.
 
-Todavía **no se pueden listar ni buscar tickets**, ni editarlos o cambiarles el estado: el listado con búsqueda y filtros, y la edición llegan en las próximas entregas.
+- **Listado de tickets:** "Tickets" (personal) y "Mis tickets" (Solicitante) muestran solo lo que cada rol puede ver, con pestañas Todos, Abiertos y Cerrados, buscador (número, título, contenido y, para el personal, solicitante), filtros, orden y paginación. La barra superior también busca tickets.
 
-La suite cuenta con **760 tests automatizados**.
+Todavía **no se pueden editar tickets ni cambiarles el estado**: la edición y el detalle completo llegan en las próximas entregas.
+
+La suite cuenta con **846 tests automatizados**.
 
 ### `v0.2.0 — Usuarios, autenticación completa y RBAC`
 
@@ -276,6 +278,7 @@ WorkDesk/
 │       ├── config.py
 │       ├── errors.py
 │       ├── formatting.py
+│       ├── search.py
 │       ├── extensions.py
 │       ├── logging_config.py
 │       └── navigation.py
@@ -302,6 +305,8 @@ WorkDesk/
 │   ├── test_system.py
 │   ├── test_ticket_model.py
 │   ├── test_ticket_policies.py
+│   ├── test_tickets_list_routes.py
+│   ├── test_tickets_list_service.py
 │   ├── test_tickets_routes.py
 │   ├── test_tickets_service.py
 │   ├── test_users_manage_routes.py
@@ -643,6 +648,20 @@ Para probar los distintos roles sin crear usuarios a mano, carga el equipo de de
 
 ---
 
+## Consultar y buscar tickets
+
+La opción **Tickets** (para el personal) o **Mis tickets** (para el Solicitante), en el menú lateral, lista los tickets que cada persona puede ver:
+
+- **Pestañas:** Todos, Abiertos y Cerrados, cada una con su contador. Se abre en **Abiertos**, que incluye todo lo que no está Cerrado (un ticket Resuelto sigue abierto porque espera la confirmación del solicitante).
+- **Buscador:** acepta el número (`12` o `#12`), parte del título o de la descripción. El personal también puede escribir el nombre de un solicitante. La barra superior busca igual, en todas las pestañas.
+- **Filtros:** estado y prioridad; y, en "Más filtros", categoría, ubicación y fechas de creación. Se pueden combinar entre sí y con el buscador.
+- **Orden:** más recientes (por defecto), más antiguos, mayor prioridad primero o recién actualizados.
+- **Paginación:** de 20 tickets por página; los enlaces conservan la búsqueda, los filtros y el orden.
+
+Cada rol ve solo lo suyo desde la propia consulta a la base de datos: el personal ve todos los tickets y el Solicitante solo los que creó o donde es solicitante.
+
+---
+
 ## Rutas actuales
 
 Rutas registradas actualmente:
@@ -677,12 +696,13 @@ GET POST  /admin/locations/new
 GET POST  /admin/locations/<id>/edit
 GET POST  /admin/locations/<id>/deactivate
 GET POST  /admin/locations/<id>/activate
+GET       /tickets
 GET POST  /tickets/new
 GET       /tickets/<public_id>
 GET       /health
 ```
 
-`/dashboard`, `/tickets/new`, `/tickets/<public_id>` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
+`/dashboard`, `/tickets`, `/tickets/new`, `/tickets/<public_id>` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
 
 El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen.
 
@@ -813,7 +833,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-760 tests
+846 tests
 ```
 
 Los tests cubren principalmente:
@@ -828,7 +848,8 @@ Los tests cubren principalmente:
 - datos de demostración;
 - catálogos de tickets: datos iniciales, restricciones de base de datos y administración desde la interfaz;
 - modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación;
-- creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local.
+- creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local;
+- listado de tickets: visibilidad por rol aplicada en la consulta (y comprobada contra la política de acceso), búsqueda, pestañas con contadores, filtros, orden, paginación, ausencia de consultas por fila y parámetros inválidos.
 
 Ejecutar:
 

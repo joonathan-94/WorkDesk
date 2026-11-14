@@ -203,6 +203,11 @@ class Ticket(db.Model):
         nullable=True,
     )
 
+    @property
+    def fecha_actualizacion(self) -> datetime:
+        """Última modificación; la fecha de creación si nunca se modificó."""
+        return self.fecha_modificacion or self.fecha_creacion
+
     creado_por = relationship("User", foreign_keys=[creado_por_usuario_id])
     categoria = relationship("Categoria")
     prioridad = relationship("Prioridad")
