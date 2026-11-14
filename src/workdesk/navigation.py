@@ -52,6 +52,14 @@ MAIN_NAVIGATION = (
         icon="speedometer2",
         active_prefixes=("main.",),
     ),
+    # Solo se marca activa en el formulario: el detalle de un ticket no
+    # pertenece a "Crear ticket". "Tickets" llegará con el listado.
+    NavItem(
+        label="Crear ticket",
+        endpoint="tickets.new_ticket",
+        icon="plus-circle",
+        active_prefixes=("tickets.new_ticket",),
+    ),
     NavItem(
         label="Administración",
         endpoint="admin.index",

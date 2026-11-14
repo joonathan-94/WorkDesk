@@ -1,5 +1,8 @@
 from collections.abc import Iterable
 
+from sqlalchemy.orm import joinedload, selectinload
+
+from ..catalogs.service import list_categories
 from ..extensions import db
 from ..models import (
     Categoria,
@@ -14,7 +17,8 @@ from ..models import (
     User,
 )
 from ..models.admin_audit_log import ActorType
-from ..models.ticket import MAX_TITLE_LENGTH
+from ..models.categoria import FALLBACK_CATEGORY_CODE
+from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..security import RoleCode
 
 INITIAL_STATE_CODE = "NUEVO"
@@ -66,6 +70,12 @@ def create_ticket(
 
     if not description:
         raise TicketRuleError("La descripción es obligatoria.")
+
+    if len(description) > MAX_DESCRIPTION_LENGTH:
+        raise TicketRuleError(
+            "La descripción no puede superar los "
+            f"{MAX_DESCRIPTION_LENGTH} caracteres."
+        )
 
     if not actor.is_active:
         raise TicketRuleError("El usuario no está activo.")
@@ -121,6 +131,78 @@ def create_ticket(
     db.session.refresh(ticket)
 
     return ticket
+
+
+def get_ticket_by_public_id(public_id: str) -> Ticket | None:
+    """Busca un ticket por su identificador público.
+
+    Carga de una vez lo que muestra el detalle (estado, prioridad, categoría,
+    ubicación, creador y solicitantes) para no hacer una consulta por cada uno.
+    No comprueba permisos: quien llama debe aplicar `can_view_ticket`.
+    """
+    return db.session.scalar(
+        db.select(Ticket)
+        .where(Ticket.public_id == public_id)
+        .options(
+            joinedload(Ticket.estado),
+            joinedload(Ticket.prioridad),
+            joinedload(Ticket.categoria),
+            joinedload(Ticket.ubicacion),
+            joinedload(Ticket.creado_por),
+            selectinload(Ticket.solicitantes).joinedload(
+                TicketRequester.solicitante
+            ),
+        )
+    )
+
+
+def list_ticket_history(ticket: Ticket) -> list[TicketHistory]:
+    """Eventos del ticket, del más antiguo al más reciente."""
+    return list(
+        db.session.scalars(
+            db.select(TicketHistory)
+            .where(TicketHistory.ticket_id == ticket.id)
+            .options(joinedload(TicketHistory.actor))
+            .order_by(TicketHistory.fecha_hora, TicketHistory.id)
+        )
+    )
+
+
+def list_requester_candidates() -> list[User]:
+    """Usuarios que pueden figurar como solicitantes: activos y con rol
+    Solicitante, ordenados por apellido y nombre.
+    """
+    return list(
+        db.session.scalars(
+            db.select(User)
+            .join(Role, User.rol_id == Role.id)
+            .where(
+                User.activo.is_(True),
+                Role.codigo == RoleCode.SOLICITANTE,
+            )
+            .order_by(db.func.lower(User.apellido), db.func.lower(User.nombre))
+        )
+    )
+
+
+def categories_for_selection() -> list[Categoria]:
+    """Categorías activas para el desplegable del formulario.
+
+    Van por orden y nombre, pero la categoría de respaldo `Sin clasificar`
+    siempre queda al final: es la salida para quien no sabe cuál elegir, no
+    la opción por defecto.
+    """
+    categories = list_categories("activo")
+
+    return [
+        category
+        for category in categories
+        if category.codigo != FALLBACK_CATEGORY_CODE
+    ] + [
+        category
+        for category in categories
+        if category.codigo == FALLBACK_CATEGORY_CODE
+    ]
 
 
 def record_ticket_event(

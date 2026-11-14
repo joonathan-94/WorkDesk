@@ -26,8 +26,53 @@ def has_any_role(user, *role_codes: RoleCode) -> bool:
     return user.rol.codigo in role_codes
 
 
+# Personal de soporte: ve y opera todos los tickets (docs/04, RF-011). El
+# Solicitante, en cambio, solo accede a los tickets que le pertenecen.
+STAFF_ROLES = (
+    RoleCode.TECNICO,
+    RoleCode.SUPERVISOR,
+    RoleCode.ADMINISTRADOR,
+)
+
+
 def can_manage_users(user) -> bool:
     return has_any_role(user, RoleCode.ADMINISTRADOR)
+
+
+def can_create_ticket(user) -> bool:
+    """Los cuatro roles pueden crear tickets (docs/06, RN-09)."""
+    return has_any_role(user, *RoleCode)
+
+
+def can_choose_requesters(user) -> bool:
+    """Crear un ticket a nombre de otras personas (docs/06, RN-10).
+
+    El Solicitante no elige solicitantes: queda siempre como su propio
+    solicitante.
+    """
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_view_ticket(user, ticket) -> bool:
+    """Indica si el usuario puede ver el ticket.
+
+    - El personal (Técnico, Supervisor y Administrador) ve todos.
+    - El Solicitante ve los que creó y aquellos en los que es solicitante
+      vigente (sin `fecha_retiro`). Un solicitante retirado deja de verlo.
+    """
+    if has_any_role(user, *STAFF_ROLES):
+        return True
+
+    if not has_any_role(user, RoleCode.SOLICITANTE):
+        return False
+
+    if ticket.creado_por_usuario_id == user.id:
+        return True
+
+    return any(
+        requester.solicitante_id == user.id and requester.fecha_retiro is None
+        for requester in ticket.solicitantes
+    )
 
 
 def can_view_audit(user) -> bool:

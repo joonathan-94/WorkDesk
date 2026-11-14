@@ -446,6 +446,82 @@ a.hub-card:focus-visible {
     max-width: 680px;
 }
 
+/* --- Formulario de ticket y detalle ---------------------------------- */
+
+.form-card--wide {
+    max-width: 880px;
+}
+
+/* Sección numerada de un formulario largo (docs/11, UI-004). */
+.form-section + .form-section {
+    margin-top: 24px;
+    padding-top: 24px;
+
+    border-top: 1px solid var(--wd-border);
+}
+
+.form-section__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    margin-bottom: 16px;
+}
+
+.form-section__number {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+
+    width: 28px;
+    height: 28px;
+
+    border-radius: 50%;
+
+    background: #dbeafe;
+    color: var(--wd-primary);
+
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.form-section__title {
+    margin: 0;
+
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.form-section__description {
+    margin: 0;
+
+    color: var(--wd-text-secondary);
+
+    font-size: 0.8125rem;
+}
+
+/* Lista de casillas con desplazamiento propio (por ejemplo, solicitantes). */
+.checklist {
+    max-height: 220px;
+    padding: 12px 12px 4px;
+
+    overflow-y: auto;
+
+    border: 1px solid var(--wd-border);
+    border-radius: var(--wd-radius);
+
+    background: var(--wd-surface);
+}
+
+/* El texto del ticket conserva sus saltos de línea y no desborda. */
+.ticket-text {
+    margin: 0;
+
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
 /* --- Catálogos ------------------------------------------------------- */
 
 /* Muestra del color de una prioridad. Siempre va acompañada de texto. */

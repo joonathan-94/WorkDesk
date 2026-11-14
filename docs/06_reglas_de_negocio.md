@@ -1349,6 +1349,37 @@ Solo el Administrador administra las categorías, las prioridades y las ubicacio
 
 ---
 
+## RN-153 — Creación y visibilidad de tickets
+
+Aplica y precisa RN-09 a RN-13 y RN-16 en la implementación inicial de la creación de tickets.
+
+**Quién puede crear.** Los cuatro roles (Solicitante, Técnico, Supervisor y Administrador), siempre que la cuenta esté activa. Se comprueba en backend.
+
+**Datos del ticket.**
+
+* **Título:** obligatorio, hasta 200 caracteres.
+* **Descripción:** obligatoria, hasta 2000 caracteres. Los saltos de línea cuentan como un solo carácter, igual que en el contador que ve la persona.
+* **Categoría:** obligatoria. Solo pueden elegirse categorías activas. Quien no sabe cuál elegir usa `Sin clasificar`, que se ofrece siempre al final de la lista y nunca viene preseleccionada.
+* **Prioridad:** obligatoria. Solo pueden elegirse prioridades activas. El formulario ofrece `Media` preseleccionada, pero la prioridad debe llegar en el envío: no se asume una por omisión.
+* **Ubicación:** opcional. Solo pueden elegirse ubicaciones activas.
+* El ticket nace siempre en estado `Nuevo`, con un identificador público correlativo que no se reutiliza (RN-07), y se registra su creación en el historial.
+
+**Creador y solicitantes** (RN-10, RN-12 y RN-13).
+
+* El usuario que crea el ticket queda registrado como **creador** y ese dato no cambia nunca.
+* Si crea un **Solicitante**, queda como el único solicitante del ticket. No puede registrar a otras personas: cualquier solicitante enviado en el formulario se ignora.
+* Si crea un **Técnico, Supervisor o Administrador**, puede asociar ningún, uno o varios solicitantes. El creador no se convierte en solicitante por sí mismo. Un ticket sin solicitantes es válido (por ejemplo, una mantención interna).
+* Solo pueden ser solicitantes los usuarios **activos con rol Solicitante**.
+
+**Quién ve un ticket.**
+
+* El personal (Técnico, Supervisor y Administrador) ve todos los tickets (RF-011).
+* El Solicitante ve los tickets que **creó** y aquellos en los que es **solicitante vigente**. Quien fue retirado como solicitante deja de verlos, salvo que además sea el creador.
+* Un usuario sin acceso a un ticket recibe la misma respuesta que si el ticket no existiera (**404, no 403**). Los identificadores son correlativos y fáciles de adivinar: un 403 permitiría descubrir cuáles existen.
+* El Solicitante no ve quién creó el ticket ni los demás solicitantes; el personal sí (docs/11, UI-005).
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

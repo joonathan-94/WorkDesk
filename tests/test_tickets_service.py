@@ -11,7 +11,14 @@ from src.workdesk.models import (
     Ubicacion,
     User,
 )
-from src.workdesk.tickets.service import TicketRuleError, create_ticket
+from src.workdesk.tickets.service import (
+    TicketRuleError,
+    categories_for_selection,
+    create_ticket,
+    get_ticket_by_public_id,
+    list_requester_candidates,
+    list_ticket_history,
+)
 
 
 @pytest.fixture()
@@ -316,3 +323,113 @@ def test_requires_the_initial_state_to_exist(app, make_user):
                 category_id=category.id,
                 priority_id=priority.id,
             )
+
+
+# --- Límite de la descripción ----------------------------------------------
+
+
+def test_description_has_a_maximum_length(app, actor_id, ticket_catalog_ids):
+    with app.app_context():
+        assert _create(actor_id, ticket_catalog_ids, description="a" * 2000)
+
+        with pytest.raises(TicketRuleError, match="2000"):
+            _create(actor_id, ticket_catalog_ids, description="a" * 2001)
+
+
+# --- Candidatos a solicitante ----------------------------------------------
+
+
+def test_requester_candidates_are_active_solicitantes_by_last_name(
+    app,
+    make_user,
+    ticket_catalog_ids,
+):
+    make_user("SOLICITANTE", username="zeta", apellido="Zapata")
+    make_user("SOLICITANTE", username="alfa", apellido="acosta")
+    make_user("SOLICITANTE", username="baja", apellido="Bajas", activo=False)
+    make_user("TECNICO", username="tec")
+    make_user("SUPERVISOR", username="sup")
+
+    with app.app_context():
+        usernames = [user.username for user in list_requester_candidates()]
+
+    # Por apellido sin distinguir mayúsculas; sin inactivos ni otros roles.
+    assert usernames == ["alfa", "zeta"]
+
+
+# --- Categorías para el formulario -----------------------------------------
+
+
+def test_categories_for_selection_put_the_fallback_last(
+    app,
+    ticket_catalog_ids,
+):
+    with app.app_context():
+        db.session.add_all(
+            [
+                Categoria(nombre="Zeta", orden=2),
+                Categoria(nombre="Alfa", orden=1),
+                Categoria(nombre="Sin orden"),
+            ]
+        )
+        db.session.commit()
+
+        names = [category.nombre for category in categories_for_selection()]
+
+    # "Sin clasificar" (orden 0) sería la primera por orden: va al final.
+    assert names == ["Alfa", "Zeta", "Sin orden", "Sin clasificar"]
+
+
+def test_categories_for_selection_exclude_inactive_ones(
+    app,
+    ticket_catalog_ids,
+):
+    with app.app_context():
+        db.session.add(Categoria(nombre="Antigua", activo=False))
+        db.session.commit()
+
+        names = [category.nombre for category in categories_for_selection()]
+
+    assert "Antigua" not in names
+
+
+# --- Consulta de un ticket -------------------------------------------------
+
+
+def test_a_ticket_is_found_by_its_public_id(app, actor_id, ticket_catalog_ids):
+    with app.app_context():
+        ticket = _create(actor_id, ticket_catalog_ids)
+        db.session.commit()
+
+        found = get_ticket_by_public_id(ticket.public_id)
+
+        assert found.id == ticket.id
+        assert found.estado.codigo == "NUEVO"
+
+
+def test_an_unknown_public_id_returns_none(app, ticket_catalog_ids):
+    with app.app_context():
+        assert get_ticket_by_public_id("999999") is None
+
+
+def test_the_history_is_listed_oldest_first_with_its_actor(
+    app,
+    actor_id,
+    ticket_catalog_ids,
+):
+    with app.app_context():
+        ticket = _create(actor_id, ticket_catalog_ids)
+        db.session.commit()
+
+        (entry,) = list_ticket_history(ticket)
+
+        assert entry.tipo_evento == TicketEvent.TICKET_CREADO.value
+        assert entry.evento_nombre == "Ticket creado"
+        assert entry.actor.id == actor_id
+
+
+def test_an_unknown_event_type_is_shown_as_is(app):
+    with app.app_context():
+        entry = TicketHistory(tipo_evento="EVENTO_FUTURO")
+
+        assert entry.evento_nombre == "EVENTO_FUTURO"

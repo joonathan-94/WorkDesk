@@ -119,15 +119,19 @@ def make_user(app):
 
             username = username or f"{role_code.lower()}_test"
 
-            user = User(
-                nombre=role_code.capitalize(),
-                apellido="Pruebas",
-                username=username,
-                email=f"{username}@workdesk.local",
-                password_hash=hash_password(TEST_PASSWORD),
-                rol_id=role.id,
-                **extra,
-            )
+            # `extra` puede sobrescribir cualquier valor por defecto
+            # (nombre, apellido, activo...).
+            values = {
+                "nombre": role_code.capitalize(),
+                "apellido": "Pruebas",
+                "username": username,
+                "email": f"{username}@workdesk.local",
+                "password_hash": hash_password(TEST_PASSWORD),
+                "rol_id": role.id,
+            }
+            values.update(extra)
+
+            user = User(**values)
 
             db.session.add(user)
             db.session.commit()

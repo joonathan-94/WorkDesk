@@ -54,6 +54,37 @@
     {% endif %}
 {% endmacro %}
 
+{# Estado de un ticket. El color sigue docs/11 (sección 27); siempre va
+   acompañado del nombre. #}
+{% macro state_badge(estado) %}
+    {% set styles = {
+        'NUEVO': 'neutral',
+        'ASIGNADO': 'purple',
+        'EN_PROGRESO': 'primary',
+        'EN_ESPERA': 'warning',
+        'RESUELTO': 'success',
+        'CERRADO': 'neutral',
+    } %}
+
+    <span class="badge badge-soft badge-soft-{{ styles.get(estado.codigo, 'neutral') }}">
+        {{ estado.nombre_visible }}
+    </span>
+{% endmacro %}
+
+{# Prioridad de un ticket (docs/11, sección 28). #}
+{% macro priority_badge(prioridad) %}
+    {% set styles = {
+        'BAJA': 'neutral',
+        'MEDIA': 'primary',
+        'ALTA': 'orange',
+        'CRITICA': 'danger',
+    } %}
+
+    <span class="badge badge-soft badge-soft-{{ styles.get(prioridad.codigo, 'neutral') }}">
+        {{ prioridad.nombre }}
+    </span>
+{% endmacro %}
+
 {# Insignias de estado de una cuenta de usuario. #}
 {% macro status_badges(user) %}
     {% if user.activo %}

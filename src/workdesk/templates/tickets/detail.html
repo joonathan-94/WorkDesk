@@ -1,0 +1,139 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import state_badge, priority_badge %}
+
+{% block title %}#{{ ticket.public_id }} {{ ticket.titulo }}{% endblock %}
+
+{% block content %}
+    {% set requesters = ticket.solicitantes|selectattr('fecha_retiro', 'none')|list %}
+
+    <header class="page-header">
+        <div>
+            <h1 class="page-title text-break">
+                <span class="text-secondary">#{{ ticket.public_id }}</span>
+                {{ ticket.titulo }}
+            </h1>
+
+            <p class="page-description">
+                {{ state_badge(ticket.estado) }}
+                {{ priority_badge(ticket.prioridad) }}
+                <span class="ms-1">
+                    Creado el {{ ticket.fecha_creacion|local_datetime }}
+                </span>
+            </p>
+        </div>
+    </header>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <section
+                class="card mb-4"
+                aria-labelledby="description-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="description-title"
+                    >
+                        Descripción
+                    </h2>
+
+                    <p class="ticket-text">{{ ticket.descripcion }}</p>
+                </div>
+            </section>
+
+            <section
+                class="card"
+                aria-labelledby="history-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="history-title"
+                    >
+                        Historial
+                    </h2>
+
+                    <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                        {% for entry in history %}
+                            <li>
+                                <span class="fw-semibold">
+                                    {{ entry.evento_nombre }}
+                                </span>
+
+                                <span class="small text-secondary d-block">
+                                    {{ entry.fecha_hora|local_datetime }}
+                                    ·
+                                    {% if entry.actor %}
+                                        {{ entry.actor.nombre }} {{ entry.actor.apellido }}
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-4">
+            <section
+                class="card"
+                aria-labelledby="summary-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="summary-title"
+                    >
+                        Resumen
+                    </h2>
+
+                    <dl class="mb-0">
+                        <dt class="small text-secondary fw-normal">Estado</dt>
+                        <dd>{{ state_badge(ticket.estado) }}</dd>
+
+                        <dt class="small text-secondary fw-normal">Prioridad</dt>
+                        <dd>{{ priority_badge(ticket.prioridad) }}</dd>
+
+                        <dt class="small text-secondary fw-normal">Categoría</dt>
+                        <dd>{{ ticket.categoria.nombre }}</dd>
+
+                        <dt class="small text-secondary fw-normal">Ubicación</dt>
+                        <dd>{{ ticket.ubicacion.nombre if ticket.ubicacion else '—' }}</dd>
+
+                        <dt class="small text-secondary fw-normal">Creado</dt>
+                        <dd>{{ ticket.fecha_creacion|local_datetime }}</dd>
+
+                        {# El personal ve además quién lo creó y los solicitantes
+                           (docs/11, UI-005); el Solicitante no. #}
+                        {% if is_staff %}
+                            <dt class="small text-secondary fw-normal">Creado por</dt>
+                            <dd>
+                                {{ ticket.creado_por.nombre }} {{ ticket.creado_por.apellido }}
+                            </dd>
+
+                            <dt class="small text-secondary fw-normal">
+                                {{ 'Solicitante' if requesters|length == 1 else 'Solicitantes' }}
+                            </dt>
+                            <dd class="mb-0">
+                                {% if requesters %}
+                                    <ul class="list-unstyled mb-0">
+                                        {% for requester in requesters %}
+                                            <li>
+                                                {{ requester.solicitante.nombre }}
+                                                {{ requester.solicitante.apellido }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    Sin solicitante
+                                {% endif %}
+                            </dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}

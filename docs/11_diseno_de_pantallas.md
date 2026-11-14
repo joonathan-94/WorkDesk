@@ -1716,6 +1716,16 @@ Toast:
 ✓ Ticket #XXX creado correctamente.
 ```
 
+**Implementación inicial (`v0.3.0`):**
+
+- Ruta `/tickets/new`, con la opción "Crear ticket" en el menú lateral para los cuatro roles (activa solo en el formulario). Reglas en `docs/06` (RN-153).
+- Tarjeta única con **secciones numeradas** (círculo con el número, título y una línea de ayuda), como en el mockup: 1. "Cuéntanos qué necesitas" (título y descripción), 2. "Clasificación" (categoría, prioridad y ubicación) y, solo para el personal, 3. "Solicitantes". La sección "Adjuntos" del mockup no se muestra hasta que existan los archivos adjuntos (`v0.4.0`), para no presentar como disponible algo que todavía no funciona.
+- **Título** (hasta 200 caracteres) y **descripción** (hasta 2000), con las ayudas del mockup ("Resume el problema o solicitud en una frase." y "No incluyas contraseñas ni información sensible.") y un contador `n/2000` bajo la descripción.
+- **Categoría** obligatoria: el desplegable empieza en "Selecciona una categoría" y `Sin clasificar` va siempre al final. **Prioridad** obligatoria, con `Media` preseleccionada. **Ubicación** opcional ("Sin ubicación"). Solo se ofrecen valores activos.
+- **Solicitantes** (solo Técnico, Supervisor y Administrador; opcional): lista de casillas con desplazamiento propio, ordenada por apellido, y un campo para filtrarla por nombre o usuario. El buscador es una mejora progresiva con JavaScript: sin JavaScript se ve la lista completa y el formulario funciona igual. El Solicitante no ve esta sección.
+- Botones "Cancelar" (vuelve al dashboard hasta que exista el listado) y "Crear ticket". Los errores se muestran junto a cada campo y el formulario conserva lo escrito.
+- Al crear, se muestra el aviso "Ticket #N creado correctamente." en el detalle del nuevo ticket.
+
 ---
 
 ## UI-005 — Detalle y gestión de ticket
@@ -1806,6 +1816,14 @@ Resumen simplificado:
 - Ubicación;
 - Creado;
 - Actualizado.
+
+**Implementación inicial (`v0.3.0`)** — detalle mínimo de solo lectura, ruta `/tickets/<public_id>`:
+
+- Cabecera con el número y el título, las insignias de estado y prioridad (colores de las secciones 27 y 28, siempre con su nombre) y la fecha de creación.
+- Dos columnas (contenido y resumen lateral): tarjeta "Descripción", que conserva los saltos de línea y escapa cualquier HTML, y tarjeta "Historial" con el evento, la fecha y la persona; y la tarjeta "Resumen" con estado, prioridad, categoría, ubicación y fecha. El personal ve además "Creado por" y los solicitantes vigentes (o "Sin solicitante"); el Solicitante no.
+- Las fechas se muestran en la zona horaria de la aplicación con el formato `dd-mm-aaaa hh:mm`.
+- Un ticket al que el usuario no tiene acceso, o que no existe, responde con la misma página de error 404 (RN-153).
+- Todavía **sin** pestañas (Actividad, Archivos, Historial, Relaciones, Conocimiento), comentarios, acciones ni edición, "Atendido por", SLA ni fecha de actualización: llegan en las siguientes entregas y versiones.
 
 ---
 
