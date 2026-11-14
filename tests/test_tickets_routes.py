@@ -11,27 +11,13 @@ from src.workdesk.models import (
     TicketHistory,
     TicketRequester,
     Ubicacion,
-    User,
 )
 from src.workdesk.tickets import routes as ticket_routes
-from src.workdesk.tickets.service import TicketRuleError, create_ticket
+from src.workdesk.tickets.service import TicketRuleError
+from tests.ticket_helpers import login, make_ticket, text
 
 STAFF_ROLES = ("TECNICO", "SUPERVISOR", "ADMINISTRADOR")
 ALL_ROLES = ("SOLICITANTE",) + STAFF_ROLES
-
-
-def login(client, user_data):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": user_data["password"],
-        },
-    )
-
-
-def text(response) -> str:
-    return " ".join(response.get_data(as_text=True).split())
 
 
 def options(response, field_id: str) -> list[tuple[str, bool, str]]:
@@ -51,34 +37,6 @@ def options(response, field_id: str) -> list[tuple[str, bool, str]]:
             re.DOTALL,
         )
     ]
-
-
-@pytest.fixture()
-def catalog(app, seeded_roles, seeded_catalogs):
-    """Categorías, una ubicación y las prioridades ya cargadas."""
-    with app.app_context():
-        hardware = Categoria(nombre="Hardware", orden=1)
-        networks = Categoria(nombre="Redes", orden=2)
-        location = Ubicacion(nombre="Casa matriz", tipo="SUCURSAL")
-        db.session.add_all([hardware, networks, location])
-        db.session.commit()
-
-        return {
-            "hardware": hardware.id,
-            "networks": networks.id,
-            "fallback": db.session.scalar(
-                db.select(Categoria.id).where(
-                    Categoria.codigo == "SIN_CLASIFICAR"
-                )
-            ),
-            "location": location.id,
-            "medium": db.session.scalar(
-                db.select(Prioridad.id).where(Prioridad.codigo == "MEDIA")
-            ),
-            "high": db.session.scalar(
-                db.select(Prioridad.id).where(Prioridad.codigo == "ALTA")
-            ),
-        }
 
 
 def valid_data(catalog, **overrides):
@@ -120,25 +78,6 @@ def tickets(app) -> list[dict]:
             )
 
         return result
-
-
-def make_ticket(app, catalog, creator_id, requester_ids=(), **overrides):
-    """Crea un ticket con el servicio y devuelve su identificador público."""
-    with app.app_context():
-        values = {
-            "actor": db.session.get(User, creator_id),
-            "title": "Problema con el correo",
-            "description": "No puedo enviar mensajes.",
-            "category_id": catalog["hardware"],
-            "priority_id": catalog["medium"],
-            "requester_ids": requester_ids,
-        }
-        values.update(overrides)
-
-        ticket = create_ticket(**values)
-        db.session.commit()
-
-        return ticket.public_id
 
 
 # --- Acceso -----------------------------------------------------------

@@ -535,6 +535,8 @@ Buscar ticket por ID o texto...
 
 La búsqueda global no sustituye las búsquedas específicas de cada módulo.
 
+**Implementación inicial (`v0.3.0`):** la topbar muestra el buscador a partir de pantallas medianas (en móvil se usa el buscador del propio listado). Al enviarlo lleva a `/tickets` con ese texto, buscando en **todas** las pestañas (para que un ticket cerrado también aparezca) y entre los tickets que el usuario puede ver.
+
 Ejemplo en Listado:
 
 ```text
@@ -1655,6 +1657,18 @@ En notebook/tablet priorizar:
 - SLA.
 
 En mobile utilizar cards.
+
+**Implementación inicial (`v0.3.0`):** ruta `/tickets`, con la opción "Tickets" en el menú para el personal y "Mis tickets" para el Solicitante (mismo listado, con la visibilidad aplicada en la consulta; reglas en `docs/06`, RN-154).
+
+- **Cabecera:** título y descripción según el rol, y el botón "Crear ticket".
+- **Pestañas** Todos, Abiertos y Cerrados, cada una con su contador; Abiertos es la vista por defecto. "Abiertos" son todos los tickets que no están Cerrados (un ticket Resuelto sigue abierto). Los contadores respetan la búsqueda y los filtros activos.
+- **Buscador** ("Número, título, contenido o solicitante" para el personal; "Número, título o contenido" para el Solicitante). **Filtros principales:** Estado y Prioridad, además de "Ordenar por". **Más filtros** (un `<details>` nativo que se abre solo si alguno está aplicado): Categoría, Ubicación y fechas de creación (desde y hasta). Los filtros de Técnico, Grupo y SLA aparecerán cuando existan esos datos. "Limpiar filtros" conserva la pestaña.
+- **Orden:** Más recientes (por defecto), Más antiguos, Mayor prioridad primero y Recién actualizados.
+- **Columnas:** ID (enlace al detalle), Título, Estado, Prioridad, Categoría, Solicitante(s) (solo el personal; el primero y "+N") y Actualizado (fecha y hora locales). Aún no hay columnas de Grupo, Técnico(s) ni SLA, ni selección múltiple ni menú de acciones por fila.
+- **Móvil:** cada ticket se muestra como una tarjeta enlazada al detalle, en lugar de la tabla.
+- **Paginación** de 20 tickets, con números de página, anterior y siguiente, y el texto "Mostrando 1–20 de N tickets". Los enlaces conservan pestaña, búsqueda, filtros y orden.
+- **Estados vacíos** según el caso: sin tickets abiertos o cerrados, sin tickets todavía, o sin resultados para los criterios (con el enlace "Limpiar filtros").
+- El detalle muestra la ruta de navegación "Tickets / #N" (o "Mis tickets / #N") y el botón "Cancelar" del formulario de creación vuelve a este listado.
 
 ---
 
@@ -2895,7 +2909,7 @@ Se recomienda:
 - **Estado activo:** fondo suave y acento azul a la izquierda, con `aria-current="page"`. La opción Administración se marca activa en el hub y en las pantallas de usuarios.
 - **Navegación por rol:** definida en `navigation.py` y filtrada en backend. Hoy incluye solo las pantallas que existen (Dashboard, Administración y Mi cuenta); el resto de las opciones de la sección 5 se añaden con su módulo. Las opciones no autorizadas no se muestran.
 - **Accesibilidad:** enlace "Saltar al contenido", navegación por teclado, foco visible y etiquetas ARIA.
-- La búsqueda global y las notificaciones de la topbar se incorporan con los módulos de tickets y notificaciones; no se muestran controles que todavía no funcionan.
+- El buscador de tickets de la topbar ya funciona (sección 8.3). Las notificaciones se incorporan con su módulo; no se muestran controles que todavía no funcionan.
 - **Avisos:** las categorías de mensaje (éxito, error, advertencia, información) se muestran como alertas de Bootstrap que se pueden cerrar.
 
 ---

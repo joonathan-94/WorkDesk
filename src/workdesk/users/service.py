@@ -8,6 +8,7 @@ from ..auth.credentials import reset_password, set_temporary_password
 from ..auth.security import invalidate_user_sessions, reset_login_failures
 from ..extensions import db
 from ..models import Role, User
+from ..search import escape_like
 from ..security import RoleCode
 
 PAGE_SIZE = 20
@@ -88,7 +89,7 @@ def list_users(
     query_text = query_text.strip()[:MAX_SEARCH_LENGTH]
 
     if query_text:
-        pattern = f"%{_escape_like(query_text)}%"
+        pattern = f"%{escape_like(query_text)}%"
 
         statement = statement.where(
             db.or_(
@@ -452,10 +453,3 @@ def _blank_to_none(value: str | None) -> str | None:
     value = value.strip()
 
     return value or None
-
-
-def _escape_like(text: str) -> str:
-    # Para que "%" y "_" escritos por el usuario se busquen literalmente.
-    return (
-        text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    )

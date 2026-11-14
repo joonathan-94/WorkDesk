@@ -1380,6 +1380,30 @@ Aplica y precisa RN-09 a RN-13 y RN-16 en la implementación inicial de la creac
 
 ---
 
+## RN-154 — Listado y búsqueda de tickets
+
+Aplica RF-088 a RF-092 en la implementación inicial del listado.
+
+**Visibilidad.** El listado solo contiene los tickets que el usuario puede ver según RN-153. Esa restricción se aplica **en la propia consulta a la base de datos**, no después de cargar los tickets, y es siempre el mismo criterio que se usa para abrir un ticket individual. El resultado, los contadores y los enlaces de paginación nunca incluyen tickets no visibles.
+
+**Pestañas.** *Todos*, *Abiertos* y *Cerrados*. Un ticket está **abierto** mientras su estado no sea `Cerrado`: un ticket `Resuelto` sigue abierto porque espera la validación del solicitante y puede reabrirse (docs/08). *Abiertos* es la vista por defecto. Los contadores de cada pestaña respetan la búsqueda y los filtros activos.
+
+**Búsqueda.** Un único texto que coincide con cualquiera de estos criterios:
+
+* el **número** exacto del ticket (con o sin `#`);
+* una parte del **título** o de la **descripción**, sin distinguir mayúsculas y tratando `%` y `_` como caracteres normales;
+* solo para el **personal**: el nombre, el apellido, el nombre completo o el usuario de un **solicitante vigente**. El Solicitante no puede buscar por otras personas, para no revelar quiénes más figuran en un ticket; un solicitante retirado deja de encontrarse.
+
+El texto se limita a 100 caracteres.
+
+**Filtros** (combinables entre sí y con la búsqueda): estado, prioridad, categoría, ubicación y rango de fechas de creación. Un valor desactivado del catálogo sigue pudiendo filtrarse, porque los tickets antiguos lo conservan. Las fechas son días de la zona horaria de la aplicación y "hasta" incluye el día completo. Los filtros por técnico, grupo y SLA se incorporan cuando existan esos datos. Un valor inválido recibido en la URL se ignora en lugar de producir un error.
+
+**Orden.** Más recientes (por defecto), más antiguos, mayor prioridad primero (por nivel) y recién actualizados (última modificación o, si nunca se modificó, la creación). En todos los casos el desempate es la antigüedad, de modo que el orden es estable entre páginas.
+
+**Paginación.** De 20 tickets por página, realizada en PostgreSQL. Una página inexistente devuelve una lista vacía, no un error.
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

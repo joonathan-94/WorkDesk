@@ -217,6 +217,33 @@
     flex: 1 1 auto;
 }
 
+/* Buscador de tickets de la barra superior. */
+.app-topbar__search {
+    position: relative;
+
+    flex: 1 1 auto;
+
+    max-width: 440px;
+}
+
+.app-topbar__search-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+
+    color: var(--wd-text-secondary);
+
+    transform: translateY(-50%);
+
+    pointer-events: none;
+}
+
+.app-topbar__search .form-control {
+    padding-left: 36px;
+
+    background: var(--wd-background);
+}
+
 .app-topbar__brand {
     display: inline-flex;
     align-items: center;

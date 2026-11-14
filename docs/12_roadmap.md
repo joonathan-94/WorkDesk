@@ -831,8 +831,8 @@ Esta es la fase central del MVP.
 1. **Catálogos** ✓ (PR #14): modelos de estados, prioridades, categorías, ubicaciones y motivos de cierre, su migración y el comando `seed-catalogs`.
 2. **Modelo de tickets** ✓ (PR #15): tickets, solicitantes e historial inmutable, con el identificador público generado por una secuencia de PostgreSQL, y el servicio de creación.
 3. **Administración de catálogos** ✓ (PR #16): pantallas para que el Administrador gestione categorías, prioridades y ubicaciones, con auditoría. Se adelantó respecto del plan inicial para poder crear los datos de prueba desde la propia interfaz en lugar de cargarlos con seeds.
-4. **Creación de tickets** (en curso): formulario, políticas de creación y de visibilidad, un detalle de solo lectura y la opción "Crear ticket" en la navegación ("Tickets" llega con el listado).
-5. **Listado**: búsqueda, filtros, orden y paginación, con la visibilidad de cada rol aplicada en la propia consulta.
+4. **Creación de tickets** ✓ (PR #17): formulario, políticas de creación y de visibilidad, un detalle de solo lectura y la opción "Crear ticket" en la navegación.
+5. **Listado** (en curso): "Tickets" y "Mis tickets", con pestañas, búsqueda (también desde la barra superior), filtros, orden y paginación, y la visibilidad de cada rol aplicada en la propia consulta.
 6. **Detalle y edición autorizada**: detalle según el rol, edición y cambio de prioridad con motivo.
 7. **Cierre de la versión**: revisión final y documentación, incluida la guía de primera configuración.
 
@@ -1549,14 +1549,14 @@ main
 → documentación de contexto (PR #2) e identidad visual (PR #3)
 → v0.2.0 integrado (PR #4 a #13) y etiquetado
 → v0.3.0 en desarrollo: catálogos (PR #14), modelo de tickets (PR #15) y
-   administración de catálogos (PR #16) integrados; creación de tickets en curso
+   administración de catálogos (PR #16) y creación de tickets (PR #17)
+   integrados; listado de tickets en curso
 ```
 
 El plan de `v0.3.0` está en la fase 3 (sección 16). El siguiente paso del proyecto es completar sus entregas en este orden:
 
 ```text
-4. creación de tickets (en curso);
-5. listado con búsqueda, filtros, orden y paginación;
+5. listado con búsqueda, filtros, orden y paginación (en curso);
 6. detalle y edición autorizada;
 7. cierre de la versión y guía de primera configuración.
 ```

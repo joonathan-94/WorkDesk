@@ -1,10 +1,15 @@
 {% extends "layouts/app.html" %}
-{% from "_ui_macros.html" import state_badge, priority_badge %}
+{% from "_ui_macros.html" import breadcrumb, state_badge, priority_badge %}
 
 {% block title %}#{{ ticket.public_id }} {{ ticket.titulo }}{% endblock %}
 
 {% block content %}
     {% set requesters = ticket.solicitantes|selectattr('fecha_retiro', 'none')|list %}
+
+    {{ breadcrumb([
+        ('Tickets' if is_staff else 'Mis tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, None),
+    ]) }}
 
     <header class="page-header">
         <div>
