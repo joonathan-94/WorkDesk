@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% set creating = item is none %}
+{% set heading = screen.new_label if creating else 'Editar ' ~ screen.singular %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        (screen.title, url_for(screen.list_endpoint)),
+        (heading, None),
+    ]) }}
+
+    {{ page_header(heading, None if creating else item.nombre) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ request.path }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# Los campos cambian de un catálogo a otro. #}
+            {% include screen.fields_template %}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    {% if creating %}
+                        Crear {{ screen.singular }}
+                    {% else %}
+                        Guardar cambios
+                    {% endif %}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for(screen.list_endpoint) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

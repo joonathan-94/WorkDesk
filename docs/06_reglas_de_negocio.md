@@ -1331,6 +1331,21 @@ Los datos de demostración son opcionales y nunca forman parte de la instalació
 * Se cargan de forma idempotente: quien ya existe se omite sin modificarse.
 * No se pueden cargar cuando el entorno es de producción.
 * Cada creación se audita como una acción del sistema.
+* **No incluyen datos de configuración** de la organización: las categorías, las ubicaciones y los tickets de ejemplo se crean a mano desde la interfaz (RN-152), no con un seed.
+
+---
+
+## RN-152 — Administración de catálogos de tickets
+
+Solo el Administrador administra las categorías, las prioridades y las ubicaciones (RN-121), y cada acción se comprueba en backend. Todo cambio relevante queda en la auditoría administrativa (RN-123) con el tipo de catálogo, el nombre del registro y los valores anterior y nuevo de los campos modificados; si no hay cambios, no se registra nada. Desactivar y reactivar admiten un motivo opcional.
+
+* **Nombre único:** dentro de cada catálogo el nombre no puede repetirse, sin distinguir mayúsculas. Evita opciones indistinguibles en los desplegables; si dos edificios tienen un "Piso 2", se nombran, por ejemplo, "Edificio A - Piso 2".
+* **Desactivar, no eliminar:** los registros de catálogo no se eliminan. Un registro desactivado deja de poder elegirse en tickets nuevos, pero los tickets que ya lo usan lo conservan y no se modifican. Se puede reactivar.
+* **Categorías:** el Administrador crea y edita nombre, descripción y orden. La categoría de respaldo `Sin clasificar` puede renombrarse, pero **no desactivarse**: todo ticket necesita una categoría válida (RN-16). Las categorías creadas desde la interfaz no tienen código interno.
+* **Prioridades:** son exactamente cuatro (Baja, Media, Alta y Crítica). No se crean prioridades nuevas desde la interfaz, y su nivel y su color son fijos porque forman parte de la semántica visual del Design System. El Administrador puede cambiar el nombre y la descripción, y activarlas o desactivarlas. **Siempre debe quedar al menos una prioridad activa**: la comprobación bloquea las prioridades activas para que dos Administradores no dejen el sistema sin ninguna actuando a la vez. Una prioridad solo puede reactivarse si ninguna otra activa tiene su mismo nivel.
+* **Ubicaciones:** el Administrador crea y edita nombre, descripción y tipo. El tipo es opcional y se elige de una lista controlada por la aplicación: Sucursal, Oficina, Edificio, Piso, Área, Instalación u Otra.
+* **Datos iniciales:** los seeds cargan solo lo estructural (los seis estados, las cuatro prioridades, la categoría `Sin clasificar` y los motivos de cierre). Las demás categorías y las ubicaciones las define cada organización desde la interfaz.
+* Los **estados** no se administran desde esta pantalla: sus códigos son estructurales y la configuración de sus atributos visibles y de sus transiciones se implementa junto con el flujo de estados.
 
 ---
 

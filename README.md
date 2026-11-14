@@ -30,6 +30,18 @@ El sistema busca centralizar el ciclo de vida de los tickets, facilitar la colab
 
 ## Estado del proyecto
 
+### `v0.3.0 — Núcleo de tickets` (en desarrollo)
+
+Es la fase central del MVP. Se construye en entregas pequeñas, cada una con su rama, tests y Pull Request. Hasta ahora están integradas:
+
+- **Catálogos de tickets:** estados (los seis estructurales), prioridades (Baja, Media, Alta y Crítica), categorías, ubicaciones y motivos de cierre, con el comando `seed-catalogs` para cargar los datos iniciales.
+- **Modelo de datos de tickets:** tabla de tickets con identificador público generado por una secuencia de PostgreSQL, solicitantes de cada ticket (relación temporal N:M) e historial de eventos inmutable, más el servicio que crea tickets.
+- **Administración de catálogos:** el Administrador gestiona categorías, prioridades y ubicaciones desde la interfaz (crear, editar, desactivar y reactivar), con auditoría de cada cambio.
+
+Todavía **no se pueden crear ni listar tickets desde la interfaz**: la creación, el listado con búsqueda y filtros, y el detalle llegan en las próximas entregas.
+
+La suite cuenta con **644 tests automatizados**.
+
 ### `v0.2.0 — Usuarios, autenticación completa y RBAC`
 
 La segunda versión de WorkDesk está implementada y validada. Suma a la fundación:
@@ -43,7 +55,7 @@ La segunda versión de WorkDesk está implementada y validada. Suma a la fundaci
 - Interfaz administrativa con Bootstrap servido localmente (sin CDN): sidebar y topbar, navegación por rol y hub de administración.
 - Comando `seed-demo` para cargar un equipo de soporte ficticio con el que mostrar el sistema.
 
-La suite cuenta con **385 tests automatizados**.
+Al cerrar la versión, la suite contaba con 385 tests automatizados.
 
 ### `v0.1.0 — Fundación técnica`
 
@@ -82,9 +94,7 @@ La suite de fundación cuenta actualmente con **20 tests automatizados**.
 
 ### Próximo hito
 
-`v0.3.0 — Núcleo de tickets`
-
-La siguiente versión incorpora el núcleo del producto: creación, listado, búsqueda, filtros y detalle de tickets, con sus catálogos (estados, prioridades, categorías y ubicaciones) y la visibilidad de cada rol sobre ellos.
+Cuando se complete `v0.3.0`, la siguiente versión es `v0.4.0 — Asignación, colaboración y ciclo de vida` (asignación de técnicos, cambios de estado, comentarios, notas internas, adjuntos, resolución y cierre). El detalle de cada fase está en [`docs/12_roadmap.md`](docs/12_roadmap.md).
 
 ---
 
@@ -221,6 +231,7 @@ WorkDesk/
 │       ├── admin/
 │       ├── audit/
 │       ├── auth/
+│       ├── catalogs/
 │       ├── main/
 │       ├── models/
 │       ├── security/
@@ -250,10 +261,12 @@ WorkDesk/
 │       │   ├── account/
 │       │   ├── admin/
 │       │   ├── auth/
+│       │   ├── catalogs/
 │       │   ├── errors/
 │       │   ├── layouts/
 │       │   ├── main/
 │       │   └── users/
+│       ├── tickets/
 │       ├── users/
 │       ├── __init__.py
 │       ├── cli.py
@@ -271,6 +284,9 @@ WorkDesk/
 │   ├── test_audit.py
 │   ├── test_auth.py
 │   ├── test_authorization.py
+│   ├── test_catalogs.py
+│   ├── test_catalogs_routes.py
+│   ├── test_catalogs_service.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
 │   ├── test_layout.py
@@ -279,6 +295,8 @@ WorkDesk/
 │   ├── test_seed_demo.py
 │   ├── test_session_limits.py
 │   ├── test_system.py
+│   ├── test_ticket_model.py
+│   ├── test_tickets_service.py
 │   ├── test_users_manage_routes.py
 │   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
@@ -458,16 +476,34 @@ SESSION_COOKIE_SECURE=true
 
 ## Preparación inicial
 
+Con las bases de datos creadas y el archivo `.env` configurado (secciones anteriores), ejecuta estos pasos **en este orden**, con el entorno virtual activado y desde la carpeta del proyecto:
+
+| Paso | Comando | Para qué sirve |
+| --- | --- | --- |
+| 1 | `db upgrade` | Crea las tablas en PostgreSQL. |
+| 2 | `seed-roles` | Carga los cuatro roles del sistema. |
+| 3 | `seed-catalogs` | Carga estados, prioridades, la categoría de respaldo y los motivos de cierre. |
+| 4 | `create-admin` | Crea tu cuenta de Administrador. |
+| 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
+| 6 | `run` | Arranca WorkDesk. |
+| 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
+
+Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación.
+
+---
+
 ### Aplicar migraciones
 
 ```bash
 python -m flask --app src.workdesk db upgrade
 ```
 
-Actualmente las migraciones iniciales crean:
+Las migraciones actuales crean estas tablas:
 
-- `roles`
-- `usuarios`
+- `roles` y `usuarios`: identidad y roles.
+- `auditoria_administrativa`: registro inmutable de las acciones administrativas.
+- `estados`, `prioridades`, `categorias`, `ubicaciones` y `motivos_cierre`: catálogos de tickets.
+- `tickets`, `tickets_solicitantes` e `historial_ticket`: los tickets, sus solicitantes y su historial.
 
 ---
 
@@ -487,6 +523,28 @@ ADMINISTRADOR
 ```
 
 El comando puede volver a ejecutarse sin duplicar los roles existentes.
+
+---
+
+### Cargar los catálogos iniciales
+
+```bash
+python -m flask --app src.workdesk seed-catalogs
+```
+
+Carga, de manera idempotente, los datos que WorkDesk necesita para funcionar:
+
+```text
+Estados             Nuevo, Asignado, En progreso, En espera, Resuelto, Cerrado
+Prioridades         Baja, Media, Alta, Crítica
+Categoría           Sin clasificar (categoría de respaldo)
+Motivos de cierre   Resolución validada, Cierre directo, Inactividad,
+                    Duplicado, Cancelación, Cierre excepcional
+```
+
+El comando puede volver a ejecutarse sin duplicar nada y sin pisar lo que un Administrador haya renombrado o desactivado.
+
+**No carga categorías de ejemplo ni ubicaciones.** Dependen de cada organización, así que ningún seed las incluye: una instalación real no debe arrancar con datos ficticios. Se crean desde la interfaz, como se explica en [Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones).
 
 ---
 
@@ -539,6 +597,28 @@ La aplicación estará disponible normalmente en:
 http://127.0.0.1:5000
 ```
 
+Inicia sesión con el Administrador que creaste en el paso 4.
+
+---
+
+## Configurar categorías y ubicaciones
+
+Los tickets necesitan una categoría y, opcionalmente, una ubicación. WorkDesk solo trae la categoría de respaldo `Sin clasificar`; el resto lo define cada organización desde la interfaz, con la sesión del Administrador iniciada:
+
+1. En el menú lateral, abre **Administración**.
+2. **Categorías** → **Nueva categoría**. El nombre es obligatorio; la descripción y el orden son opcionales (las categorías con número menor aparecen primero). Para un equipo de soporte TI, por ejemplo: `Accesos y cuentas`, `Correo`, `Hardware`, `Software`, `Redes`, `Impresoras`.
+3. **Ubicaciones** → **Nueva ubicación**. Indica el nombre y, si quieres, el tipo (Sucursal, Oficina, Edificio, Piso, Área, Instalación u Otra). Por ejemplo, `Casa matriz` (Sucursal) o `Edificio A - Piso 2` (Piso).
+4. **Prioridades** (opcional): puedes cambiar el nombre y la descripción de las cuatro prioridades, o desactivar alguna. Su nivel y su color son fijos, y siempre debe quedar al menos una activa.
+
+Reglas que conviene conocer:
+
+- El nombre no puede repetirse dentro de un mismo catálogo, sin distinguir mayúsculas. Si dos edificios tienen un `Piso 2`, nómbralos `Edificio A - Piso 2` y `Edificio B - Piso 2`.
+- **Desactivar** un valor no afecta a los tickets que ya lo usan: solo deja de poder elegirse en tickets nuevos. Se puede reactivar cuando quieras.
+- `Sin clasificar` se puede renombrar, pero no desactivar.
+- Cada cambio queda registrado en la auditoría administrativa.
+
+Si solo quieres probar el sistema, bastan tres o cuatro categorías y una o dos ubicaciones.
+
 ---
 
 ## Rutas actuales
@@ -561,10 +641,24 @@ GET POST  /users/<id>/role
 GET POST  /users/<id>/deactivate
 GET POST  /users/<id>/activate
 GET POST  /users/<id>/reset-password
+GET       /admin/categories
+GET POST  /admin/categories/new
+GET POST  /admin/categories/<id>/edit
+GET POST  /admin/categories/<id>/deactivate
+GET POST  /admin/categories/<id>/activate
+GET       /admin/priorities
+GET POST  /admin/priorities/<id>/edit
+GET POST  /admin/priorities/<id>/deactivate
+GET POST  /admin/priorities/<id>/activate
+GET       /admin/locations
+GET POST  /admin/locations/new
+GET POST  /admin/locations/<id>/edit
+GET POST  /admin/locations/<id>/deactivate
+GET POST  /admin/locations/<id>/activate
 GET       /health
 ```
 
-`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin` y todas las rutas `/users` requieren el rol Administrador.
+`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 
@@ -690,30 +784,24 @@ No deben registrarse contraseñas, claves secretas, cookies, tokens ni URLs de b
 
 WorkDesk utiliza `pytest`.
 
-La suite de fundación dispone actualmente de:
+La suite dispone actualmente de:
 
 ```text
-20 tests
+644 tests
 ```
 
 Los tests cubren principalmente:
 
-- creación de la aplicación;
-- configuración de testing;
-- rutas públicas;
-- rutas protegidas;
-- errores controlados;
-- health check;
-- conexión PostgreSQL de testing;
-- login válido;
-- login inválido;
-- usuario inactivo;
-- logout;
-- bloqueo por intentos fallidos;
-- invalidación mediante `token_version`;
-- hashing Argon2id;
-- verificación de contraseñas;
-- configuración obligatoria.
+- creación de la aplicación, configuración y manejo de errores;
+- health check y conexión PostgreSQL de testing;
+- autenticación: login, logout, bloqueo por intentos fallidos, invalidación de sesiones, límites de sesión y Argon2id;
+- política de contraseñas, contraseñas temporales y cambio obligatorio;
+- autorización por roles y navegación filtrada por rol;
+- administración de usuarios (servicio y rutas) y "Mi cuenta";
+- auditoría administrativa, incluida su inmutabilidad;
+- datos de demostración;
+- catálogos de tickets: datos iniciales, restricciones de base de datos y administración desde la interfaz;
+- modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación.
 
 Ejecutar:
 
@@ -764,6 +852,9 @@ python -m flask --app src.workdesk db check
 
 # Cargar roles
 python -m flask --app src.workdesk seed-roles
+
+# Cargar catálogos iniciales (estados, prioridades, categoría de respaldo, motivos de cierre)
+python -m flask --app src.workdesk seed-catalogs
 
 # Crear Administrador inicial
 python -m flask --app src.workdesk create-admin

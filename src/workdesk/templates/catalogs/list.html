@@ -1,0 +1,189 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, active_badge %}
+
+{% block title %}{{ screen.title }}{% endblock %}
+
+{% block content %}
+    {% set headers = {
+        'nombre': 'Nombre',
+        'descripcion': 'Descripción',
+        'orden': 'Orden',
+        'nivel': 'Nivel',
+        'color': 'Color',
+        'tipo': 'Tipo',
+        'estado': 'Estado',
+    } %}
+
+    {# Cada columna se dibuja según su clave (ver CatalogScreen.columns). #}
+    {% macro cell(item, key) %}
+        {% if key == 'nombre' %}
+            <span class="fw-semibold">{{ item.nombre }}</span>
+        {% elif key == 'descripcion' %}
+            <span class="text-secondary">{{ item.descripcion or '—' }}</span>
+        {% elif key == 'orden' %}
+            {{ '—' if item.orden is none else item.orden }}
+        {% elif key == 'nivel' %}
+            {{ item.nivel }}
+        {% elif key == 'color' %}
+            {% if item.color and item.color|length == 7 and item.color.startswith('#') %}
+                <span
+                    class="color-swatch"
+                    style="background-color: {{ item.color }}"
+                    aria-hidden="true"
+                ></span>
+                <span class="small text-secondary">{{ item.color }}</span>
+            {% else %}
+                —
+            {% endif %}
+        {% elif key == 'tipo' %}
+            {{ item.tipo_nombre or '—' }}
+        {% elif key == 'estado' %}
+            {{ active_badge(item) }}
+        {% endif %}
+    {% endmacro %}
+
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        (screen.title, None),
+    ]) }}
+
+    {% call page_header(screen.title, screen.description) %}
+        {% if screen.new_endpoint %}
+            <a
+                class="btn btn-primary"
+                href="{{ url_for(screen.new_endpoint) }}"
+            >
+                <i
+                    class="bi bi-plus-lg me-1"
+                    aria-hidden="true"
+                ></i>
+                {{ screen.new_label }}
+            </a>
+        {% endif %}
+    {% endcall %}
+
+    <form
+        class="card card-body mb-3"
+        method="get"
+        action="{{ url_for(screen.list_endpoint) }}"
+    >
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6 col-md-4">
+                <label
+                    class="form-label"
+                    for="estado"
+                >
+                    Estado
+                </label>
+
+                <select
+                    class="form-select"
+                    id="estado"
+                    name="estado"
+                >
+                    <option value="">Todos</option>
+                    <option
+                        value="activo"
+                        {% if status == 'activo' %}selected{% endif %}
+                    >
+                        Activos
+                    </option>
+                    <option
+                        value="inactivo"
+                        {% if status == 'inactivo' %}selected{% endif %}
+                    >
+                        Inactivos
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-md-4 d-flex gap-2">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Filtrar
+                </button>
+
+                <a
+                    class="btn btn-link"
+                    href="{{ url_for(screen.list_endpoint) }}"
+                >
+                    Limpiar
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <p
+        class="small text-secondary mb-2"
+        aria-live="polite"
+    >
+        {{ items|length }}
+        {{ 'resultado' if items|length == 1 else 'resultados' }}
+    </p>
+
+    {% if items %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            {% for key in screen.columns %}
+                                <th scope="col">{{ headers[key] }}</th>
+                            {% endfor %}
+                            <th scope="col">
+                                <span class="visually-hidden">Acciones</span>
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                {% for key in screen.columns %}
+                                    <td>{{ cell(item, key) }}</td>
+                                {% endfor %}
+
+                                <td class="text-end text-nowrap">
+                                    <a
+                                        class="btn btn-sm btn-outline-secondary"
+                                        href="{{ url_for(screen.edit_endpoint, item_id=item.id) }}"
+                                    >
+                                        Editar
+                                    </a>
+
+                                    {% if not item.activo %}
+                                        <a
+                                            class="btn btn-sm btn-outline-primary ms-1"
+                                            href="{{ url_for(screen.activate_endpoint, item_id=item.id) }}"
+                                        >
+                                            Reactivar
+                                        </a>
+                                    {% elif blockers.get(item.id) %}
+                                        <span class="badge badge-soft badge-soft-neutral ms-1">
+                                            Protegida
+                                            <span class="visually-hidden">:
+                                                {{ blockers[item.id] }}</span>
+                                        </span>
+                                    {% else %}
+                                        <a
+                                            class="btn btn-sm btn-outline-danger ms-1"
+                                            href="{{ url_for(screen.deactivate_endpoint, item_id=item.id) }}"
+                                        >
+                                            Desactivar
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <p class="text-center text-secondary border rounded p-4 mb-0">
+            {{ screen.empty_message }}
+        </p>
+    {% endif %}
+{% endblock %}

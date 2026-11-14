@@ -69,7 +69,7 @@ La versión `v0.2.0` está:
 - documentada;
 - mergeada en `main` (PR #4 a #13).
 
-Cuando se cree el tag `v0.2.0` sobre `main` queda cerrada. La versión anterior, `v0.1.0 — Fundación técnica`, ya está etiquetada.
+`v0.2.0` ya está etiquetada, igual que la versión anterior, `v0.1.0 — Fundación técnica`.
 
 ## Rama estable
 
@@ -82,14 +82,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/account-and-demo-data
+feature/catalog-admin
 ```
 
-Paso 5.2 de `v0.2.0` (último): pantalla "Mi cuenta", comando de datos demo y cierre documental de la versión. No incluye migraciones.
+Entrega 3 de `v0.3.0`: administración de categorías, prioridades y ubicaciones desde la interfaz. Incluye una migración (índices únicos de nombre en prioridades y ubicaciones).
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11) y la base de la interfaz administrativa (PR #12).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14) y el modelo de tickets (PR #15).
 
-Paso siguiente: crear el tag `v0.2.0` sobre `main` y planificar `v0.3.0`.
+Paso siguiente: entrega 4 de `v0.3.0`, la creación de tickets.
 
 ## Identidad visual (integrada en `main`)
 
@@ -109,13 +109,30 @@ La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. I
 - actualización de README;
 - actualización de `docs/11_diseno_de_pantallas.md`.
 
-## Próximo hito
+## Hito en desarrollo
 
 ```text
 v0.3.0 — Núcleo de tickets
 ```
 
-Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de tickets, con sus catálogos (estados, prioridades, categorías y ubicaciones). Conviene dividirla en entregas pequeñas, como se hizo con `v0.2.0`; el plan está en `docs/12_roadmap.md` (sección "Próximo paso inmediato"). Reutiliza la infraestructura de `v0.2.0` (autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio y listado).
+Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de tickets, con sus catálogos. Se divide en entregas pequeñas, cada una con su rama, tests y Pull Request, como se hizo con `v0.2.0`. Reutiliza la infraestructura de `v0.2.0` (autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio y listado).
+
+| # | Entrega | Estado |
+| --- | --- | --- |
+| 1 | Catálogos: estados, prioridades, categorías, ubicaciones y motivos de cierre (modelos, migración y `seed-catalogs`) | Integrada (PR #14) |
+| 2 | Modelo de tickets (tickets, solicitantes e historial) y servicio de creación | Integrada (PR #15) |
+| 3 | Administración de catálogos desde la interfaz | En curso |
+| 4 | Creación de tickets | Pendiente |
+| 5 | Listado con búsqueda, filtros, orden y paginación | Pendiente |
+| 6 | Detalle y edición autorizada | Pendiente |
+| 7 | Cierre de la versión: revisión final y documentación | Pendiente |
+
+Decisiones de la fase:
+
+- **Sin datos de ejemplo en los seeds.** Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz; ningún seed los incluye, para que una instalación real no arranque con datos ficticios. El README documenta cómo hacerlo.
+- **Visibilidad del Solicitante:** ve los tickets que creó o donde es solicitante vigente. Técnico, Supervisor y Administrador ven todos.
+- **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación y cambian la prioridad con motivo obligatorio; el Solicitante solo lee.
+- **Estados y transiciones** (UI-021) se difieren a `v0.4.0`, cuando exista el flujo de estados y la tabla de transiciones.
 
 ## Hito completado: v0.2.0
 
@@ -254,10 +271,12 @@ WorkDesk/
 │       ├── admin/
 │       ├── audit/
 │       ├── auth/
+│       ├── catalogs/
 │       ├── main/
 │       ├── models/
 │       ├── security/
 │       ├── seeds/
+│       ├── tickets/
 │       ├── users/
 │       ├── static/
 │       │   ├── css/
@@ -297,6 +316,9 @@ WorkDesk/
 │   ├── test_audit.py
 │   ├── test_auth.py
 │   ├── test_authorization.py
+│   ├── test_catalogs.py
+│   ├── test_catalogs_routes.py
+│   ├── test_catalogs_service.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
 │   ├── test_layout.py
@@ -305,6 +327,8 @@ WorkDesk/
 │   ├── test_seed_demo.py
 │   ├── test_session_limits.py
 │   ├── test_system.py
+│   ├── test_ticket_model.py
+│   ├── test_tickets_service.py
 │   ├── test_users_manage_routes.py
 │   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
@@ -407,14 +431,19 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente cuatro migraciones:
+Existen actualmente siete migraciones:
 
 ```text
 create_roles_table
 create_users_table
 create_admin_audit_log_table
 add_must_change_password_flag_to_users
+create_ticket_catalogs_tables
+create_tickets_tables
+add_unique_name_indexes_to_priorities_and_locations
 ```
+
+Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
 
 La revisión técnica final de `v0.1.0` confirmó:
 
@@ -548,7 +577,7 @@ Reglas:
 - **Origen de la petición:** la IP y el user agent se toman de la petición actual y se truncan al tamaño de la columna.
 - **Append-only:** el ORM rechaza actualizar o eliminar registros existentes (`AuditLogImmutableError`). Una corrección se registra como un evento nuevo.
 
-Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Las acciones críticas admiten un motivo opcional.
+Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Desde `v0.3.0` también la administración de catálogos (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO` y `CATALOGO_DESACTIVADO`, con el tipo en `entidad_tipo`). Las acciones críticas admiten un motivo opcional.
 
 ## Gestión de usuarios (Administrador)
 
@@ -577,6 +606,68 @@ Rutas bajo `/users/<id>`, todas exclusivas del Administrador (`admin_only = role
 - **Formularios** (`users/forms.py`): `ProfileForm` y `TemporaryPasswordForm` comparten campos entre alta, edición y restablecimiento; `ChangeRoleForm` y `ReasonForm` para las confirmaciones.
 - **Plantillas:** macros compartidos en `_form_macros.html` (campos, selector de contraseña temporal y aviso de contraseña); el script `static/js/common/temporary-password.js` muestra el campo manual solo al elegir esa opción.
 - **Modelo:** `User.mark_modified(actor)` registra quién y cuándo modificó el usuario por última vez.
+
+---
+
+# 11 bis. Catálogos de tickets
+
+Cinco catálogos que los tickets necesitan, cada uno con su modelo en `src/workdesk/models/`:
+
+| Catálogo | Tabla | Notas |
+| --- | --- | --- |
+| `Estado` | `estados` | Los seis estructurales (`NUEVO`, `ASIGNADO`, `EN_PROGRESO`, `EN_ESPERA`, `RESUELTO`, `CERRADO`). El código es inmutable; solo el nombre visible, la descripción y el color serán configurables. Sin columnas de vigencia. |
+| `Prioridad` | `prioridades` | Baja, Media, Alta y Crítica. `nivel > 0` y único entre las activas (índice parcial). Nombre único sin distinguir mayúsculas. |
+| `Categoria` | `categorias` | `codigo` opcional y único. Nombre único sin distinguir mayúsculas. La categoría de respaldo `SIN_CLASIFICAR` (orden 0) siempre existe y no puede desactivarse. |
+| `Ubicacion` | `ubicaciones` | Nombre único sin distinguir mayúsculas. `tipo` guarda el código de `LocationType` (`SUCURSAL`, `OFICINA`, `EDIFICIO`, `PISO`, `AREA`, `INSTALACION`, `OTRA`) o NULL; la lista vive en la aplicación, no en la base de datos. |
+| `MotivoCierre` | `motivos_cierre` | Seis códigos base (`RESOLUCION_VALIDADA`, `CIERRE_DIRECTO`, `INACTIVIDAD`, `DUPLICADO`, `CANCELACION`, `CIERRE_EXCEPCIONAL`). Cancelación y duplicidad no son estados: son un cierre con ese motivo. |
+
+Prioridad, categoría, ubicación y motivo de cierre comparten el mixin `CatalogAuditMixin` (`models/_catalog.py`): `activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion`, `usuario_modificacion_id` y el método `mark_modified(actor)`. Desactivar un valor no afecta a los tickets que ya lo referencian: solo impide elegirlo en operaciones nuevas.
+
+**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades, la categoría `Sin clasificar` y los seis motivos de cierre. Es idempotente: cada registro se identifica por su `codigo` y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
+
+## Administración de catálogos (entrega 3 de `v0.3.0`)
+
+Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclusivo del Administrador mediante `roles_required`. Reglas completas en `docs/06` (RN-152). Sigue el patrón de la administración de usuarios: las reglas están en `catalogs/service.py` y las rutas solo orquestan.
+
+- **Pantallas** (`/admin/categories`, `/admin/priorities`, `/admin/locations`): listado con filtro Todos / Activos / Inactivos (sin paginación: son catálogos cortos), formulario de alta y edición, y confirmación de desactivar o reactivar con motivo opcional. Las tres comparten las plantillas de `templates/catalogs/` (`list.html`, `form.html`, `status_confirm.html` y un parcial de campos por catálogo); `catalogs/screens.py` guarda lo que cambia de una a otra (textos, rutas, columnas).
+- **Categorías:** nombre, descripción y orden. Las creadas desde la interfaz no llevan `codigo`. Se ordenan por `orden` (las sin orden al final) y nombre.
+- **Prioridades:** no se crean y su nivel y color son fijos (docs/11, UI-019); solo se edita el nombre y la descripción, y se activa o desactiva. Siempre debe quedar al menos una activa: la comprobación bloquea las filas activas (`SELECT ... FOR UPDATE`) para que dos Administradores no desactiven a la vez las dos últimas. Reactivar una prioridad cuyo nivel ocupa otra activa se rechaza con un mensaje (índice único parcial).
+- **Ubicaciones:** nombre, descripción y tipo (lista controlada `LocationType`).
+- **Nombres únicos** sin distinguir mayúsculas, con comprobación en el servicio y respaldo en un índice único de base de datos. Una carrera entre dos altas la resuelve el índice y un savepoint (`begin_nested`), como en la creación de usuarios.
+- **Protecciones:** `SIN_CLASIFICAR` no se desactiva (se comprueba también al abrir la pantalla de confirmación). `SIN_CLASIFICAR` sí puede renombrarse; su código no cambia.
+- **Auditoría:** cuatro acciones genéricas (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO`, `CATALOGO_DESACTIVADO`) con `entidad_tipo` `categoria`, `prioridad` o `ubicacion`, el nombre del registro en `detalle`, y los valores anterior y nuevo solo de los campos que cambiaron. Sin cambios, no se audita. Las acciones de activar y desactivar admiten un motivo opcional.
+- **Formularios** (`catalogs/forms.py`): `CategoryForm`, `PriorityForm` y `LocationForm`; `OptionalIntegerField` (número opcional con mensajes en español) para el orden; el tipo de ubicación se valida sin `SelectField`, como el rol en los formularios de usuarios. La confirmación reutiliza `ReasonForm` de `users/forms.py`.
+- **Hub y navegación:** las tarjetas Categorías, Prioridades y Ubicaciones del hub enlazan con sus listados, y "Administración" queda activa en las pantallas del módulo (prefijo `catalogs.` en `navigation.py`).
+- Las pantallas de **Estados y transiciones** (UI-021) quedan para `v0.4.0`.
+
+---
+
+# 11 ter. Modelo de tickets
+
+Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. Todavía no hay pantallas de tickets: la creación llega en la siguiente entrega.
+
+## Ticket (`tickets`)
+
+Entidad central. Campos principales: `public_id`, `titulo` (máximo 200 caracteres), `descripcion`, `creado_por_usuario_id` (creador original, no cambia), `categoria_id`, `prioridad_id`, `estado_id`, `ubicacion_id` (opcional), `resolucion`, las fechas y usuarios de modificación, resolución y cierre, `motivo_cierre_id`, `cerrado_automaticamente`, `version` (control optimista, inicia en 1) y `activo` (desactivación lógica excepcional, no equivale a un ticket cerrado).
+
+- **`public_id`:** lo genera la secuencia de PostgreSQL `tickets_public_id_seq` (segura ante concurrencia), se guarda como texto y la interfaz lo mostrará como `#N`. Para ordenar por antigüedad se usa `id` o las fechas, no `public_id`.
+- **Restricciones:** `version >= 1`; `fecha_cierre` y `motivo_cierre_id` van siempre juntos o ambos vacíos; un cierre automático no tiene usuario que cierra. Que un ticket en estado `CERRADO` tenga fecha y motivo de cierre no puede expresarse en la base (depende del código del estado en otra tabla): lo aplicará el servicio de cierre de `v0.4.0`.
+- **Aún sin** grupo, impacto ni urgencia: sus catálogos y la tabla `grupos` llegan en fases posteriores, y las columnas se añadirán entonces.
+- Índices por estado, prioridad, categoría, ubicación, fecha de creación, fecha de cierre y creador; todas las claves foráneas son `ON DELETE RESTRICT`.
+
+## Solicitantes (`tickets_solicitantes`)
+
+Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se convierte en solicitante por sí mismo. La participación vigente es la que no tiene `fecha_retiro`; al retirar a alguien el registro se conserva. Un índice único parcial impide que una persona figure dos veces como solicitante vigente del mismo ticket (puede volver a asociarse después de ser retirada).
+
+## Historial (`historial_ticket`)
+
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene por ahora `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`; los de estado, asignación, comentarios, resolución y cierre se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`.
+
+## Servicio (`tickets/service.py`)
+
+- `create_ticket(...)`: crea el ticket en estado `NUEVO` y registra `TICKET_CREADO`. Exige título y descripción, que el actor esté activo, que categoría, prioridad y ubicación existan y estén activas, y que los solicitantes sean usuarios activos con rol Solicitante (sin duplicados). Lanza `TicketRuleError` sin dejar nada pendiente. **No hace commit.**
+- `record_ticket_event(...)`: añade un evento al historial en la sesión actual, sin commit; lo reutilizarán la edición y el ciclo de vida.
+- Quién puede crear tickets a nombre de otras personas lo decide la capa de rutas, no el servicio.
 
 ---
 
@@ -788,6 +879,20 @@ GET, POST  /users/<id>/role
 GET, POST  /users/<id>/deactivate
 GET, POST  /users/<id>/activate
 GET, POST  /users/<id>/reset-password
+GET        /admin/categories
+GET, POST  /admin/categories/new
+GET, POST  /admin/categories/<id>/edit
+GET, POST  /admin/categories/<id>/deactivate
+GET, POST  /admin/categories/<id>/activate
+GET        /admin/priorities
+GET, POST  /admin/priorities/<id>/edit
+GET, POST  /admin/priorities/<id>/deactivate
+GET, POST  /admin/priorities/<id>/activate
+GET        /admin/locations
+GET, POST  /admin/locations/new
+GET, POST  /admin/locations/<id>/edit
+GET, POST  /admin/locations/<id>/deactivate
+GET, POST  /admin/locations/<id>/activate
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -796,7 +901,7 @@ GET        /static/<path:filename>
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin` y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación").
+`/admin`, todas las rutas `/admin/...` (categorías, prioridades y ubicaciones; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
 El dashboard actual es temporal.
 
@@ -821,13 +926,13 @@ No representa todavía los dashboards finales del MVP.
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
 - Hoy incluye solo las pantallas que existen: Dashboard (todos), Administración (Administrador) y Mi cuenta (todos).
-- Administración se marca activa en el hub y en todas las pantallas de usuarios; Mi cuenta, en `/account` y en el cambio de contraseña.
+- Administración se marca activa en el hub, en todas las pantallas de usuarios y en las de catálogos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Solo "Usuarios" está implementada y enlaza con su pantalla; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Categorías", "Prioridades" y "Ubicaciones"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -995,9 +1100,12 @@ Comandos propios actuales:
 
 ```bash
 python -m flask --app src.workdesk seed-roles
+python -m flask --app src.workdesk seed-catalogs
 python -m flask --app src.workdesk create-admin
 python -m flask --app src.workdesk seed-demo
 ```
+
+`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las prioridades, la categoría `Sin clasificar` y los motivos de cierre. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
 
 `create-admin`:
 
@@ -1049,6 +1157,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras las tres primeras entregas de `v0.3.0` (catálogos, modelo de tickets y administración de catálogos):
+
+```text
+644 tests passing
+```
+
+- **Catálogos** (`tests/test_catalogs.py`, 17 tests; 402 en total): datos iniciales de `seed-catalogs` (estados en orden, prioridades con nivel creciente, categoría de respaldo y motivos de cierre), que no crea ubicaciones, idempotencia, que no pisa cambios de un Administrador, restricciones de base de datos (códigos únicos, nivel positivo y único entre activas, nombre de categoría único sin distinguir mayúsculas) y el comando CLI.
+- **Modelo de tickets** (`tests/test_ticket_model.py` y `tests/test_tickets_service.py`, 44 tests; 446 en total): valores por defecto, `public_id` consecutivo y único, restricciones del cierre, solicitantes vigentes (índice parcial, retiro y nueva asociación), historial inmutable y con actor coherente, y el servicio `create_ticket` (datos, normalización, que el creador no sea solicitante por defecto, historial, validaciones, valores de catálogo inactivos o inexistentes y que no hace commit).
+- **Administración de catálogos** (198 tests nuevos; 644 en total):
+  - `tests/test_catalogs_service.py` (41): alta, edición (solo lo cambiado), duplicados sin distinguir mayúsculas y carrera de unicidad, desactivar y reactivar con auditoría y motivo, categoría de respaldo y última prioridad activa protegidas, conflicto al reactivar una prioridad, que desactivar no afecta a tickets existentes pero impide elegir el valor en tickets nuevos, y orden de los listados.
+  - `tests/test_catalogs_routes.py` (154): control de acceso en todas las rutas (anónimo, roles sin permiso por GET y POST, ids inexistentes, CSRF), listados con filtro y estado vacío, formularios con sus validaciones, prioridades que ignoran nivel y color enviados y no se pueden crear, confirmaciones y protecciones, y escape de HTML.
+  - `tests/test_layout.py`: el hub enlaza ahora cuatro secciones (antes solo Usuarios) y la navegación marca Administración como activa en las pantallas de catálogos.
 
 Estado tras "Mi cuenta" y los datos demo (paso 5.2, cierre de `v0.2.0`):
 
@@ -1212,6 +1333,12 @@ python -m flask --app src.workdesk routes
 
 ```bash
 python -m flask --app src.workdesk seed-roles
+```
+
+## Cargar catálogos iniciales
+
+```bash
+python -m flask --app src.workdesk seed-catalogs
 ```
 
 ## Crear Administrador inicial
@@ -1486,7 +1613,7 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 # 30. Fase v0.2.0 (completada) y siguiente fase
 
-`v0.2.0 — Usuarios, autenticación completa y RBAC` está completa. Este apartado resume lo que dejó implementado; la siguiente fase es `v0.3.0 — Núcleo de tickets` (ver "Próximo hito").
+`v0.2.0 — Usuarios, autenticación completa y RBAC` está completa. Este apartado resume lo que dejó implementado; la siguiente fase es `v0.3.0 — Núcleo de tickets` (ver "Hito en desarrollo").
 
 ## Implementado hasta `v0.2.0`
 
@@ -1518,11 +1645,10 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0`. Lo que sigue pertenece a `v0.3.0` y a las fases posteriores:
+Nada de `v0.2.0`. `v0.3.0` ya tiene los catálogos, el modelo de tickets y la administración de catálogos (ver "Hito en desarrollo"). Lo que falta pertenece a `v0.3.0` y a las fases posteriores:
 
-- catálogos de tickets (estados, prioridades, categorías y ubicaciones);
-- modelo Ticket y su identificador público;
-- creación, listado, búsqueda, filtros y detalle de tickets;
+- creación, listado, búsqueda, filtros y detalle de tickets, con la visibilidad de cada rol;
+- edición autorizada de tickets y cambio de prioridad con motivo;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo.
 

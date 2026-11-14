@@ -48,16 +48,19 @@ HUB_SECTIONS = (
                 title="Categorías",
                 description="Clasificación de las solicitudes.",
                 icon="tags",
+                endpoint="catalogs.categories_list",
             ),
             HubCard(
                 title="Prioridades",
-                description="Niveles de prioridad y su orden.",
+                description="Niveles de prioridad de los tickets.",
                 icon="flag",
+                endpoint="catalogs.priorities_list",
             ),
             HubCard(
                 title="Ubicaciones",
                 description="Sedes, oficinas y áreas.",
                 icon="geo-alt",
+                endpoint="catalogs.locations_list",
             ),
             HubCard(
                 title="Estados y transiciones",

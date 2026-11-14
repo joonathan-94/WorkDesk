@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% set heading = ('Desactivar ' if deactivating else 'Reactivar ') ~ screen.singular %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        (screen.title, url_for(screen.list_endpoint)),
+        (heading, None),
+    ]) }}
+
+    {{ page_header(heading, item.nombre) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for(screen.deactivate_endpoint if deactivating else screen.activate_endpoint, item_id=item.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {% if deactivating %}
+                <div class="alert alert-warning">
+                    Este elemento dejará de poder elegirse en tickets nuevos.
+                    Los tickets que ya lo usan no cambian y podrás
+                    reactivarlo más adelante.
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    Este elemento volverá a poder elegirse en tickets nuevos.
+                </div>
+            {% endif %}
+
+            {{ textarea_field(
+                form.motivo,
+                hint="Opcional. Queda registrado en la auditoría.",
+                maxlength=500,
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn {% if deactivating %}btn-danger{% else %}btn-primary{% endif %}"
+                    type="submit"
+                >
+                    {{ heading }}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for(screen.list_endpoint) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

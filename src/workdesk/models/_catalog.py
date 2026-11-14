@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, func, true
 from sqlalchemy.orm import Mapped, mapped_column
@@ -41,3 +41,8 @@ class CatalogAuditMixin:
         ForeignKey("usuarios.id", ondelete="RESTRICT"),
         nullable=True,
     )
+
+    def mark_modified(self, actor) -> None:
+        """Registra quién y cuándo modificó el registro por última vez."""
+        self.fecha_modificacion = datetime.now(UTC)
+        self.usuario_modificacion_id = actor.id
