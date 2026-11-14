@@ -5,7 +5,7 @@ from sqlalchemy.engine import make_url
 
 from src.workdesk import create_app
 from src.workdesk.extensions import db
-from src.workdesk.models import Role, User
+from src.workdesk.models import Categoria, Prioridad, Role, Ubicacion, User
 from src.workdesk.security import hash_password
 from src.workdesk.seeds import seed_catalogs, seed_roles
 
@@ -72,6 +72,30 @@ def seeded_catalogs(app):
     """Carga los catálogos iniciales de tickets en la base de pruebas."""
     with app.app_context():
         seed_catalogs()
+
+
+@pytest.fixture()
+def ticket_catalog_ids(app, seeded_roles, seeded_catalogs):
+    """Identificadores de catálogos listos para crear tickets.
+
+    Incluye una ubicación de prueba, porque el seed no crea ninguna.
+    """
+    with app.app_context():
+        location = Ubicacion(nombre="Oficina central", tipo="OFICINA")
+        db.session.add(location)
+        db.session.commit()
+
+        return {
+            "category_id": db.session.scalar(
+                db.select(Categoria.id).where(
+                    Categoria.codigo == "SIN_CLASIFICAR"
+                )
+            ),
+            "priority_id": db.session.scalar(
+                db.select(Prioridad.id).where(Prioridad.codigo == "MEDIA")
+            ),
+            "location_id": location.id,
+        }
 
 
 @pytest.fixture()
