@@ -4,5 +4,9 @@ from .estado import Estado as Estado
 from .motivo_cierre import MotivoCierre as MotivoCierre
 from .prioridad import Prioridad as Prioridad
 from .role import Role as Role
+from .ticket import Ticket as Ticket
+from .ticket_history import TicketEvent as TicketEvent
+from .ticket_history import TicketHistory as TicketHistory
+from .ticket_requester import TicketRequester as TicketRequester
 from .ubicacion import Ubicacion as Ubicacion
 from .user import User as User
