@@ -830,8 +830,8 @@ Esta es la fase central del MVP.
 
 1. **Catálogos** ✓ (PR #14): modelos de estados, prioridades, categorías, ubicaciones y motivos de cierre, su migración y el comando `seed-catalogs`.
 2. **Modelo de tickets** ✓ (PR #15): tickets, solicitantes e historial inmutable, con el identificador público generado por una secuencia de PostgreSQL, y el servicio de creación.
-3. **Administración de catálogos** (en curso): pantallas para que el Administrador gestione categorías, prioridades y ubicaciones, con auditoría. Se adelantó respecto del plan inicial para poder crear los datos de prueba desde la propia interfaz en lugar de cargarlos con seeds.
-4. **Creación de tickets**: formulario, política de creación y de visibilidad, y la opción "Tickets" en la navegación.
+3. **Administración de catálogos** ✓ (PR #16): pantallas para que el Administrador gestione categorías, prioridades y ubicaciones, con auditoría. Se adelantó respecto del plan inicial para poder crear los datos de prueba desde la propia interfaz en lugar de cargarlos con seeds.
+4. **Creación de tickets** (en curso): formulario, políticas de creación y de visibilidad, un detalle de solo lectura y la opción "Crear ticket" en la navegación ("Tickets" llega con el listado).
 5. **Listado**: búsqueda, filtros, orden y paginación, con la visibilidad de cada rol aplicada en la propia consulta.
 6. **Detalle y edición autorizada**: detalle según el rol, edición y cambio de prioridad con motivo.
 7. **Cierre de la versión**: revisión final y documentación, incluida la guía de primera configuración.
@@ -839,7 +839,8 @@ Esta es la fase central del MVP.
 ### Decisiones de la fase
 
 - **Sin datos de ejemplo en los seeds.** Los seeds cargan solo lo estructural. Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz, para que una instalación real no arranque con datos ficticios; el README explica cómo.
-- **Visibilidad del Solicitante:** ve los tickets que creó o en los que es solicitante vigente. Técnico, Supervisor y Administrador ven todos (RF-011).
+- **Visibilidad del Solicitante:** ve los tickets que creó o en los que es solicitante vigente. Técnico, Supervisor y Administrador ven todos (RF-011). Un ticket ajeno responde 404, igual que uno inexistente, para no revelar qué números existen.
+- **Categoría al crear:** es obligatoria; `Sin clasificar` se ofrece siempre al final de la lista y nunca preseleccionada.
 - **Solicitantes al crear:** si crea un Solicitante, queda como su propio solicitante; Técnico, Supervisor y Administrador eligen 0..N solicitantes. Agregar o quitar solicitantes después llega en `v0.4.0`.
 - **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación, y cambian la prioridad con motivo obligatorio. El Solicitante solo lee, y un ticket cerrado no se edita.
 - **Fuera de esta fase:** grupo, impacto y urgencia (sus catálogos llegan más adelante) y la pantalla de Estados y transiciones (UI-021), que se implementa en `v0.4.0` junto con el flujo de estados.
@@ -1547,15 +1548,14 @@ main
 → v0.1.0 integrado (PR #1) y etiquetado
 → documentación de contexto (PR #2) e identidad visual (PR #3)
 → v0.2.0 integrado (PR #4 a #13) y etiquetado
-→ v0.3.0 en desarrollo: catálogos (PR #14) y modelo de tickets (PR #15)
-   integrados; administración de catálogos en curso
+→ v0.3.0 en desarrollo: catálogos (PR #14), modelo de tickets (PR #15) y
+   administración de catálogos (PR #16) integrados; creación de tickets en curso
 ```
 
 El plan de `v0.3.0` está en la fase 3 (sección 16). El siguiente paso del proyecto es completar sus entregas en este orden:
 
 ```text
-3. administración de catálogos (en curso);
-4. creación de tickets;
+4. creación de tickets (en curso);
 5. listado con búsqueda, filtros, orden y paginación;
 6. detalle y edición autorizada;
 7. cierre de la versión y guía de primera configuración.

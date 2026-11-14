@@ -1,0 +1,185 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
+{% from "_form_macros.html" import text_field, textarea_field, select_field, checkbox_list_field %}
+
+{% block title %}Crear ticket{% endblock %}
+
+{% block content %}
+    {{ page_header(
+        "Crear ticket",
+        "Registra una solicitud, tuya o de otra persona, para que el equipo pueda ayudar."
+        if choose_requesters
+        else "Describe tu solicitud para que podamos ayudarte.",
+    ) }}
+
+    <form
+        class="card form-card form-card--wide"
+        method="post"
+        action="{{ url_for('tickets.new_ticket') }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <section
+                class="form-section"
+                aria-labelledby="section-need"
+            >
+                <div class="form-section__header">
+                    <span
+                        class="form-section__number"
+                        aria-hidden="true"
+                    >1</span>
+
+                    <div>
+                        <h2
+                            class="form-section__title"
+                            id="section-need"
+                        >
+                            Cuéntanos qué necesitas
+                        </h2>
+                        <p class="form-section__description">
+                            Entrega la información necesaria para comprender la solicitud.
+                        </p>
+                    </div>
+                </div>
+
+                {{ text_field(
+                    form.titulo,
+                    required=True,
+                    maxlength=max_title,
+                    autofocus=True,
+                    hint="Resume el problema o solicitud en una frase.",
+                ) }}
+
+                {{ textarea_field(
+                    form.descripcion,
+                    required=True,
+                    maxlength=max_description,
+                    rows=6,
+                    counter=True,
+                    hint="No incluyas contraseñas ni información sensible.",
+                ) }}
+            </section>
+
+            <section
+                class="form-section"
+                aria-labelledby="section-classification"
+            >
+                <div class="form-section__header">
+                    <span
+                        class="form-section__number"
+                        aria-hidden="true"
+                    >2</span>
+
+                    <div>
+                        <h2
+                            class="form-section__title"
+                            id="section-classification"
+                        >
+                            Clasificación
+                        </h2>
+                        <p class="form-section__description">
+                            Esta información ayuda a dirigir mejor la solicitud.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ select_field(
+                            form.categoria,
+                            form.category_choices,
+                            placeholder="Selecciona una categoría",
+                            required=True,
+                        ) }}
+                    </div>
+
+                    <div class="col-md-6">
+                        {{ select_field(
+                            form.prioridad,
+                            form.priority_choices,
+                            placeholder="Selecciona una prioridad",
+                            required=True,
+                        ) }}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ select_field(
+                            form.ubicacion,
+                            form.location_choices,
+                            placeholder="Sin ubicación",
+                        ) }}
+                    </div>
+                </div>
+            </section>
+
+            {% if choose_requesters %}
+                <section
+                    class="form-section"
+                    aria-labelledby="section-requesters"
+                >
+                    <div class="form-section__header">
+                        <span
+                            class="form-section__number"
+                            aria-hidden="true"
+                        >3</span>
+
+                        <div>
+                            <h2
+                                class="form-section__title"
+                                id="section-requesters"
+                            >
+                                Solicitantes
+                            </h2>
+                            <p class="form-section__description">
+                                Opcional. Elige a quién corresponde la solicitud.
+                            </p>
+                        </div>
+                    </div>
+
+                    {{ checkbox_list_field(
+                        form.solicitantes,
+                        form.requester_choices,
+                        "Solicitantes",
+                        hide_legend=True,
+                        hint="Si no eliges a nadie, el ticket se crea sin solicitante. Tú quedas registrado como creador.",
+                        empty_text="No hay solicitantes activos. Puedes crear el ticket sin solicitante.",
+                    ) }}
+                </section>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('main.dashboard') }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    <i
+                        class="bi bi-plus-lg me-1"
+                        aria-hidden="true"
+                    ></i>
+                    Crear ticket
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+
+    <script
+        src="{{ url_for('static', filename='js/common/checklist-filter.js') }}"
+    ></script>
+{% endblock %}

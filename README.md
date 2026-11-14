@@ -38,9 +38,11 @@ Es la fase central del MVP. Se construye en entregas pequeñas, cada una con su 
 - **Modelo de datos de tickets:** tabla de tickets con identificador público generado por una secuencia de PostgreSQL, solicitantes de cada ticket (relación temporal N:M) e historial de eventos inmutable, más el servicio que crea tickets.
 - **Administración de catálogos:** el Administrador gestiona categorías, prioridades y ubicaciones desde la interfaz (crear, editar, desactivar y reactivar), con auditoría de cada cambio.
 
-Todavía **no se pueden crear ni listar tickets desde la interfaz**: la creación, el listado con búsqueda y filtros, y el detalle llegan en las próximas entregas.
+- **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre un detalle de solo lectura, visible solo para quien corresponde.
 
-La suite cuenta con **644 tests automatizados**.
+Todavía **no se pueden listar ni buscar tickets**, ni editarlos o cambiarles el estado: el listado con búsqueda y filtros, y la edición llegan en las próximas entregas.
+
+La suite cuenta con **760 tests automatizados**.
 
 ### `v0.2.0 — Usuarios, autenticación completa y RBAC`
 
@@ -141,6 +143,7 @@ El MVP se ejecutará inicialmente de forma local y no requiere infraestructura c
 - argon2-cffi `25.1.0`
 - Flask-WTF `1.3.0`
 - python-dotenv `1.2.4`
+- tzdata `2026.5` (base de zonas horarias para mostrar las fechas en hora local; Windows no trae la suya)
 
 ### Frontend
 
@@ -272,6 +275,7 @@ WorkDesk/
 │       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
+│       ├── formatting.py
 │       ├── extensions.py
 │       ├── logging_config.py
 │       └── navigation.py
@@ -294,8 +298,11 @@ WorkDesk/
 │   ├── test_passwords.py
 │   ├── test_seed_demo.py
 │   ├── test_session_limits.py
+│   ├── test_formatting.py
 │   ├── test_system.py
 │   ├── test_ticket_model.py
+│   ├── test_ticket_policies.py
+│   ├── test_tickets_routes.py
 │   ├── test_tickets_service.py
 │   ├── test_users_manage_routes.py
 │   ├── test_users_manage_service.py
@@ -487,6 +494,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
+| 8 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación.
 
@@ -621,6 +629,20 @@ Si solo quieres probar el sistema, bastan tres o cuatro categorías y una o dos 
 
 ---
 
+## Crear un ticket
+
+Con las categorías (y, si quieres, las ubicaciones) ya creadas, cualquier usuario puede registrar un ticket desde **Crear ticket**, en el menú lateral:
+
+1. **Título** (obligatorio, hasta 200 caracteres) y **Descripción** (obligatoria, hasta 2000; un contador muestra cuántos llevas). No incluyas contraseñas ni información sensible.
+2. **Categoría** (obligatoria): si no sabes cuál elegir, `Sin clasificar` aparece siempre al final de la lista. **Prioridad** (obligatoria; viene preseleccionada `Media`) y **Ubicación** (opcional).
+3. **Solicitantes**, solo para Técnico, Supervisor y Administrador y de forma opcional: marca a las personas a cuyo nombre se crea el ticket (hay un buscador sobre la lista). Si no eliges a nadie, el ticket se crea sin solicitante, por ejemplo una mantención interna. Un Solicitante no ve esta sección: queda siempre como su propio solicitante.
+
+Al crearlo se abre el detalle del ticket, con su número (`#1`, `#2`...), su estado inicial `Nuevo`, el resumen y el historial. Quien crea el ticket queda registrado como **creador**, aunque no sea el solicitante.
+
+Para probar los distintos roles sin crear usuarios a mano, carga el equipo de demostración con `seed-demo` (paso 5 de la preparación inicial). Con un Solicitante comprueba que solo ve los tickets que creó o donde es solicitante; el de cualquier otra persona responde "no encontrado".
+
+---
+
 ## Rutas actuales
 
 Rutas registradas actualmente:
@@ -655,10 +677,14 @@ GET POST  /admin/locations/new
 GET POST  /admin/locations/<id>/edit
 GET POST  /admin/locations/<id>/deactivate
 GET POST  /admin/locations/<id>/activate
+GET POST  /tickets/new
+GET       /tickets/<public_id>
 GET       /health
 ```
 
-`/dashboard` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
+`/dashboard`, `/tickets/new`, `/tickets/<public_id>` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
+
+El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen.
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 
@@ -787,7 +813,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-644 tests
+760 tests
 ```
 
 Los tests cubren principalmente:
@@ -801,7 +827,8 @@ Los tests cubren principalmente:
 - auditoría administrativa, incluida su inmutabilidad;
 - datos de demostración;
 - catálogos de tickets: datos iniciales, restricciones de base de datos y administración desde la interfaz;
-- modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación.
+- modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación;
+- creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local.
 
 Ejecutar:
 

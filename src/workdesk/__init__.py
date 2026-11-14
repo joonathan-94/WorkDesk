@@ -9,11 +9,13 @@ from .cli import register_commands
 from .config import Config
 from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
+from .formatting import local_datetime
 from .logging_config import configure_logging
 from .main import bp as main_bp
 from .navigation import layout_context
 from .security import MAX_LENGTH, MIN_LENGTH_FLOOR, can_manage_users
 from .system import bp as system_bp
+from .tickets import bp as tickets_bp
 from .users import bp as users_bp
 
 
@@ -51,7 +53,10 @@ def create_app(
     app.register_blueprint(catalogs_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(system_bp)
+    app.register_blueprint(tickets_bp)
     app.register_blueprint(users_bp)
+
+    app.add_template_filter(local_datetime, "local_datetime")
 
     # Las plantillas consultan las políticas para decidir qué mostrar. Eso
     # es solo presentación: la autorización real se aplica en las rutas.

@@ -77,12 +77,18 @@ def page(client, make_user, role_code, path="/dashboard"):
     "role_code",
     ["SOLICITANTE", "TECNICO", "SUPERVISOR"],
 )
-def test_non_admin_roles_only_see_the_dashboard(role_code):
-    assert labels(stub(role_code)) == ["Dashboard"]
+def test_non_admin_roles_see_the_dashboard_and_create_ticket(role_code):
+    # Todos los roles pueden crear tickets; Administración es solo del
+    # Administrador.
+    assert labels(stub(role_code)) == ["Dashboard", "Crear ticket"]
 
 
 def test_administrator_sees_the_administration_hub():
-    assert labels(stub("ADMINISTRADOR")) == ["Dashboard", "Administración"]
+    assert labels(stub("ADMINISTRADOR")) == [
+        "Dashboard",
+        "Crear ticket",
+        "Administración",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -117,6 +123,9 @@ def test_anonymous_users_see_no_navigation():
         ("catalogs.categories_list", ["Administración"]),
         ("catalogs.priority_edit", ["Administración"]),
         ("catalogs.location_new", ["Administración"]),
+        ("tickets.new_ticket", ["Crear ticket"]),
+        # El detalle de un ticket no pertenece a "Crear ticket".
+        ("tickets.detail", []),
         ("account.change_password", []),
         (None, []),
     ],

@@ -82,14 +82,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/catalog-admin
+feature/ticket-creation
 ```
 
-Entrega 3 de `v0.3.0`: administración de categorías, prioridades y ubicaciones desde la interfaz. Incluye una migración (índices únicos de nombre en prioridades y ubicaciones).
+Entrega 4 de `v0.3.0`: creación de tickets (formulario, políticas de acceso y un detalle de solo lectura). No incluye migraciones. Añade una dependencia, `tzdata`, para mostrar las fechas en hora local.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14) y el modelo de tickets (PR #15).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15) y la administración de catálogos (PR #16).
 
-Paso siguiente: entrega 4 de `v0.3.0`, la creación de tickets.
+Paso siguiente: entrega 5 de `v0.3.0`, el listado de tickets.
 
 ## Identidad visual (integrada en `main`)
 
@@ -121,8 +121,8 @@ Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de 
 | --- | --- | --- |
 | 1 | Catálogos: estados, prioridades, categorías, ubicaciones y motivos de cierre (modelos, migración y `seed-catalogs`) | Integrada (PR #14) |
 | 2 | Modelo de tickets (tickets, solicitantes e historial) y servicio de creación | Integrada (PR #15) |
-| 3 | Administración de catálogos desde la interfaz | En curso |
-| 4 | Creación de tickets | Pendiente |
+| 3 | Administración de catálogos desde la interfaz | Integrada (PR #16) |
+| 4 | Creación de tickets | En curso |
 | 5 | Listado con búsqueda, filtros, orden y paginación | Pendiente |
 | 6 | Detalle y edición autorizada | Pendiente |
 | 7 | Cierre de la versión: revisión final y documentación | Pendiente |
@@ -130,7 +130,7 @@ Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de 
 Decisiones de la fase:
 
 - **Sin datos de ejemplo en los seeds.** Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz; ningún seed los incluye, para que una instalación real no arranque con datos ficticios. El README documenta cómo hacerlo.
-- **Visibilidad del Solicitante:** ve los tickets que creó o donde es solicitante vigente. Técnico, Supervisor y Administrador ven todos.
+- **Visibilidad del Solicitante:** ve los tickets que creó o donde es solicitante vigente. Técnico, Supervisor y Administrador ven todos. Un ticket al que no se tiene acceso responde 404, igual que uno inexistente.
 - **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación y cambian la prioridad con motivo obligatorio; el Solicitante solo lee.
 - **Estados y transiciones** (UI-021) se difieren a `v0.4.0`, cuando exista el flujo de estados y la tabla de transiciones.
 
@@ -179,6 +179,7 @@ La fase `v0.2.0` completó:
 - Flask-WTF / CSRFProtect
 - argon2-cffi
 - python-dotenv
+- tzdata (base de zonas horarias para `zoneinfo`; Windows no trae la suya)
 
 ## Frontend
 
@@ -305,6 +306,7 @@ WorkDesk/
 │       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
+│       ├── formatting.py
 │       ├── extensions.py
 │       ├── logging_config.py
 │       └── navigation.py
@@ -326,8 +328,11 @@ WorkDesk/
 │   ├── test_passwords.py
 │   ├── test_seed_demo.py
 │   ├── test_session_limits.py
+│   ├── test_formatting.py
 │   ├── test_system.py
 │   ├── test_ticket_model.py
+│   ├── test_ticket_policies.py
+│   ├── test_tickets_routes.py
 │   ├── test_tickets_service.py
 │   ├── test_users_manage_routes.py
 │   ├── test_users_manage_service.py
@@ -644,7 +649,7 @@ Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclu
 
 # 11 ter. Modelo de tickets
 
-Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. Todavía no hay pantallas de tickets: la creación llega en la siguiente entrega.
+Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación y un detalle de solo lectura están descritos más abajo ("Creación y detalle de tickets"); el listado y la edición llegan en las siguientes entregas.
 
 ## Ticket (`tickets`)
 
@@ -668,6 +673,35 @@ Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar even
 - `create_ticket(...)`: crea el ticket en estado `NUEVO` y registra `TICKET_CREADO`. Exige título y descripción, que el actor esté activo, que categoría, prioridad y ubicación existan y estén activas, y que los solicitantes sean usuarios activos con rol Solicitante (sin duplicados). Lanza `TicketRuleError` sin dejar nada pendiente. **No hace commit.**
 - `record_ticket_event(...)`: añade un evento al historial en la sesión actual, sin commit; lo reutilizarán la edición y el ciclo de vida.
 - Quién puede crear tickets a nombre de otras personas lo decide la capa de rutas, no el servicio.
+- La descripción admite hasta 2000 caracteres (`MAX_DESCRIPTION_LENGTH`, en `models/ticket.py`) y el título hasta 200; los comprueba el servicio y también el formulario.
+- Consultas para las pantallas: `get_ticket_by_public_id` (carga de una vez estado, prioridad, categoría, ubicación, creador y solicitantes, sin una consulta por cada uno; no comprueba permisos), `list_ticket_history`, `list_requester_candidates` (usuarios activos con rol Solicitante, por apellido y nombre) y `categories_for_selection` (categorías activas con `Sin clasificar` siempre al final).
+
+## Creación y detalle de tickets (entrega 4 de `v0.3.0`)
+
+Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `routes.py`, `forms.py` y `service.py`. Reglas completas en `docs/06` (RN-153).
+
+**Políticas** (`security/authorization.py`, usadas por las rutas; las plantillas no autorizan nada):
+
+- `can_create_ticket(user)`: los cuatro roles activos.
+- `can_choose_requesters(user)`: Técnico, Supervisor y Administrador (`STAFF_ROLES`). El Solicitante no elige solicitantes.
+- `can_view_ticket(user, ticket)`: el personal ve todos; el Solicitante ve los que creó y aquellos donde es solicitante vigente (sin `fecha_retiro`). Un solicitante retirado deja de verlos, pero el creador original no deja de serlo. En la entrega 5 el listado necesitará este mismo criterio como condición SQL; deben mantenerse en sincronía.
+
+**Creación** (`GET, POST /tickets/new`, opción "Crear ticket" del menú, para todos los roles):
+
+- Formulario con tres secciones numeradas (docs/11, UI-004): título y descripción (con contador de caracteres); categoría, prioridad y ubicación; y, solo para el personal, los solicitantes. Los adjuntos no existen todavía.
+- Las opciones salen de la base de datos y solo se ofrecen valores **activos**. La categoría es obligatoria, empieza sin elegir y `Sin clasificar` va siempre al final. La prioridad viene preseleccionada en `Media` si está activa, pero solo al abrir el formulario: un envío sin prioridad se rechaza.
+- **Solicitantes:** si crea un Solicitante, es siempre su propio solicitante y cualquier valor enviado se ignora (un envío manipulado no puede registrar a otras personas). El personal marca 0..N en una lista de casillas con buscador (mejora progresiva); los ids se validan contra los usuarios activos con rol Solicitante. Un ticket sin solicitantes es válido.
+- `TicketForm` valida con las opciones recibidas como atributos, sin `SelectField` (igual que el rol en `users/forms.py`). Los saltos de línea de la descripción se normalizan a uno solo para que el límite coincida con el contador. `IntegerListField` recoge las casillas.
+- Tras crear, la ruta confirma (commit) y redirige al detalle con el aviso "Ticket #N creado correctamente.". Si el servicio rechaza algo (por ejemplo, un valor desactivado mientras se rellenaba el formulario), se muestra el mensaje y no se guarda nada.
+
+**Detalle** (`GET /tickets/<public_id>`): solo lectura. Cabecera con número, título, estado y prioridad; tarjeta de descripción (conserva los saltos de línea y escapa el HTML); resumen (estado, prioridad, categoría, ubicación y fecha); y un historial simple (evento, fecha y persona). El personal ve además "Creado por" y los solicitantes vigentes ("Sin solicitante" si no hay); el Solicitante no (docs/11, UI-005).
+
+- **Un ticket inexistente, con un identificador que no es un número o al que el usuario no tiene acceso responde 404 en todos los casos.** Los números son correlativos y con un 403 cualquiera podría descubrir cuáles existen.
+- El detalle no marca "Crear ticket" como activa en el menú; "Tickets" llegará con el listado.
+
+**Fechas en hora local:** el filtro de plantilla `local_datetime` (`src/workdesk/formatting.py`) convierte las fechas (guardadas con zona horaria) a `APP_TIMEZONE` con el formato `dd-mm-aaaa hh:mm` (docs/10, sección 79). Si la zona configurada no existe, muestra UTC. Requiere el paquete `tzdata` en Windows.
+
+**Presentación:** macros nuevos en `_form_macros.html` (`checkbox_list_field`, y `textarea_field` ahora admite `required` y `counter`) y en `_ui_macros.html` (`state_badge`, `priority_badge`, con los colores de docs/11); scripts `static/js/common/char-counter.js` y `checklist-filter.js`, ambos mejoras progresivas.
 
 ---
 
@@ -893,11 +927,13 @@ GET, POST  /admin/locations/new
 GET, POST  /admin/locations/<id>/edit
 GET, POST  /admin/locations/<id>/deactivate
 GET, POST  /admin/locations/<id>/activate
+GET, POST  /tickets/new
+GET        /tickets/<public_id>
 GET        /health
 GET        /static/<path:filename>
 ```
 
-`/dashboard`, `/account` y `/account/password` requieren autenticación.
+`/dashboard`, `/account`, `/account/password`, `/tickets/new` y `/tickets/<public_id>` requieren autenticación. En los tickets la autorización va más allá del login (ver "Creación y detalle de tickets"): el detalle responde 404 a quien no puede verlo.
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
@@ -925,7 +961,7 @@ No representa todavía los dashboards finales del MVP.
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Administración (Administrador) y Mi cuenta (todos).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Crear ticket (todos), Administración (Administrador) y Mi cuenta (todos). "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`); "Tickets" o "Mis tickets" se añadirán con el listado.
 - Administración se marca activa en el hub, en todas las pantallas de usuarios y en las de catálogos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
@@ -1157,6 +1193,21 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la creación de tickets (entrega 4 de `v0.3.0`):
+
+```text
+760 tests passing
+```
+
+Los 116 tests nuevos cubren:
+
+- `tests/test_ticket_policies.py` (19): `can_create_ticket`, `can_choose_requesters` y `can_view_ticket` por rol, el Solicitante creador, solicitante vigente, solicitante retirado y ajeno, y usuarios inactivos o anónimos.
+- `tests/test_tickets_routes.py` (82): acceso (anónimo, los cuatro roles); contenido del formulario por rol (la sección de solicitantes solo para el personal), solo valores activos, `Sin clasificar` al final y `Media` preseleccionada; creación como Solicitante (queda como su solicitante, historial, aviso y redirección) y como personal con 0, 1 y varios solicitantes; un Solicitante que manipula el envío para registrar otros solicitantes; solicitantes inválidos (inactivo, otro rol, inexistente); validaciones de cada campo y límites (los saltos de línea cuentan una vez); valores de catálogo inactivos o inexistentes; que el formulario conserve lo escrito; error de regla del servicio; CSRF; visibilidad del detalle (creador, solicitante vigente, retirado, ajeno, personal, inexistente e identificadores no numéricos, con la misma respuesta 404); y contenido del detalle (resumen, fechas en hora local, historial, datos solo para el personal y escape de HTML).
+- `tests/test_formatting.py` (5): el filtro `local_datetime` (verano e invierno, fecha sin zona, zona desconocida y uso en plantillas).
+- `tests/test_tickets_service.py` (+8): límite de la descripción, candidatos a solicitante, categorías para el selector, búsqueda por identificador público e historial.
+- `tests/test_layout.py` (+2 casos): todos los roles ven ahora "Crear ticket" en el menú (antes solo Dashboard), y la opción solo se marca activa en el formulario, no en el detalle.
+- `tests/conftest.py`: `make_user` admite sobrescribir cualquier valor por defecto (nombre, apellido, estado...).
 
 Estado tras las tres primeras entregas de `v0.3.0` (catálogos, modelo de tickets y administración de catálogos):
 
@@ -1645,10 +1696,10 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0`. `v0.3.0` ya tiene los catálogos, el modelo de tickets y la administración de catálogos (ver "Hito en desarrollo"). Lo que falta pertenece a `v0.3.0` y a las fases posteriores:
+Nada de `v0.2.0`. `v0.3.0` ya tiene los catálogos, el modelo de tickets, la administración de catálogos y la creación de tickets con un detalle de solo lectura (ver "Hito en desarrollo"). Lo que falta pertenece a `v0.3.0` y a las fases posteriores:
 
-- creación, listado, búsqueda, filtros y detalle de tickets, con la visibilidad de cada rol;
-- edición autorizada de tickets y cambio de prioridad con motivo;
+- listado, búsqueda, filtros y paginación de tickets, con la visibilidad de cada rol aplicada en la consulta;
+- detalle completo y edición autorizada de tickets, y cambio de prioridad con motivo;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo.
 

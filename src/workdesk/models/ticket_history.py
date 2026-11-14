@@ -14,7 +14,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
 from .admin_audit_log import ActorType
@@ -31,6 +31,14 @@ class TicketEvent(StrEnum):
     TICKET_MODIFICADO = "TICKET_MODIFICADO"
     CATEGORIA_CAMBIADA = "CATEGORIA_CAMBIADA"
     PRIORIDAD_CAMBIADA = "PRIORIDAD_CAMBIADA"
+
+
+TICKET_EVENT_LABELS = {
+    TicketEvent.TICKET_CREADO: "Ticket creado",
+    TicketEvent.TICKET_MODIFICADO: "Ticket modificado",
+    TicketEvent.CATEGORIA_CAMBIADA: "Categoría cambiada",
+    TicketEvent.PRIORIDAD_CAMBIADA: "Prioridad cambiada",
+}
 
 
 class TicketHistoryImmutableError(Exception):
@@ -137,6 +145,17 @@ class TicketHistory(db.Model):
         JSONB,
         nullable=True,
     )
+
+    # None cuando el evento lo generó el sistema.
+    actor = relationship("User", foreign_keys=[actor_usuario_id])
+
+    @property
+    def evento_nombre(self) -> str:
+        """Nombre visible del evento; devuelve el código si es desconocido."""
+        try:
+            return TICKET_EVENT_LABELS[TicketEvent(self.tipo_evento)]
+        except ValueError:
+            return self.tipo_evento
 
 
 @event.listens_for(TicketHistory, "before_update")

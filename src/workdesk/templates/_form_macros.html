@@ -143,13 +143,17 @@
     </div>
 {% endmacro %}
 
-{% macro textarea_field(field, hint=None, maxlength=None, rows=3) %}
+{# Con `counter=True` (y `maxlength`) muestra "n/máximo" bajo el campo. El
+   número inicial lo pone el servidor; common/char-counter.js lo mantiene al
+   escribir (mejora progresiva). #}
+{% macro textarea_field(field, hint=None, maxlength=None, rows=3, required=False, counter=False) %}
     <div class="mb-3">
         <label
             class="form-label"
             for="{{ field.id }}"
         >
             {{ field.label.text }}
+            {% if required %}{{ required_mark() }}{% endif %}
         </label>
 
         <textarea
@@ -158,18 +162,115 @@
             name="{{ field.name }}"
             rows="{{ rows }}"
             {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+            {% if required %}required{% endif %}
             {% if field.errors %}
                 aria-invalid="true"
                 aria-describedby="{{ field.id }}-error"
             {% endif %}
         >{{ field.data or '' }}</textarea>
 
+        {% if hint or (counter and maxlength) %}
+            <div class="d-flex justify-content-between gap-3">
+                <div class="form-text mt-1">{{ hint or '' }}</div>
+
+                {% if counter and maxlength %}
+                    <div
+                        class="form-text mt-1 text-nowrap"
+                        data-counter-for="{{ field.id }}"
+                        data-max="{{ maxlength }}"
+                    >
+                        {{ (field.data or '')|length }}/{{ maxlength }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}
+
+{#
+    Lista de casillas con varios valores bajo el mismo nombre (por ejemplo,
+    los solicitantes de un ticket). `choices` son pares (valor, texto) y
+    `field.data` la lista de valores marcados. El buscador solo se muestra con
+    JavaScript (common/checklist-filter.js): sin él, se ve la lista completa
+    y el formulario funciona igual.
+#}
+{% macro checkbox_list_field(field, choices, legend, hint=None, empty_text="No hay opciones disponibles.", hide_legend=False) %}
+    <fieldset
+        class="mb-3"
+        data-checklist
+    >
+        {# Con `hide_legend` solo la leen los lectores de pantalla (cuando un
+           encabezado cercano ya dice lo mismo a la vista). #}
+        <legend class="form-label fs-6{% if hide_legend %} visually-hidden{% endif %}">
+            {{ legend }}
+        </legend>
+
+        {% if choices %}
+            <div
+                class="mb-2"
+                data-checklist-search
+                hidden
+            >
+                <label
+                    class="visually-hidden"
+                    for="{{ field.id }}-filter"
+                >
+                    Filtrar la lista
+                </label>
+
+                <input
+                    class="form-control form-control-sm"
+                    id="{{ field.id }}-filter"
+                    type="search"
+                    placeholder="Filtrar por nombre o usuario"
+                    autocomplete="off"
+                >
+            </div>
+        {% endif %}
+
+        <div class="checklist">
+            {% for value, label in choices %}
+                <div
+                    class="form-check"
+                    data-checklist-item
+                >
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="{{ field.id }}-{{ value }}"
+                        name="{{ field.name }}"
+                        value="{{ value }}"
+                        {% if value in (field.data or []) %}checked{% endif %}
+                    >
+
+                    <label
+                        class="form-check-label"
+                        for="{{ field.id }}-{{ value }}"
+                    >
+                        {{ label }}
+                    </label>
+                </div>
+            {% else %}
+                <p class="small text-secondary mb-0">{{ empty_text }}</p>
+            {% endfor %}
+
+            <p
+                class="small text-secondary mb-0"
+                data-checklist-empty
+                hidden
+            >
+                Ningún resultado.
+            </p>
+        </div>
+
         {% if hint %}
             <div class="form-text">{{ hint }}</div>
         {% endif %}
 
         {{ field_errors(field) }}
-    </div>
+    </fieldset>
 {% endmacro %}
 
 {#

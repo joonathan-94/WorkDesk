@@ -29,6 +29,10 @@ PUBLIC_ID_SEQUENCE = Sequence("tickets_public_id_seq", metadata=db.metadata)
 
 MAX_TITLE_LENGTH = 200
 
+# Límite de la descripción al crear un ticket (docs/11, UI-004). La columna es
+# TEXT: el tope lo aplica la aplicación, no la base de datos.
+MAX_DESCRIPTION_LENGTH = 2000
+
 
 class Ticket(db.Model):
     """Entidad central del dominio (docs/09, sección 13).
