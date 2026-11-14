@@ -114,6 +114,9 @@ def test_anonymous_users_see_no_navigation():
         ("admin.index", ["Administración"]),
         ("users.list_users_page", ["Administración"]),
         ("users.detail", ["Administración"]),
+        ("catalogs.categories_list", ["Administración"]),
+        ("catalogs.priority_edit", ["Administración"]),
+        ("catalogs.location_new", ["Administración"]),
         ("account.change_password", []),
         (None, []),
     ],
@@ -323,8 +326,16 @@ def test_hub_links_only_the_implemented_sections(
         if not card.endpoint
     ]
 
-    assert [card.title for card in implemented] == ["Usuarios"]
+    assert [card.title for card in implemented] == [
+        "Usuarios",
+        "Categorías",
+        "Prioridades",
+        "Ubicaciones",
+    ]
     assert 'href="/users"' in content
+    assert 'href="/admin/categories"' in content
+    assert 'href="/admin/priorities"' in content
+    assert 'href="/admin/locations"' in content
     assert content.count("Próximamente") == len(planned)
 
 

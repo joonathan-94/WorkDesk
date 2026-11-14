@@ -31,6 +31,12 @@ class Prioridad(CatalogAuditMixin, db.Model):
             unique=True,
             postgresql_where=text("activo"),
         ),
+        # Nombre único sin distinguir mayúsculas, como en las categorías.
+        Index(
+            "uq_prioridades_nombre_lower",
+            text("lower(nombre)"),
+            unique=True,
+        ),
     )
 
     id: Mapped[int] = mapped_column(

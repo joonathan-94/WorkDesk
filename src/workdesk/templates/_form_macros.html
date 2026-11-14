@@ -68,6 +68,42 @@
     </div>
 {% endmacro %}
 
+{# Número entero opcional. Si se envió un valor inválido se muestra tal
+   cual lo escribió el usuario, junto a su error. #}
+{% macro number_field(field, hint=None, min=None, max=None) %}
+    {% set value = field.raw_data[0] if field.raw_data else ('' if field.data is none else field.data) %}
+
+    <div class="mb-3">
+        <label
+            class="form-label"
+            for="{{ field.id }}"
+        >
+            {{ field.label.text }}
+        </label>
+
+        <input
+            class="form-control{% if field.errors %} is-invalid{% endif %}"
+            id="{{ field.id }}"
+            name="{{ field.name }}"
+            type="number"
+            inputmode="numeric"
+            value="{{ value }}"
+            {% if min is not none %}min="{{ min }}"{% endif %}
+            {% if max is not none %}max="{{ max }}"{% endif %}
+            {% if field.errors %}
+                aria-invalid="true"
+                aria-describedby="{{ field.id }}-error"
+            {% endif %}
+        >
+
+        {% if hint %}
+            <div class="form-text">{{ hint }}</div>
+        {% endif %}
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}
+
 {# Selector de opciones (rol). `choices` son pares (código, nombre). #}
 {% macro select_field(field, choices, label=None, placeholder=None, required=False) %}
     <div class="mb-3">

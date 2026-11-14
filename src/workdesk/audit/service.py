@@ -36,6 +36,13 @@ class AuditAction(StrEnum):
     PASSWORD_RESTABLECIDA = "PASSWORD_RESTABLECIDA"
     PASSWORD_CAMBIADA = "PASSWORD_CAMBIADA"
 
+    # Catálogos de tickets (categorías, prioridades y ubicaciones). El tipo
+    # concreto va en `entidad_tipo`: "categoria", "prioridad" o "ubicacion".
+    CATALOGO_CREADO = "CATALOGO_CREADO"
+    CATALOGO_MODIFICADO = "CATALOGO_MODIFICADO"
+    CATALOGO_ACTIVADO = "CATALOGO_ACTIVADO"
+    CATALOGO_DESACTIVADO = "CATALOGO_DESACTIVADO"
+
 
 def record_admin_event(
     action: AuditAction,

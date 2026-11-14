@@ -721,6 +721,17 @@ La obligatoriedad de ubicación se controla mediante configuración y validació
 
 La desactivación de una ubicación —al igual que la de otros catálogos— no modifica referencias históricas existentes; únicamente impide su selección en nuevas operaciones ordinarias.
 
+## 11.6 Detalles de la implementación inicial (`v0.3.0`)
+
+Estos detalles precisan el esquema de los catálogos de las secciones 11.1 a 11.5, 12.1 y 12.4 tal como se implementaron:
+
+- `categorias`, `prioridades`, `ubicaciones` y `motivos_cierre` comparten las columnas de vigencia y trazabilidad (`activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion`, `usuario_modificacion_id`). `estados` no las lleva: sus seis códigos son estructurales. Los registros cargados por seed no tienen `usuario_creacion_id`.
+- **Unicidad del nombre:** `categorias`, `prioridades` y `ubicaciones` tienen un índice único sobre `lower(nombre)`, de modo que el nombre no puede repetirse sin distinguir mayúsculas (incluidos los registros inactivos).
+- **Nivel de prioridad:** `nivel > 0` y un índice único parcial sobre `nivel` solo para las prioridades activas (`WHERE activo`). Una prioridad desactivada puede compartir nivel con una activa, pero no reactivarse mientras otra activa lo ocupe.
+- **Códigos:** `estados.codigo` y `motivos_cierre.codigo` son obligatorios y únicos; `categorias.codigo` y `prioridades.codigo` son opcionales y únicos cuando existen. Solo los valores del seed los tienen: lo creado desde la interfaz no lleva código.
+- **`ubicaciones.tipo`** guarda el código de un tipo definido en la aplicación (`LocationType`: `SUCURSAL`, `OFICINA`, `EDIFICIO`, `PISO`, `AREA`, `INSTALACION`, `OTRA`) o NULL. No hay `CHECK` en la base de datos: la lista puede ampliarse sin migración.
+- **Datos iniciales:** el comando `seed-catalogs` carga los seis estados, las cuatro prioridades, la categoría `SIN_CLASIFICAR` y los seis motivos de cierre, de forma idempotente por `codigo`. No carga ubicaciones ni otras categorías.
+
 ---
 
 # 12. Estados y transiciones
@@ -934,6 +945,14 @@ usuario_modificacion_id
 - Si `estado = CERRADO`, `fecha_cierre` y `motivo_cierre_id` deben existir.
 - En un cierre automático, `cerrado_automaticamente = TRUE` y `cerrado_por_usuario_id` puede ser NULL; en un cierre humano normal, `cerrado_automaticamente = FALSE` y `cerrado_por_usuario_id` deberá identificar al actor.
 
+**Detalles de la implementación inicial (`v0.3.0`).**
+
+- `public_id` se genera con la secuencia de PostgreSQL `tickets_public_id_seq` (valor por defecto `nextval(...)::text`), segura ante concurrencia. Alembic no detecta las secuencias, por lo que la migración la crea a mano.
+- `titulo` admite hasta 200 caracteres.
+- Todavía no existen `grupo_id`, `impacto_id` ni `urgencia_id`: sus tablas y catálogos llegan en fases posteriores y las columnas se añadirán con sus claves foráneas entonces.
+- La base de datos garantiza `version >= 1`, que `fecha_cierre` y `motivo_cierre_id` estén siempre juntos o ambos vacíos, y que un cierre automático no tenga `cerrado_por_usuario_id`. La regla "si el estado es `CERRADO`, deben existir `fecha_cierre` y `motivo_cierre_id`" depende del código del estado en otra tabla y no se puede expresar como restricción: la aplica el servicio de cierre (`v0.4.0`).
+- Índices: `estado_id`, `prioridad_id`, `categoria_id`, `ubicacion_id`, `fecha_creacion`, `fecha_cierre` y `creado_por_usuario_id`, además del único de `public_id`. Todas las claves foráneas son `ON DELETE RESTRICT`.
+
 ---
 
 # 14. Solicitantes
@@ -973,6 +992,8 @@ Además:
 ```text
 fecha_retiro IS NULL OR fecha_retiro >= fecha_asociacion
 ```
+
+**Implementación (`v0.3.0`).** Ambas restricciones existen en la base de datos: la unicidad como índice único parcial (`WHERE fecha_retiro IS NULL`) y el orden de las fechas como `CHECK`. Además hay índices por `ticket_id` y por `solicitante_id`.
 
 ---
 
@@ -1613,6 +1634,8 @@ Una corrección posterior se representa mediante un nuevo evento compensatorio; 
 
 **Evento `PRIORIDAD_CAMBIADA`.** Registra la prioridad anterior en `valor_anterior`, la nueva en `valor_nuevo` (por ejemplo `{"prioridad_id": 2, "codigo": "MEDIA"}`), el usuario en `actor_usuario_id`, la fecha en `fecha_hora` y el motivo, obligatorio, en `contexto` como `{"motivo": "..."}`. `detalle` puede contener una descripción legible. No requiere columnas nuevas.
 
+**Implementación (`v0.3.0`).** La tabla se crea con el esquema de esta sección, salvo `motivo_espera_id`, que se añadirá junto con el catálogo `motivos_espera`. El registro es append-only en la aplicación: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`). `actor_tipo` y `tipo_evento` se restringen con `CHECK`, y otro `CHECK` exige coherencia entre `actor_tipo` y `actor_usuario_id`. El vocabulario de `tipo_evento` (`TicketEvent`) contiene por ahora `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`; los demás eventos se añaden con su funcionalidad, ampliando el `CHECK` mediante una migración. Índice por `(ticket_id, fecha_hora)`.
+
 ---
 
 # 25. Auditoría administrativa
@@ -1682,7 +1705,7 @@ Esto no crea una nueva regla funcional; únicamente elimina una ambigüedad téc
 
 **Momento de implementación.** La tabla se crea con este esquema completo en `v0.2.0` y desde entonces registra las acciones sobre usuarios. La pantalla de consulta y el registro de las demás acciones administrativas se incorporan progresivamente hasta `v0.8.0`. `eventos_autenticacion` se implementa en `v0.8.0`.
 
-**Detalles de la implementación inicial.** `actor_tipo` y `resultado` se restringen en base de datos mediante CHECK (`USUARIO`/`SISTEMA` y `EXITOSO`/`FALLIDO`). Un CHECK adicional exige coherencia entre `actor_tipo` y `actor_usuario_id` (`SISTEMA` sin actor, `USUARIO` con actor) y entre `entidad_id` y `entidad_tipo`. `accion` no tiene CHECK: su vocabulario controlado vive en la aplicación (`AuditAction`) para poder ampliarlo sin migraciones. El registro es append-only a nivel de aplicación: el ORM rechaza actualizaciones y eliminaciones, y las correcciones se registran como eventos nuevos. Los valores previo y nuevo nunca incluyen contraseñas, hashes, secretos, cookies ni tokens.
+**Detalles de la implementación inicial.** `actor_tipo` y `resultado` se restringen en base de datos mediante CHECK (`USUARIO`/`SISTEMA` y `EXITOSO`/`FALLIDO`). Un CHECK adicional exige coherencia entre `actor_tipo` y `actor_usuario_id` (`SISTEMA` sin actor, `USUARIO` con actor) y entre `entidad_id` y `entidad_tipo`. `accion` no tiene CHECK: su vocabulario controlado vive en la aplicación (`AuditAction`) para poder ampliarlo sin migraciones. El registro es append-only a nivel de aplicación: el ORM rechaza actualizaciones y eliminaciones, y las correcciones se registran como eventos nuevos. Los valores previo y nuevo nunca incluyen contraseñas, hashes, secretos, cookies ni tokens. Desde `v0.3.0` el vocabulario incluye `CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO` y `CATALOGO_DESACTIVADO`, con `entidad_tipo` `categoria`, `prioridad` o `ubicacion`.
 
 ---
 

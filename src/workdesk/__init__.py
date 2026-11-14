@@ -4,6 +4,7 @@ from .account import bp as account_bp
 from .admin import bp as admin_bp
 from .auth import bp as auth_bp
 from .auth.session import load_user
+from .catalogs import bp as catalogs_bp
 from .cli import register_commands
 from .config import Config
 from .errors import register_error_handlers
@@ -47,6 +48,7 @@ def create_app(
     app.register_blueprint(auth_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(catalogs_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(users_bp)

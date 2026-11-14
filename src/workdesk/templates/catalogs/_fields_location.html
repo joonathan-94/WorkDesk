@@ -1,0 +1,11 @@
+{% from "_form_macros.html" import text_field, textarea_field, select_field %}
+
+{{ text_field(form.nombre, required=True, maxlength=100, autofocus=True) }}
+
+{{ select_field(form.tipo, location_types, placeholder="Sin especificar") }}
+
+{{ textarea_field(
+    form.descripcion,
+    maxlength=500,
+    hint="Opcional. Por ejemplo, la dirección o cómo llegar.",
+) }}

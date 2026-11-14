@@ -22,6 +22,38 @@
     </header>
 {% endmacro %}
 
+{# Ruta de navegación. `crumbs` es una lista de pares (texto, url); la
+   última (la página actual) lleva url None y no es un enlace. #}
+{% macro breadcrumb(crumbs) %}
+    <nav aria-label="Ruta de navegación">
+        <ol class="breadcrumb small mb-2">
+            {% for label, url in crumbs %}
+                {% if url %}
+                    <li class="breadcrumb-item">
+                        <a href="{{ url }}">{{ label }}</a>
+                    </li>
+                {% else %}
+                    <li
+                        class="breadcrumb-item active"
+                        aria-current="page"
+                    >
+                        {{ label }}
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </nav>
+{% endmacro %}
+
+{# Insignia de vigencia de un registro de catálogo. #}
+{% macro active_badge(item) %}
+    {% if item.activo %}
+        <span class="badge badge-soft badge-soft-success">Activo</span>
+    {% else %}
+        <span class="badge badge-soft badge-soft-neutral">Inactivo</span>
+    {% endif %}
+{% endmacro %}
+
 {# Insignias de estado de una cuenta de usuario. #}
 {% macro status_badges(user) %}
     {% if user.activo %}

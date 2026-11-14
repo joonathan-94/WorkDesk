@@ -1,0 +1,19 @@
+{% from "_form_macros.html" import text_field, textarea_field, number_field %}
+
+{% if item and item.codigo == 'SIN_CLASIFICAR' %}
+    <div class="alert alert-info">
+        Es la categoría de respaldo para los tickets sin clasificar. Puedes
+        cambiar su nombre, pero no se puede desactivar.
+    </div>
+{% endif %}
+
+{{ text_field(form.nombre, required=True, maxlength=100, autofocus=True) }}
+
+{{ textarea_field(form.descripcion, maxlength=500) }}
+
+{{ number_field(
+    form.orden,
+    min=0,
+    max=9999,
+    hint="Opcional. Las categorías con número menor aparecen primero; las que no tienen número van al final, por orden alfabético.",
+) }}

@@ -2265,6 +2265,14 @@ Debe permitir:
 
 El Solicitante no está obligado a conocer grupos internos.
 
+**Implementación inicial (`v0.3.0`):**
+
+- Ruta `/admin/categories`, con la ruta de navegación "Administración / Categorías". La tabla muestra nombre, descripción, orden y estado, con un filtro Todos / Activos / Inactivos (sin paginación: es un catálogo corto) y el botón "Nueva categoría".
+- Cada fila ofrece "Editar" y "Desactivar" o "Reactivar". La categoría de respaldo `Sin clasificar` muestra una insignia "Protegida" en lugar de "Desactivar".
+- El formulario pide nombre (obligatorio), descripción y orden (opcionales); las categorías con número menor aparecen primero y las que no tienen número van al final. Los errores se muestran junto a cada campo y el formulario conserva lo escrito.
+- Desactivar y reactivar usan una pantalla de confirmación con el efecto de la acción y un motivo opcional; el botón de desactivar usa el color de peligro (rojo).
+- La relación con grupos se incorporará cuando existan los grupos.
+
 ---
 
 ## UI-019 — Prioridades
@@ -2278,6 +2286,13 @@ Debe contemplar exactamente:
 
 Si la configuración permite parámetros, estos no deben alterar la semántica visual oficial sin revisión del Design System.
 
+**Implementación inicial (`v0.3.0`):**
+
+- Ruta `/admin/priorities`. La tabla muestra nombre, nivel, color (con una muestra y su valor hexadecimal, siempre junto al nombre), descripción y estado. No hay botón de alta: son exactamente cuatro.
+- El formulario solo edita el nombre y la descripción. El nivel y el color se muestran como texto fijo, con la indicación de que no se pueden cambiar porque forman parte de la identidad visual.
+- Siempre debe quedar al menos una prioridad activa: la última muestra la insignia "Protegida" en lugar de "Desactivar".
+- Los parámetros de SLA asociados a cada prioridad llegan con el SLA (`v0.5.0`).
+
 ---
 
 ## UI-020 — Ubicaciones
@@ -2285,6 +2300,13 @@ Si la configuración permite parámetros, estos no deben alterar la semántica v
 Debe permitir administrar ubicaciones disponibles para formularios y tickets.
 
 La obligatoriedad del campo depende de configuración.
+
+**Implementación inicial (`v0.3.0`):**
+
+- Ruta `/admin/locations`, con la misma estructura que las categorías: tabla (nombre, tipo, descripción y estado), filtro por estado y acciones por fila.
+- El formulario pide nombre (obligatorio), tipo y descripción (opcionales). El tipo es un selector con las opciones Sucursal, Oficina, Edificio, Piso, Área, Instalación y Otra, además de "Sin especificar".
+- El nombre no puede repetirse (sin distinguir mayúsculas); si dos edificios tienen un "Piso 2", se nombran, por ejemplo, "Edificio A - Piso 2".
+- La obligatoriedad de la ubicación al crear un ticket (RF-019) depende de la tabla de configuración y se implementa más adelante: hoy la ubicación es opcional.
 
 ---
 

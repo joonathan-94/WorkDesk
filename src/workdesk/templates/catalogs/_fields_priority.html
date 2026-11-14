@@ -1,0 +1,27 @@
+{% from "_form_macros.html" import text_field, textarea_field %}
+
+{{ text_field(form.nombre, required=True, maxlength=100, autofocus=True) }}
+
+{{ textarea_field(form.descripcion, maxlength=500) }}
+
+<div class="mb-3">
+    <span class="form-label d-block">Nivel y color</span>
+
+    <p class="mb-1">
+        Nivel {{ item.nivel }}
+        {% if item.color and item.color|length == 7 and item.color.startswith('#') %}
+            ·
+            <span
+                class="color-swatch"
+                style="background-color: {{ item.color }}"
+                aria-hidden="true"
+            ></span>
+            {{ item.color }}
+        {% endif %}
+    </p>
+
+    <div class="form-text">
+        El nivel y el color son fijos: forman parte de la identidad visual
+        de WorkDesk y no se pueden cambiar.
+    </div>
+</div>
