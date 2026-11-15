@@ -59,17 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.2.0 — Usuarios, autenticación completa y RBAC
+v0.3.0 — Núcleo de tickets
 ```
 
-La versión `v0.2.0` está:
+La versión `v0.3.0` está:
 
 - implementada;
-- testeada (385 tests);
+- testeada (967 tests);
 - documentada;
-- mergeada en `main` (PR #4 a #13).
+- mergeada en `main` (PR #14 a #20).
 
-`v0.2.0` ya está etiquetada, igual que la versión anterior, `v0.1.0 — Fundación técnica`.
+Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC` y `v0.3.0` están etiquetadas.
 
 ## Rama estable
 
@@ -82,14 +82,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-detail-edit
+feature/close-v0-3-0
 ```
 
-Entrega 6 de `v0.3.0`: detalle ampliado y edición autorizada de tickets (datos, prioridad con motivo y control de versión). No incluye migraciones.
+Entrega 7 de `v0.3.0`: cierre de la versión. No incluye migraciones ni cambios de funcionalidad: añade una red de seguridad automática sobre todas las rutas (`tests/test_route_protection.py`), la guía de primera configuración del README (con un recorrido de prueba y una solución de problemas) y la actualización de la documentación.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17) y el listado de tickets (PR #18).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19) y el cierre de `v0.3.0` (PR #20).
 
-Paso siguiente: entrega 7 de `v0.3.0`, el cierre de la versión.
+Paso siguiente: `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"). Su rama de trabajo se crea desde `main` ya actualizada.
 
 ## Identidad visual (integrada en `main`)
 
@@ -109,13 +109,13 @@ La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. I
 - actualización de README;
 - actualización de `docs/11_diseno_de_pantallas.md`.
 
-## Hito en desarrollo
+## Hito completado: v0.3.0
 
 ```text
 v0.3.0 — Núcleo de tickets
 ```
 
-Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de tickets, con sus catálogos. Se divide en entregas pequeñas, cada una con su rama, tests y Pull Request, como se hizo con `v0.2.0`. Reutiliza la infraestructura de `v0.2.0` (autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio y listado).
+Es la fase central del MVP: creación, listado, búsqueda, filtros, detalle y edición de tickets, con sus catálogos. Se dividió en entregas pequeñas, cada una con su rama, tests y Pull Request, como se hizo con `v0.2.0`. Reutiliza la infraestructura de `v0.2.0` (autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio y listado).
 
 | # | Entrega | Estado |
 | --- | --- | --- |
@@ -124,8 +124,8 @@ Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de 
 | 3 | Administración de catálogos desde la interfaz | Integrada (PR #16) |
 | 4 | Creación de tickets | Integrada (PR #17) |
 | 5 | Listado con búsqueda, filtros, orden y paginación | Integrada (PR #18) |
-| 6 | Detalle y edición autorizada | En curso |
-| 7 | Cierre de la versión: revisión final y documentación | Pendiente |
+| 6 | Detalle y edición autorizada | Integrada (PR #19) |
+| 7 | Cierre de la versión: red de seguridad de rutas, guía de primera configuración y documentación | Integrada (PR #20) |
 
 Decisiones de la fase:
 
@@ -134,6 +134,25 @@ Decisiones de la fase:
 - **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación y cambian la prioridad con motivo obligatorio; el Solicitante solo lee. El Solicitante ve en el historial qué cambió, pero no el motivo.
 - **Concurrencia:** en esta fase solo existe el control de versión (`tickets.version`). El bloqueo temporal de edición (RN-115 a RN-117: aviso de quién edita, expiración y renovación) se difiere a `v0.4.0`, junto con comentarios y cambios de estado.
 - **Estados y transiciones** (UI-021) se difieren a `v0.4.0`, cuando exista el flujo de estados y la tabla de transiciones.
+
+Cierre de la versión (entrega 7), sin migraciones ni cambios de funcionalidad:
+
+- `tests/test_route_protection.py` recorre el mapa de rutas real y comprueba que todas redirigen al login sin sesión, salvo las públicas (`auth.login`, `system.health` y `static`, listadas en `PUBLIC_ENDPOINTS`), y que toda ruta POST responde 400 sin token CSRF. Una ruta nueva queda cubierta automáticamente: si el test falla al añadirla, no se arregla el test; o se protege la ruta o, si de verdad es pública, se añade de forma consciente a `PUBLIC_ENDPOINTS`.
+- El README incorpora la guía de primera configuración paso a paso (requisitos, PostgreSQL, `.env` y preparación inicial), un recorrido de prueba por rol con un fragmento opcional que genera 25 tickets de ejemplo desde `flask shell`, y una tabla de solución de problemas.
+
+## Próximo hito
+
+```text
+v0.4.0 — Asignación, colaboración y ciclo de vida
+```
+
+Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técnicos, cambios de estado, comentarios públicos y notas internas, adjuntos, resolución, cierre y reapertura. Además, `v0.3.0` dejó decididas estas piezas, que le corresponden:
+
+- el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
+- la pantalla de Estados y transiciones (UI-021) y su tabla de transiciones;
+- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). La restricción CHECK `ck_historial_ticket_tipo_evento` obliga a una migración por cada evento nuevo: al empezar la fase hay que decidir si se mantiene ese esquema o si el vocabulario queda solo en la aplicación;
+- las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
+- la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado, y se aplicará en el servicio de cierre.
 
 ## Hito completado: v0.2.0
 
@@ -266,7 +285,6 @@ WorkDesk/
 │   └── uploads/
 ├── migrations/
 │   └── versions/
-├── scripts/
 ├── src/
 │   └── workdesk/
 │       ├── account/
@@ -302,7 +320,15 @@ WorkDesk/
 │       │   └── vendor/
 │       ├── system/
 │       ├── templates/
-│       │   └── layouts/
+│       │   ├── account/
+│       │   ├── admin/
+│       │   ├── auth/
+│       │   ├── catalogs/
+│       │   ├── errors/
+│       │   ├── layouts/
+│       │   ├── main/
+│       │   ├── tickets/
+│       │   └── users/
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── config.py
@@ -328,6 +354,7 @@ WorkDesk/
 │   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
+│   ├── test_route_protection.py
 │   ├── test_seed_demo.py
 │   ├── test_session_limits.py
 │   ├── test_formatting.py
@@ -343,10 +370,12 @@ WorkDesk/
 │   ├── test_users_manage_routes.py
 │   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
-│   └── test_users_service.py
+│   ├── test_users_service.py
+│   └── ticket_helpers.py
 ├── .github/
 │   └── copilot-instructions.md
 ├── .env.example
+├── .gitattributes
 ├── .gitignore
 ├── AGENTS.md
 ├── CLAUDE.md
@@ -983,6 +1012,8 @@ GET        /static/<path:filename>
 
 `/admin`, todas las rutas `/admin/...` (categorías, prioridades y ubicaciones; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
+Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
+
 El dashboard actual es temporal.
 
 No representa todavía los dashboards finales del MVP.
@@ -1237,6 +1268,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras el cierre de `v0.3.0` (entrega 7):
+
+```text
+967 tests passing
+```
+
+Los 9 tests nuevos (`tests/test_route_protection.py`) recorren el mapa de rutas real en lugar de una lista escrita a mano:
+
+- el recorrido encuentra rutas (no pasa en vacío) y cada ruta pública declarada (`auth.login`, `system.health` y `static`) existe y responde sin pedir sesión;
+- **toda ruta, con cada método (GET y POST), redirige al login sin sesión** salvo las públicas, de modo que una ruta nueva no puede quedar sin autenticación por olvido;
+- **toda ruta POST responde 400 sin token CSRF**, incluida la del login;
+- dos pruebas de la propia red de seguridad: añaden una ruta abierta y una ruta POST exenta de CSRF, y comprueban que el recorrido las señala.
 
 Estado tras la edición de tickets (entrega 6 de `v0.3.0`):
 
@@ -1731,9 +1775,9 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 ---
 
-# 30. Fase v0.2.0 (completada) y siguiente fase
+# 30. Fases completadas y siguiente fase
 
-`v0.2.0 — Usuarios, autenticación completa y RBAC` está completa. Este apartado resume lo que dejó implementado; la siguiente fase es `v0.3.0 — Núcleo de tickets` (ver "Hito en desarrollo").
+`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC` y `v0.3.0 — Núcleo de tickets` están completas. Este apartado resume lo que dejaron implementado; la siguiente fase es `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito").
 
 ## Implementado hasta `v0.2.0`
 
@@ -1763,11 +1807,23 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 - "Mi cuenta" (`/account`): datos propios, edición de la información de contacto y acceso al cambio de contraseña;
 - comando `seed-demo`: equipo de soporte ficticio, sin Administrador.
 
+## Implementado en `v0.3.0`
+
+- catálogos de tickets (estados, prioridades, categorías, ubicaciones y motivos de cierre) y el comando `seed-catalogs`;
+- modelo de tickets (`tickets`, `tickets_solicitantes` e `historial_ticket` inmutable) con identificador público generado por una secuencia de PostgreSQL;
+- administración de categorías, prioridades y ubicaciones por el Administrador, con auditoría;
+- creación de tickets para los cuatro roles, con solicitantes elegidos por el personal;
+- detalle de ticket con historial, visible solo para quien corresponde (404 para lo ajeno);
+- listado "Tickets" / "Mis tickets" con pestañas, búsqueda, filtros, orden y paginación, con la visibilidad aplicada en la propia consulta;
+- edición de título, descripción, categoría y ubicación, y cambio de prioridad con motivo obligatorio, con control de versión para las ediciones simultáneas;
+- políticas de autorización de tickets: `can_create_ticket`, `can_choose_requesters`, `can_view_ticket`, `can_edit_ticket` y `can_change_priority`;
+- red de seguridad automática sobre todas las rutas (autenticación y CSRF);
+- guía de primera configuración, recorrido de prueba y solución de problemas en el README.
+
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0`. `v0.3.0` ya tiene los catálogos, el modelo de tickets, la administración de catálogos, la creación de tickets, el listado con búsqueda, filtros y paginación, y la edición con cambio de prioridad (ver "Hito en desarrollo"). Lo que falta pertenece a `v0.3.0` y a las fases posteriores:
+Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases posteriores (lo que `v0.3.0` dejó decidido para `v0.4.0` está en "Próximo hito"):
 
-- cierre de `v0.3.0` (revisión final y guía de primera configuración);
 - `v0.4.0`: cambios de estado, asignación, comentarios, notas internas, adjuntos, resolución y cierre, y el bloqueo temporal de edición (RN-115 a RN-117);
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo.

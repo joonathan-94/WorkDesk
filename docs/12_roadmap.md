@@ -3,7 +3,7 @@
 # WorkDesk — Roadmap de implementación
 
 **Versión:** 1.2  
-**Estado:** ACTUALIZADO — `v0.1.0` y `v0.2.0` implementados, integrados en `main` y etiquetados; `v0.3.0` (núcleo de tickets) en desarrollo por entregas  
+**Estado:** ACTUALIZADO — `v0.1.0`, `v0.2.0` y `v0.3.0` (núcleo de tickets) implementados, integrados en `main` y etiquetados; la siguiente fase es `v0.4.0`  
 **Proyecto:** WorkDesk  
 **Horizonte objetivo del MVP:** máximo 3 meses  
 **Modalidad inicial:** desarrollo local, sin despliegue externo  
@@ -824,7 +824,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con salva
 
 Esta es la fase central del MVP.
 
-**Estado de ejecución:** en desarrollo. Se implementa en entregas incrementales, cada una en su propia rama, con tests y Pull Request, igual que `v0.2.0`.
+**Estado de ejecución:** implementada, validada e integrada en `main` (PR #14 a #20). 967 tests automatizados. Se implementó en entregas incrementales, cada una en su propia rama, con tests y Pull Request, igual que `v0.2.0`.
 
 ### Entregas de `v0.3.0`
 
@@ -833,8 +833,8 @@ Esta es la fase central del MVP.
 3. **Administración de catálogos** ✓ (PR #16): pantallas para que el Administrador gestione categorías, prioridades y ubicaciones, con auditoría. Se adelantó respecto del plan inicial para poder crear los datos de prueba desde la propia interfaz en lugar de cargarlos con seeds.
 4. **Creación de tickets** ✓ (PR #17): formulario, políticas de creación y de visibilidad, un detalle de solo lectura y la opción "Crear ticket" en la navegación.
 5. **Listado** ✓ (PR #18): "Tickets" y "Mis tickets", con pestañas, búsqueda (también desde la barra superior), filtros, orden y paginación, y la visibilidad de cada rol aplicada en la propia consulta.
-6. **Detalle y edición autorizada** (en curso): edición de título, descripción, categoría y ubicación, y cambio de prioridad con motivo obligatorio; historial con el detalle de cada cambio (el motivo, solo para el personal) y control de versión para las ediciones simultáneas.
-7. **Cierre de la versión**: revisión final y documentación, incluida la guía de primera configuración.
+6. **Detalle y edición autorizada** ✓ (PR #19): edición de título, descripción, categoría y ubicación, y cambio de prioridad con motivo obligatorio; historial con el detalle de cada cambio (el motivo, solo para el personal) y control de versión para las ediciones simultáneas.
+7. **Cierre de la versión** ✓ (PR #20): revisión final y documentación. Añade una red de seguridad automática que recorre todas las rutas (sesión obligatoria y token CSRF en las rutas POST) y la guía de primera configuración del README, con un recorrido de prueba por rol y una tabla de solución de problemas.
 
 ### Decisiones de la fase
 
@@ -898,6 +898,16 @@ crear ticket
 ```
 
 y cada rol ve únicamente lo autorizado.
+
+Todos los criterios se cumplen. Además de lo previsto, la fase cierra con la edición con control de versión para las ediciones simultáneas, el cambio de prioridad con motivo y su registro en el historial, la administración de catálogos desde la interfaz y una verificación automática de que ninguna ruta queda sin autenticación ni sin protección CSRF.
+
+### Lo que `v0.3.0` deja para `v0.4.0`
+
+- el bloqueo temporal de edición (RN-115 a RN-117), que se sumará al control de versión;
+- la pantalla de Estados y transiciones (UI-021) y su tabla de transiciones;
+- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre): como la restricción CHECK de `historial_ticket.tipo_evento` obliga a una migración por cada evento nuevo, al comenzar la fase hay que decidir si se mantiene ese esquema o si el vocabulario queda solo en la aplicación;
+- las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
+- la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que depende del código del estado y se aplicará en el servicio de cierre.
 
 ---
 
@@ -1535,11 +1545,29 @@ Evolución hacia gestión de trabajo/proyectos
 
 La numeración exacta se definirá cuando exista una necesidad real.
 
+### Tiempo real: evaluación posterior al MVP
+
+El MVP no utiliza WebSockets (RNF-095 y ARQ-022): las notificaciones se actualizan por polling cada 30 segundos y al navegar entre páginas. Después de `v1.0.0` conviene evaluar si hace falta empujar eventos al navegador (comentarios, cambios de estado, avisos) y con qué mecanismo:
+
+- **Server-Sent Events (SSE):** comunicación en un solo sentido (servidor → navegador) sobre HTTP normal. Cubre el caso real, que es avisar de eventos, y es la opción a evaluar primero.
+- **WebSockets:** comunicación bidireccional. Solo se justificaría si aparecen necesidades que SSE no cubre, como un chat.
+
+Lo que cualquiera de las dos exigiría, y por eso se pospone:
+
+- **Un servidor con soporte para conexiones largas.** Waitress, el servidor previsto (ARQ-028), ejecuta cada petición en un hilo de un grupo reducido (4 por defecto), de modo que unas pocas conexiones abiertas lo agotarían.
+- **Un canal entre procesos.** El scheduler (APScheduler) corre en un proceso separado del web (`docs/10`, sección 85): para que un evento generado por él llegue a las conexiones abiertas haría falta un intermediario. Redis está excluido del MVP; `LISTEN/NOTIFY` de PostgreSQL es una alternativa a evaluar que no añade tecnologías.
+- **Autorización por evento.** Autenticar la conexión no basta: cada evento debe comprobarse contra su destinatario (una nota interna nunca debe llegar a un Solicitante).
+- **Cortar la conexión cuando cambia el contexto de seguridad**, por ejemplo al cambiar el rol o desactivar a la persona (`token_version`).
+
+Los eventos de ticket ya pasan por un único punto, `record_ticket_event`, que sería el lugar natural desde el cual publicarlos.
+
+Adoptar cualquiera de las dos cambia una decisión arquitectónica vigente, así que exige la propuesta formal habitual: limitación concreta, por qué la solución actual no basta, alternativa, impacto y documentación a actualizar.
+
 ---
 
 # 33. Próximo paso inmediato
 
-La documentación inicial, la preparación del repositorio, `v0.1.0 — Fundación técnica`, la identidad visual oficial y `v0.2.0 — Usuarios, autenticación completa y RBAC` ya fueron realizadas e integradas en `main`.
+La documentación inicial, la preparación del repositorio, `v0.1.0 — Fundación técnica`, la identidad visual oficial, `v0.2.0 — Usuarios, autenticación completa y RBAC` y `v0.3.0 — Núcleo de tickets` ya fueron realizadas e integradas en `main`.
 
 El estado inmediato del proyecto es:
 
@@ -1548,19 +1576,20 @@ main
 → v0.1.0 integrado (PR #1) y etiquetado
 → documentación de contexto (PR #2) e identidad visual (PR #3)
 → v0.2.0 integrado (PR #4 a #13) y etiquetado
-→ v0.3.0 en desarrollo: catálogos (PR #14), modelo de tickets (PR #15) y
-   administración de catálogos (PR #16) y creación de tickets (PR #17)
-   integrados; listado de tickets en curso
+→ v0.3.0 integrado (PR #14 a #20) y etiquetado
 ```
 
-El plan de `v0.3.0` está en la fase 3 (sección 16). El siguiente paso del proyecto es completar sus entregas en este orden:
+El siguiente paso del proyecto es `v0.4.0 — Asignación, colaboración y ciclo de vida` (fase 4, sección 17). Antes de escribir código conviene:
 
 ```text
-6. detalle y edición autorizada (en curso);
-7. cierre de la versión y guía de primera configuración.
+1. revisar lo que v0.3.0 dejó para esta fase (sección 16);
+2. revisar las decisiones de negocio pendientes (estados y transiciones,
+   bloqueo de edición, asignación);
+3. dividir la fase en entregas pequeñas, cada una con su rama, tests y
+   Pull Request, como se hizo en v0.2.0 y v0.3.0.
 ```
 
-`v0.3.0` reutiliza la infraestructura validada en `v0.2.0`: autorización por roles, auditoría, layout con Bootstrap, navegación por rol, formularios y patrones de servicio, listado y confirmación, evitando rehacer componentes. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
+`v0.4.0` reutiliza la infraestructura validada en las fases anteriores: autorización por roles y políticas de tickets, auditoría, historial inmutable (`record_ticket_event`), control de versión, layout con Bootstrap, navegación por rol, formularios y patrones de servicio, listado y confirmación, evitando rehacer componentes. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
 
 ---
 
