@@ -1230,7 +1230,7 @@ v1.0.0  MVP
 
 El desarrollo prioriza mantener cada incremento ejecutable, probado y documentado antes de avanzar al siguiente.
 
-El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) llega con el SLA, en `v0.5.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos). El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
+El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) llega con el SLA, en `v0.5.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 ---
 

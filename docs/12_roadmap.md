@@ -1566,7 +1566,9 @@ Evolución hacia gestión de trabajo/proyectos
 
 La numeración exacta se definirá cuando exista una necesidad real.
 
-El detalle de las mejoras previstas después del MVP (autoservicio y calidad de atención, automatización operativa, flujos ITSM y activos tecnológicos), con su evaluación, dependencias y orden por olas, está en [`13_evolucion_post_mvp.md`](13_evolucion_post_mvp.md). Se suman a las evaluaciones de tiempo real y modo oscuro de esta sección.
+El detalle de las mejoras previstas después del MVP (autoservicio y calidad de atención, automatización operativa, flujos ITSM, activos tecnológicos y gestión de proyectos y tareas), con su evaluación, dependencias y orden por olas, está en [`13_evolucion_post_mvp.md`](13_evolucion_post_mvp.md). Se suman a las evaluaciones de tiempo real y modo oscuro de esta sección.
+
+La evolución «hacia gestión de trabajo/proyectos» (v2.0 en la lista anterior) es la ola 5 de ese documento: un módulo secundario, solo para el personal, que no cambia el núcleo de tickets.
 
 ### Tiempo real: evaluación posterior al MVP
 

@@ -1938,7 +1938,7 @@ Las siguientes funcionalidades no forman parte de los requisitos funcionales obl
 
 Estas capacidades podrán incorporarse posteriormente de acuerdo con el roadmap y la evolución del producto.
 
-**Decisión posterior (`docs/13_evolucion_post_mvp.md`, principio P1):** correo electrónico, SMS, WhatsApp e integraciones externas **no se incorporarán en ninguna fase**: WorkDesk es una aplicación 100 % local o de intranet y sus notificaciones son siempre internas. La evaluación y el orden del resto de las capacidades de esta lista (asignación automática, tareas, activos, encuestas de satisfacción, etc.) están en `13_evolucion_post_mvp.md`.
+**Decisión posterior (`docs/13_evolucion_post_mvp.md`, principio P1):** correo electrónico, SMS, WhatsApp e integraciones externas **no se incorporarán en ninguna fase**: WorkDesk es una aplicación 100 % local o de intranet y sus notificaciones son siempre internas. La evaluación y el orden del resto de las capacidades de esta lista (asignación automática, tareas y proyectos, activos, encuestas de satisfacción, etc.) están en `13_evolucion_post_mvp.md`.
 
 ---
 

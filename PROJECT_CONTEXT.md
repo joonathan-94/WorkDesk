@@ -50,7 +50,7 @@ El objetivo del MVP es permitir gestionar de forma estructurada:
 
 A futuro, WorkDesk podrá evolucionar hacia una solución más amplia de gestión del trabajo, tareas y proyectos.
 
-Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
+Esa evolución futura no debe introducir complejidad prematura en el MVP actual. La gestión de proyectos y tareas está definida como un módulo secundario, solo para el personal, que deja a los tickets como núcleo (`docs/13_evolucion_post_mvp.md`, ola 5). Es solo planificación: todavía no existe en el código.
 
 ---
 
@@ -151,6 +151,7 @@ Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técni
 - el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
 - la pantalla de Estados y transiciones (UI-021) y su tabla de transiciones;
 - los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). La restricción CHECK `ck_historial_ticket_tipo_evento` obliga a una migración por cada evento nuevo: al empezar la fase hay que decidir si se mantiene ese esquema o si el vocabulario queda solo en la aplicación;
+- dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial debe poder distinguir los eventos que ve el Solicitante de los internos (las notas internas ya lo necesitan) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
 - las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado, y se aplicará en el servicio de cierre.
 
@@ -1879,7 +1880,7 @@ Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases
 - las políticas de autorización adicionales se incorporan con cada módulo;
 - `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
-- después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM y activos); ninguna interfiere con el MVP.
+- después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 
 El orden propuesto de entregas está en `docs/12_roadmap.md`.
 

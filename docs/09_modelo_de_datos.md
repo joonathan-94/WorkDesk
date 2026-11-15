@@ -2579,6 +2579,8 @@ calendario_proyectos
 
 Estas capacidades forman parte de la evolución futura de WorkDesk y no del sistema de tickets MVP.
 
+Su definición para después del MVP está en `13_evolucion_post_mvp.md` (ola 5, EVO-22 a EVO-32), con una lista orientativa de las entidades previstas; se incorporarán a este modelo cuando se aborden. No existirá un `calendario_proyectos` propio (los proyectos usan el calendario laboral de `v0.5.0` y el calendario operativo, EVO-11), y la tabla `tareas` servirá tanto a las tareas de un proyecto como a las tareas internas de un ticket (EVO-10).
+
 ---
 
 ## 41.9 Otros elementos diferidos
