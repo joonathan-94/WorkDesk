@@ -238,7 +238,7 @@ def detail(public_id: str):
             "changes": describe_history_changes(entry),
             "reason": (entry.contexto or {}).get("motivo") if is_staff else None,
         }
-        for entry in list_ticket_history(ticket)
+        for entry in list_ticket_history(ticket, _actor())
     ]
 
     return render_template(

@@ -23,14 +23,43 @@ from .admin_audit_log import ActorType
 class TicketEvent(StrEnum):
     """Vocabulario controlado de eventos del historial de un ticket.
 
-    Contiene solo los eventos que existen hoy; v0.4.0 añadirá los de estado,
-    asignación, comentarios, resolución y cierre (docs/09, 24.1).
+    El vocabulario vive solo en la aplicación (`record_ticket_event` rechaza
+    cualquier evento que no esté aquí), igual que `AuditAction` en la
+    auditoría administrativa: la base de datos no lo restringe, así que añadir
+    un evento no requiere una migración. Contiene los eventos que existen hoy;
+    v0.4.0 añade los de estado, asignación, comentarios, resolución y cierre
+    (docs/09, 24.1).
     """
 
     TICKET_CREADO = "TICKET_CREADO"
     TICKET_MODIFICADO = "TICKET_MODIFICADO"
     CATEGORIA_CAMBIADA = "CATEGORIA_CAMBIADA"
     PRIORIDAD_CAMBIADA = "PRIORIDAD_CAMBIADA"
+
+
+class HistoryVisibility(StrEnum):
+    """Quién puede ver un evento del historial (docs/13, sección 9).
+
+    - `PUBLICO`: lo ven todas las personas con acceso al ticket, incluido el
+      Solicitante.
+    - `INTERNO`: solo el personal (Técnico, Supervisor y Administrador). Una
+      nota interna y todo lo que la rodea nunca llega al Solicitante.
+    """
+
+    PUBLICO = "PUBLICO"
+    INTERNO = "INTERNO"
+
+
+# Visibilidad con la que se registra cada evento si quien lo registra no
+# indica otra. Cada evento del vocabulario debe aparecer aquí: así, al añadir
+# uno nuevo hay que decidir explícitamente quién puede verlo (un test lo
+# comprueba).
+DEFAULT_EVENT_VISIBILITY = {
+    TicketEvent.TICKET_CREADO: HistoryVisibility.PUBLICO,
+    TicketEvent.TICKET_MODIFICADO: HistoryVisibility.PUBLICO,
+    TicketEvent.CATEGORIA_CAMBIADA: HistoryVisibility.PUBLICO,
+    TicketEvent.PRIORIDAD_CAMBIADA: HistoryVisibility.PUBLICO,
+}
 
 
 TICKET_EVENT_LABELS = {
@@ -68,8 +97,8 @@ class TicketHistory(db.Model):
             name="ck_historial_ticket_actor_coherente",
         ),
         CheckConstraint(
-            f"tipo_evento IN ({_sql_list(TicketEvent)})",
-            name="ck_historial_ticket_tipo_evento",
+            f"visibilidad IN ({_sql_list(HistoryVisibility)})",
+            name="ck_historial_ticket_visibilidad",
         ),
         Index(
             "ix_historial_ticket_ticket_fecha",
@@ -108,9 +137,20 @@ class TicketHistory(db.Model):
         nullable=False,
     )
 
+    # Código de `TicketEvent`. Sin CHECK en la base de datos: lo valida el
+    # servicio que registra el evento.
     tipo_evento: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
+    )
+
+    # Quién puede ver el evento. Lo filtra la consulta (nunca la plantilla):
+    # ver `visible_history_condition` en `tickets/service.py`.
+    visibilidad: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default=HistoryVisibility.PUBLICO.value,
+        server_default=HistoryVisibility.PUBLICO.value,
     )
 
     estado_anterior_id: Mapped[int | None] = mapped_column(

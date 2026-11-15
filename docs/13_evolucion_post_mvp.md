@@ -516,12 +516,12 @@ Lista para el análisis posterior; no se incorpora a `09_modelo_de_datos.md` has
 
 ## 9. Qué tener presente durante el MVP (sin cambiar su alcance)
 
-1. **Vocabulario de eventos del historial.** La restricción CHECK `ck_historial_ticket_tipo_evento` exige una migración por cada evento nuevo. Conviene decidir en `v0.4.0` si se mantiene, porque varias ideas añadirán eventos (reglas, satisfacción, tareas y vínculos con proyectos, incidentes).
+1. **Vocabulario de eventos del historial.** *Resuelto en `v0.4.0` (entrega 1):* se eliminó la restricción CHECK `ck_historial_ticket_tipo_evento` y el vocabulario (`TicketEvent`) vive solo en la aplicación, así que las ideas que añadan eventos (reglas, satisfacción, tareas y vínculos con proyectos, incidentes) no necesitan migración por ello.
 2. **Búsqueda de la Base de conocimiento (`v0.7.0`).** Al diseñarla, dejar prevista la columna `tsvector` y el índice GIN de `10_arquitectura.md` (sección 91): EVO-01 y EVO-13 la reutilizan.
 3. **Tabla `configuracion` (`v0.7.0`).** Allí se guardarán las reglas, los umbrales de satisfacción y de vida útil, el interruptor del módulo de proyectos y sus umbrales.
 4. **Motor de tiempo laboral compartido (`v0.5.0`).** Lo usarán el SLA, los recordatorios por tiempo (EVO-07), el calendario operativo (EVO-11) y la programación de tareas de proyecto (EVO-25 y EVO-26). Conviene que ofrezca operaciones de calendario (si una fecha es un día laboral, sumar días laborales, contar los días laborales entre dos fechas) y no solo el cálculo de plazos del SLA.
 5. **Eventos del sistema.** El actor SISTEMA ya está soportado en el historial y en la auditoría; las automatizaciones lo usarán.
-6. **Eventos del historial internos.** Las notas internas de `v0.4.0` ya obligan a que el historial distinga lo que ve el Solicitante de lo que solo ve el personal. Conviene resolverlo con un mecanismo general (por ejemplo, un indicador de visibilidad por evento) y no con casos aislados, porque los vínculos con tareas de proyecto (EVO-24) lo reutilizarán.
+6. **Eventos del historial internos.** *Resuelto en `v0.4.0` (entrega 1):* `historial_ticket.visibilidad` (`PUBLICO` o `INTERNO`) y un filtro único en la consulta (`visible_history_condition`). Los vínculos con tareas de proyecto (EVO-24) lo reutilizarán: bastará declarar la visibilidad por defecto de cada evento nuevo.
 7. **No generalizar por anticipado.** Los comentarios y los adjuntos de `v0.4.0` se diseñan para los tickets. No se generalizan ahora para las tareas (`01_vision_del_proyecto.md`, sección 10.5): se adaptarán al abordar EVO-23.
 
 ---

@@ -82,14 +82,29 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/demo-tickets-seed
+feature/ticket-history-visibility
 ```
 
-Entre `v0.3.0` y `v0.4.0`: comando opcional `seed-demo-tickets`, con unos 40 tickets de demostración realistas y datos separados de la lógica para poder ir ampliándolos en cada fase (ver "22. CLI"). No incluye migraciones.
+Entrega 1 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): el vocabulario de eventos del historial pasa a la aplicación y cada evento lleva su visibilidad (ver "Historial"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19) y el cierre de `v0.3.0` (PR #20).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21) y el plan del módulo de proyectos posterior al MVP (PR #22).
 
-Paso siguiente: `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"). Su rama de trabajo se crea desde `main` ya actualizada.
+`v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
+
+| # | Entrega | Estado |
+| --- | --- | --- |
+| 1 | Historial: vocabulario en la aplicación y visibilidad por evento | En curso |
+| 2 | Catálogo de motivos de espera y su administración | Pendiente |
+| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Pendiente |
+| 4 | Grupos (`/groups`), con membresías y supervisores responsables | Pendiente |
+| 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Pendiente |
+| 6 | Agregar y retirar solicitantes tras crear el ticket | Pendiente |
+| 7 | Comentarios públicos y notas internas | Pendiente |
+| 8 | Adjuntos | Pendiente |
+| 9 | Resolución, validación del solicitante, cierre y reapertura | Pendiente |
+| 10 | Relaciones y duplicados | Pendiente |
+| 11 | Bloqueo temporal de edición | Pendiente |
+| 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Pendiente |
 
 ## Identidad visual (integrada en `main`)
 
@@ -150,8 +165,8 @@ Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técni
 
 - el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
 - la pantalla de Estados y transiciones (UI-021) y su tabla de transiciones;
-- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). La restricción CHECK `ck_historial_ticket_tipo_evento` obliga a una migración por cada evento nuevo: al empezar la fase hay que decidir si se mantiene ese esquema o si el vocabulario queda solo en la aplicación;
-- dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial debe poder distinguir los eventos que ve el Solicitante de los internos (las notas internas ya lo necesitan) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
+- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
+- dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
 - las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado, y se aplicará en el servicio de cierre.
 
@@ -477,7 +492,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente siete migraciones:
+Existen actualmente ocho migraciones:
 
 ```text
 create_roles_table
@@ -487,6 +502,7 @@ add_must_change_password_flag_to_users
 create_ticket_catalogs_tables
 create_tickets_tables
 add_unique_name_indexes_to_priorities_and_locations
+add_visibility_to_ticket_history_and_drop_event_type_check
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -708,6 +724,13 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 ## Historial (`historial_ticket`)
 
 Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene por ahora `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`; los de estado, asignación, comentarios, resolución y cierre se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`.
+
+**Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, sin migración.
+
+**Visibilidad por evento.** Cada fila lleva `visibilidad` (`PUBLICO` o `INTERNO`, NOT NULL, por defecto `PUBLICO`, con CHECK `ck_historial_ticket_visibilidad`). El servicio la fija al registrar el evento: `record_ticket_event(..., visibility=)` y, si se omite, el valor de `DEFAULT_EVENT_VISIBILITY`, que obliga a decidir la visibilidad de cada evento nuevo (un test comprueba que el mapa cubre todo el vocabulario). `INTERNO` significa que solo lo ve el personal.
+- **El filtro lo aplica la consulta, nunca la plantilla:** `visible_history_condition(user)` (`tickets/service.py`) devuelve la condición SQL (personal: todo; Solicitante: solo `PUBLICO`; anónimo, inactivo o sin rol: nada) y `list_ticket_history(ticket, viewer)` la usa. `viewer` es obligatorio a propósito. Cualquier conteo futuro debe salir de una consulta que use la misma condición. Como `visible_tickets_condition`, no comprueba el acceso al ticket: antes hay que aplicar `can_view_ticket`.
+- La política `can_view_internal_activity(user)` (`security/authorization.py`) dice quién ve lo interno (hoy el personal) y la condición SQL se apoya en ella; un test comprueba que ambas coinciden para los cuatro roles.
+- Los cuatro eventos actuales quedan `PUBLICO`, como ya los veía el Solicitante (el motivo de un cambio de prioridad sigue ocultándose en la ruta del detalle). La ola 5 de `docs/13` reutilizará el mismo mecanismo.
 
 ## Servicio (`tickets/service.py`)
 
@@ -1289,6 +1312,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 1 de `v0.4.0` (visibilidad y vocabulario del historial):
+
+```text
+1049 tests passing
+```
+
+Los 15 tests nuevos cubren:
+
+- `tests/test_ticket_history_visibility.py` (13): todo evento del vocabulario declara su visibilidad por defecto; el servicio usa ese valor, admite indicar otra y rechaza (sin dejar nada pendiente) un evento fuera del vocabulario o una visibilidad desconocida; el personal ve los eventos internos y el Solicitante no; **la condición SQL coincide con la política `can_view_internal_activity` para los cuatro roles**; un conteo construido con la condición excluye lo interno; anónimos y usuarios inactivos no ven nada; y el detalle no muestra al Solicitante ni el evento interno ni su motivo, mientras el personal sí los ve.
+- `tests/test_ticket_model.py` (+2 netos): la visibilidad por defecto es `PUBLICO`, la base rechaza una visibilidad desconocida y ya no restringe el vocabulario de `tipo_evento`. El test que comprobaba el CHECK de `tipo_evento` se sustituyó a propósito: esa restricción se eliminó por decisión de la fase y el rechazo de eventos desconocidos se prueba ahora en el servicio.
+- `tests/test_tickets_service.py`: el test del historial pasa ahora el `viewer`, que `list_ticket_history` exige.
 
 Estado tras el seed de tickets de demostración (entre `v0.3.0` y `v0.4.0`):
 

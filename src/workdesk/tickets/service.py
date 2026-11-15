@@ -11,6 +11,7 @@ from ..formatting import start_of_local_day
 from ..models import (
     Categoria,
     Estado,
+    HistoryVisibility,
     Prioridad,
     Role,
     Ticket,
@@ -23,8 +24,14 @@ from ..models import (
 from ..models.admin_audit_log import ActorType
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
+from ..models.ticket_history import DEFAULT_EVENT_VISIBILITY
 from ..search import escape_like
-from ..security import STAFF_ROLES, RoleCode, has_any_role
+from ..security import (
+    STAFF_ROLES,
+    RoleCode,
+    can_view_internal_activity,
+    has_any_role,
+)
 
 INITIAL_STATE_CODE = "NUEVO"
 CLOSED_STATE_CODE = "CERRADO"
@@ -409,12 +416,40 @@ def get_ticket_by_public_id(public_id: str) -> Ticket | None:
     )
 
 
-def list_ticket_history(ticket: Ticket) -> list[TicketHistory]:
-    """Eventos del ticket, del más antiguo al más reciente."""
+def visible_history_condition(user):
+    """Condición SQL con los eventos del historial que `user` puede ver.
+
+    - El personal ve todos, internos incluidos.
+    - El Solicitante ve solo los eventos públicos.
+    - Cualquier otro caso (anónimo, inactivo, sin rol): ninguno.
+
+    Es la única fuente de esta regla: el detalle, el historial y cualquier
+    conteo deben salir de una consulta que la use, nunca ocultar el evento
+    en la plantilla. Igual que `visible_tickets_condition`, no comprueba el
+    acceso al ticket: quien llama debe haber aplicado antes `can_view_ticket`.
+    """
+    if can_view_internal_activity(user):
+        return true()
+
+    if has_any_role(user, RoleCode.SOLICITANTE):
+        return TicketHistory.visibilidad == HistoryVisibility.PUBLICO.value
+
+    return false()
+
+
+def list_ticket_history(ticket: Ticket, viewer: User) -> list[TicketHistory]:
+    """Eventos del ticket que `viewer` puede ver, del más antiguo al más reciente.
+
+    `viewer` es obligatorio a propósito: así ninguna pantalla puede listar el
+    historial completo sin decidir para quién.
+    """
     return list(
         db.session.scalars(
             db.select(TicketHistory)
-            .where(TicketHistory.ticket_id == ticket.id)
+            .where(
+                TicketHistory.ticket_id == ticket.id,
+                visible_history_condition(viewer),
+            )
             .options(joinedload(TicketHistory.actor))
             .order_by(TicketHistory.fecha_hora, TicketHistory.id)
         )
@@ -469,19 +504,31 @@ def record_ticket_event(
     old_value: dict | None = None,
     new_value: dict | None = None,
     context: dict | None = None,
+    visibility: HistoryVisibility | None = None,
 ) -> TicketHistory:
     """Añade un evento al historial del ticket en la sesión actual.
 
     No hace commit: el evento se confirma o se revierte junto con la
     operación que lo origina. `actor=None` identifica una acción del sistema.
+
+    `event` debe pertenecer a `TicketEvent`; cualquier otro valor lanza
+    `ValueError` (el vocabulario lo controla la aplicación, no la base de
+    datos). `visibility` indica quién puede ver el evento; si se omite se usa
+    la que el vocabulario define para ese evento (`DEFAULT_EVENT_VISIBILITY`).
     """
+    event = TicketEvent(event)
+    visibility = HistoryVisibility(
+        DEFAULT_EVENT_VISIBILITY[event] if visibility is None else visibility
+    )
+
     entry = TicketHistory(
         ticket_id=ticket.id,
         actor_usuario_id=None if actor is None else actor.id,
         actor_tipo=(
             ActorType.SISTEMA if actor is None else ActorType.USUARIO
         ).value,
-        tipo_evento=TicketEvent(event).value,
+        tipo_evento=event.value,
+        visibilidad=visibility.value,
         estado_anterior_id=None if old_state is None else old_state.id,
         estado_nuevo_id=None if new_state is None else new_state.id,
         detalle=detail,
