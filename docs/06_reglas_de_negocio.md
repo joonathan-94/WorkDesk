@@ -1404,6 +1404,28 @@ El texto se limita a 100 caracteres.
 
 ---
 
+## RN-155 — Edición de tickets
+
+Aplica RF-022, RF-025 y RN-17 y RN-22 en la implementación inicial de la edición.
+
+**Quién edita.** Solo el personal (Técnico, Supervisor y Administrador). El Solicitante solo lee, incluso en sus propios tickets. Se comprueba en backend: quien puede ver un ticket pero no editarlo recibe un **403**; quien no puede verlo recibe el mismo **404** que un ticket inexistente (RN-153).
+
+**Qué se edita.**
+
+* **Datos:** título, descripción, categoría y ubicación, con las mismas reglas y límites que al crear (RN-153). La categoría y la ubicación nuevas deben estar activas; el valor que el ticket ya tiene puede conservarse aunque se haya desactivado después, porque desactivar un valor no obliga a modificar los tickets que lo usan.
+* **Prioridad:** se cambia aparte y **exige un motivo** (obligatorio, hasta 500 caracteres). La nueva prioridad debe estar activa. Establecer la misma prioridad que ya tiene el ticket no genera cambio ni registro.
+* Cada cambio se aplica y se registra solo en lo que cambió; una edición sin cambios no hace nada.
+
+**Ticket cerrado.** Un ticket `Cerrado` no se edita ni se le cambia la prioridad: primero debe reabrirse.
+
+**Historial.** Cada cambio queda en el historial del ticket (RN-02) con quién, cuándo y los valores anterior y nuevo: `TICKET_MODIFICADO` (título, descripción y ubicación), `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`, esta última con el motivo. El historial no repite la descripción completa: indica que fue modificada.
+
+**Visibilidad del historial.** El personal ve qué cambió y el motivo de un cambio de prioridad. El Solicitante ve **qué cambió, quién y cuándo, pero no el motivo**: los motivos son notas internas del equipo.
+
+**Ediciones simultáneas** (RN-114). Cada ticket tiene una versión que sube con cada cambio. Quien guarda debe hacerlo sobre la versión que abrió: si otra persona modificó el ticket mientras tanto, el guardado se rechaza con un aviso y se muestran los datos actuales, de modo que ninguna edición pisa en silencio a otra. El bloqueo temporal que avisa de quién está editando (RN-115 a RN-117) se implementa en `v0.4.0`.
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

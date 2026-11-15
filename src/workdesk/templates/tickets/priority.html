@@ -1,0 +1,85 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, priority_badge %}
+{% from "_form_macros.html" import textarea_field, select_field %}
+
+{% block title %}Cambiar prioridad del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Cambiar prioridad', None),
+    ]) }}
+
+    {{ page_header('Cambiar prioridad', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.change_ticket_priority', public_id=ticket.public_id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# Versión con la que se abrió el formulario: permite detectar si
+               otra persona modificó el ticket mientras se editaba. #}
+            <input
+                type="hidden"
+                name="{{ form.version.name }}"
+                value="{{ form.version.data if form.version.data is not none else '' }}"
+            >
+
+            {% if form.version.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.version.errors[0] }}
+                </div>
+            {% endif %}
+
+            <p class="mb-3">
+                Prioridad actual: {{ priority_badge(ticket.prioridad) }}
+            </p>
+
+            {{ select_field(
+                form.prioridad,
+                form.priority_choices,
+                placeholder="Selecciona la nueva prioridad",
+                required=True,
+            ) }}
+
+            {{ textarea_field(
+                form.motivo,
+                required=True,
+                maxlength=max_reason,
+                rows=4,
+                counter=True,
+                hint="Queda registrado en el historial del ticket.",
+            ) }}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Cambiar prioridad
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

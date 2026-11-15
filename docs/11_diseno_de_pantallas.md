@@ -1837,7 +1837,18 @@ Resumen simplificado:
 - Dos columnas (contenido y resumen lateral): tarjeta "Descripción", que conserva los saltos de línea y escapa cualquier HTML, y tarjeta "Historial" con el evento, la fecha y la persona; y la tarjeta "Resumen" con estado, prioridad, categoría, ubicación y fecha. El personal ve además "Creado por" y los solicitantes vigentes (o "Sin solicitante"); el Solicitante no.
 - Las fechas se muestran en la zona horaria de la aplicación con el formato `dd-mm-aaaa hh:mm`.
 - Un ticket al que el usuario no tiene acceso, o que no existe, responde con la misma página de error 404 (RN-153).
-- Todavía **sin** pestañas (Actividad, Archivos, Historial, Relaciones, Conocimiento), comentarios, acciones ni edición, "Atendido por", SLA ni fecha de actualización: llegan en las siguientes entregas y versiones.
+- Todavía **sin** pestañas (Actividad, Archivos, Historial, Relaciones, Conocimiento), comentarios, acciones de estado o asignación, "Atendido por" ni SLA: llegan en las siguientes versiones.
+
+**Edición (`v0.3.0`)** — reglas en `docs/06` (RN-155):
+
+- **Acciones:** el personal ve en la cabecera los botones "Editar" y "Cambiar prioridad" (secundarios, con icono), solo mientras el ticket no esté cerrado. En un ticket cerrado se muestra una nota que explica que primero debe reabrirse. El Solicitante no ve ninguno de los dos.
+- **Pantallas separadas** (no modales, para que funcionen sin JavaScript), con la ruta de navegación "Tickets / #N / Editar" (o "Cambiar prioridad"):
+  - **Editar** (`/tickets/<n>/edit`): título, descripción (con contador), categoría y ubicación. Se ofrecen los valores activos y el valor actual del ticket, marcado "(inactiva)" si se desactivó. Una nota recuerda que la prioridad se cambia desde su propia pantalla.
+  - **Cambiar prioridad** (`/tickets/<n>/priority`): muestra la prioridad actual, un selector de la nueva (con "(actual)" junto a la vigente y ninguna preseleccionada) y el motivo obligatorio, con contador y la indicación "Queda registrado en el historial del ticket.".
+- **Resumen:** se añade "Actualizado" (última modificación o, si nunca se modificó, la creación).
+- **Historial:** cada evento muestra qué cambió (`Título: «a» → «b»`, `Descripción modificada.`, `Categoría: …`, `Ubicación: …`, `Prioridad: …`) y, solo para el personal, el motivo de un cambio de prioridad.
+- **Conflicto de edición:** si otra persona modificó el ticket mientras se editaba, el guardado se rechaza con un aviso de error y se vuelve al formulario con los datos actuales.
+- **Avisos:** "Ticket #N actualizado.", "La prioridad del ticket #N se actualizó.", "No había cambios que guardar." y "El ticket ya tiene esa prioridad.".
 
 ---
 

@@ -1,0 +1,104 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field, textarea_field, select_field %}
+
+{% block title %}Editar ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Editar', None),
+    ]) }}
+
+    {{ page_header('Editar ticket', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card form-card--wide"
+        method="post"
+        action="{{ url_for('tickets.edit_ticket', public_id=ticket.public_id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# Versión con la que se abrió el formulario: permite detectar si
+               otra persona modificó el ticket mientras se editaba. #}
+            <input
+                type="hidden"
+                name="{{ form.version.name }}"
+                value="{{ form.version.data if form.version.data is not none else '' }}"
+            >
+
+            {% if form.version.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.version.errors[0] }}
+                </div>
+            {% endif %}
+
+            {{ text_field(
+                form.titulo,
+                required=True,
+                maxlength=max_title,
+                autofocus=True,
+            ) }}
+
+            {{ textarea_field(
+                form.descripcion,
+                required=True,
+                maxlength=max_description,
+                rows=6,
+                counter=True,
+            ) }}
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ select_field(
+                        form.categoria,
+                        form.category_choices,
+                        placeholder="Selecciona una categoría",
+                        required=True,
+                    ) }}
+                </div>
+
+                <div class="col-md-6">
+                    {{ select_field(
+                        form.ubicacion,
+                        form.location_choices,
+                        placeholder="Sin ubicación",
+                    ) }}
+                </div>
+            </div>
+
+            <p class="form-text">
+                La prioridad se cambia desde su propia pantalla, porque
+                exige indicar un motivo.
+            </p>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

@@ -38,13 +38,15 @@ Es la fase central del MVP. Se construye en entregas pequeñas, cada una con su 
 - **Modelo de datos de tickets:** tabla de tickets con identificador público generado por una secuencia de PostgreSQL, solicitantes de cada ticket (relación temporal N:M) e historial de eventos inmutable, más el servicio que crea tickets.
 - **Administración de catálogos:** el Administrador gestiona categorías, prioridades y ubicaciones desde la interfaz (crear, editar, desactivar y reactivar), con auditoría de cada cambio.
 
-- **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre un detalle de solo lectura, visible solo para quien corresponde.
+- **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre su detalle, visible solo para quien corresponde.
 
 - **Listado de tickets:** "Tickets" (personal) y "Mis tickets" (Solicitante) muestran solo lo que cada rol puede ver, con pestañas Todos, Abiertos y Cerrados, buscador (número, título, contenido y, para el personal, solicitante), filtros, orden y paginación. La barra superior también busca tickets.
 
-Todavía **no se pueden editar tickets ni cambiarles el estado**: la edición y el detalle completo llegan en las próximas entregas.
+- **Edición de tickets:** el personal puede editar el título, la descripción, la categoría y la ubicación de un ticket, y cambiar su prioridad indicando un motivo. Cada cambio queda en el historial con lo que había antes y lo que hay ahora, y si dos personas editan a la vez, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
 
-La suite cuenta con **846 tests automatizados**.
+Todavía **no se pueden cambiar el estado de un ticket, asignarlo ni comentarlo**: llegan en `v0.4.0`.
+
+La suite cuenta con **958 tests automatizados**.
 
 ### `v0.2.0 — Usuarios, autenticación completa y RBAC`
 
@@ -305,6 +307,8 @@ WorkDesk/
 │   ├── test_system.py
 │   ├── test_ticket_model.py
 │   ├── test_ticket_policies.py
+│   ├── test_tickets_edit_routes.py
+│   ├── test_tickets_edit_service.py
 │   ├── test_tickets_list_routes.py
 │   ├── test_tickets_list_service.py
 │   ├── test_tickets_routes.py
@@ -662,6 +666,21 @@ Cada rol ve solo lo suyo desde la propia consulta a la base de datos: el persona
 
 ---
 
+## Editar un ticket
+
+Al abrir un ticket, el personal (Técnico, Supervisor y Administrador) ve dos botones; el Solicitante no los ve y, aunque abriera la dirección a mano, el servidor se lo impide:
+
+- **Editar:** cambia el título, la descripción, la categoría y la ubicación. Solo se ofrecen valores activos, pero el valor que el ticket ya tiene se puede conservar aunque se haya desactivado después. Si no cambias nada, no se registra nada.
+- **Cambiar prioridad:** pantalla aparte, porque **exige un motivo** (hasta 500 caracteres). Elegir la misma prioridad que ya tiene el ticket no genera ningún cambio.
+
+Cosas que conviene saber:
+
+- **Historial:** en el detalle, cada cambio muestra qué se modificó (por ejemplo, `Prioridad: «Media» → «Alta»`). El **motivo** de un cambio de prioridad lo ve solo el personal: el Solicitante ve qué cambió, pero no por qué.
+- **Ediciones simultáneas:** si mientras editas un ticket otra persona lo modifica, al guardar verás un aviso y el formulario se recarga con los datos actuales, sin pisar su cambio.
+- **Tickets cerrados:** no se editan ni se les cambia la prioridad; primero deberán reabrirse (esa acción llega en `v0.4.0`).
+
+---
+
 ## Rutas actuales
 
 Rutas registradas actualmente:
@@ -699,12 +718,14 @@ GET POST  /admin/locations/<id>/activate
 GET       /tickets
 GET POST  /tickets/new
 GET       /tickets/<public_id>
+GET POST  /tickets/<public_id>/edit
+GET POST  /tickets/<public_id>/priority
 GET       /health
 ```
 
 `/dashboard`, `/tickets`, `/tickets/new`, `/tickets/<public_id>` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
 
-El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen.
+El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen. Las rutas de edición y de prioridad son solo del personal: quien ve el ticket pero no puede editarlo recibe un **403**.
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 
@@ -833,7 +854,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-846 tests
+958 tests
 ```
 
 Los tests cubren principalmente:
@@ -849,7 +870,8 @@ Los tests cubren principalmente:
 - catálogos de tickets: datos iniciales, restricciones de base de datos y administración desde la interfaz;
 - modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación;
 - creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local;
-- listado de tickets: visibilidad por rol aplicada en la consulta (y comprobada contra la política de acceso), búsqueda, pestañas con contadores, filtros, orden, paginación, ausencia de consultas por fila y parámetros inválidos.
+- listado de tickets: visibilidad por rol aplicada en la consulta (y comprobada contra la política de acceso), búsqueda, pestañas con contadores, filtros, orden, paginación, ausencia de consultas por fila y parámetros inválidos;
+- edición de tickets: permisos por rol (403 para quien ve pero no edita), cambios y su historial, valores de catálogo desactivados, tickets cerrados, motivo obligatorio de la prioridad, conflictos entre ediciones simultáneas y qué ve cada rol del historial.
 
 Ejecutar:
 

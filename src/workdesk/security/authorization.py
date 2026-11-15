@@ -53,6 +53,21 @@ def can_choose_requesters(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_edit_ticket(user) -> bool:
+    """Editar título, descripción, categoría y ubicación de un ticket.
+
+    Es una política de rol: el personal puede; el Solicitante solo lee. Que
+    el ticket esté cerrado (no se edita sin reabrirlo) es una regla del
+    ticket, no del rol, y la aplica el servicio.
+    """
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_change_priority(user) -> bool:
+    """Cambiar la prioridad de un ticket ya creado (docs/06, RN-22)."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
 def can_view_ticket(user, ticket) -> bool:
     """Indica si el usuario puede ver el ticket.
 

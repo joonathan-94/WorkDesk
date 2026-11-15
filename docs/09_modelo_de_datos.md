@@ -1636,6 +1636,8 @@ Una corrección posterior se representa mediante un nuevo evento compensatorio; 
 
 **Implementación (`v0.3.0`).** La tabla se crea con el esquema de esta sección, salvo `motivo_espera_id`, que se añadirá junto con el catálogo `motivos_espera`. El registro es append-only en la aplicación: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`). `actor_tipo` y `tipo_evento` se restringen con `CHECK`, y otro `CHECK` exige coherencia entre `actor_tipo` y `actor_usuario_id`. El vocabulario de `tipo_evento` (`TicketEvent`) contiene por ahora `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`; los demás eventos se añaden con su funcionalidad, ampliando el `CHECK` mediante una migración. Índice por `(ticket_id, fecha_hora)`.
 
+**Contenido de los eventos de edición (`v0.3.0`, RN-155).** `TICKET_MODIFICADO` guarda en `valor_anterior` y `valor_nuevo` solo las claves que cambiaron entre `titulo`, `descripcion` y `ubicacion` (esta última con el nombre de la ubicación, o `null`). `CATEGORIA_CAMBIADA` guarda `{"categoria_id", "nombre"}` en ambos valores. `PRIORIDAD_CAMBIADA` guarda `{"prioridad_id", "codigo", "nombre"}` y el motivo en `contexto` como `{"motivo": "..."}`. Se guardan los nombres de ese momento para que el historial siga siendo legible aunque después se renombre el elemento.
+
 ---
 
 # 25. Auditoría administrativa
