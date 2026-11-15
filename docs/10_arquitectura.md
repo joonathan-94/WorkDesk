@@ -186,6 +186,7 @@ La arquitectura deberá respetar las siguientes restricciones:
 13. Los archivos deberán permanecer protegidos.
 14. La arquitectura deberá favorecer pruebas automatizadas.
 15. La complejidad deberá mantenerse proporcional al alcance.
+16. WorkDesk es una aplicación 100 % local o de intranet de forma permanente: no depende de Internet ni de servicios externos (correo, SMS, mensajería, nube, autenticación externa o APIs de terceros), también después del MVP (`docs/13_evolucion_post_mvp.md`, principio P1).
 
 ---
 

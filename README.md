@@ -143,7 +143,7 @@ Entre las capacidades planificadas se encuentran:
 - Backups locales.
 - Diseño responsive.
 
-El MVP se ejecutará inicialmente de forma local y no requiere infraestructura cloud ni servicios externos obligatorios.
+WorkDesk es una aplicación 100 % local o de intranet, por decisión del proyecto: no depende de Internet, correo, nube ni servicios de terceros, y sus notificaciones son internas. Se ejecuta en un equipo local o en un servidor propio de la organización.
 
 ---
 
@@ -525,7 +525,7 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 
 | Variable | Valor por defecto | Para qué sirve |
 | --- | --- | --- |
-| `APP_ENV` | `development` | Entorno. Con `production`, `seed-demo` se niega a ejecutarse. |
+| `APP_ENV` | `development` | Entorno. Con `production`, `seed-demo` y `seed-demo-tickets` se niegan a ejecutarse. |
 | `APP_TIMEZONE` | `America/Santiago` | Zona horaria en la que se muestran las fechas (nombre de la base IANA, por ejemplo `Europe/Madrid`). |
 | `SECRET_KEY` | — (obligatoria) | Clave que firma las sesiones. |
 | `SESSION_COOKIE_SECURE` | `false` | `false` mientras uses HTTP local; `true` solo con HTTPS. |
@@ -558,7 +558,8 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
-| 8 | Desde la interfaz | Crea tu primer ticket. |
+| 8 | `seed-demo-tickets` (opcional) | Carga unos 40 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
+| 9 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
 
@@ -704,6 +705,8 @@ Reglas que conviene conocer:
 
 Si solo quieres probar el sistema, bastan tres o cuatro categorías y una o dos ubicaciones.
 
+Si además vas a cargar los [tickets de demostración](#tener-tickets-con-los-que-probar), crea exactamente estas, con estos nombres: categorías `Redes`, `Hardware`, `Correo` e `Impresoras`, y ubicaciones `Suc Lo Marcoleta` (Sucursal) y `Suc Manuel Antonio Matta` (Oficina).
+
 ---
 
 ## Crear un ticket
@@ -716,7 +719,7 @@ Con las categorías (y, si quieres, las ubicaciones) ya creadas, cualquier usuar
 
 Al crearlo se abre el detalle del ticket, con su número (`#1`, `#2`...), su estado inicial `Nuevo`, el resumen y el historial. Quien crea el ticket queda registrado como **creador**, aunque no sea el solicitante.
 
-Para probar los distintos roles sin crear usuarios a mano, carga el equipo de demostración con `seed-demo` (paso 5 de la preparación inicial). Con un Solicitante comprueba que solo ve los tickets que creó o donde es solicitante; el de cualquier otra persona responde "no encontrado".
+Para probar los distintos roles sin crear usuarios a mano, carga el equipo de demostración con `seed-demo` (paso 5 de la preparación inicial) y, si quieres datos con los que ver los listados, `seed-demo-tickets` (paso 8). Con un Solicitante comprueba que solo ve los tickets que creó o donde es solicitante; el de cualquier otra persona responde "no encontrado".
 
 ---
 
@@ -751,63 +754,47 @@ Cosas que conviene saber:
 
 ## Recorrido de prueba
 
-Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo lo que hace `v0.3.0`. Parte de una instalación terminada: los pasos 1 a 6 de la [preparación inicial](#preparación-inicial), con `seed-demo` ejecutado (para tener personas de cada rol) y las categorías de tu organización ya creadas.
+Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo lo que hace `v0.3.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
 
 ### Tener tickets con los que probar
 
-Para ver la paginación, la búsqueda y los filtros hacen falta bastantes tickets. Puedes crearlos a mano desde **Crear ticket** o generar 25 de ejemplo con el fragmento de abajo. Es opcional, no forma parte de WorkDesk y solo tiene sentido en un entorno de prueba.
-
-Abre la consola de Flask, con el entorno virtual activado y desde la raíz del proyecto:
+Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga unos 40 tickets de demostración:
 
 ```bash
-python -m flask --app src.workdesk shell
+python -m flask --app src.workdesk seed-demo-tickets
 ```
 
-Pega este código y pulsa Enter. Necesita que el Administrador ya exista; si cargaste `seed-demo`, los tickets se reparten entre las seis personas solicitantes de demostración.
+**Antes de ejecutarlo** necesitas:
 
-```python
-from sqlalchemy import select
-from src.workdesk.extensions import db
-from src.workdesk.models import Categoria, Prioridad, Role, User
-from src.workdesk.tickets.service import create_ticket
+- los catálogos iniciales (`seed-catalogs`, paso 3) y los usuarios de demostración (`seed-demo`, paso 5), porque los tickets se crean a nombre de ese equipo;
+- las categorías y ubicaciones de la demostración, creadas desde **Administración** (paso 7) con estos nombres exactos: categorías `Redes`, `Hardware`, `Correo` e `Impresoras`; ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta`.
 
-def usuarios_activos(codigo_rol):
-    return db.session.scalars(
-        select(User).join(Role)
-        .where(Role.codigo == codigo_rol, User.activo.is_(True))
-        .order_by(User.id)
-    ).all()
+**Qué crea**
 
-admin = usuarios_activos("ADMINISTRADOR")[0]
-solicitantes = usuarios_activos("SOLICITANTE")
-categorias = db.session.scalars(
-    select(Categoria).where(Categoria.activo.is_(True)).order_by(Categoria.id)
-).all()
-prioridades = db.session.scalars(
-    select(Prioridad).where(Prioridad.activo.is_(True)).order_by(Prioridad.nivel)
-).all()
-titulos = [
-    "No puedo iniciar sesión en el correo",
-    "La impresora del segundo piso no imprime",
-    "Necesito instalar un programa de diseño",
-    "Internet muy lento en la oficina",
-    "El computador se reinicia solo",
-]
+- Tickets escritos como los escribiría gente real y poco técnica: títulos vagos («no puedo abrir el excel», «el wifi!!!!»), prisa, faltas de tilde, prioridades exageradas y, a veces, el problema equivocado (alguien dice «no tengo internet» y era un cable suelto). Otros los registra el personal a nombre de alguien, con un tono más ordenado.
+- Un reparto realista: cerca de un 70 % lo crean Solicitantes y el resto el personal (con 0, 1 o 2 solicitantes); hay tickets en las cuatro categorías y en `Sin clasificar` (el usuario no siempre sabe elegir), en las cuatro prioridades, en ambas ubicaciones y algunos sin ubicación.
+- Ocho tickets tienen además una historia posterior hecha por el personal: reclasificaciones, cambios de prioridad con motivo y títulos corregidos tras hablar con la persona. Quedan en el historial como en la aplicación real (el Solicitante ve qué cambió, pero no el motivo).
+- Fechas repartidas hasta unas nueve semanas atrás, **relativas al día en que lo ejecutes** y medidas en **tiempo laboral**: «hace 3 días» son tres días laborales antes de hoy, cada ticket se crea dentro de la jornada y los pasos posteriores del personal avanzan en horas laborales (el reloj salta noches, fines de semana y feriados). Por defecto la jornada es de lunes a viernes de 09:00 a 18:00 y se cambia en `DEMO_CALENDAR`, en el mismo archivo de datos (cuando exista la pantalla del calendario laboral, con el SLA en `v0.5.0`, el comando usará el que guarde el Administrador y, si no hay ninguno, este). Nada queda fuera de ese calendario ni en el futuro, y si lo ejecutas un fin de semana, cuenta desde el último día laboral. Así los filtros por fecha y «Recién actualizados» se ven vivos en cualquier demostración.
 
-for n in range(1, 26):
-    create_ticket(
-        actor=admin,
-        title=f"{titulos[n % 5]} ({n})",
-        description="Ticket de ejemplo para probar listados, filtros y búsquedas.",
-        category_id=categorias[n % len(categorias)].id,
-        priority_id=prioridades[n % len(prioridades)].id,
-        requester_ids=[solicitantes[n % len(solicitantes)].id] if solicitantes else [],
-    )
+**Cómo se comporta**
 
-db.session.commit()
+- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 40.`
+- Un ticket demo se reconoce aunque después le cambien el título. Si lo editaste a mano mientras probabas, esa edición se desplaza junto con el ticket para que el historial siga en orden y nada quede en el futuro. El contenido (título, descripción, categoría, prioridad...) no se sobrescribe, y los tickets que creaste a mano no se tocan nunca.
+- No crea categorías ni ubicaciones. Si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación, y te avisa con un mensaje `Aviso:`.
+- Si falta `seed-demo` o `seed-catalogs`, se detiene con un mensaje que dice qué ejecutar primero y no carga nada. Si algo falla a mitad de la carga, se revierte todo.
+- Se niega a ejecutarse con `APP_ENV=production`.
+- Todos quedan en estado `Nuevo`: aún no existen los cambios de estado ni el cierre (llegan en `v0.4.0`), así que la pestaña **Cerrados** estará vacía.
+
+**Cómo mejorarlo.** Los textos están separados de la lógica: para cambiar un título, una prioridad o la antigüedad de un ticket, o para añadir más, se edita la lista de [`src/workdesk/seeds/demo_tickets_data.py`](src/workdesk/seeds/demo_tickets_data.py) sin tocar el código que los carga. En el mismo archivo, `DEMO_CALENDAR` define los días laborales, la jornada y los feriados con los que se fechan los tickets (las horas de creación deben caer dentro de la jornada). Al volver a ejecutar el comando, los tickets ya cargados solo refrescan sus fechas: un cambio de texto, categoría o prioridad en la lista se ve en los tickets **nuevos** (los que tengan otra `clave`), pero no en los ya cargados. Para ver esos cambios en tickets existentes, recrea la base de desarrollo y vuelve a cargar los datos. Una vez cargado un ticket, no cambies su `clave`: es lo que lo identifica.
+
+**Empezar de cero.** Recrear la base **borra todo lo que contiene** (usuarios, categorías, tickets...), así que hazlo solo en tu entorno de prueba. Detén WorkDesk (`Ctrl+C`) y, desde la consola de PostgreSQL como `postgres` (ver [Configuración de PostgreSQL](#configuración-de-postgresql)), ejecuta:
+
+```sql
+DROP DATABASE workdesk_dev;
+CREATE DATABASE workdesk_dev OWNER workdesk_app;
 ```
 
-Crea 25 tickets a nombre del Administrador, repartidos entre tus categorías activas y las prioridades, con cinco títulos distintos para poder buscar. Si tu terminal no acepta pegar varias líneas de una vez, pega el código por bloques, separados por las líneas en blanco. Sal de la consola con `exit()`.
+Después repite la [preparación inicial](#preparación-inicial) desde el paso 1. `DROP DATABASE` falla si queda alguna conexión abierta: cierra WorkDesk y cualquier herramienta (pgAdmin, `psql`) conectada a esa base.
 
 ### Usuarios de demostración
 
@@ -825,22 +812,23 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 
 1. Inicia sesión. La barra lateral muestra **Dashboard**, **Tickets**, **Crear ticket**, **Administración** y **Mi cuenta**.
 2. **Crear ticket:** envía el formulario incompleto (por ejemplo, solo con el título). Cada campo obligatorio que falta muestra su error y el formulario conserva lo que ya habías escrito. Luego créalo bien, marcando dos solicitantes (el buscador filtra la lista). Debes ver el aviso `Ticket #N creado correctamente.` y el detalle con estado `Nuevo`, el creador y los solicitantes.
-3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con más de 20 tickets hay dos páginas; al cambiar de página se conserva lo que hayas filtrado.
-4. **Buscar:** si generaste los tickets de ejemplo, escribe `impresora`: deben aparecer los cinco que la mencionan. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
+3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 40`, `Abiertos 40` y `Cerrados 0` (más los que hayas creado tú) y dos páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
+4. **Buscar:** escribe `impresora`: con los tickets de demostración aparecen siete, porque la palabra está en títulos y en descripciones. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
 5. **Filtrar y ordenar:** filtra por estado y por prioridad, abre **Más filtros** (categoría, ubicación y fechas) y combínalos con la búsqueda. **Limpiar filtros** los quita. Cambia **Ordenar por** a `Mayor prioridad primero`.
 6. **Editar:** abre un ticket y pulsa **Editar**. Cambia el título y guarda: aparece `Ticket #N actualizado.` y el historial muestra `Título: «antes» → «después»`. Vuelve a guardar sin tocar nada: `No había cambios que guardar.`
 7. **Cambiar prioridad:** pulsa **Cambiar prioridad**. Sin motivo, el formulario lo rechaza. Con un motivo, el historial muestra el cambio y `Motivo: ...`.
 8. **Ediciones simultáneas:** abre el mismo ticket en dos pestañas del navegador (A y B) y pulsa **Editar** en ambas. Guarda en A. Al guardar en B aparece `Otra persona modificó este ticket mientras lo editabas...` y el formulario se recarga con los datos de A, sin pisar su cambio.
-9. **Catálogos:** en **Administración → Categorías**, desactiva una categoría que ya usan tickets. Esos tickets la conservan, pero ya no aparece en **Crear ticket**. Reactívala cuando quieras.
+9. **Una historia con varias manos:** busca `bodega sin red` y abre ese ticket. Empezó como «se cayo el sistema», que una persona de la bodega clasificó como `Sin clasificar` con prioridad `Crítica`. En el historial verás cómo una técnica lo reclasificó a `Redes`, bajó la prioridad a `Alta` explicando el motivo (que tú, como personal, ves) y otro técnico corrigió el título. Es lo que ocurre en un soporte real: lo que se pide no siempre es el problema.
+10. **Catálogos:** en **Administración → Categorías**, desactiva una categoría que ya usan tickets. Esos tickets la conservan, pero ya no aparece en **Crear ticket**. Reactívala cuando quieras.
 
 ### 2. Como Solicitante
 
 Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 
 1. La barra lateral muestra **Dashboard**, **Mis tickets**, **Crear ticket** y **Mi cuenta**; no hay Administración.
-2. **Mis tickets** lista solo los tickets que creó o donde figura como solicitante. Compáralo con lo que veías como Administrador.
+2. **Mis tickets** lista solo los tickets que creó o donde figura como solicitante: con los datos de demostración, `paula.contreras` ve 6 (los 5 que escribió y uno que registró el personal a su nombre). Compáralo con lo que veías como Administrador.
 3. Abre uno: ves la descripción, el resumen y el historial, pero no "Creado por" ni los solicitantes, y no hay botones **Editar** ni **Cambiar prioridad**.
-4. Si a ese ticket se le cambió la prioridad, el historial muestra qué cambió pero **no el motivo**.
+4. Entra como `ignacio.molina`, busca `bodega sin red` y ábrelo: el historial muestra qué cambió (la categoría, la prioridad y el título) pero **no el motivo** de la prioridad, que solo ve el personal.
 5. En la barra de direcciones, cambia el número por el de un ticket de otra persona (`/tickets/N`): aparece **Página no encontrada** (404), igual que con un número que no existe (`/tickets/9999`). No se puede deducir qué tickets existen.
 6. Abre `/tickets/N/edit` con el número de un ticket propio: aparece **Acceso denegado** (403). Lo mismo con `/admin`.
 7. **Crear ticket:** no hay sección de solicitantes; al crearlo, quedas registrado como su solicitante.
@@ -849,7 +837,7 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 
 Entra, por ejemplo, como `diego.soto`.
 
-1. **Tickets** muestra todos los tickets, incluidos los que crearon otras personas.
+1. **Tickets** muestra todos los tickets (con los datos de demostración, los 40), incluidos los que crearon otras personas.
 2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
 3. No ve **Administración**; `/admin` responde **Acceso denegado**.
 
@@ -876,6 +864,10 @@ Entra, por ejemplo, como `diego.soto`.
 | PowerShell: "la ejecución de scripts está deshabilitada en este sistema" | Política de ejecución de PowerShell. | Mira el paso 2 de la [Instalación](#instalación). |
 | `psql` no se reconoce | La carpeta `bin` de PostgreSQL no está en el `PATH`. | Usa **SQL Shell (psql)** desde el menú Inicio o pgAdmin, o añade esa carpeta al `PATH`. |
 | `create-admin`: "No existe el rol ADMINISTRADOR. Ejecuta primero el comando seed-roles." | Se saltó el paso 2 de la preparación. | Ejecuta `seed-roles` y vuelve a intentarlo. |
+| `seed-demo-tickets`: "Faltan usuarios de demostración... Ejecuta primero seed-demo." | Todavía no cargaste el equipo de demostración. | Ejecuta `seed-demo` y vuelve a intentarlo. No se cargó ningún ticket. |
+| `seed-demo-tickets`: "Faltan los catálogos iniciales. Ejecuta primero seed-catalogs." | Se saltó el paso 3 de la preparación. | Ejecuta `seed-catalogs` y vuelve a intentarlo. |
+| `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
+| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 40" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -1065,7 +1057,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-967 tests
+1034 tests
 ```
 
 Los tests cubren principalmente:
@@ -1077,7 +1069,7 @@ Los tests cubren principalmente:
 - autorización por roles y navegación filtrada por rol;
 - administración de usuarios (servicio y rutas) y "Mi cuenta";
 - auditoría administrativa, incluida su inmutabilidad;
-- datos de demostración;
+- datos de demostración: el equipo ficticio y los tickets de ejemplo (coherencia de los datos, que no duplica y refresca las fechas al volver a ejecutarlo, fechas relativas en tiempo laboral (días y horas configurables, feriados y fines de semana), ediciones hechas a mano que siguen en orden, historial de sus ajustes, avisos cuando falta una categoría o ubicación y que el historial sigue siendo inmutable);
 - catálogos de tickets: datos iniciales, restricciones de base de datos y administración desde la interfaz;
 - modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación;
 - creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local;
@@ -1150,6 +1142,9 @@ python -m flask --app src.workdesk create-admin
 # Cargar datos de demostración (opcional)
 python -m flask --app src.workdesk seed-demo
 
+# Cargar tickets de demostración (opcional; requiere seed-demo y las categorías de la demo)
+python -m flask --app src.workdesk seed-demo-tickets
+
 # Ver rutas
 python -m flask --app src.workdesk routes
 
@@ -1178,6 +1173,7 @@ La documentación técnica, funcional y visual se encuentra en [`docs/`](docs/).
 10. [Arquitectura](docs/10_arquitectura.md)
 11. [Diseño de pantallas](docs/11_diseno_de_pantallas.md)
 12. [Roadmap](docs/12_roadmap.md)
+13. [Evolución posterior al MVP](docs/13_evolucion_post_mvp.md)
 
 ---
 
@@ -1233,6 +1229,8 @@ v1.0.0  MVP
 ```
 
 El desarrollo prioriza mantener cada incremento ejecutable, probado y documentado antes de avanzar al siguiente.
+
+El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) llega con el SLA, en `v0.5.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos). El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 ---
 

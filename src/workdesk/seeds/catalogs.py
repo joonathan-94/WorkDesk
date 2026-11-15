@@ -5,7 +5,8 @@ Es idempotente, igual que `seed_roles`: cada registro se identifica por su
 que un Administrador haya renombrado o desactivado.
 
 Las ubicaciones no se cargan aquí: no hay ninguna obligatoria para operar y
-dependen de cada organización (los datos de ejemplo irán en `seed-demo`).
+dependen de cada organización (los datos de ejemplo no van aquí: ver
+`seed-demo` y `seed-demo-tickets`).
 """
 
 from ..extensions import db

@@ -10,7 +10,13 @@ from .security import (
     hash_password,
     validate_password_policy,
 )
-from .seeds import seed_catalogs, seed_demo_users, seed_roles
+from .seeds import (
+    DemoTicketsError,
+    seed_catalogs,
+    seed_demo_tickets,
+    seed_demo_users,
+    seed_roles,
+)
 
 # Variable de entorno opcional con la contraseña de los usuarios demo, para
 # ejecutar `seed-demo` sin interacción. Nunca se guarda ni se muestra.
@@ -172,3 +178,33 @@ def register_commands(app: Flask) -> None:
             "No se creó ningún Administrador: usa create-admin para crear "
             "el tuyo."
         )
+
+    @app.cli.command("seed-demo-tickets")
+    def seed_demo_tickets_command() -> None:
+        """Carga tickets de demostración (requiere seed-demo y seed-catalogs).
+
+        Crea unos 40 tickets con textos realistas, repartidos en el tiempo y
+        a nombre del equipo ficticio de seed-demo. No crea categorías ni
+        ubicaciones: las busca por nombre entre las que ya existen. Al volver
+        a ejecutarlo no duplica nada: refresca las fechas de los tickets ya
+        cargados para que queden relativas al día de la ejecución. No se
+        ejecuta con APP_ENV=production.
+        """
+
+        if current_app.config["APP_ENV"] == "production":
+            raise click.ClickException(
+                "Los datos de demostración no se cargan en producción."
+            )
+
+        try:
+            result = seed_demo_tickets()
+        except DemoTicketsError as error:
+            raise click.ClickException(str(error)) from error
+
+        click.echo(
+            f"Tickets demo creados: {result.created}. "
+            f"Actualizados (ya existían): {result.refreshed}."
+        )
+
+        for warning in result.warnings:
+            click.echo(f"Aviso: {warning}")

@@ -351,10 +351,7 @@ Para mantener el objetivo de tres meses, las siguientes capacidades deberán con
 
 ## 6.1. Fuera del MVP prioritario
 
-- despliegue externo;
-- notificaciones por correo;
-- SMS;
-- integraciones externas;
+- despliegue en la nube (el despliegue en un servidor propio de la intranet sí es posible);
 - modo oscuro;
 - fotografías de perfil;
 - diseñador avanzado de reportes;
@@ -362,8 +359,6 @@ Para mantener el objetivo de tres meses, las siguientes capacidades deberán con
 - sistema de favoritos de artículos;
 - valoración de artículos;
 - comentarios en artículos;
-- recuperación automática de contraseña por correo;
-- autenticación social;
 - WebSockets;
 - actualizaciones en tiempo real;
 - multi-tenant;
@@ -371,6 +366,8 @@ Para mantener el objetivo de tres meses, las siguientes capacidades deberán con
 - API pública completa;
 - automatizaciones avanzadas;
 - reglas complejas de reasignación automática.
+
+**Descartadas por decisión (`docs/13_evolucion_post_mvp.md`, principio P1):** notificaciones por correo, SMS, integraciones externas, recuperación automática de contraseña por correo y autenticación social. WorkDesk es una aplicación 100 % local o de intranet; la recuperación de contraseña seguirá siendo un restablecimiento hecho por el Administrador.
 
 ---
 
@@ -984,7 +981,7 @@ Implementar:
 - primera respuesta opcional;
 - objetivo de resolución;
 - porcentaje de aviso;
-- calendario laboral;
+- calendario laboral administrable (ver más abajo);
 - pausa en `En espera`;
 - reanudación;
 - próximo a vencer;
@@ -992,6 +989,16 @@ Implementar:
 - visualización;
 - configuración básica;
 - política de continuidad ante cambios de prioridad (RN-88): el consumo ya acumulado se conserva, el incumplimiento registrado no se borra, un cambio nunca reinicia el reloj, y la bajada de prioridad con el SLA en riesgo exige motivo y avisa a los Supervisores.
+
+### Calendario laboral administrable
+
+El SLA se calcula en tiempo laboral, así que el calendario se construye en esta fase como parte del SLA y no como un dato de apoyo:
+
+- tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (`docs/09`, sección 21), con un único calendario global vigente y versionado: guardar un cambio crea una versión nueva y no altera las que ya usan períodos de SLA;
+- **motor de tiempo laboral compartido** (sumar horas laborales, contar días laborales, saltar noches, fines de semana y feriados). Ya existe una versión para el seed `seed-demo-tickets` (`_BusinessClock`): se mueve a un módulo común que usen el SLA y el seed, en lugar de duplicarlo;
+- **pantalla del Administrador** (RF-083; `docs/11`, «Configurar calendario»): días y franjas laborales, feriados, zona horaria y versión vigente, con auditoría de los cambios, enlazada desde la tarjeta «SLA» del hub de administración;
+- **calendario por defecto:** mientras el Administrador no haya guardado ninguno, todo el sistema (el SLA y los datos de demostración) usa `DEMO_CALENDAR` (lunes a viernes de 09:00 a 18:00, sin feriados) y la pantalla lo indica. En cuanto se guarda uno, todos usan el guardado. Una única función resuelve el calendario vigente (`docs/09`, sección 40.8);
+- `seed-demo-tickets` pasa a leer el calendario resuelto (el guardado o el predeterminado): `DEMO_CALENDAR` y la configuración de la interfaz conviven.
 
 ### Notificaciones internas
 
@@ -1012,7 +1019,9 @@ No implementar correo.
 ### Criterio de salida
 
 ```text
-✓ SLA se calcula
+✓ SLA se calcula en tiempo laboral
+✓ el Administrador configura el calendario laboral y el SLA lo respeta
+✓ sin calendario guardado se usa el predeterminado
 ✓ cambia según prioridad
 ✓ puede pausarse
 ✓ vuelve a continuar
@@ -1207,6 +1216,18 @@ Aunque el Design System debe aplicarse durante todo el proyecto, esta fase reali
 - errores;
 - feedback;
 - toasts.
+
+### Preparación para el tema oscuro
+
+El tema oscuro se desarrolla después del MVP (sección 32), pero esta fase deja el terreno listo sin cambiar el aspecto del tema claro:
+
+- inventario de los colores escritos directamente en CSS y plantillas (hoy, alrededor de 80 valores hexadecimales en `theme.css`, `layout.css`, `auth.css` y `errors.css`);
+- conversión de esos valores a tokens `--wd-*` y mapeo de las variables de Bootstrap a tokens, no a hexadecimales;
+- ampliación del catálogo de tokens: superficies, bordes, estados, insignias de estado y prioridad, sidebar y topbar;
+- decisión sobre los colores que hoy se guardan en la base de datos (estados y prioridades);
+- comprobación de que el tema claro se ve exactamente igual (capturas antes y después).
+
+Desde ahora, toda pantalla nueva usa tokens (`docs/11`, sección 41.1).
 
 ### Criterio de salida
 
@@ -1545,6 +1566,8 @@ Evolución hacia gestión de trabajo/proyectos
 
 La numeración exacta se definirá cuando exista una necesidad real.
 
+El detalle de las mejoras previstas después del MVP (autoservicio y calidad de atención, automatización operativa, flujos ITSM y activos tecnológicos), con su evaluación, dependencias y orden por olas, está en [`13_evolucion_post_mvp.md`](13_evolucion_post_mvp.md). Se suman a las evaluaciones de tiempo real y modo oscuro de esta sección.
+
 ### Tiempo real: evaluación posterior al MVP
 
 El MVP no utiliza WebSockets (RNF-095 y ARQ-022): las notificaciones se actualizan por polling cada 30 segundos y al navegar entre páginas. Después de `v1.0.0` conviene evaluar si hace falta empujar eventos al navegador (comentarios, cambios de estado, avisos) y con qué mecanismo:
@@ -1563,6 +1586,19 @@ Los eventos de ticket ya pasan por un único punto, `record_ticket_event`, que s
 
 Adoptar cualquiera de las dos cambia una decisión arquitectónica vigente, así que exige la propuesta formal habitual: limitación concreta, por qué la solución actual no basta, alternativa, impacto y documentación a actualizar.
 
+### Modo oscuro (posterior al MVP)
+
+El modo oscuro ya figura como evolución (v1.3 en la lista anterior) y el Design System está pensado para él (`docs/11`, secciones 9.1 y 41). Se desarrolla después de `v1.0.0`, sobre la preparación hecha en `v0.9.0` (tokens en lugar de colores fijos). Alcance:
+
+- **Paleta:** valores oscuros de los tokens derivados del tema claro actual (azul `#1D4ED8`, fondo `#F1F5F9`, superficies `#FCFCFD`, texto, bordes y colores semánticos), conservando la jerarquía y el significado de cada color (rojo = destructivo, ámbar = advertencia...), sin negro puro en grandes superficies y con contraste AA.
+- **Mecanismo:** `data-bs-theme="dark"` de Bootstrap 5.3 con los tokens redefinidos para ese tema; respeto de la preferencia del sistema (`prefers-color-scheme`) y elección manual del usuario guardada en el navegador (`localStorage`), aplicada antes de pintar para evitar el parpadeo.
+- **Marca:** cambio dinámico a las variantes inversas del logotipo y del Login, que ya existen.
+- **Colores guardados en la base de datos** (estados y prioridades): decidir si se deriva una variante oscura automáticamente o se guarda un segundo color.
+- **Pantallas con color propio:** Login, cambio de contraseña, errores, gráficos de los dashboards e insignias de SLA.
+- **Verificación:** recorrido de todas las pantallas en ambos temas y pruebas de contraste.
+
+Mientras tanto, la regla para el desarrollo de interfaz es usar siempre tokens (`docs/11`, sección 41.1).
+
 ---
 
 # 33. Próximo paso inmediato
@@ -1578,6 +1614,8 @@ main
 → v0.2.0 integrado (PR #4 a #13) y etiquetado
 → v0.3.0 integrado (PR #14 a #20) y etiquetado
 ```
+
+Entre `v0.3.0` y `v0.4.0` se añadió el comando opcional `seed-demo-tickets` (unos 40 tickets de demostración con textos realistas, fechas relativas y datos separados de la lógica), pensado para probar y mostrar el sistema y para ampliarse con cada fase: cuando existan estados, asignaciones, cierres y comentarios, se añaden campos opcionales a su lista de datos.
 
 El siguiente paso del proyecto es `v0.4.0 — Asignación, colaboración y ciclo de vida` (fase 4, sección 17). Antes de escribir código conviene:
 

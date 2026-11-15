@@ -2462,6 +2462,8 @@ Las transiciones configurables nunca podrán habilitar pares que contradigan la 
 
 Debe existir una versión de calendario laboral global apropiada para el entorno de demostración, con horarios y feriados iniciales administrables. El valor exacto del horario inicial podrá definirse durante la configuración inicial/arquitectura y no deberá codificarse de forma irreversible.
 
+**Calendario por defecto (decisión de planificación).** Mientras el Administrador no haya guardado ningún calendario desde la pantalla de configuración, no existe ninguna fila en `calendarios_laborales` y todo el sistema usa un calendario **por defecto definido en código**, `DEMO_CALENDAR` (lunes a viernes de 09:00 a 18:00, sin feriados). Así el cálculo de SLA y los datos de demostración funcionan desde la primera utilización (sección 40.9). El primer calendario que guarde el Administrador crea la versión 1 y, desde entonces, todo el sistema usa el guardado; el valor por defecto deja de aplicarse y nunca queda codificado de forma irreversible. Una única función resuelve el calendario vigente (el guardado o, si no existe, el predeterminado), de modo que el SLA, los datos de demostración y las pantallas lean siempre de la misma fuente.
+
 ## 40.9 Políticas SLA iniciales
 
 El sistema deberá disponer de políticas SLA operativas para las prioridades activas del entorno inicial. Los tiempos exactos son configurables, pero el seed debe dejar funcional el cálculo de SLA del MVP desde la primera utilización.
@@ -2595,6 +2597,8 @@ centros_costo
 ```
 
 Solo deberán incorporarse cuando exista un requisito funcional real que lo justifique.
+
+Los activos y, a evaluar, el inventario de repuestos ya tienen su definición para después del MVP en `13_evolucion_post_mvp.md` (EVO-17 a EVO-21); se incorporarán al modelo cuando se aborden.
 
 ---
 

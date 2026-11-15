@@ -34,6 +34,7 @@ Referencias principales:
 - `docs/10_arquitectura.md` — arquitectura.
 - `docs/11_diseno_de_pantallas.md` — UI, UX y Design System.
 - `docs/12_roadmap.md` — orden de implementación.
+- `docs/13_evolucion_post_mvp.md` — mejoras evaluadas para después del MVP y principio de ejecución 100 % local.
 
 No cargar o reinterpretar toda la documentación si la tarea solo requiere una parte concreta.
 
@@ -87,6 +88,8 @@ No sustituir tecnologías ni introducir nuevas dependencias sin una necesidad co
 No convertir WorkDesk en una SPA.
 
 No introducir React, Vue, Angular, FastAPI, Django, Redis, Celery, Docker obligatorio, microservicios u otras tecnologías únicamente porque sean habituales en otros proyectos.
+
+WorkDesk es una aplicación 100 % local o de intranet: no introducir dependencias de Internet ni de servicios externos (correo, SMS, nube, APIs de terceros).
 
 Si consideras que una decisión existente debe cambiar, primero explica:
 
