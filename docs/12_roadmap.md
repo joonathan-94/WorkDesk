@@ -902,7 +902,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con la ed
 
 - el bloqueo temporal de edición (RN-115 a RN-117), que se sumará al control de versión;
 - la pantalla de Estados y transiciones (UI-021) y su tabla de transiciones;
-- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre): como la restricción CHECK de `historial_ticket.tipo_evento` obliga a una migración por cada evento nuevo, al comenzar la fase hay que decidir si se mantiene ese esquema o si el vocabulario queda solo en la aplicación;
+- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre): **decidido** al comenzar la fase, el vocabulario queda solo en la aplicación (se elimina el CHECK de `historial_ticket.tipo_evento`) y cada evento declara su visibilidad (público o interno), entrega 1;
 - las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que depende del código del estado y se aplicará en el servicio de cierre.
 
@@ -912,6 +912,23 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con la ed
 
 **Semana:** 5  
 **Versión:** `v0.4.0`
+
+### Entregas de `v0.4.0`
+
+La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con tests y Pull Request, como `v0.2.0` y `v0.3.0`:
+
+1. **Historial** (en curso): el vocabulario de eventos pasa a la aplicación y cada evento lleva su visibilidad (público o interno).
+2. **Motivos de espera:** catálogo configurable y su administración.
+3. **Estados y transiciones:** tabla de transiciones y cambios de estado operativos (iniciar, poner en espera, reactivar).
+4. **Grupos:** grupos, membresías y supervisores responsables (`/groups`).
+5. **Asignación:** técnicos, grupo del ticket y escalamiento manual.
+6. **Solicitantes del ticket:** agregar y retirar después de la creación.
+7. **Comentarios y notas internas.**
+8. **Adjuntos.**
+9. **Resolución, validación del solicitante, cierre y reapertura.**
+10. **Relaciones y duplicados.**
+11. **Bloqueo temporal de edición** (RN-115 a RN-117).
+12. **Pantalla de Estados y transiciones (UI-021)** y cierre de la versión.
 
 ### Implementación
 

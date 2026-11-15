@@ -257,14 +257,41 @@ def test_history_actor_must_match_the_actor_type(app, creator, ticket_catalog_id
             db.session.flush()
 
 
-def test_history_rejects_an_unknown_event_type(app, creator, ticket_catalog_ids):
+def test_history_visibility_defaults_to_public(app, creator, ticket_catalog_ids):
+    with app.app_context():
+        ticket = _new_ticket(ticket_catalog_ids, creator["id"])
+        entry = _history_entry(ticket.id)
+        db.session.add(entry)
+        db.session.commit()
+        db.session.refresh(entry)
+
+        assert entry.visibilidad == "PUBLICO"
+
+
+def test_history_rejects_an_unknown_visibility(app, creator, ticket_catalog_ids):
     with app.app_context():
         ticket = _new_ticket(ticket_catalog_ids, creator["id"])
 
-        db.session.add(_history_entry(ticket.id, tipo_evento="INVENTADO"))
+        db.session.add(_history_entry(ticket.id, visibilidad="SECRETO"))
 
         with pytest.raises(IntegrityError):
             db.session.flush()
+
+
+def test_the_database_does_not_restrict_the_event_vocabulary(
+    app,
+    creator,
+    ticket_catalog_ids,
+):
+    # Decisión de v0.4.0: el vocabulario lo controla la aplicación
+    # (`record_ticket_event`, ver test_ticket_history_visibility.py), así que
+    # añadir un evento ya no exige una migración. La base de datos conserva
+    # los CHECK de actor y de visibilidad.
+    with app.app_context():
+        ticket = _new_ticket(ticket_catalog_ids, creator["id"])
+
+        db.session.add(_history_entry(ticket.id, tipo_evento="EVENTO_FUTURO"))
+        db.session.commit()
 
 
 def test_history_events_cannot_be_modified(app, creator, ticket_catalog_ids):

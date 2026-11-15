@@ -90,6 +90,15 @@ def can_view_ticket(user, ticket) -> bool:
     )
 
 
+def can_view_internal_activity(user) -> bool:
+    """Ver lo interno de un ticket: notas internas y eventos internos.
+
+    Solo el personal. El Solicitante nunca accede a ello (docs/03, sección
+    5): ni en el detalle, ni en el historial, ni en los conteos.
+    """
+    return has_any_role(user, *STAFF_ROLES)
+
+
 def can_view_audit(user) -> bool:
     return has_any_role(user, RoleCode.ADMINISTRADOR)
 

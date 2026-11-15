@@ -421,7 +421,7 @@ def test_the_history_is_listed_oldest_first_with_its_actor(
         ticket = _create(actor_id, ticket_catalog_ids)
         db.session.commit()
 
-        (entry,) = list_ticket_history(ticket)
+        (entry,) = list_ticket_history(ticket, db.session.get(User, actor_id))
 
         assert entry.tipo_evento == TicketEvent.TICKET_CREADO.value
         assert entry.evento_nombre == "Ticket creado"
