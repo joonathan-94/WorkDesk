@@ -429,6 +429,8 @@ Las exclusiones anteriores no representan necesariamente una prohibición perman
 
 **Excepción, por decisión posterior (`docs/13_evolucion_post_mvp.md`, principio P1):** la integración con correo electrónico, las integraciones con sistemas de terceros, los proveedores externos de autenticación (OAuth) y la infraestructura cloud **no se incorporarán**: WorkDesk es una aplicación 100 % local o de intranet. Siguen abiertas las capacidades que funcionan dentro de la propia organización, por ejemplo un directorio LDAP o Active Directory de la intranet, que se evaluarán cuando exista un caso real.
 
+**Planificado después del MVP:** la gestión de proyectos, los diagramas de Gantt y los calendarios avanzados de esta lista se definen en `docs/13_evolucion_post_mvp.md` (ola 5, EVO-22 a EVO-32) como un módulo secundario, solo para el personal. Siguen fuera del MVP.
+
 ---
 
 ## 11. Evolución futura
@@ -439,13 +441,19 @@ La evolución de WorkDesk deberá realizarse progresivamente a partir de las cap
 
 Incorporar capacidades que permitan representar actividades de trabajo más pequeñas o específicas y relacionarlas con tickets u otros elementos.
 
+**Decisión posterior:** las tareas internas de un ticket (EVO-10) y las tareas de un proyecto (EVO-23) son una misma entidad, con un contenedor que es un ticket o un proyecto (`docs/13_evolucion_post_mvp.md`).
+
 ### 11.2. Gestión de proyectos
 
 Incorporar capacidades para planificar, organizar y realizar seguimiento de proyectos e iniciativas, incluyendo eventualmente dependencias, calendarios y representaciones visuales como diagramas de Gantt.
 
+**Decisión posterior:** la gestión de proyectos se incorpora después del MVP como un módulo secundario, solo para el personal, que no sustituye ni altera el flujo de tickets: proyectos y tareas con dependencias, diagrama de Gantt interactivo, calendario, línea base, carga de trabajo combinada y plantillas (`docs/13_evolucion_post_mvp.md`, ola 5, EVO-22 a EVO-32).
+
 ### 11.3. Gestión del trabajo
 
 Evolucionar desde la gestión de tickets hacia una plataforma capaz de coordinar diferentes tipos de trabajo, responsabilidades, actividades y equipos.
+
+La ola 5 de `docs/13_evolucion_post_mvp.md` es el primer paso en esa dirección y mantiene a los tickets como núcleo del producto.
 
 ### 11.4. Gestión de activos e inventario
 
@@ -524,7 +532,7 @@ Estas decisiones deberán resolverse durante las etapas posteriores de análisis
 
 > **Decisiones ya cerradas.** Las siguientes decisiones que este documento mencionaba como abiertas se resolvieron en documentos posteriores: roles y permisos (`03`), reglas de prioridad (`06`, RN-19 a RN-23), modelo de SLA (`06`, `09` y `10`), transiciones entre estados (`08`), escalamiento manual (`04`), grupos y colas (`04`, `06` y `09`) y profundidad de la auditoría (`09`).
 >
-> **Decisiones cerradas después (2026-11-15).** Integraciones externas: descartadas, porque WorkDesk es 100 % local o de intranet (`13`, P1). Automatizaciones: se orientan a reglas de enrutamiento y recordatorios con un catálogo cerrado de condiciones y acciones (`13`, EVO-07). Gestión de activos e inventario: se incorporan activos tecnológicos mínimos después del MVP y el control de stock queda a evaluar (`13`, EVO-17 a EVO-21).
+> **Decisiones cerradas después (2026-11-15).** Integraciones externas: descartadas, porque WorkDesk es 100 % local o de intranet (`13`, P1). Automatizaciones: se orientan a reglas de enrutamiento y recordatorios con un catálogo cerrado de condiciones y acciones (`13`, EVO-07). Gestión de activos e inventario: se incorporan activos tecnológicos mínimos después del MVP y el control de stock queda a evaluar (`13`, EVO-17 a EVO-21). Modelo de relación entre tickets, tareas y proyectos: los tickets siguen siendo el núcleo, las tareas son una entidad única con un contenedor que es un ticket o un proyecto, y los proyectos son un módulo secundario, solo para el personal (`13`, ola 5).
 
 ---
 
