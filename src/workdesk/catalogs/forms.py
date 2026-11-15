@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import IntegerField, StringField, TextAreaField
+from wtforms import BooleanField, IntegerField, StringField, TextAreaField
 from wtforms.validators import (
     DataRequired,
     Length,
@@ -75,7 +75,10 @@ class _NamedItemForm(FlaskForm):
     )
 
 
-class CategoryForm(_NamedItemForm):
+class _OrderedItemForm(_NamedItemForm):
+    """Añade el orden manual: lo comparten las categorías y los motivos de
+    espera."""
+
     orden = OptionalIntegerField(
         "Orden",
         validators=[Optional()],
@@ -87,6 +90,16 @@ class CategoryForm(_NamedItemForm):
     def validate_orden(self, field):
         if field.data is not None and not 0 <= field.data <= MAX_ORDER:
             raise ValidationError(f"Usa un número entre 0 y {MAX_ORDER}.")
+
+
+class CategoryForm(_OrderedItemForm):
+    pass
+
+
+class WaitReasonForm(_OrderedItemForm):
+    # Casilla: sin ella en la petición el valor es False, que es lo correcto
+    # para un checkbox HTML sin marcar.
+    permite_texto_otro = BooleanField("Permite añadir un texto libre")
 
 
 class PriorityForm(_NamedItemForm):

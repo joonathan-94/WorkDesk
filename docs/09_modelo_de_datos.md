@@ -835,6 +835,7 @@ codigo
 nombre
 descripcion
 permite_texto_otro
+orden
 activo
 fecha_creacion
 usuario_creacion_id
@@ -847,6 +848,8 @@ usuario_modificacion_id
 Entrar a `En espera` no exige un motivo.
 
 Cuando se utilice un motivo, este deberá conservarse en el historial del evento. La opción `OTRO` podrá complementarse con texto libre. No se añade `motivo_espera_id` a `tickets`, porque un ticket puede atravesar múltiples episodios de espera. Si la interfaz necesita mostrar el motivo vigente, deberá obtenerlo del último evento aplicable de entrada a `EN_ESPERA`.
+
+**Implementación (`v0.4.0`, entrega 2).** Se añade la columna `orden` (INTEGER, opcional), que no figuraba en este listado: sin ella la opción genérica `OTRO` no podría ir siempre al final del desplegable (los motivos de cierre ya la tienen). Los demás campos son los de arriba: `codigo` opcional y único (solo los motivos del seed lo llevan), `nombre` único sin distinguir mayúsculas (índice sobre `lower(nombre)`), `permite_texto_otro` (BOOLEAN, por defecto FALSE) y las columnas de vigencia y trazabilidad de los demás catálogos. `seed-catalogs` carga cinco motivos (`INFORMACION_PENDIENTE`, `ESPERA_TERCERO`, `APROBACION_PENDIENTE`, `RECURSO_PENDIENTE` y `OTRO`, este último con `permite_texto_otro`). Se añade también `historial_ticket.motivo_espera_id` (FK a `motivos_espera`, nulo, `ON DELETE RESTRICT`), que el evento de entrada a `EN_ESPERA` rellenará a partir de la entrega 3.
 
 ---
 

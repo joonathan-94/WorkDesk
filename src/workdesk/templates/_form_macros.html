@@ -189,6 +189,39 @@
     </div>
 {% endmacro %}
 
+{# Casilla única (un BooleanField). La etiqueta va junto a la casilla. #}
+{% macro checkbox_field(field, hint=None) %}
+    <div class="mb-3">
+        <div class="form-check">
+            <input
+                class="form-check-input{% if field.errors %} is-invalid{% endif %}"
+                id="{{ field.id }}"
+                name="{{ field.name }}"
+                type="checkbox"
+                value="y"
+                {% if field.data %}checked{% endif %}
+                {% if field.errors %}
+                    aria-invalid="true"
+                    aria-describedby="{{ field.id }}-error"
+                {% endif %}
+            >
+
+            <label
+                class="form-check-label"
+                for="{{ field.id }}"
+            >
+                {{ field.label.text }}
+            </label>
+        </div>
+
+        {% if hint %}
+            <div class="form-text">{{ hint }}</div>
+        {% endif %}
+
+        {{ field_errors(field) }}
+    </div>
+{% endmacro %}
+
 {#
     Lista de casillas con varios valores bajo el mismo nombre (por ejemplo,
     los solicitantes de un ticket). `choices` son pares (valor, texto) y

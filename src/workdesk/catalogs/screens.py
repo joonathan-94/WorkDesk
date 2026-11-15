@@ -1,6 +1,6 @@
 """Descripción de cada pantalla de catálogo.
 
-Las tres comparten las mismas plantillas (listado, formulario y
+Todas comparten las mismas plantillas (listado, formulario y
 confirmación). Este módulo guarda lo que cambia entre ellas: textos, rutas,
 columnas y la plantilla de sus campos. Es solo presentación; las reglas
 están en `catalogs.service`.
@@ -97,4 +97,29 @@ LOCATIONS = CatalogScreen(
     activated_message="La ubicación «{name}» fue reactivada.",
     duplicate_message="Ya existe una ubicación con ese nombre.",
     empty_message="No hay ubicaciones con esos criterios.",
+)
+
+WAIT_REASONS = CatalogScreen(
+    title="Motivos de espera",
+    description=(
+        "Motivos opcionales con los que un ticket puede pasar a En espera."
+    ),
+    singular="motivo de espera",
+    columns=("nombre", "descripcion", "texto_libre", "orden", "estado"),
+    fields_template="catalogs/_fields_wait_reason.html",
+    list_endpoint="catalogs.wait_reasons_list",
+    new_endpoint="catalogs.wait_reason_new",
+    new_label="Nuevo motivo de espera",
+    edit_endpoint="catalogs.wait_reason_edit",
+    deactivate_endpoint="catalogs.wait_reason_deactivate",
+    activate_endpoint="catalogs.wait_reason_activate",
+    created_message="El motivo de espera «{name}» fue creado.",
+    updated_message="El motivo de espera «{name}» se actualizó.",
+    deactivated_message=(
+        "El motivo de espera «{name}» fue desactivado. Ya no se puede elegir "
+        "al poner un ticket en espera."
+    ),
+    activated_message="El motivo de espera «{name}» fue reactivado.",
+    duplicate_message="Ya existe un motivo de espera con ese nombre.",
+    empty_message="No hay motivos de espera con esos criterios.",
 )

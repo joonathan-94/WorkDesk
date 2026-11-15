@@ -2,13 +2,19 @@ from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from ..extensions import db
-from ..models import Categoria, Prioridad, Ubicacion
+from ..models import Categoria, MotivoEspera, Prioridad, Ubicacion
 from ..models.ubicacion import LOCATION_TYPE_LABELS, LocationType
 from ..security import RoleCode, roles_required
 from ..users.forms import ReasonForm
 from . import bp
-from .forms import CategoryForm, LocationForm, PriorityForm
-from .screens import CATEGORIES, LOCATIONS, PRIORITIES, CatalogScreen
+from .forms import CategoryForm, LocationForm, PriorityForm, WaitReasonForm
+from .screens import (
+    CATEGORIES,
+    LOCATIONS,
+    PRIORITIES,
+    WAIT_REASONS,
+    CatalogScreen,
+)
 from .service import (
     VALID_STATUSES,
     CatalogRuleError,
@@ -16,15 +22,18 @@ from .service import (
     activate_item,
     create_category,
     create_location,
+    create_wait_reason,
     deactivate_item,
     deactivation_blocker,
     get_item,
     list_categories,
     list_locations,
     list_priorities,
+    list_wait_reasons,
     update_category,
     update_location,
     update_priority,
+    update_wait_reason,
 )
 
 # Todas las rutas de este módulo son exclusivas del Administrador. La
@@ -203,6 +212,69 @@ def location_deactivate(item_id: int):
 @admin_only
 def location_activate(item_id: int):
     return _status_page(LOCATIONS, Ubicacion, item_id, deactivate=False)
+
+
+# --- Motivos de espera ------------------------------------------------
+
+
+@bp.get("/wait-reasons")
+@admin_only
+def wait_reasons_list():
+    status = _status_filter()
+
+    return _list_page(WAIT_REASONS, list_wait_reasons(status), status)
+
+
+@bp.route("/wait-reasons/new", methods=["GET", "POST"])
+@admin_only
+def wait_reason_new():
+    form = WaitReasonForm()
+
+    def save():
+        reason = create_wait_reason(
+            actor=_actor(),
+            nombre=form.nombre.data,
+            descripcion=form.descripcion.data,
+            orden=form.orden.data,
+            permite_texto_otro=form.permite_texto_otro.data,
+        )
+
+        return reason.nombre, True
+
+    return _form_page(WAIT_REASONS, form, item=None, save=save)
+
+
+@bp.route("/wait-reasons/<int:item_id>/edit", methods=["GET", "POST"])
+@admin_only
+def wait_reason_edit(item_id: int):
+    reason = _get_or_404(MotivoEspera, item_id)
+    form = WaitReasonForm(obj=reason)
+
+    def save():
+        changed = update_wait_reason(
+            reason,
+            actor=_actor(),
+            nombre=form.nombre.data,
+            descripcion=form.descripcion.data,
+            orden=form.orden.data,
+            permite_texto_otro=form.permite_texto_otro.data,
+        )
+
+        return reason.nombre, changed
+
+    return _form_page(WAIT_REASONS, form, item=reason, save=save)
+
+
+@bp.route("/wait-reasons/<int:item_id>/deactivate", methods=["GET", "POST"])
+@admin_only
+def wait_reason_deactivate(item_id: int):
+    return _status_page(WAIT_REASONS, MotivoEspera, item_id, deactivate=True)
+
+
+@bp.route("/wait-reasons/<int:item_id>/activate", methods=["GET", "POST"])
+@admin_only
+def wait_reason_activate(item_id: int):
+    return _status_page(WAIT_REASONS, MotivoEspera, item_id, deactivate=False)
 
 
 # --- Piezas comunes ---------------------------------------------------

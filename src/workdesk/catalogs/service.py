@@ -1,7 +1,7 @@
 """Reglas de la administración de catálogos de tickets.
 
-Cubre categorías, prioridades y ubicaciones (docs/06, RN-152). Las tres
-comparten las operaciones de crear, editar, desactivar y reactivar; lo que
+Cubre categorías, prioridades, ubicaciones y motivos de espera (docs/06,
+RN-152). Todos comparten las operaciones de crear, editar, desactivar y reactivar; lo que
 cambia de uno a otro son sus campos y algunas protecciones.
 
 Ninguna función hace commit: el cambio y su evento de auditoría se
@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..audit import AuditAction, record_admin_event
 from ..extensions import db
-from ..models import Categoria, Prioridad, Ubicacion, User
+from ..models import Categoria, MotivoEspera, Prioridad, Ubicacion, User
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.ubicacion import LocationType
 
@@ -25,6 +25,7 @@ ENTITY_TYPES = {
     Categoria: "categoria",
     Prioridad: "prioridad",
     Ubicacion: "ubicacion",
+    MotivoEspera: "motivo_espera",
 }
 
 _DUPLICATE_MESSAGE = "Ya existe un registro con ese nombre."
@@ -77,6 +78,16 @@ def list_priorities(status: str = "") -> list[Prioridad]:
 
 def list_locations(status: str = "") -> list[Ubicacion]:
     return _list(Ubicacion, status, db.func.lower(Ubicacion.nombre))
+
+
+def list_wait_reasons(status: str = "") -> list[MotivoEspera]:
+    """Motivos de espera por orden manual (los sin orden al final) y nombre."""
+    return _list(
+        MotivoEspera,
+        status,
+        MotivoEspera.orden.asc().nulls_last(),
+        db.func.lower(MotivoEspera.nombre),
+    )
 
 
 def get_item(model, item_id: int):
@@ -186,6 +197,53 @@ def update_location(
             "nombre": _clean_name(nombre),
             "descripcion": _blank_to_none(descripcion),
             "tipo": _normalize_location_type(tipo),
+        },
+    )
+
+
+def create_wait_reason(
+    *,
+    actor: User,
+    nombre: str,
+    descripcion: str | None = None,
+    orden: int | None = None,
+    permite_texto_otro: bool = False,
+) -> MotivoEspera:
+    """Crea un motivo de espera activo. No lleva código: ese valor es solo de
+    los motivos del seed. `permite_texto_otro` indica que, al elegirlo, se
+    puede añadir un texto libre. Lanza `DuplicateNameError` si el nombre ya
+    existe.
+    """
+    return _create_item(
+        MotivoEspera,
+        actor,
+        {
+            "nombre": _clean_name(nombre),
+            "descripcion": _blank_to_none(descripcion),
+            "orden": orden,
+            "permite_texto_otro": bool(permite_texto_otro),
+        },
+    )
+
+
+def update_wait_reason(
+    reason: MotivoEspera,
+    *,
+    actor: User,
+    nombre: str,
+    descripcion: str | None,
+    orden: int | None,
+    permite_texto_otro: bool,
+) -> bool:
+    """Edita el motivo de espera. Devuelve False, sin auditar, si nada cambió."""
+    return _update_item(
+        reason,
+        actor,
+        {
+            "nombre": _clean_name(nombre),
+            "descripcion": _blank_to_none(descripcion),
+            "orden": orden,
+            "permite_texto_otro": bool(permite_texto_otro),
         },
     )
 

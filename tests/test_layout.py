@@ -348,11 +348,13 @@ def test_hub_links_only_the_implemented_sections(
         "Categorías",
         "Prioridades",
         "Ubicaciones",
+        "Motivos de espera",
     ]
     assert 'href="/users"' in content
     assert 'href="/admin/categories"' in content
     assert 'href="/admin/priorities"' in content
     assert 'href="/admin/locations"' in content
+    assert 'href="/admin/wait-reasons"' in content
     assert content.count("Próximamente") == len(planned)
 
 

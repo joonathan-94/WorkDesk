@@ -10,7 +10,13 @@ dependen de cada organización (los datos de ejemplo no van aquí: ver
 """
 
 from ..extensions import db
-from ..models import Categoria, Estado, MotivoCierre, Prioridad
+from ..models import (
+    Categoria,
+    Estado,
+    MotivoCierre,
+    MotivoEspera,
+    Prioridad,
+)
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 
 # Estructurales protegidos. Colores según docs/11, sección 7.
@@ -138,6 +144,42 @@ INITIAL_CLOSE_REASONS = (
     },
 )
 
+# Motivos opcionales de espera (docs/08, 6.4). "Otro motivo" es la alternativa
+# genérica (RF-044): permite escribir un texto y va siempre al final.
+INITIAL_WAIT_REASONS = (
+    {
+        "codigo": "INFORMACION_PENDIENTE",
+        "nombre": "Información pendiente",
+        "descripcion": "Se espera un dato o una respuesta del solicitante.",
+        "orden": 1,
+    },
+    {
+        "codigo": "ESPERA_TERCERO",
+        "nombre": "Espera de un tercero",
+        "descripcion": "Depende de un proveedor u otra área.",
+        "orden": 2,
+    },
+    {
+        "codigo": "APROBACION_PENDIENTE",
+        "nombre": "Aprobación pendiente",
+        "descripcion": "Falta una autorización para continuar.",
+        "orden": 3,
+    },
+    {
+        "codigo": "RECURSO_PENDIENTE",
+        "nombre": "Recurso pendiente",
+        "descripcion": "Falta un equipo, repuesto o licencia.",
+        "orden": 4,
+    },
+    {
+        "codigo": "OTRO",
+        "nombre": "Otro motivo",
+        "descripcion": "Otra causa de espera, que se describe con un texto.",
+        "orden": 5,
+        "permite_texto_otro": True,
+    },
+)
+
 
 def _seed_by_code(model, rows) -> int:
     """Inserta los registros cuyo `codigo` no existe; devuelve cuántos creó."""
@@ -158,7 +200,8 @@ def _seed_by_code(model, rows) -> int:
 
 
 def seed_catalogs() -> dict[str, int]:
-    """Carga estados, prioridades, categoría de respaldo y motivos de cierre.
+    """Carga estados, prioridades, categoría de respaldo, motivos de cierre y
+    motivos de espera.
 
     Devuelve cuántos registros creó de cada catálogo. Confirma una sola vez
     al final: o se cargan todos o ninguno.
@@ -168,6 +211,7 @@ def seed_catalogs() -> dict[str, int]:
         "prioridades": _seed_by_code(Prioridad, INITIAL_PRIORITIES),
         "categorias": _seed_by_code(Categoria, INITIAL_CATEGORIES),
         "motivos_cierre": _seed_by_code(MotivoCierre, INITIAL_CLOSE_REASONS),
+        "motivos_espera": _seed_by_code(MotivoEspera, INITIAL_WAIT_REASONS),
     }
 
     db.session.commit()
