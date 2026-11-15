@@ -63,6 +63,12 @@ HUB_SECTIONS = (
                 endpoint="catalogs.locations_list",
             ),
             HubCard(
+                title="Motivos de espera",
+                description="Motivos opcionales al poner un ticket en espera.",
+                icon="hourglass-split",
+                endpoint="catalogs.wait_reasons_list",
+            ),
+            HubCard(
                 title="Estados y transiciones",
                 description="Nombres y transiciones del flujo.",
                 icon="diagram-2",

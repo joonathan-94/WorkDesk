@@ -165,6 +165,14 @@ class TicketHistory(db.Model):
         nullable=True,
     )
 
+    # Motivo del catálogo cuando el evento es la entrada a `En espera`
+    # (docs/09, 12.3). Un motivo desactivado después sigue referenciado.
+    motivo_espera_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("motivos_espera.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
     detalle: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,

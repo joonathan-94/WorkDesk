@@ -51,7 +51,7 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 La tercera versión de WorkDesk está implementada y validada. Es la fase central del MVP: ya se pueden **crear, consultar, buscar y editar tickets**, y cada rol ve únicamente lo que le corresponde. Se construyó en entregas pequeñas, cada una con su rama, tests y Pull Request:
 
-- **Catálogos de tickets:** estados (los seis estructurales), prioridades (Baja, Media, Alta y Crítica), categorías, ubicaciones y motivos de cierre, con el comando `seed-catalogs` para cargar los datos iniciales.
+- **Catálogos de tickets:** estados (los seis estructurales), prioridades (Baja, Media, Alta y Crítica), categorías, ubicaciones, motivos de cierre y motivos de espera, con el comando `seed-catalogs` para cargar los datos iniciales.
 - **Modelo de datos de tickets:** tabla de tickets con identificador público generado por una secuencia de PostgreSQL, solicitantes de cada ticket (relación temporal N:M) e historial de eventos inmutable, más el servicio que crea tickets.
 - **Administración de catálogos:** el Administrador gestiona categorías, prioridades y ubicaciones desde la interfaz (crear, editar, desactivar y reactivar), con auditoría de cada cambio.
 - **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre su detalle, visible solo para quien corresponde.
@@ -553,7 +553,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | --- | --- | --- |
 | 1 | `db upgrade` | Crea las tablas en PostgreSQL. |
 | 2 | `seed-roles` | Carga los cuatro roles del sistema. |
-| 3 | `seed-catalogs` | Carga estados, prioridades, la categoría de respaldo y los motivos de cierre. |
+| 3 | `seed-catalogs` | Carga estados, prioridades, la categoría de respaldo, los motivos de cierre y los motivos de espera. |
 | 4 | `create-admin` | Crea tu cuenta de Administrador. |
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
@@ -575,7 +575,7 @@ Las migraciones actuales crean estas tablas:
 
 - `roles` y `usuarios`: identidad y roles.
 - `auditoria_administrativa`: registro inmutable de las acciones administrativas.
-- `estados`, `prioridades`, `categorias`, `ubicaciones` y `motivos_cierre`: catálogos de tickets.
+- `estados`, `prioridades`, `categorias`, `ubicaciones`, `motivos_cierre` y `motivos_espera`: catálogos de tickets.
 - `tickets`, `tickets_solicitantes` e `historial_ticket`: los tickets, sus solicitantes y su historial.
 
 Para comprobar que se aplicaron:
@@ -621,6 +621,8 @@ Prioridades         Baja, Media, Alta, Crítica
 Categoría           Sin clasificar (categoría de respaldo)
 Motivos de cierre   Resolución validada, Cierre directo, Inactividad,
                     Duplicado, Cancelación, Cierre excepcional
+Motivos de espera   Información pendiente, Espera de un tercero,
+                    Aprobación pendiente, Recurso pendiente, Otro motivo
 ```
 
 El comando puede volver a ejecutarse sin duplicar nada y sin pisar lo que un Administrador haya renombrado o desactivado.
@@ -695,6 +697,7 @@ Los tickets necesitan una categoría y, opcionalmente, una ubicación. WorkDesk 
 2. **Categorías** → **Nueva categoría**. El nombre es obligatorio; la descripción y el orden son opcionales (las categorías con número menor aparecen primero). Para un equipo de soporte TI, por ejemplo: `Accesos y cuentas`, `Correo`, `Hardware`, `Software`, `Redes`, `Impresoras`.
 3. **Ubicaciones** → **Nueva ubicación**. Indica el nombre y, si quieres, el tipo (Sucursal, Oficina, Edificio, Piso, Área, Instalación u Otra). Por ejemplo, `Casa matriz` (Sucursal) o `Edificio A - Piso 2` (Piso).
 4. **Prioridades** (opcional): puedes cambiar el nombre y la descripción de las cuatro prioridades, o desactivar alguna. Su nivel y su color son fijos, y siempre debe quedar al menos una activa.
+5. **Motivos de espera** (opcional): `seed-catalogs` ya carga cinco. Puedes renombrarlos, crear otros (con la casilla "Permite añadir un texto libre" para los genéricos) o desactivarlos. Se usarán al poner un ticket en espera, que llega con los cambios de estado de la v0.4.0.
 
 Reglas que conviene conocer:
 
@@ -915,6 +918,11 @@ GET POST  /admin/locations/new
 GET POST  /admin/locations/<id>/edit
 GET POST  /admin/locations/<id>/deactivate
 GET POST  /admin/locations/<id>/activate
+GET       /admin/wait-reasons
+GET POST  /admin/wait-reasons/new
+GET POST  /admin/wait-reasons/<id>/edit
+GET POST  /admin/wait-reasons/<id>/deactivate
+GET POST  /admin/wait-reasons/<id>/activate
 GET       /tickets
 GET POST  /tickets/new
 GET       /tickets/<public_id>
@@ -1133,7 +1141,7 @@ python -m flask --app src.workdesk db check
 # Cargar roles
 python -m flask --app src.workdesk seed-roles
 
-# Cargar catálogos iniciales (estados, prioridades, categoría de respaldo, motivos de cierre)
+# Cargar catálogos iniciales (estados, prioridades, categoría de respaldo, motivos de cierre y de espera)
 python -m flask --app src.workdesk seed-catalogs
 
 # Crear Administrador inicial

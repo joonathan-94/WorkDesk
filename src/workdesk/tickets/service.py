@@ -12,6 +12,7 @@ from ..models import (
     Categoria,
     Estado,
     HistoryVisibility,
+    MotivoEspera,
     Prioridad,
     Role,
     Ticket,
@@ -505,6 +506,7 @@ def record_ticket_event(
     new_value: dict | None = None,
     context: dict | None = None,
     visibility: HistoryVisibility | None = None,
+    wait_reason: MotivoEspera | None = None,
 ) -> TicketHistory:
     """Añade un evento al historial del ticket en la sesión actual.
 
@@ -515,6 +517,8 @@ def record_ticket_event(
     `ValueError` (el vocabulario lo controla la aplicación, no la base de
     datos). `visibility` indica quién puede ver el evento; si se omite se usa
     la que el vocabulario define para ese evento (`DEFAULT_EVENT_VISIBILITY`).
+    `wait_reason` es el motivo del catálogo cuando el evento es la entrada a
+    `En espera`.
     """
     event = TicketEvent(event)
     visibility = HistoryVisibility(
@@ -529,6 +533,7 @@ def record_ticket_event(
         ).value,
         tipo_evento=event.value,
         visibilidad=visibility.value,
+        motivo_espera_id=None if wait_reason is None else wait_reason.id,
         estado_anterior_id=None if old_state is None else old_state.id,
         estado_nuevo_id=None if new_state is None else new_state.id,
         detalle=detail,

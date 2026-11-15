@@ -82,19 +82,19 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-history-visibility
+feature/wait-reasons-catalog
 ```
 
-Entrega 1 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): el vocabulario de eventos del historial pasa a la aplicación y cada evento lleva su visibilidad (ver "Historial"). Incluye una migración.
+Entrega 2 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): catálogo de motivos de espera con su administración y la referencia desde el historial (ver "Catálogos de tickets"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21) y el plan del módulo de proyectos posterior al MVP (PR #22).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y la entrega 1 de `v0.4.0`, visibilidad y vocabulario del historial (PR #23).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
 | # | Entrega | Estado |
 | --- | --- | --- |
-| 1 | Historial: vocabulario en la aplicación y visibilidad por evento | En curso |
-| 2 | Catálogo de motivos de espera y su administración | Pendiente |
+| 1 | Historial: vocabulario en la aplicación y visibilidad por evento | Integrada (PR #23) |
+| 2 | Catálogo de motivos de espera y su administración | En curso |
 | 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Pendiente |
 | 4 | Grupos (`/groups`), con membresías y supervisores responsables | Pendiente |
 | 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Pendiente |
@@ -492,7 +492,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente ocho migraciones:
+Existen actualmente nueve migraciones:
 
 ```text
 create_roles_table
@@ -503,6 +503,7 @@ create_ticket_catalogs_tables
 create_tickets_tables
 add_unique_name_indexes_to_priorities_and_locations
 add_visibility_to_ticket_history_and_drop_event_type_check
+create_wait_reasons_table_and_history_wait_reason
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -673,7 +674,7 @@ Rutas bajo `/users/<id>`, todas exclusivas del Administrador (`admin_only = role
 
 # 11 bis. Catálogos de tickets
 
-Cinco catálogos que los tickets necesitan, cada uno con su modelo en `src/workdesk/models/`:
+Seis catálogos que los tickets necesitan, cada uno con su modelo en `src/workdesk/models/`:
 
 | Catálogo | Tabla | Notas |
 | --- | --- | --- |
@@ -682,10 +683,11 @@ Cinco catálogos que los tickets necesitan, cada uno con su modelo en `src/workd
 | `Categoria` | `categorias` | `codigo` opcional y único. Nombre único sin distinguir mayúsculas. La categoría de respaldo `SIN_CLASIFICAR` (orden 0) siempre existe y no puede desactivarse. |
 | `Ubicacion` | `ubicaciones` | Nombre único sin distinguir mayúsculas. `tipo` guarda el código de `LocationType` (`SUCURSAL`, `OFICINA`, `EDIFICIO`, `PISO`, `AREA`, `INSTALACION`, `OTRA`) o NULL; la lista vive en la aplicación, no en la base de datos. |
 | `MotivoCierre` | `motivos_cierre` | Seis códigos base (`RESOLUCION_VALIDADA`, `CIERRE_DIRECTO`, `INACTIVIDAD`, `DUPLICADO`, `CANCELACION`, `CIERRE_EXCEPCIONAL`). Cancelación y duplicidad no son estados: son un cierre con ese motivo. |
+| `MotivoEspera` | `motivos_espera` | Motivo **opcional** con el que un ticket pasa a `En espera` (RN-49). Cinco códigos base (`INFORMACION_PENDIENTE`, `ESPERA_TERCERO`, `APROBACION_PENDIENTE`, `RECURSO_PENDIENTE`, `OTRO`); solo `OTRO` tiene `permite_texto_otro` (admite un texto libre). `codigo` opcional y único (los creados desde la interfaz no lo llevan), nombre único sin distinguir mayúsculas y `orden` opcional (no figura en docs/09 12.3; hace falta para que la opción genérica vaya al final). Ninguno está protegido: se pueden desactivar todos. |
 
-Prioridad, categoría, ubicación y motivo de cierre comparten el mixin `CatalogAuditMixin` (`models/_catalog.py`): `activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion`, `usuario_modificacion_id` y el método `mark_modified(actor)`. Desactivar un valor no afecta a los tickets que ya lo referencian: solo impide elegirlo en operaciones nuevas.
+Prioridad, categoría, ubicación, motivo de cierre y motivo de espera comparten el mixin `CatalogAuditMixin` (`models/_catalog.py`): `activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion`, `usuario_modificacion_id` y el método `mark_modified(actor)`. Desactivar un valor no afecta a los tickets que ya lo referencian: solo impide elegirlo en operaciones nuevas.
 
-**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades, la categoría `Sin clasificar` y los seis motivos de cierre. Es idempotente: cada registro se identifica por su `codigo` y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
+**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades, la categoría `Sin clasificar`, los seis motivos de cierre y los cinco motivos de espera. Es idempotente: cada registro se identifica por su `codigo` y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
 
 ## Administración de catálogos (entrega 3 de `v0.3.0`)
 
@@ -695,9 +697,10 @@ Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclu
 - **Categorías:** nombre, descripción y orden. Las creadas desde la interfaz no llevan `codigo`. Se ordenan por `orden` (las sin orden al final) y nombre.
 - **Prioridades:** no se crean y su nivel y color son fijos (docs/11, UI-019); solo se edita el nombre y la descripción, y se activa o desactiva. Siempre debe quedar al menos una activa: la comprobación bloquea las filas activas (`SELECT ... FOR UPDATE`) para que dos Administradores no desactiven a la vez las dos últimas. Reactivar una prioridad cuyo nivel ocupa otra activa se rechaza con un mensaje (índice único parcial).
 - **Ubicaciones:** nombre, descripción y tipo (lista controlada `LocationType`).
+- **Motivos de espera** (entrega 2 de `v0.4.0`, `/admin/wait-reasons`): nombre, descripción, orden y la casilla "Permite añadir un texto libre" (`permite_texto_otro`, una `BooleanField`: sin marcar llega como falso). Comparten con las categorías el formulario base de nombre, descripción y orden (`_OrderedItemForm`) y las plantillas de `templates/catalogs/` (parcial `_fields_wait_reason.html` y el macro `checkbox_field` de `_form_macros.html`); el listado añade la columna "Texto libre". Ninguno está protegido: el motivo es opcional, así que no hace falta uno de respaldo. Aún no se usan al poner un ticket en espera: eso llega con los cambios de estado (entrega 3).
 - **Nombres únicos** sin distinguir mayúsculas, con comprobación en el servicio y respaldo en un índice único de base de datos. Una carrera entre dos altas la resuelve el índice y un savepoint (`begin_nested`), como en la creación de usuarios.
 - **Protecciones:** `SIN_CLASIFICAR` no se desactiva (se comprueba también al abrir la pantalla de confirmación). `SIN_CLASIFICAR` sí puede renombrarse; su código no cambia.
-- **Auditoría:** cuatro acciones genéricas (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO`, `CATALOGO_DESACTIVADO`) con `entidad_tipo` `categoria`, `prioridad` o `ubicacion`, el nombre del registro en `detalle`, y los valores anterior y nuevo solo de los campos que cambiaron. Sin cambios, no se audita. Las acciones de activar y desactivar admiten un motivo opcional.
+- **Auditoría:** cuatro acciones genéricas (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO`, `CATALOGO_DESACTIVADO`) con `entidad_tipo` `categoria`, `prioridad`, `ubicacion` o `motivo_espera`, el nombre del registro en `detalle`, y los valores anterior y nuevo solo de los campos que cambiaron. Sin cambios, no se audita. Las acciones de activar y desactivar admiten un motivo opcional.
 - **Formularios** (`catalogs/forms.py`): `CategoryForm`, `PriorityForm` y `LocationForm`; `OptionalIntegerField` (número opcional con mensajes en español) para el orden; el tipo de ubicación se valida sin `SelectField`, como el rol en los formularios de usuarios. La confirmación reutiliza `ReasonForm` de `users/forms.py`.
 - **Hub y navegación:** las tarjetas Categorías, Prioridades y Ubicaciones del hub enlazan con sus listados, y "Administración" queda activa en las pantallas del módulo (prefijo `catalogs.` en `navigation.py`).
 - Las pantallas de **Estados y transiciones** (UI-021) quedan para `v0.4.0`.
@@ -723,7 +726,7 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 
 ## Historial (`historial_ticket`)
 
-Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene por ahora `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`; los de estado, asignación, comentarios, resolución y cierre se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`.
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene por ahora `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA` y `PRIORIDAD_CAMBIADA`; los de estado, asignación, comentarios, resolución y cierre se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
 
 **Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, sin migración.
 
@@ -1026,6 +1029,11 @@ GET, POST  /admin/locations/new
 GET, POST  /admin/locations/<id>/edit
 GET, POST  /admin/locations/<id>/deactivate
 GET, POST  /admin/locations/<id>/activate
+GET        /admin/wait-reasons
+GET, POST  /admin/wait-reasons/new
+GET, POST  /admin/wait-reasons/<id>/edit
+GET, POST  /admin/wait-reasons/<id>/deactivate
+GET, POST  /admin/wait-reasons/<id>/activate
 GET        /tickets
 GET, POST  /tickets/new
 GET        /tickets/<public_id>
@@ -1039,7 +1047,7 @@ GET        /static/<path:filename>
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin`, todas las rutas `/admin/...` (categorías, prioridades y ubicaciones; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
+`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
@@ -1072,7 +1080,7 @@ Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATI
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Categorías", "Prioridades" y "Ubicaciones"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Categorías", "Prioridades", "Ubicaciones" y "Motivos de espera"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -1246,7 +1254,7 @@ python -m flask --app src.workdesk seed-demo
 python -m flask --app src.workdesk seed-demo-tickets
 ```
 
-`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las prioridades, la categoría `Sin clasificar` y los motivos de cierre. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
+`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las prioridades, la categoría `Sin clasificar`, los motivos de cierre y los motivos de espera. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
 
 `create-admin`:
 
@@ -1312,6 +1320,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 2 de `v0.4.0` (catálogo de motivos de espera):
+
+```text
+1121 tests passing
+```
+
+Los 72 tests nuevos están en `tests/test_wait_reasons.py` (más dos ajustes por diseño: el diccionario que devuelve `seed_catalogs` en `test_catalogs.py` y la lista de tarjetas enlazadas del hub en `test_layout.py`). Cubren:
+
+- **Seed y modelo:** los cinco motivos en orden, solo `OTRO` admite texto libre, idempotencia sin pisar cambios de un Administrador, salida del comando `seed-catalogs`, nombre único sin distinguir mayúsculas, código opcional y único, y valores por defecto.
+- **Servicio:** alta (recorte, creador y auditoría con `entidad_tipo` `motivo_espera`), nombre repetido, edición de solo lo cambiado, edición sin cambios sin auditar, que ningún motivo esté protegido (se pueden desactivar todos), desactivar y reactivar con auditoría, y orden y filtro del listado.
+- **Historial:** un evento puede referenciar un motivo (`wait_reason`), los demás eventos lo dejan vacío, desactivar un motivo no afecta a lo ya registrado y la base impide eliminar uno en uso.
+- **Pantallas:** acceso (anónimo a login, los tres roles sin permiso reciben 403 en GET y no pueden cambiar nada por POST, ids inexistentes 404, CSRF), enlace en el hub, listado con la columna "Texto libre" y sin acciones protegidas, filtro, escape de HTML, alta con y sin la casilla, validaciones (nombre obligatorio y repetido, orden y largos), edición precargada, edición que desmarca la casilla, edición sin cambios, y desactivar/reactivar.
 
 Estado tras la entrega 1 de `v0.4.0` (visibilidad y vocabulario del historial):
 

@@ -2190,6 +2190,7 @@ Secciones:
 - Categorías;
 - Prioridades;
 - Ubicaciones;
+- Motivos de espera;
 - Estados y transiciones.
 
 ### Operación y políticas
@@ -2350,6 +2351,8 @@ La obligatoriedad del campo depende de configuración.
 - El formulario pide nombre (obligatorio), tipo y descripción (opcionales). El tipo es un selector con las opciones Sucursal, Oficina, Edificio, Piso, Área, Instalación y Otra, además de "Sin especificar".
 - El nombre no puede repetirse (sin distinguir mayúsculas); si dos edificios tienen un "Piso 2", se nombran, por ejemplo, "Edificio A - Piso 2".
 - La obligatoriedad de la ubicación al crear un ticket (RF-019) depende de la tabla de configuración y se implementa más adelante: hoy la ubicación es opcional.
+
+**Motivos de espera (`v0.4.0`):** pantalla complementaria sin código UI propio en este documento. Ruta `/admin/wait-reasons`, con la misma estructura que las categorías: tabla (nombre, descripción, texto libre, orden y estado), filtro por estado y acciones por fila. El formulario pide nombre (obligatorio), descripción y orden (opcionales) y la casilla "Permite añadir un texto libre" para la opción genérica "Otro motivo". Ningún motivo está protegido: el motivo de espera es opcional (RN-49). El selector que ofrece estos motivos al poner un ticket en espera llega con los cambios de estado.
 
 ---
 

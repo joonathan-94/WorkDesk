@@ -1,0 +1,21 @@
+{% from "_form_macros.html" import text_field, textarea_field, number_field, checkbox_field %}
+
+{{ text_field(form.nombre, required=True, maxlength=100, autofocus=True) }}
+
+{{ textarea_field(
+    form.descripcion,
+    maxlength=500,
+    hint="Opcional. Ayuda a quien pone el ticket en espera a elegir el motivo.",
+) }}
+
+{{ checkbox_field(
+    form.permite_texto_otro,
+    hint="Si la marcas, al elegir este motivo se podrá escribir una explicación. Es la opción genérica «Otro motivo».",
+) }}
+
+{{ number_field(
+    form.orden,
+    min=0,
+    max=9999,
+    hint="Opcional. Los motivos con número menor aparecen primero; los que no tienen número van al final, por orden alfabético.",
+) }}

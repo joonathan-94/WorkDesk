@@ -11,6 +11,7 @@
         'nivel': 'Nivel',
         'color': 'Color',
         'tipo': 'Tipo',
+        'texto_libre': 'Texto libre',
         'estado': 'Estado',
     } %}
 
@@ -37,6 +38,8 @@
             {% endif %}
         {% elif key == 'tipo' %}
             {{ item.tipo_nombre or '—' }}
+        {% elif key == 'texto_libre' %}
+            {{ 'Sí' if item.permite_texto_otro else '—' }}
         {% elif key == 'estado' %}
             {{ active_badge(item) }}
         {% endif %}

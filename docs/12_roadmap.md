@@ -917,8 +917,8 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con la ed
 
 La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con tests y Pull Request, como `v0.2.0` y `v0.3.0`:
 
-1. **Historial** (en curso): el vocabulario de eventos pasa a la aplicación y cada evento lleva su visibilidad (público o interno).
-2. **Motivos de espera:** catálogo configurable y su administración.
+1. **Historial** ✓ (PR #23): el vocabulario de eventos pasa a la aplicación y cada evento lleva su visibilidad (público o interno).
+2. **Motivos de espera** (en curso): catálogo configurable, su administración y la referencia desde el historial.
 3. **Estados y transiciones:** tabla de transiciones y cambios de estado operativos (iniciar, poner en espera, reactivar).
 4. **Grupos:** grupos, membresías y supervisores responsables (`/groups`).
 5. **Asignación:** técnicos, grupo del ticket y escalamiento manual.

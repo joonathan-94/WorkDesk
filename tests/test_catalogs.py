@@ -100,12 +100,14 @@ def test_seed_reports_what_it_created_and_is_idempotent(app):
             "prioridades": 4,
             "categorias": 1,
             "motivos_cierre": 6,
+            "motivos_espera": 5,
         }
         assert second == {
             "estados": 0,
             "prioridades": 0,
             "categorias": 0,
             "motivos_cierre": 0,
+            "motivos_espera": 0,
         }
         assert db.session.scalar(db.select(db.func.count(Estado.id))) == 6
 
