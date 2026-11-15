@@ -1044,7 +1044,7 @@ No deberá depender obligatoriamente de:
 
 ## RNF-085 — Funcionamiento sin Internet
 
-Las funcionalidades principales del MVP no deberán requerir una conexión permanente a Internet.
+WorkDesk no depende de Internet: sus funcionalidades, en el MVP y en las fases posteriores, deben operar sin conexión a Internet (decisión posterior; `docs/13_evolucion_post_mvp.md`, principio P1).
 
 ---
 
@@ -1121,7 +1121,7 @@ Las notificaciones del MVP deberán funcionar dentro de WorkDesk.
 
 ## RNF-094 — Independencia de correo
 
-El funcionamiento del MVP no deberá depender de:
+El funcionamiento de WorkDesk, en el MVP y después de él, no deberá depender de:
 
 * SMTP.
 * Correo electrónico.
@@ -1171,7 +1171,6 @@ La arquitectura deberá permitir incorporar progresivamente:
 * Calendarios.
 * Diagramas de Gantt.
 * Gestión de activos.
-* Integraciones externas.
 * Multiempresa.
 * Automatizaciones.
 * Aplicaciones móviles.
@@ -1186,9 +1185,9 @@ La implementación operativa multiempresa queda fuera del MVP.
 
 ---
 
-## RNF-098 — Evolución de comunicaciones
+## RNF-098 — Comunicaciones internas
 
-La solución deberá permitir incorporar posteriormente otros canales de comunicación, tales como correo electrónico o integraciones externas.
+Las notificaciones y comunicaciones de WorkDesk son internas a la aplicación, también después del MVP. La solución no incorporará canales externos como correo electrónico, SMS, mensajería o integraciones con servicios de terceros (decisión posterior; `docs/13_evolucion_post_mvp.md`, principio P1). La arquitectura de notificaciones debe poder crecer en tipos de evento y destinatarios sin depender de servicios externos.
 
 ---
 

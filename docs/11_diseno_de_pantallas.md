@@ -563,7 +563,7 @@ Tema principal:
 - superficies claras;
 - sidebar oscura.
 
-El diseño debe quedar preparado para permitir un tema oscuro futuro mediante tokens semánticos.
+El diseño debe quedar preparado para permitir un tema oscuro futuro mediante tokens semánticos. Las reglas concretas de implementación están en la sección 41.1.
 
 Evitar:
 
@@ -2437,6 +2437,17 @@ Lunes a viernes · Configurado
 [Configurar calendario]
 ```
 
+Mientras el Administrador no haya guardado ningún calendario, el resumen lo indica y el sistema usa el calendario por defecto (lunes a viernes de 09:00 a 18:00, sin feriados; `docs/09`, sección 40.8):
+
+```text
+Calendario laboral
+Lunes a viernes · Por defecto (sin configurar)
+
+[Configurar calendario]
+```
+
+La pantalla «Configurar calendario» se implementa en `v0.5.0`, junto al SLA, y es exclusiva del Administrador (RF-083). Muestra los días laborales con su franja de inicio y fin, la lista de feriados (fecha y nombre), la zona horaria y la versión vigente. Guardar crea una versión nueva y no altera las que ya usan períodos de SLA calculados (`docs/09`, sección 21). Se enlaza desde la tarjeta «SLA» del hub de administración.
+
 ### Alertas y comportamiento
 
 ```text
@@ -2886,6 +2897,18 @@ Evitar utilizar directamente nombres como:
 ```
 
 La convención semántica permite sustituir valores en un futuro tema oscuro sin reescribir componentes.
+
+## 41.1. Reglas de implementación hasta el tema oscuro
+
+El tema oscuro se desarrollará después del MVP (`docs/12`, sección 32), pero se prepara desde ahora. Reglas para todo el desarrollo de interfaz:
+
+1. **Pantallas y componentes nuevos usan tokens.** Los colores se expresan con las variables `--wd-*` (o con las variables de Bootstrap que `theme.css` ya mapea a ellas). No se escriben valores hexadecimales, `rgb()` ni nombres de color directamente en CSS ni en plantillas nuevas.
+2. **Un color nuevo es un token nuevo.** Se añade en `static/css/app.css` con su valor del tema claro y un nombre por su función, no por su aspecto (`--wd-warning`, no `--wd-amber`).
+3. **El tema claro actual es la referencia y no cambia:** azul principal `#1D4ED8`, fondo `#F1F5F9`, superficies `#FCFCFD`, texto `#111827` y `#64748B`, bordes `#DDE3EA`, verde `#16A34A`, ámbar `#F59E0B`, rojo `#EF4444`, morado `#7C3AED` y sidebar `#111827`. El tema oscuro se deriva de ella conservando la jerarquía y el significado de cada color (el rojo sigue siendo destructivo, el ámbar advertencia...).
+4. **Marca:** variante principal sobre fondos claros y variante inversa sobre oscuros (las inversas ya existen).
+5. **Colores guardados en la base de datos** (los de estados y prioridades, hoy un hexadecimal por registro): tendrán que adaptarse al tema oscuro. Es una decisión abierta de esa fase (derivar una variante automáticamente o guardar un segundo color).
+
+**Estado actual.** Existen 13 variables `--wd-*` en `app.css` (10 de color), pero `theme.css`, `layout.css`, `auth.css` y `errors.css` todavía repiten alrededor de 80 valores hexadecimales. En `v0.9.0` (calidad visual) se convierten en tokens sin cambiar el aspecto del tema claro, y se amplía el catálogo (superficies, bordes, estados, insignias, sidebar y topbar) para que el tema oscuro solo tenga que redefinir valores.
 
 ---
 

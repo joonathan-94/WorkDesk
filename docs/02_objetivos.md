@@ -230,7 +230,7 @@ El MVP deberá proporcionar un mecanismo de notificación dentro de la propia ap
 
 Las notificaciones internas forman parte del alcance del MVP.
 
-No se considera necesario incorporar en esta etapa mecanismos de notificación externos tales como correo electrónico, SMS, servicios de mensajería o servicios de terceros.
+WorkDesk no incorporará mecanismos de notificación externos tales como correo electrónico, SMS, servicios de mensajería o servicios de terceros: las notificaciones son siempre internas (decisión posterior; `docs/13_evolucion_post_mvp.md`, principio P1).
 
 ---
 
@@ -427,6 +427,8 @@ Para preservar el foco de la primera etapa, quedan fuera del MVP:
 
 Las exclusiones anteriores no representan necesariamente una prohibición permanente para futuras versiones, sino una delimitación del alcance inicial.
 
+**Excepción, por decisión posterior (`docs/13_evolucion_post_mvp.md`, principio P1):** la integración con correo electrónico, las integraciones con sistemas de terceros, los proveedores externos de autenticación (OAuth) y la infraestructura cloud **no se incorporarán**: WorkDesk es una aplicación 100 % local o de intranet. Siguen abiertas las capacidades que funcionan dentro de la propia organización, por ejemplo un directorio LDAP o Active Directory de la intranet, que se evaluarán cuando exista un caso real.
+
 ---
 
 ## 11. Evolución futura
@@ -470,6 +472,8 @@ Evolucionar desde indicadores básicos hacia capacidades analíticas más avanza
 ### 11.9. Integraciones
 
 Evaluar posteriormente integraciones con servicios externos, herramientas corporativas y mecanismos de identidad, siempre considerando su valor, dependencia, complejidad y costo.
+
+**Decisión posterior:** no se integrarán servicios externos ni proveedores externos de autenticación (`docs/13_evolucion_post_mvp.md`, principio P1). Solo se evaluarán integraciones que funcionen dentro de la intranet de la organización, como un directorio LDAP o Active Directory, cuando exista un caso real.
 
 ### 11.10. Expansión a nuevos contextos
 
@@ -519,6 +523,8 @@ Las siguientes decisiones no se consideran cerradas y deberán definirse posteri
 Estas decisiones deberán resolverse durante las etapas posteriores de análisis, requisitos y arquitectura.
 
 > **Decisiones ya cerradas.** Las siguientes decisiones que este documento mencionaba como abiertas se resolvieron en documentos posteriores: roles y permisos (`03`), reglas de prioridad (`06`, RN-19 a RN-23), modelo de SLA (`06`, `09` y `10`), transiciones entre estados (`08`), escalamiento manual (`04`), grupos y colas (`04`, `06` y `09`) y profundidad de la auditoría (`09`).
+>
+> **Decisiones cerradas después (2026-11-15).** Integraciones externas: descartadas, porque WorkDesk es 100 % local o de intranet (`13`, P1). Automatizaciones: se orientan a reglas de enrutamiento y recordatorios con un catálogo cerrado de condiciones y acciones (`13`, EVO-07). Gestión de activos e inventario: se incorporan activos tecnológicos mínimos después del MVP y el control de stock queda a evaluar (`13`, EVO-17 a EVO-21).
 
 ---
 

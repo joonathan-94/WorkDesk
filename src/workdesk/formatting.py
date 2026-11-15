@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from flask import current_app
 
 
-def _app_zone():
+def app_zone():
     """Zona horaria de la aplicación; UTC si la configurada no existe."""
     try:
         return ZoneInfo(current_app.config["APP_TIMEZONE"])
@@ -20,7 +20,7 @@ def start_of_local_day(value: date) -> datetime:
     Sirve para filtrar por fecha: quien elige "5 de marzo" piensa en su día
     local, no en el día UTC.
     """
-    return datetime(value.year, value.month, value.day, tzinfo=_app_zone())
+    return datetime(value.year, value.month, value.day, tzinfo=app_zone())
 
 
 def local_datetime(value: datetime | None) -> str:
@@ -37,4 +37,4 @@ def local_datetime(value: datetime | None) -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
 
-    return value.astimezone(_app_zone()).strftime("%d-%m-%Y %H:%M")
+    return value.astimezone(app_zone()).strftime("%d-%m-%Y %H:%M")

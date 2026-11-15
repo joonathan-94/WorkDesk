@@ -102,6 +102,8 @@ No introducir sin justificación:
 - capas anticipadas;
 - abstracciones que no resuelvan un problema actual.
 
+Decisión permanente: WorkDesk es una aplicación 100 % local o de intranet. No introducir dependencias de Internet ni de servicios externos (correo, SMS, mensajería, nube, autenticación externa, APIs de terceros). Las notificaciones son siempre internas. Ver `docs/13_evolucion_post_mvp.md`, principio P1.
+
 La arquitectura debe crecer solamente cuando exista una necesidad real.
 
 ---
@@ -328,6 +330,17 @@ Si una tarea requiere modificar branding, primero explicar:
 3. qué recurso se propone modificar;
 4. qué pantallas o documentos resultarían afectados.
 
+## Colores y tema oscuro futuro
+
+WorkDesk tendrá un tema oscuro después del MVP y el tema claro actual es su referencia. Para que ese trabajo sea sencillo:
+
+- usar siempre los tokens `--wd-*` (o las variables de Bootstrap ya mapeadas a ellos en `theme.css`);
+- no escribir colores hexadecimales, `rgb()` ni nombres de color directamente en CSS ni en plantillas nuevas;
+- si hace falta un color nuevo, añadirlo como token semántico en `static/css/app.css` con su valor del tema claro;
+- no modificar la paleta clara existente sin una decisión explícita.
+
+Detalle en `docs/11_diseno_de_pantallas.md`, sección 41.1.
+
 ---
 
 # 12. Git
@@ -409,6 +422,7 @@ Consultar la fuente adecuada según la tarea:
 - arquitectura: `docs/10_arquitectura.md`
 - UI/UX y branding: `docs/11_diseno_de_pantallas.md`
 - roadmap: `docs/12_roadmap.md`
+- evolución posterior al MVP: `docs/13_evolucion_post_mvp.md`
 
 Para conocer el inventario real de assets de marca y su estado de integración, consultar también:
 

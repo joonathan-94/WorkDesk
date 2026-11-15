@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/close-v0-3-0
+feature/demo-tickets-seed
 ```
 
-Entrega 7 de `v0.3.0`: cierre de la versión. No incluye migraciones ni cambios de funcionalidad: añade una red de seguridad automática sobre todas las rutas (`tests/test_route_protection.py`), la guía de primera configuración del README (con un recorrido de prueba y una solución de problemas) y la actualización de la documentación.
+Entre `v0.3.0` y `v0.4.0`: comando opcional `seed-demo-tickets`, con unos 40 tickets de demostración realistas y datos separados de la lógica para poder ir ampliándolos en cada fase (ver "22. CLI"). No incluye migraciones.
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19) y el cierre de `v0.3.0` (PR #20).
 
@@ -268,6 +268,10 @@ No deben crearse anticipadamente:
 - abstracciones sin una necesidad real;
 - nuevas dependencias únicamente por preferencia técnica.
 
+## Ejecución local de forma permanente
+
+WorkDesk es una aplicación **100 % local o de intranet**, por decisión del proyecto (2026-11-15): no depende de Internet ni de servicios externos (correo, SMS, mensajería, nube, autenticación externa o APIs de terceros) y sus notificaciones son siempre internas. Se ejecuta en un equipo local o en un servidor propio de la organización. Detalle y consecuencias en `docs/13_evolucion_post_mvp.md` (principio P1).
+
 La documentación arquitectónica puede describir una estructura objetivo más amplia que la estructura actual.
 
 Eso no obliga a implementarla completa desde el comienzo.
@@ -356,6 +360,7 @@ WorkDesk/
 │   ├── test_passwords.py
 │   ├── test_route_protection.py
 │   ├── test_seed_demo.py
+│   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
 │   ├── test_formatting.py
 │   ├── test_system.py
@@ -734,7 +739,7 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 - **Un ticket inexistente, con un identificador que no es un número o al que el usuario no tiene acceso responde 404 en todos los casos.** Los números son correlativos y con un 403 cualquiera podría descubrir cuáles existen.
 - El detalle muestra la ruta de navegación "Tickets / #N" (o "Mis tickets / #N") y cuenta como parte de la opción "Tickets" del menú, no de "Crear ticket".
 
-**Fechas en hora local:** el filtro de plantilla `local_datetime` (`src/workdesk/formatting.py`) convierte las fechas (guardadas con zona horaria) a `APP_TIMEZONE` con el formato `dd-mm-aaaa hh:mm` (docs/10, sección 79). Si la zona configurada no existe, muestra UTC. `start_of_local_day` da el primer instante de un día local, para filtrar por fechas. Requiere el paquete `tzdata` en Windows.
+**Fechas en hora local:** el filtro de plantilla `local_datetime` (`src/workdesk/formatting.py`) convierte las fechas (guardadas con zona horaria) a `APP_TIMEZONE` con el formato `dd-mm-aaaa hh:mm` (docs/10, sección 79). Si la zona configurada no existe, muestra UTC. `start_of_local_day` da el primer instante de un día local, para filtrar por fechas, y `app_zone()` devuelve la zona horaria de la aplicación (también la usa `seed-demo-tickets`). Requiere el paquete `tzdata` en Windows.
 
 **Presentación:** macros nuevos en `_form_macros.html` (`checkbox_list_field`, y `textarea_field` ahora admite `required` y `counter`) y en `_ui_macros.html` (`state_badge`, `priority_badge`, con los colores de docs/11); scripts `static/js/common/char-counter.js` y `checklist-filter.js`, ambos mejoras progresivas.
 
@@ -1214,6 +1219,7 @@ python -m flask --app src.workdesk seed-roles
 python -m flask --app src.workdesk seed-catalogs
 python -m flask --app src.workdesk create-admin
 python -m flask --app src.workdesk seed-demo
+python -m flask --app src.workdesk seed-demo-tickets
 ```
 
 `seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las prioridades, la categoría `Sin clasificar` y los motivos de cierre. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
@@ -1233,6 +1239,20 @@ python -m flask --app src.workdesk seed-demo
 - es idempotente: omite a quien ya tenga ese username o ese correo, sin modificarlo;
 - se niega a ejecutarse con `APP_ENV=production`;
 - los usuarios quedan activos y sin cambio de contraseña obligatorio, y cada creación se audita como acción del sistema.
+
+`seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
+
+- carga unos 40 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cuando existan estados, asignaciones, cierres y comentarios se añaden campos opcionales con valor por defecto a `DemoTicket`, sin invalidar los tickets ya escritos;
+- necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
+- usa los servicios reales (`create_ticket`, `update_ticket` y `change_priority`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título) con su propio actor y retraso;
+- **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
+- **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
+- **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `demo_tickets_data.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (`_BusinessClock`) pasará a un módulo compartido con el SLA. Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
+- valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad...);
+- una sola transacción: si algo falla se revierte todo (`DemoTicketsError`);
+- se niega a ejecutarse con `APP_ENV=production`;
+- todos los tickets quedan en estado `Nuevo` mientras no existan los cambios de estado (`v0.4.0`).
 
 ---
 
@@ -1268,6 +1288,25 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras el seed de tickets de demostración (entre `v0.3.0` y `v0.4.0`):
+
+```text
+1034 tests passing
+```
+
+Los 67 tests nuevos (`tests/test_seed_demo_tickets.py`) cubren:
+
+- **los datos** (`DEMO_TICKETS`): son válidos, hay unos 40 con claves y títulos distintos, cubren todas las categorías, prioridades y ubicaciones (incluido «sin ubicación»), a todas las personas solicitantes y a buena parte del personal, con 0, 1 y 2 solicitantes, historias con ajustes, antigüedades repartidas, descripciones de largos distintos y un texto con caracteres que HTML interpretaría; y `validate_demo_tickets` rechaza datos incoherentes (clave o título repetidos o mal formados, usuario, categoría, prioridad o ubicación desconocidos, hora mal formada, Solicitante con `solicitantes`, ajustes sin cambio, sin motivo o hechos por alguien que no es personal);
+- **el comando:** crea todos los tickets, se niega a ejecutarse en producción y pide `seed-demo` o `seed-catalogs` si faltan, sin cargar nada;
+- **lo que crea:** creadores y solicitantes según las reglas de creación, categoría, prioridad y ubicación resueltas por nombre y código, una persona demo que solo ve los suyos (404 para el resto) y textos que se muestran escapados;
+- **la marca:** todos los eventos de un ticket demo llevan su clave y su paso, el motivo de la prioridad convive con la marca y la marca no se ve en la interfaz;
+- **volver a ejecutarlo:** no crea tickets ni eventos nuevos y responde `Actualizados (ya existían)`; el mismo día deja exactamente las mismas fechas; refrescar no toca el contenido ni las versiones; **un refresco da las mismas fechas que una carga nueva en el día nuevo** (se comparan las historias completas de los 40 tickets); los tickets se mueven al nuevo día; y las ediciones hechas a mano sobre un ticket demo siguen al ticket, en orden y sin quedar nunca en el futuro;
+- **identidad:** mejorar un título en la lista no duplica el ticket ni sobrescribe el contenido ya cargado, añadir un ticket a la lista crea solo el nuevo, cambiar la antigüedad en la lista mueve el ticket, y nunca se toca un ticket creado a mano, ni siquiera uno con el mismo título y autor;
+- **catálogos que faltan:** `Aviso:` y alternativa (`Sin clasificar` o sin ubicación), sin fallar;
+- **fechas:** relativas al día de carga y medidas en días laborales, con ejemplos exactos, historial en orden cronológico, `fecha_modificacion` igual al último ajuste y solicitantes asociados en la fecha de creación;
+- **tiempo laboral:** nada cae fuera de la jornada ni en fin de semana, en ejecuciones de mañana temprano, de noche y de domingo; los ajustes avanzan en horas laborales y saltan la noche y el fin de semana; un feriado se salta al contar días y horas; el calendario es configurable (otros días, otra jornada) y validado; y un refresco da lo mismo que una carga nueva incluso con un calendario distinto y feriados;
+- **ajustes:** el historial queda igual que el de la aplicación (eventos, motivo en `contexto`, actor y versión) y el guard de inmutabilidad del ORM sigue rechazando una modificación normal.
 
 Estado tras el cierre de `v0.3.0` (entrega 7):
 
@@ -1620,6 +1659,7 @@ Inter / Roboto / fallback del sistema
 - sombras sutiles;
 - foco visible;
 - badges suaves;
+- preparado para un tema oscuro posterior al MVP: los colores nuevos usan tokens `--wd-*`, nunca valores fijos (`docs/11`, sección 41.1);
 - rojo reservado principalmente para acciones destructivas;
 - tablas compactas;
 - diseño responsive;
@@ -1754,6 +1794,12 @@ docs/11_diseno_de_pantallas.md
 docs/12_roadmap.md
 ```
 
+## Evolución posterior al MVP
+
+```text
+docs/13_evolucion_post_mvp.md
+```
+
 ---
 
 # 29. Estado actual vs objetivo futuro
@@ -1820,13 +1866,20 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 - red de seguridad automática sobre todas las rutas (autenticación y CSRF);
 - guía de primera configuración, recorrido de prueba y solución de problemas en el README.
 
+## Añadido después de `v0.3.0`
+
+- comando opcional `seed-demo-tickets`: unos 40 tickets de demostración realistas, con fechas relativas, historial de ajustes del personal y datos separados de la lógica (ver "22. CLI").
+
 ## Pendiente para la siguiente fase
 
 Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases posteriores (lo que `v0.3.0` dejó decidido para `v0.4.0` está en "Próximo hito"):
 
 - `v0.4.0`: cambios de estado, asignación, comentarios, notas internas, adjuntos, resolución y cierre, y el bloqueo temporal de edición (RN-115 a RN-117);
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
-- las políticas de autorización adicionales se incorporan con cada módulo.
+- las políticas de autorización adicionales se incorporan con cada módulo;
+- `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;
+- `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
+- después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM y activos); ninguna interfiere con el MVP.
 
 El orden propuesto de entregas está en `docs/12_roadmap.md`.
 
