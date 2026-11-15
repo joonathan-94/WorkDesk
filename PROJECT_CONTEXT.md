@@ -82,14 +82,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-list
+feature/ticket-detail-edit
 ```
 
-Entrega 5 de `v0.3.0`: listado de tickets con búsqueda, filtros, orden y paginación, y buscador en la barra superior. No incluye migraciones.
+Entrega 6 de `v0.3.0`: detalle ampliado y edición autorizada de tickets (datos, prioridad con motivo y control de versión). No incluye migraciones.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16) y la creación de tickets (PR #17).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17) y el listado de tickets (PR #18).
 
-Paso siguiente: entrega 6 de `v0.3.0`, el detalle completo y la edición autorizada.
+Paso siguiente: entrega 7 de `v0.3.0`, el cierre de la versión.
 
 ## Identidad visual (integrada en `main`)
 
@@ -123,15 +123,16 @@ Es la fase central del MVP: creación, listado, búsqueda, filtros y detalle de 
 | 2 | Modelo de tickets (tickets, solicitantes e historial) y servicio de creación | Integrada (PR #15) |
 | 3 | Administración de catálogos desde la interfaz | Integrada (PR #16) |
 | 4 | Creación de tickets | Integrada (PR #17) |
-| 5 | Listado con búsqueda, filtros, orden y paginación | En curso |
-| 6 | Detalle y edición autorizada | Pendiente |
+| 5 | Listado con búsqueda, filtros, orden y paginación | Integrada (PR #18) |
+| 6 | Detalle y edición autorizada | En curso |
 | 7 | Cierre de la versión: revisión final y documentación | Pendiente |
 
 Decisiones de la fase:
 
 - **Sin datos de ejemplo en los seeds.** Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz; ningún seed los incluye, para que una instalación real no arranque con datos ficticios. El README documenta cómo hacerlo.
 - **Visibilidad del Solicitante:** ve los tickets que creó o donde es solicitante vigente. Técnico, Supervisor y Administrador ven todos. Un ticket al que no se tiene acceso responde 404, igual que uno inexistente.
-- **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación y cambian la prioridad con motivo obligatorio; el Solicitante solo lee.
+- **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación y cambian la prioridad con motivo obligatorio; el Solicitante solo lee. El Solicitante ve en el historial qué cambió, pero no el motivo.
+- **Concurrencia:** en esta fase solo existe el control de versión (`tickets.version`). El bloqueo temporal de edición (RN-115 a RN-117: aviso de quién edita, expiración y renovación) se difiere a `v0.4.0`, junto con comentarios y cambios de estado.
 - **Estados y transiciones** (UI-021) se difieren a `v0.4.0`, cuando exista el flujo de estados y la tabla de transiciones.
 
 ## Hito completado: v0.2.0
@@ -333,6 +334,8 @@ WorkDesk/
 │   ├── test_system.py
 │   ├── test_ticket_model.py
 │   ├── test_ticket_policies.py
+│   ├── test_tickets_edit_routes.py
+│   ├── test_tickets_edit_service.py
 │   ├── test_tickets_list_routes.py
 │   ├── test_tickets_list_service.py
 │   ├── test_tickets_routes.py
@@ -652,7 +655,7 @@ Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclu
 
 # 11 ter. Modelo de tickets
 
-Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación, un detalle de solo lectura y el listado están descritos más abajo ("Creación y detalle de tickets" y "Listado de tickets"); la edición llega en la siguiente entrega.
+Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación, un detalle de solo lectura y el listado están descritos más abajo ("Creación y detalle de tickets" y "Listado de tickets"); la edición está en "Edición de tickets".
 
 ## Ticket (`tickets`)
 
@@ -720,6 +723,26 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 - **Parámetros de la URL:** `q`, `vista`, `estado`, `prioridad`, `categoria`, `ubicacion`, `desde`, `hasta`, `orden` y `page`. Los enlaces de pestañas y de páginas conservan los que están aplicados.
 - **Plantilla** `tickets/list.html`: tabla desde pantallas medianas y tarjetas en móvil; columna "Solicitante(s)" solo para el personal; "Más filtros" es un `<details>` que se abre solo si hay un filtro de ese grupo aplicado; paginación con números de página.
 - **Menú y buscador:** "Tickets" (personal) y "Mis tickets" (Solicitante) apuntan al mismo listado (`navigation.py`) y se marcan activas también en el detalle. El buscador de la barra superior (`layouts/app.html`, visible desde pantallas medianas) envía `q` a este listado con `vista=todos`, para que un ticket cerrado también se encuentre.
+
+## Edición de tickets (entrega 6 de `v0.3.0`)
+
+Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py`; las rutas (`tickets/routes.py`) solo orquestan.
+
+**Políticas** (`security/authorization.py`): `can_edit_ticket(user)` y `can_change_priority(user)`, hoy iguales (Técnico, Supervisor y Administrador) pero separadas porque el diseño las nombra aparte. Que el ticket esté cerrado no es una política de rol sino una regla del ticket y la aplica el servicio.
+
+**Rutas** (`GET, POST`): `/tickets/<n>/edit` (título, descripción, categoría y ubicación) y `/tickets/<n>/priority` (prioridad con motivo). Ambas, igual que el detalle, responden **404** si el usuario no puede ver el ticket y además **403** si lo ve pero no puede editarlo (el Solicitante). Con un ticket cerrado vuelven al detalle con un aviso, también desde el GET. El detalle muestra los botones "Editar" y "Cambiar prioridad" solo al personal y mientras el ticket no esté cerrado (solo presentación: la autorización real está en las rutas).
+
+**Servicio** (`tickets/editing.py`, sin commit):
+
+- `update_ticket(ticket, actor=, expected_version=, title=, description=, category_id=, location_id=)`: mismas reglas de título y descripción que la creación (`clean_title_and_description`, compartida con `create_ticket`). La categoría y la ubicación nuevas deben estar activas, pero las que el ticket ya tiene pueden conservarse aunque se hayan desactivado. Solo aplica y registra lo que cambió; devuelve `False` si no hay cambios. Registra `TICKET_MODIFICADO` (título, descripción y ubicación, con los valores anterior y nuevo solo de lo cambiado) y, si cambia la categoría, `CATEGORIA_CAMBIADA` con los nombres.
+- `change_priority(ticket, actor=, expected_version=, priority_id=, reason=)`: motivo obligatorio (recortado, máx. 500 caracteres), prioridad nueva activa y distinta de la actual (la misma prioridad devuelve `False`, sin cambio ni registro). Registra `PRIORIDAD_CAMBIADA` con un resumen de la prioridad anterior y la nueva (id, código y nombre) y el motivo en `contexto`.
+- **Ticket cerrado:** `TicketClosedError`. Hoy nadie puede cerrar tickets desde la interfaz; la regla queda aplicada para cuando exista el cierre (`v0.4.0`).
+- **Control de versión:** `_apply_changes` hace un único `UPDATE ... WHERE id = :id AND version = :esperada` que aplica los cambios, sube `version` en uno y registra quién y cuándo (`usuario_modificacion_id`, `fecha_modificacion`). Si no coincide ninguna fila se lanza `TicketConflictError`. Si dos guardados llegan a la vez, el segundo espera al primero y, al reevaluar la condición, ya no encuentra la versión esperada. Un guardado con dos eventos (datos y categoría) sube la versión una sola vez.
+- **Conflicto en la interfaz:** los formularios llevan la versión con la que se abrieron en un campo oculto. Ante un conflicto se vuelve al formulario con los datos actuales y un aviso (lo escrito se pierde, a propósito: reenviarlo pisaría el cambio ajeno sin haberlo visto). El bloqueo temporal de edición queda para `v0.4.0`.
+
+**Formularios** (`tickets/forms.py`): `_TicketFieldsForm` concentra los campos comunes a la creación y a la edición; `TicketForm` (creación), `TicketEditForm` y `PriorityChangeForm`, estos dos con la versión como campo obligatorio. La prioridad no se puede cambiar desde la edición de datos.
+
+**Historial en el detalle:** `describe_history_changes(entry)` devuelve las líneas de lo que cambió (`Título: «a» → «b»`, `Descripción modificada.`, `Ubicación: — → «c»`, `Categoría: …`, `Prioridad: …`) y **nunca incluye el motivo**. La ruta del detalle pasa el motivo a la plantilla solo si el usuario es del personal: el Solicitante ve qué cambió, no por qué. La descripción completa no se repite en el historial. El resumen del detalle muestra también "Actualizado" (`Ticket.fecha_actualizacion`).
 
 ---
 
@@ -948,11 +971,13 @@ GET, POST  /admin/locations/<id>/activate
 GET        /tickets
 GET, POST  /tickets/new
 GET        /tickets/<public_id>
+GET, POST  /tickets/<public_id>/edit
+GET, POST  /tickets/<public_id>/priority
 GET        /health
 GET        /static/<path:filename>
 ```
 
-`/dashboard`, `/account`, `/account/password`, `/tickets`, `/tickets/new` y `/tickets/<public_id>` requieren autenticación. En los tickets la autorización va más allá del login (ver "Creación y detalle de tickets"): el detalle responde 404 a quien no puede verlo.
+`/dashboard`, `/account`, `/account/password` y todas las rutas `/tickets...` requieren autenticación. En los tickets la autorización va más allá del login (ver "Creación y detalle de tickets" y "Edición de tickets"): el detalle y las pantallas de edición responden 404 a quien no puede ver el ticket, y las de edición y prioridad responden 403 a quien lo ve pero no puede editarlo (el Solicitante).
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
@@ -1212,6 +1237,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la edición de tickets (entrega 6 de `v0.3.0`):
+
+```text
+958 tests passing
+```
+
+Los 112 tests nuevos cubren:
+
+- `tests/test_tickets_edit_service.py` (35): cambios de título, descripción, categoría y ubicación y qué eventos registran (solo lo que cambió, un evento por tipo, una sola subida de versión), edición sin cambios, que no confirma, las mismas validaciones que la creación y sus límites exactos, valores de catálogo desactivados (rechazados si son nuevos, aceptados si el ticket ya los tenía), usuario inactivo, ticket cerrado, **conflicto de versión** (el cambio ajeno se conserva y el rechazado no deja rastro), prioridad con motivo (obligatorio, recortado, límite de 500), la misma prioridad sin efecto, prioridad inactiva o inexistente, y la descripción del historial sin el motivo.
+- `tests/test_tickets_edit_routes.py` (67): acceso (anónimo, el personal, el Solicitante con 403 en GET y POST sin cambiar nada, 404 para tickets ajenos idénticos a los inexistentes, identificadores inválidos y ticket cerrado con su aviso), botones del detalle por rol y estado, formulario precargado, edición correcta con su historial visible, sin cambios, cada validación, que el formulario conserve lo escrito, categoría actual desactivada, CSRF, **conflicto entre dos ediciones** y su recarga con los datos actuales, cambio de prioridad (opciones, motivo, misma prioridad, prioridad inactiva), que el Solicitante vea qué cambió pero no el motivo, y escape de HTML.
+- `tests/test_ticket_policies.py` (+10): `can_edit_ticket` y `can_change_priority`.
 
 Estado tras el listado de tickets (entrega 5 de `v0.3.0`):
 
@@ -1728,9 +1765,10 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0`. `v0.3.0` ya tiene los catálogos, el modelo de tickets, la administración de catálogos, la creación de tickets con un detalle de solo lectura y el listado con búsqueda, filtros y paginación (ver "Hito en desarrollo"). Lo que falta pertenece a `v0.3.0` y a las fases posteriores:
+Nada de `v0.2.0`. `v0.3.0` ya tiene los catálogos, el modelo de tickets, la administración de catálogos, la creación de tickets, el listado con búsqueda, filtros y paginación, y la edición con cambio de prioridad (ver "Hito en desarrollo"). Lo que falta pertenece a `v0.3.0` y a las fases posteriores:
 
-- detalle completo y edición autorizada de tickets, y cambio de prioridad con motivo;
+- cierre de `v0.3.0` (revisión final y guía de primera configuración);
+- `v0.4.0`: cambios de estado, asignación, comentarios, notas internas, adjuntos, resolución y cierre, y el bloqueo temporal de edición (RN-115 a RN-117);
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo.
 

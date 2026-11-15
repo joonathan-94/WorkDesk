@@ -26,7 +26,45 @@
                 </span>
             </p>
         </div>
+
+        {# Solo se ofrecen al personal y mientras el ticket no esté cerrado;
+           cada ruta comprueba la autorización por su cuenta. #}
+        {% if show_edit or show_priority %}
+            <div class="d-flex flex-wrap gap-2">
+                {% if show_edit %}
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('tickets.edit_ticket', public_id=ticket.public_id) }}"
+                    >
+                        <i
+                            class="bi bi-pencil me-1"
+                            aria-hidden="true"
+                        ></i>
+                        Editar
+                    </a>
+                {% endif %}
+
+                {% if show_priority %}
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('tickets.change_ticket_priority', public_id=ticket.public_id) }}"
+                    >
+                        <i
+                            class="bi bi-flag me-1"
+                            aria-hidden="true"
+                        ></i>
+                        Cambiar prioridad
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
     </header>
+
+    {% if is_staff and is_closed %}
+        <p class="small text-secondary">
+            Un ticket cerrado no se puede editar. Primero debe reabrirse.
+        </p>
+    {% endif %}
 
     <div class="row g-4">
         <div class="col-lg-8">
@@ -59,17 +97,32 @@
                     </h2>
 
                     <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
-                        {% for entry in history %}
+                        {% for row in history %}
                             <li>
                                 <span class="fw-semibold">
-                                    {{ entry.evento_nombre }}
+                                    {{ row.entry.evento_nombre }}
                                 </span>
 
+                                {# Qué cambió, para todos los roles. #}
+                                {% for line in row.changes %}
+                                    <span class="small d-block text-break">
+                                        {{ line }}
+                                    </span>
+                                {% endfor %}
+
+                                {# El motivo es una nota interna: solo lo
+                                   recibe el personal (ver la ruta). #}
+                                {% if row.reason %}
+                                    <span class="small d-block text-secondary text-break">
+                                        Motivo: {{ row.reason }}
+                                    </span>
+                                {% endif %}
+
                                 <span class="small text-secondary d-block">
-                                    {{ entry.fecha_hora|local_datetime }}
+                                    {{ row.entry.fecha_hora|local_datetime }}
                                     ·
-                                    {% if entry.actor %}
-                                        {{ entry.actor.nombre }} {{ entry.actor.apellido }}
+                                    {% if row.entry.actor %}
+                                        {{ row.entry.actor.nombre }} {{ row.entry.actor.apellido }}
                                     {% else %}
                                         Sistema
                                     {% endif %}
@@ -109,6 +162,9 @@
 
                         <dt class="small text-secondary fw-normal">Creado</dt>
                         <dd>{{ ticket.fecha_creacion|local_datetime }}</dd>
+
+                        <dt class="small text-secondary fw-normal">Actualizado</dt>
+                        <dd>{{ ticket.fecha_actualizacion|local_datetime }}</dd>
 
                         {# El personal ve además quién lo creó y los solicitantes
                            (docs/11, UI-005); el Solicitante no. #}

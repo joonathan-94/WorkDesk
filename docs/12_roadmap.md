@@ -832,8 +832,8 @@ Esta es la fase central del MVP.
 2. **Modelo de tickets** ✓ (PR #15): tickets, solicitantes e historial inmutable, con el identificador público generado por una secuencia de PostgreSQL, y el servicio de creación.
 3. **Administración de catálogos** ✓ (PR #16): pantallas para que el Administrador gestione categorías, prioridades y ubicaciones, con auditoría. Se adelantó respecto del plan inicial para poder crear los datos de prueba desde la propia interfaz en lugar de cargarlos con seeds.
 4. **Creación de tickets** ✓ (PR #17): formulario, políticas de creación y de visibilidad, un detalle de solo lectura y la opción "Crear ticket" en la navegación.
-5. **Listado** (en curso): "Tickets" y "Mis tickets", con pestañas, búsqueda (también desde la barra superior), filtros, orden y paginación, y la visibilidad de cada rol aplicada en la propia consulta.
-6. **Detalle y edición autorizada**: detalle según el rol, edición y cambio de prioridad con motivo.
+5. **Listado** ✓ (PR #18): "Tickets" y "Mis tickets", con pestañas, búsqueda (también desde la barra superior), filtros, orden y paginación, y la visibilidad de cada rol aplicada en la propia consulta.
+6. **Detalle y edición autorizada** (en curso): edición de título, descripción, categoría y ubicación, y cambio de prioridad con motivo obligatorio; historial con el detalle de cada cambio (el motivo, solo para el personal) y control de versión para las ediciones simultáneas.
 7. **Cierre de la versión**: revisión final y documentación, incluida la guía de primera configuración.
 
 ### Decisiones de la fase
@@ -1556,8 +1556,7 @@ main
 El plan de `v0.3.0` está en la fase 3 (sección 16). El siguiente paso del proyecto es completar sus entregas en este orden:
 
 ```text
-5. listado con búsqueda, filtros, orden y paginación (en curso);
-6. detalle y edición autorizada;
+6. detalle y edición autorizada (en curso);
 7. cierre de la versión y guía de primera configuración.
 ```
 

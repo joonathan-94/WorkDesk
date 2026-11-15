@@ -91,6 +91,35 @@ class TicketRuleError(ValueError):
     """
 
 
+def clean_title_and_description(title: str, description: str) -> tuple[str, str]:
+    """Recorta y valida el título y la descripción de un ticket.
+
+    Son las mismas reglas al crear y al editar: ambos obligatorios y con su
+    longitud máxima. Lanza `TicketRuleError` con un mensaje para el usuario.
+    """
+    title = title.strip()
+    description = description.strip()
+
+    if not title:
+        raise TicketRuleError("El título es obligatorio.")
+
+    if len(title) > MAX_TITLE_LENGTH:
+        raise TicketRuleError(
+            f"El título no puede superar los {MAX_TITLE_LENGTH} caracteres."
+        )
+
+    if not description:
+        raise TicketRuleError("La descripción es obligatoria.")
+
+    if len(description) > MAX_DESCRIPTION_LENGTH:
+        raise TicketRuleError(
+            "La descripción no puede superar los "
+            f"{MAX_DESCRIPTION_LENGTH} caracteres."
+        )
+
+    return title, description
+
+
 def create_ticket(
     *,
     actor: User,
@@ -117,25 +146,7 @@ def create_ticket(
     Quién puede crear tickets a nombre de otras personas lo decide la capa de
     rutas; este servicio solo asocia a los solicitantes que recibe.
     """
-    title = title.strip()
-    description = description.strip()
-
-    if not title:
-        raise TicketRuleError("El título es obligatorio.")
-
-    if len(title) > MAX_TITLE_LENGTH:
-        raise TicketRuleError(
-            f"El título no puede superar los {MAX_TITLE_LENGTH} caracteres."
-        )
-
-    if not description:
-        raise TicketRuleError("La descripción es obligatoria.")
-
-    if len(description) > MAX_DESCRIPTION_LENGTH:
-        raise TicketRuleError(
-            "La descripción no puede superar los "
-            f"{MAX_DESCRIPTION_LENGTH} caracteres."
-        )
+    title, description = clean_title_and_description(title, description)
 
     if not actor.is_active:
         raise TicketRuleError("El usuario no está activo.")
