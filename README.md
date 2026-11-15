@@ -28,25 +28,40 @@ El sistema busca centralizar el ciclo de vida de los tickets, facilitar la colab
 
 ---
 
+## Guía rápida
+
+¿Quieres ejecutar WorkDesk en tu equipo? Estos son los pasos, en orden. Cada uno enlaza con su explicación detallada.
+
+1. [Instala los requisitos](#requisitos): Python, PostgreSQL y Git.
+2. [Clona el repositorio, crea el entorno virtual e instala las dependencias](#instalación).
+3. [Crea el rol y las dos bases de datos en PostgreSQL](#configuración-de-postgresql).
+4. [Crea y completa el archivo `.env`](#variables-de-entorno).
+5. [Prepara la base de datos](#preparación-inicial): migraciones, roles, catálogos y tu cuenta de Administrador.
+6. [Arranca WorkDesk](#ejecutar-workdesk) y abre `http://127.0.0.1:5000`.
+7. [Crea las categorías y ubicaciones](#configurar-categorías-y-ubicaciones) de tu organización desde la interfaz.
+8. [Crea tu primer ticket](#crear-un-ticket) y haz el [recorrido de prueba](#recorrido-de-prueba) para ver todo lo que ya funciona.
+
+Si algo falla por el camino, consulta la [solución de problemas](#solución-de-problemas).
+
+---
+
 ## Estado del proyecto
 
-### `v0.3.0 — Núcleo de tickets` (en desarrollo)
+### `v0.3.0 — Núcleo de tickets`
 
-Es la fase central del MVP. Se construye en entregas pequeñas, cada una con su rama, tests y Pull Request. Hasta ahora están integradas:
+La tercera versión de WorkDesk está implementada y validada. Es la fase central del MVP: ya se pueden **crear, consultar, buscar y editar tickets**, y cada rol ve únicamente lo que le corresponde. Se construyó en entregas pequeñas, cada una con su rama, tests y Pull Request:
 
 - **Catálogos de tickets:** estados (los seis estructurales), prioridades (Baja, Media, Alta y Crítica), categorías, ubicaciones y motivos de cierre, con el comando `seed-catalogs` para cargar los datos iniciales.
 - **Modelo de datos de tickets:** tabla de tickets con identificador público generado por una secuencia de PostgreSQL, solicitantes de cada ticket (relación temporal N:M) e historial de eventos inmutable, más el servicio que crea tickets.
 - **Administración de catálogos:** el Administrador gestiona categorías, prioridades y ubicaciones desde la interfaz (crear, editar, desactivar y reactivar), con auditoría de cada cambio.
-
 - **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre su detalle, visible solo para quien corresponde.
-
 - **Listado de tickets:** "Tickets" (personal) y "Mis tickets" (Solicitante) muestran solo lo que cada rol puede ver, con pestañas Todos, Abiertos y Cerrados, buscador (número, título, contenido y, para el personal, solicitante), filtros, orden y paginación. La barra superior también busca tickets.
-
 - **Edición de tickets:** el personal puede editar el título, la descripción, la categoría y la ubicación de un ticket, y cambiar su prioridad indicando un motivo. Cada cambio queda en el historial con lo que había antes y lo que hay ahora, y si dos personas editan a la vez, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
+- **Cierre de la versión:** revisión final, tests que recorren todas las rutas de la aplicación para comprobar que ninguna queda sin autenticación ni sin protección CSRF, y la guía de primera configuración con un recorrido de prueba y una solución de problemas.
 
 Todavía **no se pueden cambiar el estado de un ticket, asignarlo ni comentarlo**: llegan en `v0.4.0`.
 
-La suite cuenta con **958 tests automatizados**.
+Al cerrar la versión, la suite contaba con **967 tests automatizados**.
 
 ### `v0.2.0 — Usuarios, autenticación completa y RBAC`
 
@@ -100,7 +115,7 @@ La suite de fundación cuenta actualmente con **20 tests automatizados**.
 
 ### Próximo hito
 
-Cuando se complete `v0.3.0`, la siguiente versión es `v0.4.0 — Asignación, colaboración y ciclo de vida` (asignación de técnicos, cambios de estado, comentarios, notas internas, adjuntos, resolución y cierre). El detalle de cada fase está en [`docs/12_roadmap.md`](docs/12_roadmap.md).
+La siguiente versión es `v0.4.0 — Asignación, colaboración y ciclo de vida`: asignación de técnicos, cambios de estado, comentarios públicos y notas internas, adjuntos, resolución y cierre. El detalle de cada fase está en [`docs/12_roadmap.md`](docs/12_roadmap.md).
 
 ---
 
@@ -230,8 +245,6 @@ WorkDesk/
 ├── migrations/
 │   └── versions/
 │
-├── scripts/
-│
 ├── src/
 │   └── workdesk/
 │       ├── account/
@@ -272,6 +285,7 @@ WorkDesk/
 │       │   ├── errors/
 │       │   ├── layouts/
 │       │   ├── main/
+│       │   ├── tickets/
 │       │   └── users/
 │       ├── tickets/
 │       ├── users/
@@ -301,6 +315,7 @@ WorkDesk/
 │   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
+│   ├── test_route_protection.py
 │   ├── test_seed_demo.py
 │   ├── test_session_limits.py
 │   ├── test_formatting.py
@@ -316,9 +331,11 @@ WorkDesk/
 │   ├── test_users_manage_routes.py
 │   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
-│   └── test_users_service.py
+│   ├── test_users_service.py
+│   └── ticket_helpers.py
 │
 ├── .env.example
+├── .gitattributes
 ├── .gitignore
 ├── AGENTS.md
 ├── CLAUDE.md
@@ -336,10 +353,23 @@ WorkDesk/
 
 Para ejecutar WorkDesk localmente se requiere:
 
-- Python instalado.
-- PostgreSQL instalado y en ejecución.
-- Git.
-- Un entorno virtual de Python recomendado.
+| Requisito | Versión | Notas |
+| --- | --- | --- |
+| Python | 3.11 o superior | WorkDesk se desarrolla y se prueba con Python 3.14. En Windows, marca "Add python.exe to PATH" al instalarlo. |
+| PostgreSQL | Una versión reciente | WorkDesk se desarrolla con PostgreSQL 18. Debe estar **instalado y en ejecución**. |
+| Git | Cualquier versión reciente | Para clonar el repositorio. |
+
+No hace falta Docker ni ningún servicio externo.
+
+Comprueba lo que ya tienes instalado:
+
+```bash
+python --version
+psql --version
+git --version
+```
+
+En Windows, si `python` no se reconoce, prueba con `py`. Si `psql` no se reconoce, PostgreSQL puede estar instalado pero fuera del `PATH`: más adelante se explica cómo abrir su consola sin necesidad de él.
 
 ---
 
@@ -352,19 +382,30 @@ git clone https://github.com/joonathan-94/WorkDesk.git
 cd WorkDesk
 ```
 
+A partir de aquí, **todos los comandos se ejecutan desde esta carpeta** (la raíz del proyecto, donde están `README.md` y `src/`).
+
 ---
 
 ### 2. Crear el entorno virtual
+
+El entorno virtual mantiene las dependencias de WorkDesk separadas del resto de tu equipo.
 
 ```bash
 python -m venv .venv
 ```
 
-En Git Bash para Windows:
+Actívalo según tu terminal:
 
-```bash
-source .venv/Scripts/activate
-```
+| Terminal | Comando |
+| --- | --- |
+| Git Bash (Windows) | `source .venv/Scripts/activate` |
+| PowerShell (Windows) | `.venv\Scripts\Activate.ps1` |
+| CMD (Windows) | `.venv\Scripts\activate.bat` |
+| macOS y Linux | `source .venv/bin/activate` |
+
+Sabrás que está activo porque la línea de comandos empieza con `(.venv)`. Cada vez que abras una terminal nueva para trabajar con WorkDesk, tendrás que activarlo otra vez.
+
+Si PowerShell se niega a ejecutar el script por la política de ejecución, ejecuta una sola vez `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` y vuelve a intentarlo, o usa CMD o Git Bash.
 
 ---
 
@@ -384,6 +425,12 @@ Para instalar únicamente las dependencias de ejecución:
 python -m pip install -r requirements.txt
 ```
 
+Para comprobar que quedaron instaladas:
+
+```bash
+python -m pip show flask
+```
+
 ---
 
 ## Configuración de PostgreSQL
@@ -395,39 +442,33 @@ workdesk_dev
 workdesk_test
 ```
 
-`workdesk_dev` corresponde al entorno normal de desarrollo.
+`workdesk_dev` es la base de la aplicación: ahí viven tus usuarios, catálogos y tickets.
 
-`workdesk_test` se utiliza exclusivamente para los tests automatizados.
+`workdesk_test` se utiliza exclusivamente para los tests automatizados. Cada test **borra y vuelve a crear las tablas** antes de empezar, por eso nunca deben apuntar a `workdesk_dev` (WorkDesk lo impide: ver [Tests](#tests)).
 
-### Rol de aplicación
+Ambas pertenecen a un rol PostgreSQL dedicado, `workdesk_app`, para que la aplicación no tenga que usar el superusuario.
 
-La configuración local puede utilizar un rol PostgreSQL dedicado:
+### 1. Abrir la consola de PostgreSQL
 
-```text
-workdesk_app
-```
+Las sentencias de abajo se ejecutan una sola vez, como el superusuario `postgres` (con la contraseña que elegiste al instalar PostgreSQL). Usa la opción que prefieras:
 
-Ejemplo conceptual de preparación:
+- **`psql`:** desde el menú Inicio abre **SQL Shell (psql)** y pulsa Enter en cada valor propuesto hasta que pida la contraseña de `postgres`. Si `psql` está en el `PATH`, también sirve `psql -U postgres`.
+- **pgAdmin:** conéctate al servidor, haz clic derecho sobre la base `postgres` y elige **Query Tool**. Ejecuta **cada sentencia por separado** (selecciónala y pulsa ejecutar): `CREATE DATABASE` no puede ir dentro de un lote de varias sentencias.
 
-```sql
-CREATE ROLE workdesk_app
-WITH LOGIN
-PASSWORD 'change-me';
-```
-
-Crear la base de desarrollo:
+### 2. Crear el rol y las bases de datos
 
 ```sql
-CREATE DATABASE workdesk_dev
-OWNER workdesk_app;
+CREATE ROLE workdesk_app WITH LOGIN PASSWORD 'elige-una-contraseña';
+
+CREATE DATABASE workdesk_dev OWNER workdesk_app;
+
+CREATE DATABASE workdesk_test OWNER workdesk_app;
 ```
 
-Crear la base exclusiva para testing:
-
-```sql
-CREATE DATABASE workdesk_test
-OWNER workdesk_app;
-```
+- Cambia `elige-una-contraseña` por una contraseña tuya. La necesitarás en el archivo `.env`; para uso local conviene una sin símbolos (ver [Variables de entorno](#variables-de-entorno)).
+- Que `workdesk_app` sea el **propietario** de las dos bases es importante: desde PostgreSQL 15, un rol que no es propietario de la base no puede crear tablas en ella por defecto, y las migraciones fallarían.
+- Si el rol o las bases ya existen, PostgreSQL responde `already exists` (o "ya existe"): puedes continuar.
+- En `psql`, `\l` lista las bases creadas y `\q` cierra la consola.
 
 Las credenciales reales deben definirse únicamente en el archivo `.env` local.
 
@@ -435,58 +476,72 @@ Las credenciales reales deben definirse únicamente en el archivo `.env` local.
 
 ## Variables de entorno
 
-Copiar el archivo de ejemplo:
+WorkDesk lee su configuración de un archivo `.env` ubicado en la raíz del proyecto. Ese archivo **no se versiona** porque contiene secretos; el repositorio incluye `.env.example` como plantilla.
+
+### 1. Copiar la plantilla
+
+| Terminal | Comando |
+| --- | --- |
+| Git Bash, macOS y Linux | `cp .env.example .env` |
+| PowerShell | `Copy-Item .env.example .env` |
+| CMD | `copy .env.example .env` |
+
+### 2. Generar la `SECRET_KEY`
+
+`SECRET_KEY` es la clave con la que Flask firma la cookie de sesión. Cada instalación debe tener la suya: genérala con este comando y copia el resultado (64 caracteres).
 
 ```bash
-cp .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Configurar como mínimo:
+### 3. Completar tres valores
+
+La plantilla ya trae valores razonables para casi todo. Edita `.env` y completa solo estas tres líneas:
 
 ```env
-APP_ENV=development
-APP_TIMEZONE=America/Santiago
+SECRET_KEY=pega-aqui-la-clave-generada
 
-SECRET_KEY=
-SESSION_COOKIE_SECURE=false
+DATABASE_URL=postgresql+psycopg://workdesk_app:TU_CONTRASENA@localhost:5432/workdesk_dev
 
-DATABASE_URL=
-TEST_DATABASE_URL=
-
-LOGIN_MAX_FAILED_ATTEMPTS=5
-LOGIN_LOCK_MINUTES=15
-
-PASSWORD_MIN_LENGTH=12
-
-SESSION_IDLE_MINUTES=30
-SESSION_MAX_HOURS=8
-
-LOG_LEVEL=DEBUG
-LOG_MAX_BYTES=5242880
-LOG_BACKUP_COUNT=5
+TEST_DATABASE_URL=postgresql+psycopg://workdesk_app:TU_CONTRASENA@localhost:5432/workdesk_test
 ```
 
-Ejemplo de formato para PostgreSQL:
+La dirección de conexión tiene este formato:
 
-```env
-DATABASE_URL=postgresql+psycopg://workdesk_app:password@localhost:5432/workdesk_dev
-
-TEST_DATABASE_URL=postgresql+psycopg://workdesk_app:password@localhost:5432/workdesk_test
+```text
+postgresql+psycopg://USUARIO:CONTRASEÑA@SERVIDOR:PUERTO/BASE
 ```
 
-No deben versionarse credenciales reales.
+- `TU_CONTRASENA` es la contraseña que le pusiste al rol `workdesk_app`.
+- Si la contraseña tiene símbolos, deben escribirse codificados en la dirección: `@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`, `?` → `%3F` y `%` → `%25`. Para un equipo local, lo más simple es una contraseña sin símbolos.
+- `5432` es el puerto habitual de PostgreSQL; cámbialo si lo instalaste con otro.
+- `TEST_DATABASE_URL` **nunca** debe apuntar a `workdesk_dev`: la suite se niega a ejecutarse si la base no se llama `workdesk_test`.
 
-Durante desarrollo local mediante HTTP:
+No deben versionarse credenciales reales: `.env` está en `.gitignore`, y `git status` no debería mostrarlo.
 
-```env
-SESSION_COOKIE_SECURE=false
-```
+### Todas las variables
 
-En una futura ejecución mediante HTTPS deberá utilizarse:
+Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación; `TEST_DATABASE_URL` hace falta únicamente para los tests. El resto tiene un valor por defecto.
 
-```env
-SESSION_COOKIE_SECURE=true
-```
+| Variable | Valor por defecto | Para qué sirve |
+| --- | --- | --- |
+| `APP_ENV` | `development` | Entorno. Con `production`, `seed-demo` se niega a ejecutarse. |
+| `APP_TIMEZONE` | `America/Santiago` | Zona horaria en la que se muestran las fechas (nombre de la base IANA, por ejemplo `Europe/Madrid`). |
+| `SECRET_KEY` | — (obligatoria) | Clave que firma las sesiones. |
+| `SESSION_COOKIE_SECURE` | `false` | `false` mientras uses HTTP local; `true` solo con HTTPS. |
+| `DATABASE_URL` | — (obligatoria) | Conexión a la base de la aplicación (`workdesk_dev`). |
+| `TEST_DATABASE_URL` | — | Conexión a la base de los tests (`workdesk_test`). |
+| `LOGIN_MAX_FAILED_ATTEMPTS` | `5` | Intentos fallidos de inicio de sesión antes de bloquear la cuenta. |
+| `LOGIN_LOCK_MINUTES` | `15` | Minutos que dura ese bloqueo. |
+| `PASSWORD_MIN_LENGTH` | `12` | Longitud mínima de las contraseñas (entre 8 y 128). |
+| `SESSION_IDLE_MINUTES` | `30` | Minutos de inactividad tras los cuales se cierra la sesión. |
+| `SESSION_MAX_HOURS` | `8` | Duración máxima de una sesión, aunque se use todo el tiempo. |
+| `LOG_LEVEL` | `DEBUG` en desarrollo, `INFO` en otro entorno | Nivel de detalle del registro técnico. |
+| `LOG_MAX_BYTES` | `5242880` (5 MB) | Tamaño máximo de cada archivo de log. |
+| `LOG_BACKUP_COUNT` | `5` | Cantidad de archivos de log antiguos que se conservan. |
+| `WORKDESK_DEMO_PASSWORD` | — | Opcional, solo desarrollo: contraseña de `seed-demo` para ejecutarlo sin que la pida. |
+
+Durante el desarrollo local mediante HTTP debe mantenerse `SESSION_COOKIE_SECURE=false`. En una futura ejecución mediante HTTPS deberá utilizarse `SESSION_COOKIE_SECURE=true`.
 
 ---
 
@@ -505,7 +560,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
 | 8 | Desde la interfaz | Crea tu primer ticket. |
 
-Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación.
+Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
 
 ---
 
@@ -521,6 +576,14 @@ Las migraciones actuales crean estas tablas:
 - `auditoria_administrativa`: registro inmutable de las acciones administrativas.
 - `estados`, `prioridades`, `categorias`, `ubicaciones` y `motivos_cierre`: catálogos de tickets.
 - `tickets`, `tickets_solicitantes` e `historial_ticket`: los tickets, sus solicitantes y su historial.
+
+Para comprobar que se aplicaron:
+
+```bash
+python -m flask --app src.workdesk db current
+```
+
+La última línea debe ser un identificador seguido de `(head)`. Si no se muestra ninguno, la base sigue vacía y falta ejecutar `db upgrade`.
 
 ---
 
@@ -575,13 +638,13 @@ El comando solicita:
 
 - nombre;
 - apellido;
-- username;
+- username (es lo que escribirás para iniciar sesión; se guarda en minúsculas);
 - email;
-- contraseña.
+- contraseña (no se muestra al escribirla y se pide dos veces).
 
-La contraseña debe cumplir la longitud mínima configurada (`PASSWORD_MIN_LENGTH`, 12 caracteres por defecto) y se almacena utilizando Argon2id.
+La contraseña debe cumplir la longitud mínima configurada (`PASSWORD_MIN_LENGTH`, 12 caracteres por defecto) y se almacena utilizando Argon2id. Al terminar, el comando responde `Administrador '...' creado correctamente.`
 
-El comando impide crear accidentalmente más de un Administrador inicial mediante este mecanismo de bootstrap.
+El comando impide crear accidentalmente más de un Administrador inicial mediante este mecanismo de bootstrap: si ya existe uno responde `Ya existe un usuario con rol ADMINISTRADOR.` Los demás usuarios se crean desde la interfaz, en **Administración → Usuarios**.
 
 ---
 
@@ -602,7 +665,7 @@ Crea un equipo de soporte ficticio de 12 personas (2 supervisores, 4 técnicos y
 
 ## Ejecutar WorkDesk
 
-Con el entorno virtual activado:
+Con el entorno virtual activado y desde la raíz del proyecto:
 
 ```bash
 python -m flask --app src.workdesk run --debug
@@ -614,7 +677,12 @@ La aplicación estará disponible normalmente en:
 http://127.0.0.1:5000
 ```
 
-Inicia sesión con el Administrador que creaste en el paso 4.
+Abre esa dirección en el navegador e inicia sesión con el Administrador que creaste en el paso 4.
+
+- **Comprobar que todo responde:** abre `http://127.0.0.1:5000/health`. Debe mostrar `"status": "ok"`, lo que confirma que la aplicación y PostgreSQL funcionan.
+- **Detenerla:** pulsa `Ctrl+C` en la terminal.
+- **`--debug`:** recarga la aplicación cada vez que cambias el código y muestra errores detallados. Úsalo solo en desarrollo.
+- **Puerto ocupado:** si el 5000 está en uso (en macOS lo ocupa AirPlay), añade `--port 5001` al comando y abre esa dirección.
 
 ---
 
@@ -678,6 +746,146 @@ Cosas que conviene saber:
 - **Historial:** en el detalle, cada cambio muestra qué se modificó (por ejemplo, `Prioridad: «Media» → «Alta»`). El **motivo** de un cambio de prioridad lo ve solo el personal: el Solicitante ve qué cambió, pero no por qué.
 - **Ediciones simultáneas:** si mientras editas un ticket otra persona lo modifica, al guardar verás un aviso y el formulario se recarga con los datos actuales, sin pisar su cambio.
 - **Tickets cerrados:** no se editan ni se les cambia la prioridad; primero deberán reabrirse (esa acción llega en `v0.4.0`).
+
+---
+
+## Recorrido de prueba
+
+Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo lo que hace `v0.3.0`. Parte de una instalación terminada: los pasos 1 a 6 de la [preparación inicial](#preparación-inicial), con `seed-demo` ejecutado (para tener personas de cada rol) y las categorías de tu organización ya creadas.
+
+### Tener tickets con los que probar
+
+Para ver la paginación, la búsqueda y los filtros hacen falta bastantes tickets. Puedes crearlos a mano desde **Crear ticket** o generar 25 de ejemplo con el fragmento de abajo. Es opcional, no forma parte de WorkDesk y solo tiene sentido en un entorno de prueba.
+
+Abre la consola de Flask, con el entorno virtual activado y desde la raíz del proyecto:
+
+```bash
+python -m flask --app src.workdesk shell
+```
+
+Pega este código y pulsa Enter. Necesita que el Administrador ya exista; si cargaste `seed-demo`, los tickets se reparten entre las seis personas solicitantes de demostración.
+
+```python
+from sqlalchemy import select
+from src.workdesk.extensions import db
+from src.workdesk.models import Categoria, Prioridad, Role, User
+from src.workdesk.tickets.service import create_ticket
+
+def usuarios_activos(codigo_rol):
+    return db.session.scalars(
+        select(User).join(Role)
+        .where(Role.codigo == codigo_rol, User.activo.is_(True))
+        .order_by(User.id)
+    ).all()
+
+admin = usuarios_activos("ADMINISTRADOR")[0]
+solicitantes = usuarios_activos("SOLICITANTE")
+categorias = db.session.scalars(
+    select(Categoria).where(Categoria.activo.is_(True)).order_by(Categoria.id)
+).all()
+prioridades = db.session.scalars(
+    select(Prioridad).where(Prioridad.activo.is_(True)).order_by(Prioridad.nivel)
+).all()
+titulos = [
+    "No puedo iniciar sesión en el correo",
+    "La impresora del segundo piso no imprime",
+    "Necesito instalar un programa de diseño",
+    "Internet muy lento en la oficina",
+    "El computador se reinicia solo",
+]
+
+for n in range(1, 26):
+    create_ticket(
+        actor=admin,
+        title=f"{titulos[n % 5]} ({n})",
+        description="Ticket de ejemplo para probar listados, filtros y búsquedas.",
+        category_id=categorias[n % len(categorias)].id,
+        priority_id=prioridades[n % len(prioridades)].id,
+        requester_ids=[solicitantes[n % len(solicitantes)].id] if solicitantes else [],
+    )
+
+db.session.commit()
+```
+
+Crea 25 tickets a nombre del Administrador, repartidos entre tus categorías activas y las prioridades, con cinco títulos distintos para poder buscar. Si tu terminal no acepta pegar varias líneas de una vez, pega el código por bloques, separados por las líneas en blanco. Sal de la consola con `exit()`.
+
+### Usuarios de demostración
+
+`seed-demo` crea estas cuentas, todas con la contraseña que escribiste al ejecutarlo. El username es lo que se escribe en el login.
+
+| Rol | Usernames |
+| --- | --- |
+| Supervisor | `camila.rojas`, `matias.fuentes` |
+| Técnico | `diego.soto`, `valentina.pizarro`, `felipe.araya`, `francisca.munoz` |
+| Solicitante | `javiera.torres`, `sebastian.vargas`, `constanza.herrera`, `ignacio.molina`, `paula.contreras`, `andres.silva` |
+
+Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de usuario, cierra la sesión desde el menú del avatar (arriba a la derecha).
+
+### 1. Como Administrador
+
+1. Inicia sesión. La barra lateral muestra **Dashboard**, **Tickets**, **Crear ticket**, **Administración** y **Mi cuenta**.
+2. **Crear ticket:** envía el formulario incompleto (por ejemplo, solo con el título). Cada campo obligatorio que falta muestra su error y el formulario conserva lo que ya habías escrito. Luego créalo bien, marcando dos solicitantes (el buscador filtra la lista). Debes ver el aviso `Ticket #N creado correctamente.` y el detalle con estado `Nuevo`, el creador y los solicitantes.
+3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con más de 20 tickets hay dos páginas; al cambiar de página se conserva lo que hayas filtrado.
+4. **Buscar:** si generaste los tickets de ejemplo, escribe `impresora`: deben aparecer los cinco que la mencionan. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
+5. **Filtrar y ordenar:** filtra por estado y por prioridad, abre **Más filtros** (categoría, ubicación y fechas) y combínalos con la búsqueda. **Limpiar filtros** los quita. Cambia **Ordenar por** a `Mayor prioridad primero`.
+6. **Editar:** abre un ticket y pulsa **Editar**. Cambia el título y guarda: aparece `Ticket #N actualizado.` y el historial muestra `Título: «antes» → «después»`. Vuelve a guardar sin tocar nada: `No había cambios que guardar.`
+7. **Cambiar prioridad:** pulsa **Cambiar prioridad**. Sin motivo, el formulario lo rechaza. Con un motivo, el historial muestra el cambio y `Motivo: ...`.
+8. **Ediciones simultáneas:** abre el mismo ticket en dos pestañas del navegador (A y B) y pulsa **Editar** en ambas. Guarda en A. Al guardar en B aparece `Otra persona modificó este ticket mientras lo editabas...` y el formulario se recarga con los datos de A, sin pisar su cambio.
+9. **Catálogos:** en **Administración → Categorías**, desactiva una categoría que ya usan tickets. Esos tickets la conservan, pero ya no aparece en **Crear ticket**. Reactívala cuando quieras.
+
+### 2. Como Solicitante
+
+Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
+
+1. La barra lateral muestra **Dashboard**, **Mis tickets**, **Crear ticket** y **Mi cuenta**; no hay Administración.
+2. **Mis tickets** lista solo los tickets que creó o donde figura como solicitante. Compáralo con lo que veías como Administrador.
+3. Abre uno: ves la descripción, el resumen y el historial, pero no "Creado por" ni los solicitantes, y no hay botones **Editar** ni **Cambiar prioridad**.
+4. Si a ese ticket se le cambió la prioridad, el historial muestra qué cambió pero **no el motivo**.
+5. En la barra de direcciones, cambia el número por el de un ticket de otra persona (`/tickets/N`): aparece **Página no encontrada** (404), igual que con un número que no existe (`/tickets/9999`). No se puede deducir qué tickets existen.
+6. Abre `/tickets/N/edit` con el número de un ticket propio: aparece **Acceso denegado** (403). Lo mismo con `/admin`.
+7. **Crear ticket:** no hay sección de solicitantes; al crearlo, quedas registrado como su solicitante.
+
+### 3. Como Técnico
+
+Entra, por ejemplo, como `diego.soto`.
+
+1. **Tickets** muestra todos los tickets, incluidos los que crearon otras personas.
+2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
+3. No ve **Administración**; `/admin` responde **Acceso denegado**.
+
+### Lo que todavía no verás
+
+- La pestaña **Cerrados** estará vacía: aún no se puede cerrar un ticket.
+- No se puede cambiar el estado, asignar técnicos, comentar ni adjuntar archivos: llega en `v0.4.0`.
+- El dashboard es una pantalla temporal.
+
+---
+
+## Solución de problemas
+
+| Síntoma | Causa probable | Qué hacer |
+| --- | --- | --- |
+| `Falta configuración obligatoria: SECRET_KEY` (o `SQLALCHEMY_DATABASE_URI`) | `.env` no existe, no está en la raíz del proyecto o tiene la variable vacía. `SQLALCHEMY_DATABASE_URI` se toma de `DATABASE_URL`. | Comprueba que `.env` está junto a `README.md` y que `SECRET_KEY` y `DATABASE_URL` tienen valor. |
+| `Connection refused`, `connection failed` o "se rechazó la conexión" | PostgreSQL no está en ejecución, o escucha en otro puerto. | Inicia el servicio (en Windows: **Servicios** → `postgresql-x64-18`, donde el número es la versión → **Iniciar**) y revisa el puerto de `DATABASE_URL`. |
+| `password authentication failed for user "workdesk_app"` | La contraseña de `DATABASE_URL` no es la del rol, o tiene símbolos sin codificar. | Revísala (ver [Variables de entorno](#variables-de-entorno)) o cámbiala con `ALTER ROLE workdesk_app WITH PASSWORD 'nueva';` desde la consola de PostgreSQL. |
+| `database "workdesk_dev" does not exist` | La base no se creó, o el nombre al final de la dirección no coincide. | Créala como se explica en [Configuración de PostgreSQL](#configuración-de-postgresql). |
+| `permission denied for schema public` al migrar | La base no pertenece a `workdesk_app`. | Desde la consola de PostgreSQL: `ALTER DATABASE workdesk_dev OWNER TO workdesk_app;` |
+| `relation "usuarios" does not exist` (o "no existe la relación") | Faltan las migraciones. | Ejecuta `python -m flask --app src.workdesk db upgrade`. |
+| `ModuleNotFoundError: No module named 'flask'` | El entorno virtual no está activo o no se instalaron las dependencias. | Actívalo (ver [Instalación](#instalación)) y ejecuta `python -m pip install -r requirements-dev.txt`. |
+| `Could not import 'src.workdesk'` o `No module named 'src'` | Estás fuera de la raíz del proyecto. | Entra con `cd` en la carpeta que contiene `src/` y `README.md`. |
+| PowerShell: "la ejecución de scripts está deshabilitada en este sistema" | Política de ejecución de PowerShell. | Mira el paso 2 de la [Instalación](#instalación). |
+| `psql` no se reconoce | La carpeta `bin` de PostgreSQL no está en el `PATH`. | Usa **SQL Shell (psql)** desde el menú Inicio o pgAdmin, o añade esa carpeta al `PATH`. |
+| `create-admin`: "No existe el rol ADMINISTRADOR. Ejecuta primero el comando seed-roles." | Se saltó el paso 2 de la preparación. | Ejecuta `seed-roles` y vuelve a intentarlo. |
+| `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
+| Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
+| "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
+| Inicias sesión y vuelves a ver el login | Con `SESSION_COOKIE_SECURE=true` y HTTP, algunos navegadores no guardan la cookie de sesión. | En local usa `SESSION_COOKIE_SECURE=false` y reinicia WorkDesk. |
+| En **Crear ticket** solo aparece `Sin clasificar` como categoría | Todavía no se crearon categorías. | **Administración → Categorías → Nueva categoría** (ver [Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)). |
+| Las fechas aparecen en hora UTC | `APP_TIMEZONE` no es un nombre de zona válido. | Usa un nombre IANA, como `America/Santiago`, y reinicia WorkDesk. |
+| El puerto 5000 está ocupado | Otro programa lo usa (en macOS, AirPlay). | Añade `--port 5001` al comando de arranque. |
+| Tests: "Falta TEST_DATABASE_URL para ejecutar los tests." | `.env` no define `TEST_DATABASE_URL`. | Defínela apuntando a `workdesk_test`. |
+| Tests: "Los tests solo pueden ejecutarse sobre workdesk_test." | `TEST_DATABASE_URL` apunta a otra base. | Corrígela. La protección es intencional: protege `workdesk_dev`. |
+| Tests que fallan al azar con tablas que "no existen" | Hay dos ejecuciones de `pytest` a la vez sobre `workdesk_test`. | Ejecuta una sola cada vez: comparten la misma base y cada una recrea sus tablas. |
 
 ---
 
@@ -796,6 +1004,8 @@ La base técnica de autenticación utiliza:
 
 La autorización basada en roles se comprueba en backend (`security/authorization.py`) y se aplica a las rutas administrativas; la navegación se filtra por rol.
 
+Una red de seguridad automática (`tests/test_route_protection.py`) recorre **todas** las rutas registradas y falla si alguna se puede abrir sin iniciar sesión (salvo las públicas: `/login`, `/health` y los archivos estáticos) o si alguna ruta POST acepta una petición sin token CSRF. Así, una ruta nueva no puede quedar desprotegida por olvido.
+
 ---
 
 ## Manejo de errores
@@ -804,6 +1014,7 @@ WorkDesk dispone actualmente de respuestas controladas para:
 
 ```text
 400 Bad Request
+403 Forbidden
 404 Not Found
 500 Internal Server Error
 ```
@@ -854,7 +1065,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-958 tests
+967 tests
 ```
 
 Los tests cubren principalmente:
@@ -871,7 +1082,10 @@ Los tests cubren principalmente:
 - modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación;
 - creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local;
 - listado de tickets: visibilidad por rol aplicada en la consulta (y comprobada contra la política de acceso), búsqueda, pestañas con contadores, filtros, orden, paginación, ausencia de consultas por fila y parámetros inválidos;
-- edición de tickets: permisos por rol (403 para quien ve pero no edita), cambios y su historial, valores de catálogo desactivados, tickets cerrados, motivo obligatorio de la prioridad, conflictos entre ediciones simultáneas y qué ve cada rol del historial.
+- edición de tickets: permisos por rol (403 para quien ve pero no edita), cambios y su historial, valores de catálogo desactivados, tickets cerrados, motivo obligatorio de la prioridad, conflictos entre ediciones simultáneas y qué ve cada rol del historial;
+- seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión y que las rutas POST exigen token CSRF, con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o exenta de CSRF.
+
+Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
 
 Ejecutar:
 
@@ -879,13 +1093,17 @@ Ejecutar:
 python -m pytest -q
 ```
 
+La suite completa tarda varios minutos (unos 6 en el equipo de desarrollo del proyecto), porque cada test parte de una base recién creada. No es un cuelgue.
+
+Ejecuta **una sola vez a la vez**: todas las ejecuciones comparten `workdesk_test` y cada test recrea las tablas, de modo que dos ejecuciones en paralelo se estorban y fallan de forma aleatoria.
+
 Los tests utilizan exclusivamente:
 
 ```text
 workdesk_test
 ```
 
-La configuración incorpora una protección adicional para evitar que la suite pueda ejecutarse accidentalmente sobre `workdesk_dev`.
+La configuración incorpora una protección adicional para evitar que la suite pueda ejecutarse accidentalmente sobre `workdesk_dev`: si la base de `TEST_DATABASE_URL` no se llama `workdesk_test`, la suite se niega a ejecutarse.
 
 ---
 
