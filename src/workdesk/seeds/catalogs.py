@@ -16,6 +16,8 @@ from ..models import (
     MotivoCierre,
     MotivoEspera,
     Prioridad,
+    StateAction,
+    TransicionEstado,
 )
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 
@@ -180,6 +182,38 @@ INITIAL_WAIT_REASONS = (
     },
 )
 
+# Transiciones estructuralmente válidas del flujo (docs/08, sección 34; docs/09,
+# 12.2): (origen, destino, acción, descripción). Quién ejecuta cada acción lo
+# decide el código de autorización, no esta tabla.
+#
+# `DESASIGNACION` (quitar al último técnico de un ticket `Asignado` lo deja en
+# `Nuevo`) no figura en docs/08: se añade porque `Asignado` significa tener
+# responsables. `AUTO_CIERRE` se carga ya, pero nada la usa hasta el cierre
+# automático (v0.5.0).
+S = StateAction
+INITIAL_TRANSITIONS = (
+    ("NUEVO", "ASIGNADO", S.ASIGNAR, "Se asigna un técnico."),
+    ("NUEVO", "EN_PROGRESO", S.INICIAR, "Se inicia el trabajo."),
+    ("NUEVO", "RESUELTO", S.RESOLVER, "Se resuelve sin pasos previos."),
+    ("NUEVO", "CERRADO", S.CIERRE_DIRECTO, "Cierre directo."),
+    ("ASIGNADO", "NUEVO", S.DESASIGNACION, "Se quita al último técnico."),
+    ("ASIGNADO", "EN_PROGRESO", S.INICIAR, "Se inicia el trabajo."),
+    ("ASIGNADO", "RESUELTO", S.RESOLVER, "Se resuelve."),
+    ("ASIGNADO", "CERRADO", S.CIERRE_DIRECTO, "Cierre directo."),
+    ("EN_PROGRESO", "EN_ESPERA", S.PONER_EN_ESPERA, "Depende de un tercero."),
+    ("EN_PROGRESO", "RESUELTO", S.RESOLVER, "Se resuelve."),
+    ("EN_PROGRESO", "CERRADO", S.CIERRE_DIRECTO, "Cierre directo."),
+    ("EN_ESPERA", "EN_PROGRESO", S.REACTIVAR, "Se retoma el trabajo."),
+    ("EN_ESPERA", "RESUELTO", S.RESOLVER, "Se resuelve desde la espera."),
+    ("EN_ESPERA", "CERRADO", S.CIERRE_DIRECTO, "Cierre directo."),
+    ("RESUELTO", "CERRADO", S.CONFIRMAR, "El solicitante confirma."),
+    ("RESUELTO", "CERRADO", S.AUTO_CIERRE, "Cierre automático del sistema."),
+    ("RESUELTO", "CERRADO", S.CIERRE_EXCEPCIONAL, "Cierre excepcional."),
+    ("RESUELTO", "EN_PROGRESO", S.RECHAZAR, "El solicitante rechaza."),
+    ("RESUELTO", "EN_PROGRESO", S.REABRIR, "Reapertura desde Resuelto."),
+    ("CERRADO", "EN_PROGRESO", S.REABRIR, "Reapertura desde Cerrado."),
+)
+
 
 def _seed_by_code(model, rows) -> int:
     """Inserta los registros cuyo `codigo` no existe; devuelve cuántos creó."""
@@ -199,15 +233,63 @@ def _seed_by_code(model, rows) -> int:
     return created
 
 
+def _seed_transitions() -> int:
+    """Inserta las transiciones que faltan; devuelve cuántas creó.
+
+    Cada una se identifica por (origen, destino, acción). Si ya existe no se
+    toca, así que no se pisa una transición que el Administrador haya
+    deshabilitado.
+    """
+    # Los estados se acaban de añadir a la sesión: hay que volcarlos para
+    # poder consultar sus ids.
+    db.session.flush()
+
+    state_ids = {
+        code: state_id
+        for code, state_id in db.session.execute(
+            db.select(Estado.codigo, Estado.id)
+        )
+    }
+    existing = set(
+        db.session.execute(
+            db.select(
+                TransicionEstado.estado_origen_id,
+                TransicionEstado.estado_destino_id,
+                TransicionEstado.accion,
+            )
+        ).all()
+    )
+    created = 0
+
+    for origin, destination, action, description in INITIAL_TRANSITIONS:
+        key = (state_ids[origin], state_ids[destination], action.value)
+
+        if key in existing:
+            continue
+
+        db.session.add(
+            TransicionEstado(
+                estado_origen_id=key[0],
+                estado_destino_id=key[1],
+                accion=key[2],
+                descripcion=description,
+            )
+        )
+        created += 1
+
+    return created
+
+
 def seed_catalogs() -> dict[str, int]:
-    """Carga estados, prioridades, categoría de respaldo, motivos de cierre y
-    motivos de espera.
+    """Carga estados, sus transiciones, prioridades, categoría de respaldo,
+    motivos de cierre y motivos de espera.
 
     Devuelve cuántos registros creó de cada catálogo. Confirma una sola vez
     al final: o se cargan todos o ninguno.
     """
     created = {
         "estados": _seed_by_code(Estado, INITIAL_STATES),
+        "transiciones": _seed_transitions(),
         "prioridades": _seed_by_code(Prioridad, INITIAL_PRIORITIES),
         "categorias": _seed_by_code(Categoria, INITIAL_CATEGORIES),
         "motivos_cierre": _seed_by_code(MotivoCierre, INITIAL_CLOSE_REASONS),

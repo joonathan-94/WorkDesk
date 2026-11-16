@@ -1850,6 +1850,14 @@ Resumen simplificado:
 - **Conflicto de edición:** si otra persona modificó el ticket mientras se editaba, el guardado se rechaza con un aviso de error y se vuelve al formulario con los datos actuales.
 - **Avisos:** "Ticket #N actualizado.", "La prioridad del ticket #N se actualizó.", "No había cambios que guardar." y "El ticket ya tiene esa prioridad.".
 
+**Cambios de estado (`v0.4.0`, entrega 3)** — reglas en `docs/06` (RN-156):
+
+- **Acciones:** el personal ve en la cabecera un botón primario por cada cambio de estado válido desde el estado actual (**Iniciar trabajo**, **Poner en espera** o **Reactivar**; uno o dos como máximo). El Solicitante no ve ninguno. En tickets `Resuelto` o `Cerrado` no se ofrece ninguno todavía.
+- **Pantalla separada** (no modal, como Editar y Cambiar prioridad, para que funcione sin JavaScript), con la ruta de navegación "Tickets / #N / {acción}": muestra el estado actual y el de destino, una frase que explica el efecto y el botón de la acción. Los docs prefieren modales para las acciones de alto impacto: se añadirán como mejora progresiva en la fase de pulido visual, reutilizando las mismas rutas.
+- **Poner en espera:** añade el selector "Motivo de espera" (opcional, con "Sin motivo" y los motivos activos) y una explicación libre con contador que solo se muestra, con JavaScript, al elegir un motivo que admita texto libre.
+- **Historial:** el evento "Estado cambiado" muestra `Estado: «a» → «b»` a todos los roles. El personal ve además `Motivo de espera: …` y `Motivo: …` (el texto libre).
+- **Avisos:** "El ticket #N pasó a «Estado»." y, si la acción ya no corresponde, "Esta acción no está disponible para el estado actual del ticket.".
+
 ---
 
 ## UI-005A — Resuelto pendiente de validación

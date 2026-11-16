@@ -1425,9 +1425,28 @@ Aplica RF-022, RF-025 y RN-17 y RN-22 en la implementación inicial de la edici�
 
 **Ediciones simultáneas** (RN-114). Cada ticket tiene una versión que sube con cada cambio. Quien guarda debe hacerlo sobre la versión que abrió: si otra persona modificó el ticket mientras tanto, el guardado se rechaza con un aviso y se muestran los datos actuales, de modo que ninguna edición pisa en silencio a otra. El bloqueo temporal que avisa de quién está editando (RN-115 a RN-117) se implementa en `v0.4.0`.
 
+
 ---
 
-# 23. Concurrencia y edición
+## RN-156 — Cambios de estado operativos
+
+Aplica y precisa RN-34 a RN-50 en la implementación de `v0.4.0` (entrega 3). Cubre las acciones **iniciar el trabajo**, **poner en espera** y **reactivar**; asignar, resolver, cerrar y reabrir se añaden con su funcionalidad.
+
+**Qué es una transición.** Una acción es válida solo si existe como fila **activa** en `transiciones_estados` para el estado actual del ticket (docs/09, 12.2). La tabla contiene las transiciones estructuralmente válidas del flujo (docs/08, sección 34): el Administrador podrá deshabilitar alguna, nunca crear otras ni romper el ciclo de vida. La tabla no guarda permisos: quién ejecuta cada acción lo decide la autorización de la aplicación.
+
+**Quién.** Técnico, Supervisor y Administrador, comprobado en backend. El Solicitante no cambia estados operativos. Un técnico no necesita estar asignado al ticket (RN-43).
+
+**Acciones.**
+
+* **Iniciar trabajo:** `Nuevo` o `Asignado` → `En progreso`. No exige técnico ni grupo: los tickets pueden existir sin ellos (docs/09, 13.2).
+* **Poner en espera:** `En progreso` → `En espera`. El **motivo es opcional** (RN-49): se elige entre los motivos activos del catálogo y, si el motivo admite texto libre (la opción genérica «Otro motivo»), puede añadirse una explicación de hasta 500 caracteres. Un texto sin un motivo que lo admita se rechaza. Cualquier otra acción rechaza motivo y texto.
+* **Reactivar:** `En espera` → `En progreso`.
+
+**Un ticket cerrado no cambia de estado**: primero debe reabrirse. Una acción que no corresponde al estado actual (por ejemplo, porque otra persona ya cambió el estado) se rechaza con un aviso, también al abrir la pantalla.
+
+**Concurrencia.** Cada cambio de estado **sube la versión** del ticket, como la edición (RN-155). La pantalla lleva la versión con la que se abrió y el servidor bloquea la fila del ticket antes de validar: si dos personas actúan a la vez, la segunda espera y ve el resultado de la primera (conflicto de versión), de modo que nunca se aplican dos transiciones sobre el mismo estado.
+
+**Historial y visibilidad.** Cada cambio queda como `ESTADO_CAMBIADO` con el estado anterior y el nuevo, quién y cuándo. El evento es público: el Solicitante ve el cambio de estado. El **motivo de espera y su texto son solo del personal**, igual que el motivo de un cambio de prioridad (RN-155): el Solicitante ve que el ticket está en espera, no por qué.
 
 ## RN-114 — Integridad ante concurrencia
 

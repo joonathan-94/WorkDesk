@@ -35,6 +35,7 @@ class TicketEvent(StrEnum):
     TICKET_MODIFICADO = "TICKET_MODIFICADO"
     CATEGORIA_CAMBIADA = "CATEGORIA_CAMBIADA"
     PRIORIDAD_CAMBIADA = "PRIORIDAD_CAMBIADA"
+    ESTADO_CAMBIADO = "ESTADO_CAMBIADO"
 
 
 class HistoryVisibility(StrEnum):
@@ -59,6 +60,9 @@ DEFAULT_EVENT_VISIBILITY = {
     TicketEvent.TICKET_MODIFICADO: HistoryVisibility.PUBLICO,
     TicketEvent.CATEGORIA_CAMBIADA: HistoryVisibility.PUBLICO,
     TicketEvent.PRIORIDAD_CAMBIADA: HistoryVisibility.PUBLICO,
+    # El cambio de estado lo ve el Solicitante; el motivo de espera y su
+    # texto, no (se muestran solo al personal, como el motivo de prioridad).
+    TicketEvent.ESTADO_CAMBIADO: HistoryVisibility.PUBLICO,
 }
 
 
@@ -67,6 +71,7 @@ TICKET_EVENT_LABELS = {
     TicketEvent.TICKET_MODIFICADO: "Ticket modificado",
     TicketEvent.CATEGORIA_CAMBIADA: "Categoría cambiada",
     TicketEvent.PRIORIDAD_CAMBIADA: "Prioridad cambiada",
+    TicketEvent.ESTADO_CAMBIADO: "Estado cambiado",
 }
 
 
@@ -196,6 +201,9 @@ class TicketHistory(db.Model):
 
     # None cuando el evento lo generó el sistema.
     actor = relationship("User", foreign_keys=[actor_usuario_id])
+
+    # Solo cuando el evento es la entrada a `En espera` con un motivo.
+    motivo_espera = relationship("MotivoEspera")
 
     @property
     def evento_nombre(self) -> str:

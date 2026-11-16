@@ -7,6 +7,7 @@ from ..catalogs.service import (
     list_categories,
     list_locations,
     list_priorities,
+    list_wait_reasons,
 )
 from ..extensions import db
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
@@ -22,13 +23,23 @@ from ..security import (
 from . import bp
 from .editing import (
     MAX_REASON_LENGTH,
-    TicketClosedError,
-    TicketConflictError,
     change_priority,
     describe_history_changes,
     update_ticket,
 )
-from .forms import PriorityChangeForm, TicketEditForm, TicketForm
+from .forms import (
+    PriorityChangeForm,
+    StateChangeForm,
+    TicketEditForm,
+    TicketForm,
+)
+from .lifecycle import (
+    ACTION_BY_SLUG,
+    MAX_WAIT_TEXT_LENGTH,
+    StateTransitionError,
+    available_actions,
+    change_state,
+)
 from .service import (
     CLOSED_STATE_CODE,
     DEFAULT_SORT,
@@ -47,6 +58,7 @@ from .service import (
     list_ticket_history,
     list_tickets,
 )
+from .versioning import TicketClosedError, TicketConflictError
 
 # Prioridad que se ofrece preseleccionada al crear un ticket (docs/11, UI-004).
 DEFAULT_PRIORITY_CODE = "MEDIA"
@@ -237,6 +249,12 @@ def detail(public_id: str):
             "entry": entry,
             "changes": describe_history_changes(entry),
             "reason": (entry.contexto or {}).get("motivo") if is_staff else None,
+            # El motivo de espera, como el de prioridad, es solo del personal.
+            "wait_reason": (
+                entry.motivo_espera.nombre
+                if is_staff and entry.motivo_espera is not None
+                else None
+            ),
         }
         for entry in list_ticket_history(ticket, _actor())
     ]
@@ -251,6 +269,9 @@ def detail(public_id: str):
         # comprueban la autorización por sí mismas.
         show_edit=can_edit_ticket(current_user) and not is_closed,
         show_priority=can_change_priority(current_user) and not is_closed,
+        # Cambios de estado ofrecidos ahora (ya filtrados por transición
+        # activa y por rol). Cada ruta vuelve a comprobarlos.
+        state_actions=available_actions(ticket, current_user),
     )
 
 
@@ -409,6 +430,111 @@ def change_ticket_priority(public_id: str):
     )
 
 
+# --- Cambios de estado ------------------------------------------------
+
+
+@bp.route("/<public_id>/status/<action_slug>", methods=["GET", "POST"])
+@login_required
+def change_ticket_state(public_id: str, action_slug: str):
+    ticket = _visible_ticket_or_404(public_id)
+    info = ACTION_BY_SLUG.get(action_slug)
+
+    # Una acción que no existe es un 404; una que existe pero el rol no
+    # puede ejecutar, un 403 (quien ve el ticket no necesita que se le oculte).
+    if info is None:
+        abort(404)
+
+    if not info.policy(current_user):
+        abort(403)
+
+    if _is_closed(ticket):
+        return _closed_redirect(
+            ticket,
+            "Un ticket cerrado no se puede modificar. Primero debe reabrirse.",
+        )
+
+    # Se comprueba también en GET: una pantalla abierta antes de que otra
+    # persona cambiara el estado ya no corresponde al ticket.
+    option = next(
+        (a for a in available_actions(ticket, current_user) if a.info is info),
+        None,
+    )
+
+    if option is None:
+        flash(
+            "Esta acción no está disponible para el estado actual del ticket.",
+            "error",
+        )
+
+        return redirect(url_for("tickets.detail", public_id=public_id))
+
+    wait_reasons = list_wait_reasons("activo")
+    initial = {"version": ticket.version} if request.method == "GET" else {}
+
+    form = StateChangeForm(
+        wait_reason_choices=[(reason.id, reason.nombre) for reason in wait_reasons],
+        **initial,
+    )
+
+    if form.validate_on_submit():
+        try:
+            new_state = change_state(
+                ticket,
+                actor=_actor(),
+                action=info.action,
+                expected_version=form.version.data,
+                wait_reason_id=form.motivo_espera.data,
+                text=form.texto.data,
+            )
+            db.session.commit()
+        except TicketConflictError as error:
+            # Otra persona lo modificó: se vuelve a abrir la pantalla con los
+            # datos actuales (si la acción ya no corresponde, avisa).
+            db.session.rollback()
+            flash(str(error), "error")
+
+            return redirect(
+                url_for(
+                    "tickets.change_ticket_state",
+                    public_id=public_id,
+                    action_slug=action_slug,
+                )
+            )
+        except TicketClosedError as error:
+            db.session.rollback()
+            flash(str(error), "error")
+
+            return redirect(url_for("tickets.detail", public_id=public_id))
+        except StateTransitionError as error:
+            db.session.rollback()
+            flash(str(error), "error")
+
+            return redirect(url_for("tickets.detail", public_id=public_id))
+        except TicketRuleError as error:
+            db.session.rollback()
+            flash(str(error), "error")
+        else:
+            flash(
+                info.success_message.format(
+                    number=public_id,
+                    state=new_state.nombre_visible,
+                ),
+                "success",
+            )
+
+            return redirect(url_for("tickets.detail", public_id=public_id))
+
+    return render_template(
+        "tickets/state_change.html",
+        ticket=ticket,
+        form=form,
+        info=info,
+        destination=option.destination,
+        wait_reasons=wait_reasons,
+        max_text=MAX_WAIT_TEXT_LENGTH,
+    )
+
+
 # --- Utilidades -------------------------------------------------------
 
 
@@ -465,11 +591,11 @@ def _is_closed(ticket) -> bool:
     return ticket.estado.codigo == CLOSED_STATE_CODE
 
 
-def _closed_redirect(ticket):
-    flash(
-        "Un ticket cerrado no se puede editar. Primero debe reabrirse.",
-        "error",
-    )
+def _closed_redirect(
+    ticket,
+    message="Un ticket cerrado no se puede editar. Primero debe reabrirse.",
+):
+    flash(message, "error")
 
     return redirect(url_for("tickets.detail", public_id=ticket.public_id))
 

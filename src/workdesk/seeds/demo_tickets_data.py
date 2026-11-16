@@ -37,9 +37,15 @@ faltas de tilde, el problema equivocado ("no tengo internet" cuando era un
 cable) y prioridades exageradas. Esa ambigüedad es intencional: es lo que
 ocurre en un soporte de verdad.
 
-Cuando existan estados, asignaciones, cierres y comentarios, se añadirán
-campos opcionales a `DemoTicket` (con valor por defecto) y los tickets ya
-escritos seguirán siendo válidos.
+Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste) ya
+existen. Cuando existan asignaciones, cierres y comentarios, se añadirán
+campos opcionales con valor por defecto y los tickets ya escritos seguirán
+siendo válidos.
+
+Los tickets cuya historia incluye cambios de estado están al final de la
+lista: al volver a ejecutar el comando solo se crean los que faltan, y un
+ticket ya cargado no se modifica (para ver los estados en tickets antiguos hay
+que recrear la base de desarrollo).
 """
 
 from dataclasses import dataclass
@@ -94,8 +100,15 @@ class DemoAdjustment:
     """Un paso posterior del personal sobre un ticket ya creado.
 
     `despues_horas` son horas laborales desde el paso anterior. Debe cambiar
-    algo: título, descripción, categoría o prioridad. Cambiar la prioridad
-    exige `motivo`.
+    algo: título, descripción, categoría, prioridad o estado. Cambiar la
+    prioridad exige `motivo`.
+
+    `estado` es una acción de estado (`INICIAR`, `PONER_EN_ESPERA` o
+    `REACTIVAR`) que se ejecuta al final del paso, después de los demás
+    cambios, y debe ser válida desde el estado en que va el ticket (empieza
+    en Nuevo). Solo `PONER_EN_ESPERA` admite `motivo_espera` (el código de un
+    motivo del catálogo, por ejemplo `ESPERA_TERCERO`) y, si ese motivo lo
+    permite (`OTRO`), un `texto` libre. Los dos son opcionales.
     """
 
     actor: str
@@ -105,6 +118,9 @@ class DemoAdjustment:
     categoria: str | None = None
     prioridad: str | None = None
     motivo: str | None = None
+    estado: str | None = None
+    motivo_espera: str | None = None
+    texto: str | None = None
 
 
 @dataclass(frozen=True)
@@ -849,5 +865,229 @@ DEMO_TICKETS = (
         creado_por="matias.fuentes",
         hace_dias=7,
         hora="09:50",
+    ),
+    # --- Tickets con cambios de estado ---------------------------------------
+    # Van al final a propósito: al volver a ejecutar el comando solo se crean
+    # los que faltan (un ticket ya cargado no se modifica).
+    DemoTicket(
+        clave="vpn-clave-vencida",
+        titulo="no puedo entrar a la vpn desde mi casa",
+        descripcion=(
+            "buenas, desde ayer no puedo conectarme a la vpn desde mi casa. "
+            "me pide la clave y despues dice que es incorrecta pero es la "
+            "misma de siempre!!\n"
+            "necesito entrar para ver unos contratos que estan en la red de "
+            "la oficina, es para hoy. gracias"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="paula.contreras",
+        hace_dias=9,
+        hora="10:05",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="monitor-parpadea",
+        titulo="el monitor se apaga solo",
+        descripcion=(
+            "mi monitor se apaga solo como cada 10 minutos y despues vuelve. "
+            "al principio pense que era el cable pero ya lo movi y sigue "
+            "igual. no se si es el monitor o el computador.\n"
+            "es el de la oficina del fondo, el que esta al lado de la "
+            "impresora grande."
+        ),
+        categoria="Hardware",
+        prioridad="MEDIA",
+        creado_por="constanza.herrera",
+        ubicacion=MATTA,
+        hace_dias=14,
+        hora="11:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=6,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="ESPERA_TERCERO",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="factura-electronica-error",
+        titulo="el sistema no me deja emitir facturas",
+        descripcion=(
+            "cuando trato de emitir una factura electronica me sale un error "
+            "rojo y no la emite. a mi companera le pasa lo mismo desde esta "
+            "mañana. tenemos como 6 facturas pendientes de enviar a clientes "
+            "y algunos ya llamaron preguntando."
+        ),
+        categoria="Sin clasificar",
+        prioridad="ALTA",
+        creado_por="javiera.torres",
+        ubicacion=MATTA,
+        hace_dias=6,
+        hora="12:10",
+        ajustes=(
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=1,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=3,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="INFORMACION_PENDIENTE",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="licencia-autocad",
+        titulo="necesito el programa de planos en mi notebook nuevo",
+        descripcion=(
+            "me entregaron el notebook nuevo pero no tiene el programa de "
+            "planos. en el otro lo tenia instalado hace años. lo necesito "
+            "para el proyecto que parte el lunes, asi que si se puede lo "
+            "antes posible."
+        ),
+        categoria="Sin clasificar",
+        prioridad="MEDIA",
+        creado_por="andres.silva",
+        hace_dias=19,
+        hora="15:25",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=3,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=4,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="APROBACION_PENDIENTE",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="teclado-ventas",
+        titulo="teclado con teclas que no funcionan",
+        descripcion=(
+            "al teclado se le pegan varias teclas (la e, la a y el espacio) "
+            "y a veces escribe dos veces. ya le pase un paño pero sigue "
+            "igual. con las ventas del dia no puedo andar copiando y "
+            "pegando letras jaja"
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="sebastian.vargas",
+        ubicacion=MARCOLETA,
+        hace_dias=22,
+        hora="09:35",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="RECURSO_PENDIENTE",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=10,
+                estado="REACTIVAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="wifi-bodega",
+        titulo="el wifi de la bodega se cae todo el dia",
+        descripcion=(
+            "el wifi de la bodega se cae todo el dia y no podemos usar las "
+            "pistolas para registrar la mercaderia. tenemos que anotar todo "
+            "a mano y despues pasarlo, se pierde mucho tiempo.\n"
+            "es urgente porque llegan camiones el jueves."
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="ignacio.molina",
+        ubicacion=MARCOLETA,
+        hace_dias=5,
+        hora="13:45",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=5,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="OTRO",
+                texto=(
+                    "Hay que esperar la visita del proveedor de internet a la "
+                    "bodega, agendada para el jueves en la mañana."
+                ),
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="correo-reenvio-vacaciones",
+        titulo="como configuro que mi correo se reenvie mientras estoy de vacaciones",
+        descripcion=(
+            "me voy de vacaciones dos semanas y quiero que mis correos le "
+            "lleguen a mi jefe mientras no estoy. no se donde se configura "
+            "eso en el correo nuevo, lo busque y no lo encuentro."
+        ),
+        categoria="Correo",
+        prioridad="BAJA",
+        creado_por="sebastian.vargas",
+        hace_dias=2,
+        hora="16:40",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="impresora-finanzas-atascada",
+        titulo="Impresora de Finanzas se atasca al imprimir en doble cara",
+        descripcion=(
+            "Javiera informa que la impresora de Finanzas se atasca cada "
+            "vez que imprime en doble cara. Ya se limpiaron los rodillos y "
+            "se cambió el papel, sin resultado. Se revisa el modo dúplex."
+        ),
+        categoria="Impresoras",
+        prioridad="MEDIA",
+        creado_por="felipe.araya",
+        solicitantes=("javiera.torres",),
+        ubicacion=MATTA,
+        hace_dias=4,
+        hora="10:50",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
     ),
 )

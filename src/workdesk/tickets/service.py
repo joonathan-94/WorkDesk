@@ -451,7 +451,10 @@ def list_ticket_history(ticket: Ticket, viewer: User) -> list[TicketHistory]:
                 TicketHistory.ticket_id == ticket.id,
                 visible_history_condition(viewer),
             )
-            .options(joinedload(TicketHistory.actor))
+            .options(
+                joinedload(TicketHistory.actor),
+                joinedload(TicketHistory.motivo_espera),
+            )
             .order_by(TicketHistory.fecha_hora, TicketHistory.id)
         )
     )

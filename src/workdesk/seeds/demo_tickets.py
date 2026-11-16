@@ -10,8 +10,8 @@ Cómo trabaja:
   existen. Si falta alguna usa la categoría de respaldo o deja el ticket sin
   ubicación, y lo informa.
 - Crea y ajusta los tickets con los servicios reales (`create_ticket`,
-  `update_ticket`, `change_priority`), así que valida, versiona y deja el
-  historial exactamente igual que la aplicación.
+  `update_ticket`, `change_priority` y `change_state`), así que valida,
+  versiona y deja el historial exactamente igual que la aplicación.
 - Hace un único `commit` al final: o se carga todo o no se carga nada.
 
 Identidad. Cada ticket de la lista tiene una `clave` estable. Al crearlo, los
@@ -55,18 +55,23 @@ from ..formatting import app_zone
 from ..models import (
     Categoria,
     Estado,
+    MotivoEspera,
     Prioridad,
+    StateAction,
     Ticket,
     TicketEvent,
     TicketHistory,
     TicketRequester,
+    TransicionEstado,
     Ubicacion,
     User,
 )
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
+from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
 from ..tickets.service import INITIAL_STATE_CODE, TicketRuleError, create_ticket
+from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
 from .demo import DEMO_USERS
 from .demo_tickets_data import (
     DEMO_CALENDAR,
@@ -179,6 +184,8 @@ def validate_demo_tickets(
         for step, adjustment in enumerate(ticket.ajustes, start=1):
             _check_adjustment(problems, f"{label}, ajuste {step}", adjustment, roles)
 
+        _check_state_steps(problems, label, ticket)
+
     if problems:
         raise DemoTicketsError(
             "Los datos de demostración no son válidos:\n- " + "\n- ".join(problems)
@@ -258,6 +265,7 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
         adjustment.descripcion,
         adjustment.categoria,
         adjustment.prioridad,
+        adjustment.estado,
     )
     if all(change is None for change in changes):
         problems.append(f"{label}: no cambia nada.")
@@ -282,6 +290,80 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
             problems.append(f"{label}: cambiar la prioridad exige un motivo.")
         elif len(reason) > MAX_REASON_LENGTH:
             problems.append(f"{label}: el motivo supera los {MAX_REASON_LENGTH} caracteres.")
+
+
+# Transiciones tal como las carga `seed-catalogs`:
+# (estado de origen, acción) -> estado de destino.
+_TRANSITIONS = {
+    (origin, action.value): destination
+    for origin, destination, action, _ in INITIAL_TRANSITIONS
+}
+_WAIT_REASON_CODES = {row["codigo"]: row for row in INITIAL_WAIT_REASONS}
+
+
+def _check_state_steps(problems, label, ticket) -> None:
+    """Comprueba que los cambios de estado de un ticket se pueden ejecutar en
+    ese orden, empezando en Nuevo: cada acción debe ser válida desde el estado
+    en que va el ticket."""
+    current = INITIAL_STATE_CODE
+    implemented = {action.value for action in STATE_ACTIONS}
+
+    for step, adjustment in enumerate(ticket.ajustes, start=1):
+        where = f"{label}, ajuste {step}"
+        action = adjustment.estado
+        has_reason_data = (
+            adjustment.motivo_espera is not None or adjustment.texto is not None
+        )
+
+        if action is None:
+            if has_reason_data:
+                problems.append(
+                    f"{where}: motivo_espera y texto solo van con una acción de estado."
+                )
+
+            continue
+
+        if action not in implemented:
+            problems.append(
+                f"{where}: la acción de estado «{action}» no existe o todavía no "
+                f"está implementada (usa {', '.join(sorted(implemented))})."
+            )
+
+            continue
+
+        destination = _TRANSITIONS.get((current, action))
+
+        if destination is None:
+            problems.append(
+                f"{where}: «{action}» no es válida desde el estado {current}."
+            )
+
+            continue
+
+        current = destination
+
+        if action != StateAction.PONER_EN_ESPERA.value:
+            if has_reason_data:
+                problems.append(
+                    f"{where}: solo PONER_EN_ESPERA admite motivo_espera y texto."
+                )
+
+            continue
+
+        reason = _WAIT_REASON_CODES.get(adjustment.motivo_espera)
+
+        if adjustment.motivo_espera is not None and reason is None:
+            problems.append(
+                f"{where}: motivo de espera desconocido «{adjustment.motivo_espera}»."
+            )
+
+        if adjustment.texto is not None:
+            _check_text(problems, where, "texto", adjustment.texto, MAX_WAIT_TEXT_LENGTH)
+
+            if reason is None or not reason.get("permite_texto_otro"):
+                problems.append(
+                    f"{where}: el texto exige un motivo que admita texto libre (OTRO)."
+                )
 
 
 # --- Carga ----------------------------------------------------------------
@@ -345,8 +427,11 @@ def seed_demo_tickets(
 class _Catalogs:
     """Usuarios, prioridades, categorías y ubicaciones ya existentes."""
 
-    def __init__(self, users, priorities, categories, fallback, locations):
+    def __init__(
+        self, users, priorities, categories, fallback, locations, wait_reasons
+    ):
         self.users: dict[str, User] = users
+        self.wait_reasons: dict[str, MotivoEspera] = wait_reasons
         self.priorities: dict[str, Prioridad] = priorities
         self.categories: dict[str, Categoria] = categories
         self.fallback: Categoria = fallback
@@ -415,7 +500,27 @@ class _Catalogs:
             )
         }
 
-        return cls(users, priorities, categories, fallback, locations)
+        wait_reasons = {
+            reason.codigo: reason
+            for reason in db.session.scalars(
+                db.select(MotivoEspera).where(
+                    MotivoEspera.activo.is_(True),
+                    MotivoEspera.codigo.is_not(None),
+                )
+            )
+        }
+
+        uses_states = any(step.estado for demo in tickets for step in demo.ajustes)
+        has_transitions = (
+            db.session.scalar(db.select(db.func.count(TransicionEstado.id))) > 0
+        )
+
+        if uses_states and not has_transitions:
+            raise DemoTicketsError(
+                "Faltan las transiciones de estado. Ejecuta primero seed-catalogs."
+            )
+
+        return cls(users, priorities, categories, fallback, locations, wait_reasons)
 
     def warn(self, message: str) -> None:
         if message not in self.warnings:
@@ -442,6 +547,20 @@ class _Catalogs:
             "de algunos tickets."
         )
         return None
+
+    def wait_reason(self, code: str | None) -> MotivoEspera | None:
+        """Motivo de espera por código. Es opcional: si falta o está
+        desactivado, la espera se registra sin motivo y se avisa."""
+        if code is None:
+            return None
+
+        found = self.wait_reasons.get(code)
+        if found is None:
+            self.warn(
+                f"Motivo de espera «{code}» no encontrado o desactivado: algunas "
+                "esperas quedaron sin motivo."
+            )
+        return found
 
     def location(self, name: str | None) -> Ubicacion | None:
         if name is None:
@@ -672,6 +791,20 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
             expected_version=ticket.version,
             priority_id=catalogs.priorities[adjustment.prioridad].id,
             reason=adjustment.motivo,
+        )
+
+    if adjustment.estado is not None:
+        reason = catalogs.wait_reason(adjustment.motivo_espera)
+
+        change_state(
+            ticket,
+            actor=actor,
+            action=StateAction(adjustment.estado),
+            expected_version=ticket.version,
+            wait_reason_id=None if reason is None else reason.id,
+            # El texto libre exige un motivo que lo admita: sin motivo
+            # (porque faltaba en el catálogo) no se guarda.
+            text=None if reason is None else adjustment.texto,
         )
 
 

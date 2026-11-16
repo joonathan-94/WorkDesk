@@ -11,13 +11,15 @@ from src.workdesk.models import (
     User,
 )
 from src.workdesk.tickets.editing import (
-    TicketClosedError,
-    TicketConflictError,
     change_priority,
     describe_history_changes,
     update_ticket,
 )
 from src.workdesk.tickets.service import TicketRuleError
+from src.workdesk.tickets.versioning import (
+    TicketClosedError,
+    TicketConflictError,
+)
 from tests.ticket_helpers import make_ticket, set_state, ticket_by_public_id
 
 

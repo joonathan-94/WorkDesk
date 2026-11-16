@@ -41,6 +41,7 @@ def register_commands(app: Flask) -> None:
         click.echo(
             "Catálogos cargados. "
             f"Estados: {created['estados']}, "
+            f"transiciones: {created['transiciones']}, "
             f"prioridades: {created['prioridades']}, "
             f"categorías: {created['categorias']}, "
             f"motivos de cierre: {created['motivos_cierre']}, "

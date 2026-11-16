@@ -5,6 +5,7 @@ from wtforms.validators import DataRequired, Length, ValidationError
 from ..catalogs.forms import OptionalIntegerField
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from .editing import MAX_REASON_LENGTH
+from .lifecycle import MAX_WAIT_TEXT_LENGTH
 
 
 def _strip(value):
@@ -206,3 +207,45 @@ class PriorityChangeForm(FlaskForm):
 
     def validate_version(self, field):
         _require_version(field)
+
+
+class StateChangeForm(FlaskForm):
+    """Cambio de estado operativo de un ticket.
+
+    Lleva la versión con la que se abrió la pantalla. El motivo de espera y su
+    texto solo se piden al poner un ticket en espera y son opcionales; el
+    servicio decide si la acción los admite.
+    """
+
+    version = OptionalIntegerField("Versión")
+    motivo_espera = OptionalIntegerField("Motivo de espera")
+
+    texto = TextAreaField(
+        "Explicación",
+        filters=[_normalize_text],
+        validators=[
+            Length(
+                max=MAX_WAIT_TEXT_LENGTH,
+                message=f"Máximo {MAX_WAIT_TEXT_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+    def __init__(self, *args, wait_reason_choices=(), **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.wait_reason_choices = list(wait_reason_choices)
+
+    def validate_version(self, field):
+        _require_version(field)
+
+    def validate_motivo_espera(self, field):
+        # Opcional: solo se comprueba si se eligió algo.
+        if field.process_errors or field.data is None:
+            return
+
+        _require_choice(
+            field,
+            self.wait_reason_choices,
+            "Selecciona un motivo de la lista.",
+        )

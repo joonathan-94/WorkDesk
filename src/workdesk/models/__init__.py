@@ -10,5 +10,7 @@ from .ticket_history import HistoryVisibility as HistoryVisibility
 from .ticket_history import TicketEvent as TicketEvent
 from .ticket_history import TicketHistory as TicketHistory
 from .ticket_requester import TicketRequester as TicketRequester
+from .transicion_estado import StateAction as StateAction
+from .transicion_estado import TransicionEstado as TransicionEstado
 from .ubicacion import Ubicacion as Ubicacion
 from .user import User as User

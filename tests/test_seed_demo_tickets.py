@@ -121,6 +121,27 @@ def requesters_of(ticket):
     )
 
 
+# Estado al que lleva cada acción de estado implementada (independiente de la
+# tabla de transiciones, para no comprobar el seed con sus propios datos).
+ACTION_DESTINATION = {
+    "INICIAR": "EN_PROGRESO",
+    "PONER_EN_ESPERA": "EN_ESPERA",
+    "REACTIVAR": "EN_PROGRESO",
+}
+
+
+def final_state(demo) -> str:
+    """Estado en que debe quedar un ticket demo: el del último cambio de
+    estado de sus ajustes, o Nuevo si no tiene ninguno."""
+    state = "NUEVO"
+
+    for adjustment in demo.ajustes:
+        if adjustment.estado is not None:
+            state = ACTION_DESTINATION[adjustment.estado]
+
+    return state
+
+
 def count(model):
     return db.session.scalar(db.select(db.func.count()).select_from(model))
 
@@ -346,6 +367,20 @@ def test_validation_rejects_requesters_on_a_ticket_created_by_a_requester():
          "exige un motivo"),
         (DemoAdjustment(actor="diego.soto", despues_horas=1, categoria="Software"),
          "categoría desconocida"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="INVENTADA"),
+         "no existe o todavía no está implementada"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="RESOLVER"),
+         "no existe o todavía no está implementada"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="REACTIVAR"),
+         "no es válida desde el estado NUEVO"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="PONER_EN_ESPERA"),
+         "no es válida desde el estado NUEVO"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, titulo="Otro",
+                        motivo_espera="OTRO"),
+         "solo van con una acción de estado"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="INICIAR",
+                        motivo_espera="OTRO"),
+         "solo PONER_EN_ESPERA admite"),
     ],
 )
 def test_validation_rejects_inconsistent_adjustments(adjustment, message):
@@ -353,6 +388,71 @@ def test_validation_rejects_inconsistent_adjustments(adjustment, message):
 
     with pytest.raises(DemoTicketsError, match=message):
         validate_demo_tickets((ticket,))
+
+
+def _hold_steps(**hold):
+    return (
+        DemoAdjustment(actor="diego.soto", despues_horas=1, estado="INICIAR"),
+        DemoAdjustment(
+            actor="diego.soto",
+            despues_horas=1,
+            estado="PONER_EN_ESPERA",
+            **hold,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("hold", "message"),
+    [
+        ({"motivo_espera": "NO_EXISTE"}, "motivo de espera desconocido"),
+        ({"motivo_espera": "ESPERA_TERCERO", "texto": "Hola"}, "admita texto libre"),
+        ({"texto": "Hola"}, "admita texto libre"),
+        ({"motivo_espera": "OTRO", "texto": "x" * 501}, "supera los 500"),
+    ],
+)
+def test_validation_rejects_inconsistent_wait_data(hold, message):
+    ticket = replace(DEMO_TICKETS[0], ajustes=_hold_steps(**hold))
+
+    with pytest.raises(DemoTicketsError, match=message):
+        validate_demo_tickets((ticket,))
+
+
+def test_validation_accepts_a_full_operational_cycle():
+    steps = _hold_steps(motivo_espera="OTRO", texto="Esperando al proveedor") + (
+        DemoAdjustment(actor="diego.soto", despues_horas=1, estado="REACTIVAR"),
+    )
+
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=steps),))
+
+
+def test_demo_data_includes_every_state_reachable_today_and_every_wait_reason():
+    finals = {final_state(demo) for demo in DEMO_TICKETS}
+    reasons = {
+        step.motivo_espera
+        for demo in DEMO_TICKETS
+        for step in demo.ajustes
+        if step.motivo_espera
+    }
+    cycles = [
+        demo
+        for demo in DEMO_TICKETS
+        if [s.estado for s in demo.ajustes if s.estado]
+        == ["INICIAR", "PONER_EN_ESPERA", "REACTIVAR"]
+    ]
+
+    assert finals == {"NUEVO", "EN_PROGRESO", "EN_ESPERA"}
+    assert reasons == {
+        "INFORMACION_PENDIENTE",
+        "ESPERA_TERCERO",
+        "APROBACION_PENDIENTE",
+        "RECURSO_PENDIENTE",
+        "OTRO",
+    }
+    assert cycles, "falta un ticket que complete iniciar, esperar y reactivar"
+    assert any(
+        step.texto for demo in DEMO_TICKETS for step in demo.ajustes
+    ), "falta una espera con texto libre"
 
 
 # --- Comando ------------------------------------------------------------
@@ -421,7 +521,7 @@ def test_tickets_follow_the_creation_rules(app, seeded):
             )
 
             assert creator.username == demo.creado_por
-            assert ticket.estado.codigo == "NUEVO"
+            assert ticket.estado.codigo == final_state(demo)
             assert ticket.descripcion == demo.descripcion
 
             if ROLES[demo.creado_por] == "SOLICITANTE":
@@ -969,3 +1069,147 @@ def test_the_history_is_still_immutable_after_loading_the_demo(app, seeded):
             db.session.flush()
 
         db.session.rollback()
+
+
+# --- Cambios de estado ----------------------------------------------------
+
+
+def state_events_of(ticket):
+    return [
+        event
+        for event in history_of(ticket)
+        if event.tipo_evento == TicketEvent.ESTADO_CAMBIADO.value
+    ]
+
+
+def page_text(client, public_id) -> str:
+    html = client.get(f"/tickets/{public_id}").get_data(as_text=True)
+
+    return " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+
+def log_in(app, username):
+    client = app.test_client()
+    client.post(
+        "/login",
+        data={"username": username, "password": DEMO_PASSWORD},
+    )
+
+    return client
+
+
+def test_state_steps_leave_the_same_history_as_the_application(app, seeded):
+    with app.app_context():
+        ticket = by_clave("teclado-ventas")
+        events = state_events_of(ticket)
+
+        assert [
+            (e.valor_anterior["codigo"], e.valor_nuevo["codigo"]) for e in events
+        ] == [
+            ("NUEVO", "EN_PROGRESO"),
+            ("EN_PROGRESO", "EN_ESPERA"),
+            ("EN_ESPERA", "EN_PROGRESO"),
+        ]
+        assert [e.actor.username for e in events] == ["felipe.araya"] * 3
+        assert [e.contexto["demo_paso"] for e in events] == [1, 2, 3]
+        assert all(e.contexto["demo_clave"] == "teclado-ventas" for e in events)
+        assert ticket.estado.codigo == "EN_PROGRESO"
+        # Creado en la versión 1 y una más por cada cambio de estado.
+        assert ticket.version == 4
+
+
+def test_a_wait_step_keeps_its_catalog_reason_and_free_text(app, seeded):
+    with app.app_context():
+        (_, hold) = state_events_of(by_clave("wifi-bodega"))
+
+        assert hold.motivo_espera.codigo == "OTRO"
+        assert hold.contexto["motivo"].startswith("Hay que esperar la visita")
+        assert hold.contexto["accion"] == "PONER_EN_ESPERA"
+        assert hold.contexto["demo_clave"] == "wifi-bodega"
+
+        third_party = state_events_of(by_clave("monitor-parpadea"))[1]
+
+        assert third_party.motivo_espera.codigo == "ESPERA_TERCERO"
+        assert "motivo" not in third_party.contexto
+
+
+def test_state_events_are_in_order_and_never_in_the_future(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            if not any(step.estado for step in demo.ajustes):
+                continue
+
+            times = [event.fecha_hora for event in history_of(by_clave(demo.clave))]
+
+            assert times == sorted(times)
+            assert max(times) <= NOW
+
+
+def test_the_requester_sees_the_state_change_but_not_the_wait_reason(
+    app,
+    seeded,
+):
+    client = log_in(app, "ignacio.molina")
+
+    with app.app_context():
+        public_id = by_clave("wifi-bodega").public_id
+
+    plain = page_text(client, public_id)
+
+    assert "Estado: «En progreso» → «En espera»" in plain
+    assert "Motivo de espera" not in plain
+    assert "proveedor de internet" not in plain
+
+
+def test_staff_sees_the_wait_reason_and_text(app, seeded):
+    client = log_in(app, "diego.soto")
+
+    with app.app_context():
+        public_id = by_clave("wifi-bodega").public_id
+
+    plain = page_text(client, public_id)
+
+    assert "Motivo de espera: Otro motivo" in plain
+    assert "proveedor de internet" in plain
+
+
+def test_states_need_the_transitions_loaded_first(app, prepared):
+    with app.app_context():
+        db.session.execute(db.text("DELETE FROM transiciones_estados"))
+        db.session.commit()
+
+        with pytest.raises(DemoTicketsError, match="seed-catalogs"):
+            seed_demo_tickets(now=NOW)
+
+        assert count(Ticket) == 0
+
+
+def test_a_missing_wait_reason_only_warns_and_the_wait_has_no_reason(
+    app,
+    prepared,
+):
+    with app.app_context():
+        db.session.execute(
+            db.text("UPDATE motivos_espera SET activo = false WHERE codigo = 'OTRO'")
+        )
+        db.session.commit()
+
+        result = seed_demo_tickets(now=NOW)
+
+        assert any("Motivo de espera «OTRO»" in w for w in result.warnings)
+
+        ticket = by_clave("wifi-bodega")
+        hold = state_events_of(ticket)[1]
+
+        assert ticket.estado.codigo == "EN_ESPERA"
+        assert hold.motivo_espera_id is None
+        assert "motivo" not in hold.contexto
+
+
+def test_refreshing_does_not_touch_the_state_or_the_version(app, seeded):
+    with app.app_context():
+        before = content_snapshot()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert content_snapshot() == before

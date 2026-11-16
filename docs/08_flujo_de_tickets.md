@@ -1134,6 +1134,8 @@ La siguiente matriz representa las transiciones estructuralmente válidas del fl
 | Resuelto      | Cierre excepcional           | Cerrado     | Supervisor / Admin                                        |
 | Cerrado       | Reapertura                   | En progreso | Solicitante / Técnico / Supervisor / Admin según permisos |
 
+Se añade además una transición de **desasignación** (`Asignado` → `Nuevo`, al quitar al último técnico de un ticket `Asignado`), que esta matriz no incluye: `Asignado` significa tener responsables, y sin ninguno el ticket vuelve a `Nuevo` (decidido en `v0.4.0`).
+
 La configuración administrativa puede adaptar las transiciones dentro del conjunto estructuralmente válido.
 
 No puede utilizarse para romper la estructura fundamental del flujo.

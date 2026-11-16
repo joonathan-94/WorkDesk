@@ -821,6 +821,8 @@ Cerrado -> En progreso (reapertura permitida)
 
 El detalle operativo definitivo continúa siendo `08_flujo_de_tickets.md`.
 
+**Implementación (`v0.4.0`, entrega 3).** La tabla se crea con las columnas de arriba, la restricción única (origen, destino, acción) y un `CHECK` que impide una transición de un estado a sí mismo. El código de `accion` (`StateAction`) vive solo en la aplicación, como el vocabulario de eventos del historial. `seed-catalogs` carga 20 transiciones: las de la matriz de `08_flujo_de_tickets.md` (sección 34), con las tres formas de cerrar un ticket `Resuelto` (`CONFIRMAR`, `AUTO_CIERRE` y `CIERRE_EXCEPCIONAL`) y las dos de volver a `En progreso` desde `Resuelto` (`RECHAZAR` del Solicitante y `REABRIR`), más `DESASIGNACION` (`Asignado` → `Nuevo` al quitar al último técnico, que la matriz no lista). La carga es idempotente y no pisa una transición que el Administrador haya deshabilitado (`activa = false`). Hoy solo se ejecutan `INICIAR`, `PONER_EN_ESPERA` y `REACTIVAR`; el resto se activa en el código cuando llega su funcionalidad.
+
 ---
 
 ## 12.3 `motivos_espera`

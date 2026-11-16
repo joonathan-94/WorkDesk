@@ -29,8 +29,23 @@
 
         {# Solo se ofrecen al personal y mientras el ticket no esté cerrado;
            cada ruta comprueba la autorización por su cuenta. #}
-        {% if show_edit or show_priority %}
+        {% if show_edit or show_priority or state_actions %}
             <div class="d-flex flex-wrap gap-2">
+                {# Cambios de estado válidos desde el estado actual y para el
+                   rol: puede haber uno o dos. #}
+                {% for option in state_actions %}
+                    <a
+                        class="btn btn-primary"
+                        href="{{ url_for('tickets.change_ticket_state', public_id=ticket.public_id, action_slug=option.info.slug) }}"
+                    >
+                        <i
+                            class="bi bi-{{ option.info.icon }} me-1"
+                            aria-hidden="true"
+                        ></i>
+                        {{ option.info.label }}
+                    </a>
+                {% endfor %}
+
                 {% if show_edit %}
                     <a
                         class="btn btn-outline-secondary"
@@ -112,6 +127,12 @@
 
                                 {# El motivo es una nota interna: solo lo
                                    recibe el personal (ver la ruta). #}
+                                {% if row.wait_reason %}
+                                    <span class="small d-block text-secondary text-break">
+                                        Motivo de espera: {{ row.wait_reason }}
+                                    </span>
+                                {% endif %}
+
                                 {% if row.reason %}
                                     <span class="small d-block text-secondary text-break">
                                         Motivo: {{ row.reason }}
