@@ -45,6 +45,17 @@ class NavLink:
 
 # Solo las pantallas que existen hoy. El resto de opciones previstas en
 # docs/11 (tickets, carga de trabajo, reportes...) se añadirán con su módulo.
+# Pantallas que cuentan como parte de "Tickets" / "Mis tickets": el listado,
+# el detalle y las acciones sobre un ticket. "Crear ticket" tiene su propia
+# opción y no está aquí.
+TICKET_SCREENS = (
+    "tickets.list_tickets_page",
+    "tickets.detail",
+    "tickets.edit_ticket",
+    "tickets.change_ticket_priority",
+    "tickets.change_ticket_state",
+)
+
 MAIN_NAVIGATION = (
     NavItem(
         label="Dashboard",
@@ -60,14 +71,14 @@ MAIN_NAVIGATION = (
         endpoint="tickets.list_tickets_page",
         icon="card-list",
         roles=STAFF_ROLES,
-        active_prefixes=("tickets.list_tickets_page", "tickets.detail"),
+        active_prefixes=TICKET_SCREENS,
     ),
     NavItem(
         label="Mis tickets",
         endpoint="tickets.list_tickets_page",
         icon="card-list",
         roles=(RoleCode.SOLICITANTE,),
-        active_prefixes=("tickets.list_tickets_page", "tickets.detail"),
+        active_prefixes=TICKET_SCREENS,
     ),
     # Solo se marca activa en el formulario de creación.
     NavItem(

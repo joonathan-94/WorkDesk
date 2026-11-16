@@ -97,6 +97,7 @@ def test_seed_reports_what_it_created_and_is_idempotent(app):
 
         assert first == {
             "estados": 6,
+            "transiciones": 20,
             "prioridades": 4,
             "categorias": 1,
             "motivos_cierre": 6,
@@ -104,6 +105,7 @@ def test_seed_reports_what_it_created_and_is_idempotent(app):
         }
         assert second == {
             "estados": 0,
+            "transiciones": 0,
             "prioridades": 0,
             "categorias": 0,
             "motivos_cierre": 0,

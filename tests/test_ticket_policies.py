@@ -6,6 +6,7 @@ from flask_login import AnonymousUserMixin
 
 from src.workdesk.security import (
     can_change_priority,
+    can_change_state,
     can_choose_requesters,
     can_create_ticket,
     can_edit_ticket,
@@ -142,22 +143,28 @@ def test_inactive_and_anonymous_users_cannot_view_tickets():
     assert can_view_ticket(AnonymousUserMixin(), ticket) is False
 
 
-# --- Editar y cambiar la prioridad ------------------------------------
+# --- Editar, cambiar la prioridad y cambiar el estado -----------------
 
 
-@pytest.mark.parametrize("policy", [can_edit_ticket, can_change_priority])
+_EDIT_POLICIES = [can_edit_ticket, can_change_priority, can_change_state]
+
+
+@pytest.mark.parametrize("policy", _EDIT_POLICIES)
 @pytest.mark.parametrize("role_code", STAFF_ROLES)
-def test_staff_can_edit_and_change_the_priority(policy, role_code):
+def test_staff_can_edit_change_the_priority_and_change_the_state(
+    policy,
+    role_code,
+):
     assert policy(user(role_code)) is True
 
 
-@pytest.mark.parametrize("policy", [can_edit_ticket, can_change_priority])
+@pytest.mark.parametrize("policy", _EDIT_POLICIES)
 def test_a_solicitante_can_only_read(policy):
     # Ni siquiera en un ticket propio: el Solicitante no edita (RN-153).
     assert policy(user("SOLICITANTE")) is False
 
 
-@pytest.mark.parametrize("policy", [can_edit_ticket, can_change_priority])
+@pytest.mark.parametrize("policy", _EDIT_POLICIES)
 def test_inactive_and_anonymous_users_cannot_edit(policy):
     assert policy(user("TECNICO", is_active=False)) is False
     assert policy(AnonymousUserMixin()) is False

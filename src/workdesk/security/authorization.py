@@ -68,6 +68,17 @@ def can_change_priority(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_change_state(user) -> bool:
+    """Ejecutar los cambios de estado operativos: iniciar el trabajo, poner
+    en espera y reactivar (docs/03, sección 5; docs/08, sección 33).
+
+    Es una política de rol: el personal puede; el Solicitante no cambia
+    estados operativos. Si la transición es válida desde el estado actual
+    del ticket lo decide `tickets.lifecycle`.
+    """
+    return has_any_role(user, *STAFF_ROLES)
+
+
 def can_view_ticket(user, ticket) -> bool:
     """Indica si el usuario puede ver el ticket.
 

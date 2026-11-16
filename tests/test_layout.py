@@ -134,6 +134,10 @@ def test_anonymous_users_see_no_navigation():
         # "Crear ticket".
         ("tickets.list_tickets_page", ["Tickets"]),
         ("tickets.detail", ["Tickets"]),
+        # Las acciones sobre un ticket también pertenecen a "Tickets".
+        ("tickets.edit_ticket", ["Tickets"]),
+        ("tickets.change_ticket_priority", ["Tickets"]),
+        ("tickets.change_ticket_state", ["Tickets"]),
         ("account.change_password", []),
         (None, []),
     ],

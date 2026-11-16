@@ -1,0 +1,138 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, state_badge %}
+{% from "_form_macros.html" import textarea_field, field_errors %}
+
+{% block title %}{{ info.label }}: ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        (info.label, None),
+    ]) }}
+
+    {{ page_header(info.label, '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.change_ticket_state', public_id=ticket.public_id, action_slug=info.slug) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# Versión con la que se abrió la pantalla: permite detectar si
+               otra persona modificó el ticket mientras tanto. #}
+            <input
+                type="hidden"
+                name="{{ form.version.name }}"
+                value="{{ form.version.data if form.version.data is not none else '' }}"
+            >
+
+            {% if form.version.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.version.errors[0] }}
+                </div>
+            {% endif %}
+
+            <p class="mb-2">
+                {{ state_badge(ticket.estado) }}
+                <i
+                    class="bi bi-arrow-right mx-1"
+                    aria-hidden="true"
+                ></i>
+                <span class="visually-hidden">pasa a</span>
+                {{ state_badge(destination) }}
+            </p>
+
+            <p class="text-secondary">{{ info.description }}</p>
+
+            {% if info.allows_wait_reason %}
+                <div class="mb-3">
+                    <label
+                        class="form-label"
+                        for="{{ form.motivo_espera.id }}"
+                    >
+                        Motivo de espera
+                    </label>
+
+                    {# Cada opción indica si admite texto libre: el script
+                       (js/tickets/wait-reason.js) solo muestra la explicación
+                       cuando corresponde. Sin JavaScript se ve siempre y el
+                       servidor valida. #}
+                    <select
+                        class="form-select{% if form.motivo_espera.errors %} is-invalid{% endif %}"
+                        id="{{ form.motivo_espera.id }}"
+                        name="{{ form.motivo_espera.name }}"
+                        data-wait-reason-select
+                        {% if form.motivo_espera.errors %}
+                            aria-invalid="true"
+                            aria-describedby="{{ form.motivo_espera.id }}-error"
+                        {% endif %}
+                    >
+                        <option value="">Sin motivo</option>
+
+                        {% for reason in wait_reasons %}
+                            <option
+                                value="{{ reason.id }}"
+                                data-allows-text="{{ 'true' if reason.permite_texto_otro else 'false' }}"
+                                {% if reason.id == form.motivo_espera.data %}selected{% endif %}
+                            >
+                                {{ reason.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="form-text">
+                        Opcional. Queda registrado en el historial y solo lo
+                        ve el personal.
+                    </div>
+
+                    {{ field_errors(form.motivo_espera) }}
+                </div>
+
+                <div data-wait-reason-text>
+                    {{ textarea_field(
+                        form.texto,
+                        maxlength=max_text,
+                        rows=3,
+                        counter=True,
+                        hint="Solo se guarda con un motivo que admita texto libre, como «Otro motivo».",
+                    ) }}
+                </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    {{ info.label }}
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+
+    {% if info.allows_wait_reason %}
+        <script
+            src="{{ url_for('static', filename='js/tickets/wait-reason.js') }}"
+        ></script>
+    {% endif %}
+{% endblock %}

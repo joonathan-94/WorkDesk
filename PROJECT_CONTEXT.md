@@ -82,20 +82,20 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/wait-reasons-catalog
+feature/ticket-state-transitions
 ```
 
-Entrega 2 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): catálogo de motivos de espera con su administración y la referencia desde el historial (ver "Catálogos de tickets"). Incluye una migración.
+Entrega 3 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): tabla de transiciones de estado y cambios de estado operativos (iniciar, poner en espera y reactivar), con su pantalla y el control de versión compartido (ver "Estados y transiciones"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y la entrega 1 de `v0.4.0`, visibilidad y vocabulario del historial (PR #23).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 y 2 de `v0.4.0`: visibilidad y vocabulario del historial (PR #23) y catálogo de motivos de espera (PR #24).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
 | # | Entrega | Estado |
 | --- | --- | --- |
 | 1 | Historial: vocabulario en la aplicación y visibilidad por evento | Integrada (PR #23) |
-| 2 | Catálogo de motivos de espera y su administración | En curso |
-| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Pendiente |
+| 2 | Catálogo de motivos de espera y su administración | Integrada (PR #24) |
+| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | En curso |
 | 4 | Grupos (`/groups`), con membresías y supervisores responsables | Pendiente |
 | 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Pendiente |
 | 6 | Agregar y retirar solicitantes tras crear el ticket | Pendiente |
@@ -164,7 +164,7 @@ v0.4.0 — Asignación, colaboración y ciclo de vida
 Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técnicos, cambios de estado, comentarios públicos y notas internas, adjuntos, resolución, cierre y reapertura. Además, `v0.3.0` dejó decididas estas piezas, que le corresponden:
 
 - el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
-- la pantalla de Estados y transiciones (UI-021) y su tabla de transiciones;
+- la pantalla de Estados y transiciones (UI-021), que sigue pendiente (entrega 12); la tabla de transiciones ya existe (entrega 3);
 - los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
 - dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
 - las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
@@ -380,8 +380,10 @@ WorkDesk/
 │   ├── test_session_limits.py
 │   ├── test_formatting.py
 │   ├── test_system.py
+│   ├── test_ticket_history_visibility.py
 │   ├── test_ticket_model.py
 │   ├── test_ticket_policies.py
+│   ├── test_ticket_state_transitions.py
 │   ├── test_tickets_edit_routes.py
 │   ├── test_tickets_edit_service.py
 │   ├── test_tickets_list_routes.py
@@ -392,6 +394,7 @@ WorkDesk/
 │   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
 │   ├── test_users_service.py
+│   ├── test_wait_reasons.py
 │   └── ticket_helpers.py
 ├── .github/
 │   └── copilot-instructions.md
@@ -492,7 +495,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente nueve migraciones:
+Existen actualmente diez migraciones:
 
 ```text
 create_roles_table
@@ -504,6 +507,7 @@ create_tickets_tables
 add_unique_name_indexes_to_priorities_and_locations
 add_visibility_to_ticket_history_and_drop_event_type_check
 create_wait_reasons_table_and_history_wait_reason
+create_state_transitions_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -709,7 +713,7 @@ Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclu
 
 # 11 ter. Modelo de tickets
 
-Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación, un detalle de solo lectura y el listado están descritos más abajo ("Creación y detalle de tickets" y "Listado de tickets"); la edición está en "Edición de tickets".
+Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación, un detalle de solo lectura y el listado están descritos más abajo ("Creación y detalle de tickets" y "Listado de tickets"); la edición está en "Edición de tickets" y los cambios de estado en "Estados y transiciones".
 
 ## Ticket (`tickets`)
 
@@ -797,13 +801,41 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 
 - `update_ticket(ticket, actor=, expected_version=, title=, description=, category_id=, location_id=)`: mismas reglas de título y descripción que la creación (`clean_title_and_description`, compartida con `create_ticket`). La categoría y la ubicación nuevas deben estar activas, pero las que el ticket ya tiene pueden conservarse aunque se hayan desactivado. Solo aplica y registra lo que cambió; devuelve `False` si no hay cambios. Registra `TICKET_MODIFICADO` (título, descripción y ubicación, con los valores anterior y nuevo solo de lo cambiado) y, si cambia la categoría, `CATEGORIA_CAMBIADA` con los nombres.
 - `change_priority(ticket, actor=, expected_version=, priority_id=, reason=)`: motivo obligatorio (recortado, máx. 500 caracteres), prioridad nueva activa y distinta de la actual (la misma prioridad devuelve `False`, sin cambio ni registro). Registra `PRIORIDAD_CAMBIADA` con un resumen de la prioridad anterior y la nueva (id, código y nombre) y el motivo en `contexto`.
-- **Ticket cerrado:** `TicketClosedError`. Hoy nadie puede cerrar tickets desde la interfaz; la regla queda aplicada para cuando exista el cierre (`v0.4.0`).
-- **Control de versión:** `_apply_changes` hace un único `UPDATE ... WHERE id = :id AND version = :esperada` que aplica los cambios, sube `version` en uno y registra quién y cuándo (`usuario_modificacion_id`, `fecha_modificacion`). Si no coincide ninguna fila se lanza `TicketConflictError`. Si dos guardados llegan a la vez, el segundo espera al primero y, al reevaluar la condición, ya no encuentra la versión esperada. Un guardado con dos eventos (datos y categoría) sube la versión una sola vez.
+- **Ticket cerrado:** `TicketClosedError` (definido en `tickets/versioning.py`). Hoy nadie puede cerrar tickets desde la interfaz; la regla queda aplicada para cuando exista el cierre (`v0.4.0`).
+- **Control de versión:** `apply_ticket_changes` (en `tickets/versioning.py`, junto con `TicketClosedError` y `TicketConflictError`, compartido con los cambios de estado) hace un único `UPDATE ... WHERE id = :id AND version = :esperada` que aplica los cambios, sube `version` en uno y registra quién y cuándo (`usuario_modificacion_id`, `fecha_modificacion`). Si no coincide ninguna fila se lanza `TicketConflictError`. Si dos guardados llegan a la vez, el segundo espera al primero y, al reevaluar la condición, ya no encuentra la versión esperada. Un guardado con dos eventos (datos y categoría) sube la versión una sola vez.
 - **Conflicto en la interfaz:** los formularios llevan la versión con la que se abrieron en un campo oculto. Ante un conflicto se vuelve al formulario con los datos actuales y un aviso (lo escrito se pierde, a propósito: reenviarlo pisaría el cambio ajeno sin haberlo visto). El bloqueo temporal de edición queda para `v0.4.0`.
 
 **Formularios** (`tickets/forms.py`): `_TicketFieldsForm` concentra los campos comunes a la creación y a la edición; `TicketForm` (creación), `TicketEditForm` y `PriorityChangeForm`, estos dos con la versión como campo obligatorio. La prioridad no se puede cambiar desde la edición de datos.
 
 **Historial en el detalle:** `describe_history_changes(entry)` devuelve las líneas de lo que cambió (`Título: «a» → «b»`, `Descripción modificada.`, `Ubicación: — → «c»`, `Categoría: …`, `Prioridad: …`) y **nunca incluye el motivo**. La ruta del detalle pasa el motivo a la plantilla solo si el usuario es del personal: el Solicitante ve qué cambió, no por qué. La descripción completa no se repite en el historial. El resumen del detalle muestra también "Actualizado" (`Ticket.fecha_actualizacion`).
+
+
+## Estados y transiciones (entrega 3 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en `tickets/lifecycle.py`; la ruta (`tickets/routes.py`) solo orquesta.
+
+**Tabla `transiciones_estados`** (`models/transicion_estado.py`, `TransicionEstado`): `estado_origen_id`, `estado_destino_id`, `accion`, `activa`, `descripcion`, `fecha_modificacion` y `usuario_modificacion_id`. Es único por (origen, destino, acción) y el origen no puede ser igual al destino. Una fila es una transición estructuralmente válida del flujo; `activa` permite al Administrador deshabilitarla (pantalla UI-021, entrega 12). No guarda permisos: quién ejecuta cada acción lo decide el código.
+
+**Vocabulario de acciones** (`StateAction`, solo en la aplicación como `TicketEvent`): `ASIGNAR`, `DESASIGNACION`, `INICIAR`, `PONER_EN_ESPERA`, `REACTIVAR`, `RESOLVER`, `CIERRE_DIRECTO`, `CONFIRMAR`, `RECHAZAR`, `AUTO_CIERRE`, `CIERRE_EXCEPCIONAL` y `REABRIR`. Un mismo par origen-destino puede existir con varias acciones (Resuelto → Cerrado tiene tres).
+
+**Seed:** `seed-catalogs` carga las 20 transiciones de la matriz de `docs/08` (sección 34) más `DESASIGNACION` (Asignado → Nuevo al quitar al último técnico, que `docs/08` no lista) y `AUTO_CIERRE` (cargada pero sin uso hasta el cierre automático de `v0.5.0`). Es idempotente por (origen, destino, acción) y **no pisa una transición que el Administrador haya deshabilitado**. El comando informa `transiciones: N`. Quien tenga una base anterior debe volver a ejecutar `seed-catalogs`.
+
+**Acciones implementadas hoy** (`STATE_ACTIONS`): iniciar el trabajo (`INICIAR`, Nuevo o Asignado → En progreso), poner en espera (`PONER_EN_ESPERA`, En progreso → En espera) y reactivar (`REACTIVAR`, En espera → En progreso). Las demás acciones de la tabla se añaden a `STATE_ACTIONS` cuando llega su funcionalidad (asignar en la entrega 5; resolver, cerrar y reabrir en la 9): hasta entonces `change_state` las rechaza con `StateTransitionError`. Cada acción es un `StateActionInfo` (ruta, texto, icono, mensaje y política de rol).
+
+**Política:** `can_change_state(user)` (Técnico, Supervisor y Administrador; el Solicitante no cambia estados operativos). Que la transición exista desde el estado actual lo decide `available_actions` / `change_state`.
+
+**Servicio** (`tickets/lifecycle.py`, sin commit):
+
+- `available_actions(ticket, user)`: las acciones que ese usuario puede ejecutar ahora (implementada, transición activa desde el estado actual y política de rol), con su estado de destino. Un ticket cerrado no ofrece ninguna.
+- `change_state(ticket, actor=, action=, expected_version=, wait_reason_id=, text=)`: bloquea la fila del ticket (`SELECT ... FOR UPDATE`) y la vuelve a leer, así que la transición se valida contra el estado real; comprueba el ticket cerrado (`TicketClosedError`), la versión (`TicketConflictError`) y que exista una transición activa desde el estado actual (`StateTransitionError`); aplica el cambio con `apply_ticket_changes` (sube la versión) y registra `ESTADO_CAMBIADO` con el estado anterior y el nuevo (columnas `estado_anterior_id` y `estado_nuevo_id`, snapshots en `valor_anterior` y `valor_nuevo`) y `contexto["accion"]`. Dos personas que actúan a la vez producen una sola transición (hay un test con dos hilos).
+- **Motivo de espera:** solo con `PONER_EN_ESPERA` y siempre opcional. El motivo debe estar activo (`motivo_espera_id` del evento) y un texto libre (máx. 500 caracteres, `contexto["motivo"]`) exige un motivo con `permite_texto_otro`. El resto de acciones rechaza motivo y texto.
+- Los cambios de estado **suben `version`**, como la edición y la prioridad.
+
+**Ruta** (`GET, POST /tickets/<public_id>/status/<action_slug>`, con `start`, `hold` y `resume`): una pantalla de confirmación por acción, como Editar y Cambiar prioridad (funciona sin JavaScript). 404 si el usuario no puede ver el ticket o la acción no existe; 403 si lo ve pero no puede cambiar estados (el Solicitante); un ticket cerrado o una acción que ya no corresponde al estado actual (también en GET, por si la pantalla estaba abierta) vuelven al detalle con un aviso; un conflicto de versión reabre la pantalla con el aviso. La pantalla de espera ofrece los motivos activos (más "Sin motivo") y una explicación libre que `static/js/tickets/wait-reason.js` muestra solo con un motivo que la admita (mejora progresiva: el servidor valida igual).
+
+**Detalle:** la cabecera muestra un botón por cada acción disponible (como mucho una o dos) y el historial el evento "Estado cambiado" con `Estado: «a» → «b»` para todos los roles. **El motivo de espera y su texto los ve solo el personal** (`Motivo de espera: …` y `Motivo: …`), igual que el motivo de una prioridad; el evento es público.
+
+**Navegación:** las pantallas Editar, Cambiar prioridad y Cambiar estado marcan activa la opción "Tickets" (`TICKET_SCREENS` en `navigation.py`); "Crear ticket" sigue marcándose solo en su formulario.
 
 ---
 
@@ -1039,6 +1071,7 @@ GET, POST  /tickets/new
 GET        /tickets/<public_id>
 GET, POST  /tickets/<public_id>/edit
 GET, POST  /tickets/<public_id>/priority
+GET, POST  /tickets/<public_id>/status/<action_slug>
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -1073,7 +1106,7 @@ No representa todavía los dashboards finales del MVP.
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle; "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad y cambiar estado (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios y en las de catálogos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
@@ -1254,7 +1287,7 @@ python -m flask --app src.workdesk seed-demo
 python -m flask --app src.workdesk seed-demo-tickets
 ```
 
-`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las prioridades, la categoría `Sin clasificar`, los motivos de cierre y los motivos de espera. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
+`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las transiciones entre estados, las prioridades, la categoría `Sin clasificar`, los motivos de cierre y los motivos de espera. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
 
 `create-admin`:
 
@@ -1274,17 +1307,17 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
 
-- carga unos 40 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
-- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cuando existan estados, asignaciones, cierres y comentarios se añaden campos opcionales con valor por defecto a `DemoTicket`, sin invalidar los tickets ya escritos;
+- carga 48 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera` y `texto`) y, cuando existan asignaciones, cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
 - necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
-- usa los servicios reales (`create_ticket`, `update_ticket` y `change_priority`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título) con su propio actor y retraso;
+- usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
 - **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
 - **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `demo_tickets_data.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (`_BusinessClock`) pasará a un módulo compartido con el SLA. Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
-- valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad...);
+- valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad, y que la secuencia de acciones de estado de cada ticket sea ejecutable desde Nuevo con la matriz de transiciones y con motivos y textos coherentes...);
 - una sola transacción: si algo falla se revierte todo (`DemoTicketsError`);
 - se niega a ejecutarse con `APP_ENV=production`;
-- todos los tickets quedan en estado `Nuevo` mientras no existan los cambios de estado (`v0.4.0`).
+- los tickets sin cambios de estado quedan en `Nuevo`; los ocho últimos de la lista (los del bloque "Tickets con cambios de estado") quedan En progreso o En espera, con los cinco motivos de espera y un ciclo completo (iniciar, esperar y reactivar). **Necesita que `seed-catalogs` haya cargado las transiciones** (si faltan se detiene con ese mensaje) y, si un motivo de espera falta o está desactivado, registra la espera sin motivo y lo avisa. Al volver a ejecutarlo solo se crean los tickets nuevos de la lista: un ticket ya cargado no cambia de estado (hay que recrear la base de desarrollo para verlo en tickets antiguos). Los cambios de estado no necesitan extender el refresco de fechas: sus eventos llevan la marca del seed y la fecha de modificación acompaña al último.
 
 ---
 
@@ -1320,6 +1353,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 3 de `v0.4.0` (estados y transiciones):
+
+```text
+1224 tests passing
+```
+
+Los 103 tests nuevos cubren:
+
+- `tests/test_ticket_state_transitions.py` (75): **tabla y seed** (20 transiciones, la matriz de `docs/08` comprobada por propiedades —cierre directo nunca desde Resuelto, Cerrado solo sale reabriendo, la espera solo se entra desde En progreso, solo los seis estados—, todas las acciones del vocabulario presentes, idempotencia sin pisar una transición deshabilitada, salida del comando, unicidad por (origen, destino, acción) y que una transición no vaya de un estado a sí mismo); **acciones disponibles** por estado y por rol, destino, transición deshabilitada y que solo estén implementadas las tres operativas; **servicio** (iniciar, el ciclo completo con la versión subiendo cada vez, esperar con y sin motivo, con texto libre y sus reglas, motivo inactivo o inexistente, acciones que no admiten motivo, transiciones inválidas desde cada estado, acciones sin implementar, ticket cerrado, versión caduca, usuario inactivo, que no hace commit y **dos hilos que actúan a la vez producen una sola transición**); **pantallas** (los tres roles del personal, pantalla de confirmación, motivos activos en la de espera, motivo y texto visibles solo para el personal, 403 al Solicitante, 404 para tickets ajenos, acciones desconocidas, acción que ya no corresponde, ticket cerrado, conflicto de versión, versión ausente, validaciones del formulario y que se conserve lo escrito); y **detalle** (el botón correcto por estado y ninguno para Resuelto, Cerrado ni el Solicitante, y la opción "Tickets" marcada).
+- `tests/test_seed_demo_tickets.py` (+20 netos): validación de los pasos de estado y de los motivos, los datos cubren los tres estados alcanzables hoy, los cinco motivos de espera, un ciclo completo y un texto libre; el historial queda igual que el de la aplicación (versión, actor, marca, motivo y texto); el Solicitante no ve el motivo y el personal sí; falta de transiciones o de un motivo de espera; y que refrescar no toca estado ni versión. `test_tickets_follow_the_creation_rules` ya no espera `Nuevo` en todos: calcula el estado final de cada ticket demo a partir de sus ajustes.
+- `tests/test_ticket_policies.py` (+5): `can_change_state` en las tres comprobaciones que ya cubrían editar y cambiar la prioridad. `tests/test_layout.py` (+3 casos): Editar, Cambiar prioridad y Cambiar estado marcan "Tickets". `tests/test_catalogs.py`: el diccionario de `seed_catalogs` incluye `transiciones`.
+- `tests/test_tickets_edit_service.py`: solo cambia el módulo desde el que importa `TicketClosedError` y `TicketConflictError` (ahora `tickets/versioning.py`), sin tocar ninguna comprobación.
 
 Estado tras la entrega 2 de `v0.4.0` (catálogo de motivos de espera):
 

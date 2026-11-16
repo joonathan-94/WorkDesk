@@ -1,6 +1,7 @@
 from .authorization import STAFF_ROLES as STAFF_ROLES
 from .authorization import RoleCode as RoleCode
 from .authorization import can_change_priority as can_change_priority
+from .authorization import can_change_state as can_change_state
 from .authorization import can_choose_requesters as can_choose_requesters
 from .authorization import can_create_ticket as can_create_ticket
 from .authorization import can_edit_ticket as can_edit_ticket

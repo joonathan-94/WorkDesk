@@ -10,8 +10,6 @@ revierten juntos, y el commit lo realiza quien llama. Quién puede editar lo
 decide la capa de rutas (`can_edit_ticket`, `can_change_priority`).
 """
 
-from sqlalchemy import func, update
-
 from ..extensions import db
 from ..models import (
     Categoria,
@@ -28,16 +26,9 @@ from .service import (
     clean_title_and_description,
     record_ticket_event,
 )
+from .versioning import TicketClosedError, apply_ticket_changes
 
 MAX_REASON_LENGTH = 500
-
-
-class TicketClosedError(TicketRuleError):
-    """Un ticket cerrado no se edita: primero debe reabrirse."""
-
-
-class TicketConflictError(TicketRuleError):
-    """Otra persona modificó el ticket mientras se editaba."""
 
 
 def update_ticket(
@@ -116,7 +107,7 @@ def update_ticket(
     if not changes:
         return False
 
-    _apply_changes(ticket, actor, expected_version, changes)
+    apply_ticket_changes(ticket, actor, expected_version, changes)
 
     if new_data:
         record_ticket_event(
@@ -186,7 +177,7 @@ def change_priority(
 
     old_priority = ticket.prioridad
 
-    _apply_changes(ticket, actor, expected_version, {"prioridad_id": priority.id})
+    apply_ticket_changes(ticket, actor, expected_version, {"prioridad_id": priority.id})
 
     record_ticket_event(
         ticket,
@@ -208,7 +199,8 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
     """Líneas legibles con lo que cambió en un evento del historial.
 
     Sirve para mostrar el historial. **Nunca incluye el motivo** de un cambio
-    de prioridad: quién puede verlo lo decide la plantilla (docs/06, RN-155).
+    de prioridad ni el de una espera: quién puede verlo lo decide la ruta
+    (docs/06, RN-155).
     """
     old = entry.valor_anterior or {}
     new = entry.valor_nuevo or {}
@@ -243,6 +235,11 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
 
         return [f"Prioridad: {before} → {after}"]
 
+    if entry.tipo_evento == TicketEvent.ESTADO_CAMBIADO:
+        before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
+
+        return [f"Estado: {before} → {after}"]
+
     return []
 
 
@@ -272,44 +269,6 @@ def _get_choice(model, record_id: int, *, current_id, label: str):
         raise TicketRuleError(f"{label} seleccionada no está disponible.")
 
     return record
-
-
-def _apply_changes(
-    ticket: Ticket,
-    actor: User,
-    expected_version: int,
-    changes: dict,
-) -> None:
-    """Aplica `changes` solo si la versión del ticket sigue siendo la esperada.
-
-    Es un `UPDATE ... WHERE version = :esperada`: si otra transacción lo
-    modificó antes, no coincide ninguna fila y se informa el conflicto. Si
-    dos guardados llegan a la vez, el segundo espera al primero y, al volver
-    a evaluar la condición, ya no encuentra la versión que esperaba.
-    """
-    result = db.session.execute(
-        update(Ticket)
-        .where(
-            Ticket.id == ticket.id,
-            Ticket.version == expected_version,
-        )
-        .values(
-            **changes,
-            version=Ticket.version + 1,
-            fecha_modificacion=func.now(),
-            usuario_modificacion_id=actor.id,
-        )
-        .execution_options(synchronize_session=False)
-    )
-
-    if result.rowcount != 1:
-        raise TicketConflictError(
-            "Otra persona modificó este ticket mientras lo editabas. "
-            "Revisa los datos actuales e inténtalo de nuevo."
-        )
-
-    # El objeto en memoria debe reflejar lo que acaba de guardarse.
-    db.session.refresh(ticket)
 
 
 def _category_snapshot(category: Categoria) -> dict:
