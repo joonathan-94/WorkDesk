@@ -13,6 +13,7 @@ from .security import (
 from .seeds import (
     DemoTicketsError,
     seed_catalogs,
+    seed_demo_groups,
     seed_demo_tickets,
     seed_demo_users,
     seed_roles,
@@ -143,7 +144,7 @@ def register_commands(app: Flask) -> None:
 
     @app.cli.command("seed-demo")
     def seed_demo_command() -> None:
-        """Carga usuarios de demostración (equipo de soporte ficticio).
+        """Carga usuarios y grupos de demostración (equipo de soporte ficticio).
 
         La contraseña de los usuarios demo se pide al ejecutar el comando
         (oculta) o se toma de la variable de entorno WORKDESK_DEMO_PASSWORD.
@@ -175,6 +176,12 @@ def register_commands(app: Flask) -> None:
         click.echo(
             f"Usuarios demo creados: {created}. "
             f"Omitidos (ya existían): {skipped}."
+        )
+        groups_created, groups_skipped = seed_demo_groups()
+
+        click.echo(
+            f"Grupos demo creados: {groups_created}. "
+            f"Omitidos (ya existían): {groups_skipped}."
         )
         click.echo(
             "No se creó ningún Administrador: usa create-admin para crear "

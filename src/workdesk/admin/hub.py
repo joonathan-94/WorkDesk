@@ -38,6 +38,7 @@ HUB_SECTIONS = (
                 title="Grupos",
                 description="Grupos de atención y sus miembros.",
                 icon="diagram-3",
+                endpoint="groups.list_groups_page",
             ),
         ),
     ),

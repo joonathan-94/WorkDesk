@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-state-transitions
+feature/groups
 ```
 
-Entrega 3 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): tabla de transiciones de estado y cambios de estado operativos (iniciar, poner en espera y reactivar), con su pantalla y el control de versión compartido (ver "Estados y transiciones"). Incluye una migración.
+Entrega 4 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): grupos de atención con sus técnicos y supervisores responsables, pantallas en `/groups` y ganchos en la administración de usuarios (ver "Grupos"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 y 2 de `v0.4.0`: visibilidad y vocabulario del historial (PR #23) y catálogo de motivos de espera (PR #24).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 3 de `v0.4.0`: visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24) y estados y transiciones (PR #25).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -95,8 +95,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | --- | --- | --- |
 | 1 | Historial: vocabulario en la aplicación y visibilidad por evento | Integrada (PR #23) |
 | 2 | Catálogo de motivos de espera y su administración | Integrada (PR #24) |
-| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | En curso |
-| 4 | Grupos (`/groups`), con membresías y supervisores responsables | Pendiente |
+| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Integrada (PR #25) |
+| 4 | Grupos (`/groups`), con membresías y supervisores responsables | En curso |
 | 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Pendiente |
 | 6 | Agregar y retirar solicitantes tras crear el ticket | Pendiente |
 | 7 | Comentarios públicos y notas internas | Pendiente |
@@ -312,6 +312,7 @@ WorkDesk/
 │       ├── audit/
 │       ├── auth/
 │       ├── catalogs/
+│       ├── groups/
 │       ├── main/
 │       ├── models/
 │       ├── security/
@@ -345,6 +346,7 @@ WorkDesk/
 │       │   ├── auth/
 │       │   ├── catalogs/
 │       │   ├── errors/
+│       │   ├── groups/
 │       │   ├── layouts/
 │       │   ├── main/
 │       │   ├── tickets/
@@ -379,6 +381,7 @@ WorkDesk/
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
 │   ├── test_formatting.py
+│   ├── test_groups.py
 │   ├── test_system.py
 │   ├── test_ticket_history_visibility.py
 │   ├── test_ticket_model.py
@@ -495,7 +498,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente diez migraciones:
+Existen actualmente once migraciones:
 
 ```text
 create_roles_table
@@ -508,6 +511,7 @@ add_unique_name_indexes_to_priorities_and_locations
 add_visibility_to_ticket_history_and_drop_event_type_check
 create_wait_reasons_table_and_history_wait_reason
 create_state_transitions_table
+create_groups_tables
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -810,6 +814,33 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 **Historial en el detalle:** `describe_history_changes(entry)` devuelve las líneas de lo que cambió (`Título: «a» → «b»`, `Descripción modificada.`, `Ubicación: — → «c»`, `Categoría: …`, `Prioridad: …`) y **nunca incluye el motivo**. La ruta del detalle pasa el motivo a la plantilla solo si el usuario es del personal: el Solicitante ve qué cambió, no por qué. La descripción completa no se repite en el historial. El resumen del detalle muestra también "Actualizado" (`Ticket.fecha_actualizacion`).
 
 
+
+## Grupos (entrega 4 de `v0.4.0`)
+
+Módulo `src/workdesk/groups/` (blueprint `groups`, prefijo `/groups`): `routes.py`, `forms.py` y `service.py`. Reglas completas en `docs/06` (RN-146) y `docs/09` (10.1 a 10.3).
+
+**Modelos** (`models/grupo.py`): `Grupo` (`grupos`), `UsuarioGrupo` (`usuarios_grupos`) y `GrupoSupervisor` (`grupos_supervisores`). `Grupo` comparte con los catálogos las columnas de vigencia y trazabilidad (`CatalogAuditMixin`) más `fecha_desactivacion` y `usuario_desactivacion_id`, con nombre único sin distinguir mayúsculas. Las otras dos son relaciones N:M temporales: la vigente es la que no tiene `fecha_fin`, con índice único parcial (nadie figura dos veces como miembro o responsable vigente del mismo grupo; puede volver con una fila nueva) y `CHECK` de que el fin no precede al inicio. El cierre usa `now()` de la base de datos, igual que el inicio. Los grupos no se eliminan, solo se desactivan. `Grupo.miembros_vigentes` y `Grupo.supervisores_vigentes` filtran las vigentes.
+
+**Políticas** (`security/authorization.py`): `can_access_groups` (Administrador y Supervisor), `can_manage_groups` (solo el Administrador: crear, editar, activar, desactivar y designar responsables), `is_responsible_supervisor(user, group)` (Supervisor activo con designación vigente), `can_view_group` (Administrador, o responsable) y `can_manage_group_members` (la misma regla). `visible_groups_condition(user)` (`groups/service.py`) es su equivalente en SQL (Administrador todo; Supervisor, los grupos donde es responsable vigente mediante `EXISTS`; el resto, ninguno) y un test comprueba que ambos coinciden. Si se cambia uno hay que cambiar el otro.
+
+**Rutas.** Todas exigen Administrador o Supervisor (`roles_required`; el Técnico y el Solicitante reciben 403) y, dentro del área, se vuelven a comprobar:
+
+- `GET /groups` (listado con filtro por estado), `GET /groups/<id>` (detalle con técnicos y responsables): el Administrador ve todos los grupos; el Supervisor, los suyos. **Un grupo ajeno responde 404**, igual que uno inexistente.
+- `GET, POST /groups/new`, `/groups/<id>/edit`, `/deactivate` y `/activate`: solo el Administrador (403 para el Supervisor, que ve el grupo pero no puede gestionarlo).
+- `POST /groups/<id>/members/add` y `GET, POST /groups/<id>/members/<membership_id>/remove`: el Administrador y el Supervisor responsable. El id de una membresía de otro grupo no sirve para retirar de este.
+- `POST /groups/<id>/supervisors/add` y `GET, POST /groups/<id>/supervisors/<designation_id>/remove`: solo el Administrador.
+- Pantallas separadas, sin modales: alta y edición con nombre y descripción; confirmación con motivo opcional para desactivar, reactivar y retirar. Agregar y designar son un selector de una línea en el propio detalle (las opciones salen de la base y se validan como en el resto de formularios, sin `SelectField`).
+
+**Servicio** (`groups/service.py`, sin commit): `create_group`, `update_group` (devuelve `False` sin auditar si nada cambió), `deactivate_group` y `activate_group`; `add_member` y `remove_member`; `designate_supervisor` y `remove_supervisor`; `list_groups(user, status)` (carga miembros y supervisores sin una consulta por grupo), `get_group`, `list_member_candidates` y `list_supervisor_candidates`. Reglas: solo un **Técnico activo** puede ser miembro y solo un **Supervisor activo** responsable; el grupo debe estar activo para cambiar sus miembros o responsables (un grupo desactivado los conserva); nadie figura dos veces como vigente (comprobación y respaldo en el índice único con savepoint, como los catálogos); un grupo puede tener varios responsables o ninguno (sin responsable solo el Administrador gestiona sus técnicos).
+
+**Ganchos en la administración de usuarios** (`users/service.py`): `close_user_group_links` cierra membresías y designaciones. `change_role` lo llama para quien deja de ser Técnico (sus membresías) o Supervisor (sus designaciones) y `deactivate_user` para ambas, con el motivo «Cambio de rol.» o «Usuario desactivado.». Reactivar a un usuario no las restaura. El historial se conserva y cada cierre se audita.
+
+**Auditoría** (`AuditAction`): `GRUPO_CREADO`, `GRUPO_MODIFICADO`, `GRUPO_ACTIVADO`, `GRUPO_DESACTIVADO`, `GRUPO_MIEMBRO_AGREGADO`, `GRUPO_MIEMBRO_RETIRADO`, `GRUPO_SUPERVISOR_DESIGNADO` y `GRUPO_SUPERVISOR_RETIRADO`, con `entidad_tipo` `grupo`, el nombre en `detalle` y la persona (`usuario_id` y `username`) en los valores. Retirar y desactivar admiten un motivo opcional.
+
+**Navegación y hub:** el Supervisor tiene la opción **Grupos** en el menú lateral; el Administrador llega desde la tarjeta **Grupos** del hub (la opción "Administración" se marca activa en `groups.`). Se corrige la matriz de `docs/11`: "Grupos" es del Administrador y, condicionado a sus grupos, del Supervisor.
+
+**Seed:** `seed-demo` carga además tres grupos de ejemplo (`seeds/demo.py`, `DEMO_GROUPS`: Soporte Redes, Soporte Usuarios y Aplicaciones, con sus técnicos y supervisores; un técnico está en dos grupos y un grupo tiene dos responsables). Es idempotente por nombre (un grupo existente no se toca) y, como no hay Administrador en los datos demo, se registra como acción del sistema. Aún **no se asignan a tickets**: `tickets.grupo_id` llega con la asignación (entrega 5).
+
 ## Estados y transiciones (entrega 3 de `v0.4.0`)
 
 Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en `tickets/lifecycle.py`; la ruta (`tickets/routes.py`) solo orquesta.
@@ -1066,6 +1097,16 @@ GET, POST  /admin/wait-reasons/new
 GET, POST  /admin/wait-reasons/<id>/edit
 GET, POST  /admin/wait-reasons/<id>/deactivate
 GET, POST  /admin/wait-reasons/<id>/activate
+GET        /groups
+GET, POST  /groups/new
+GET        /groups/<id>
+GET, POST  /groups/<id>/edit
+GET, POST  /groups/<id>/deactivate
+GET, POST  /groups/<id>/activate
+POST       /groups/<id>/members/add
+GET, POST  /groups/<id>/members/<membership_id>/remove
+POST       /groups/<id>/supervisors/add
+GET, POST  /groups/<id>/supervisors/<designation_id>/remove
 GET        /tickets
 GET, POST  /tickets/new
 GET        /tickets/<public_id>
@@ -1080,7 +1121,7 @@ GET        /static/<path:filename>
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
+`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
@@ -1106,14 +1147,14 @@ No representa todavía los dashboards finales del MVP.
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad y cambiar estado (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
-- Administración se marca activa en el hub, en todas las pantallas de usuarios y en las de catálogos; Mi cuenta, en `/account` y en el cambio de contraseña.
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad y cambiar estado (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos y de grupos; Grupos (del Supervisor), en las de grupos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Categorías", "Prioridades", "Ubicaciones" y "Motivos de espera"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones" y "Motivos de espera"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -1297,13 +1338,13 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 `seed-demo` (`src/workdesk/seeds/demo.py`, RN-151):
 
-- carga un equipo de soporte ficticio de 12 personas: 2 supervisores, 4 técnicos y 6 solicitantes, con correos `@workdesk.local`;
+- carga un equipo de soporte ficticio de 12 personas: 2 supervisores, 4 técnicos y 6 solicitantes, con correos `@workdesk.local`, y tres grupos de ejemplo con sus técnicos y supervisores responsables (`seed_demo_groups`, idempotente por nombre);
 - **no crea ningún Administrador** (el real se crea con `create-admin`);
 - pide la contraseña común al ejecutarse (oculta, con confirmación) o la toma de la variable `WORKDESK_DEMO_PASSWORD`; la valida con la política de contraseñas y nunca la muestra ni la guarda;
 - carga antes los roles estructurales (`seed-roles`);
-- es idempotente: omite a quien ya tenga ese username o ese correo, sin modificarlo;
+- es idempotente: omite a quien ya tenga ese username o ese correo y al grupo que ya exista, sin modificarlos;
 - se niega a ejecutarse con `APP_ENV=production`;
-- los usuarios quedan activos y sin cambio de contraseña obligatorio, y cada creación se audita como acción del sistema.
+- los usuarios quedan activos y sin cambio de contraseña obligatorio, y cada creación (de un usuario o de un grupo) se audita como acción del sistema.
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
 
@@ -1353,6 +1394,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 4 de `v0.4.0` (grupos):
+
+```text
+1340 tests passing
+```
+
+Los 116 tests nuevos cubren:
+
+- `tests/test_groups.py` (109): **base de datos** (nombre único sin distinguir mayúsculas, miembro y responsable únicos mientras estén vigentes pero con posibilidad de volver, y que un cierre no preceda al inicio); **políticas** por rol, para anónimos e inactivos, el supervisor responsable (vigente, retirado, otro supervisor, otro grupo) y **la condición SQL equivalente a la política** para los cinco perfiles; **servicio** (alta con auditoría, nombre obligatorio y repetido, carrera de nombre con savepoint, edición de solo lo cambiado, sin cambios sin auditar, desactivar y reactivar conservando miembros y responsables, agregar y retirar técnicos con su historial, solo técnicos y supervisores activos, duplicados y carreras, grupos desactivados, candidatos, listados por rol y por estado y que el listado no consulte por grupo); **ganchos de usuarios** (cambio de rol de técnico y de supervisor, desactivación, que reactivar no restaure y el contador de cierres); y **pantallas** (403 al Técnico y al Solicitante, 404 a un Supervisor ante grupos ajenos, el Supervisor sin acceso a editar, desactivar ni a los responsables, ids de otro grupo que no sirven para retirar, alta y edición con sus validaciones, confirmaciones con motivo, formularios de agregar y designar, grupo sin responsable ni técnicos, escape de HTML, filtros, navegación del Supervisor y tarjeta del hub).
+- `tests/test_seed_demo.py` (+5): los tres grupos de demostración con sus miembros y responsables, que usen solo técnicos y supervisores del equipo, auditoría como acción del sistema, idempotencia sin tocar un grupo existente y que un supervisor demo vea solo los suyos. El test que comprobaba que toda la auditoría de `seed-demo` eran altas de usuario se acotó a las entradas de usuario, porque el comando ahora también crea grupos.
+- `tests/test_layout.py` (+2 casos y un test dividido): el Supervisor ve **Grupos** en su menú, los grupos cuelgan de Administración para el Administrador y el hub enlaza con `/groups`.
+- `tests/test_route_protection.py` cubre las rutas nuevas sin cambios.
 
 Estado tras la entrega 3 de `v0.4.0` (estados y transiciones):
 

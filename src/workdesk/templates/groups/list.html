@@ -1,0 +1,147 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, active_badge %}
+
+{% block title %}Grupos{% endblock %}
+
+{% block content %}
+    {{ breadcrumb(crumbs) }}
+
+    {% call page_header(
+        'Grupos',
+        'Grupos de atención, sus técnicos y sus supervisores responsables.'
+        if can_manage else
+        'Los grupos de los que eres responsable.'
+    ) %}
+        {% if can_manage %}
+            <a
+                class="btn btn-primary"
+                href="{{ url_for('groups.new_group') }}"
+            >
+                <i
+                    class="bi bi-plus-lg me-1"
+                    aria-hidden="true"
+                ></i>
+                Nuevo grupo
+            </a>
+        {% endif %}
+    {% endcall %}
+
+    <form
+        class="card card-body mb-3"
+        method="get"
+        action="{{ url_for('groups.list_groups_page') }}"
+    >
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6 col-md-4">
+                <label
+                    class="form-label"
+                    for="estado"
+                >
+                    Estado
+                </label>
+
+                <select
+                    class="form-select"
+                    id="estado"
+                    name="estado"
+                >
+                    <option value="">Todos</option>
+                    <option
+                        value="activo"
+                        {% if status == 'activo' %}selected{% endif %}
+                    >
+                        Activos
+                    </option>
+                    <option
+                        value="inactivo"
+                        {% if status == 'inactivo' %}selected{% endif %}
+                    >
+                        Inactivos
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-md-4 d-flex gap-2">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Filtrar
+                </button>
+
+                <a
+                    class="btn btn-link"
+                    href="{{ url_for('groups.list_groups_page') }}"
+                >
+                    Limpiar
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <p
+        class="small text-secondary mb-2"
+        aria-live="polite"
+    >
+        {{ groups|length }}
+        {{ 'resultado' if groups|length == 1 else 'resultados' }}
+    </p>
+
+    {% if groups %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Nombre</th>
+                            <th scope="col">Descripción</th>
+                            <th scope="col">Técnicos</th>
+                            <th scope="col">Responsables</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">
+                                <span class="visually-hidden">Acciones</span>
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for group in groups %}
+                            <tr>
+                                <td class="fw-semibold">{{ group.nombre }}</td>
+                                <td class="text-secondary">
+                                    {{ group.descripcion or '—' }}
+                                </td>
+                                <td>{{ group.miembros_vigentes|length }}</td>
+                                <td>
+                                    {% for designation in group.supervisores_vigentes %}
+                                        {{ designation.supervisor.nombre }}
+                                        {{ designation.supervisor.apellido }}{% if not loop.last %},{% endif %}
+                                    {% else %}
+                                        <span class="text-secondary">Sin responsable</span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ active_badge(group) }}</td>
+                                <td class="text-end">
+                                    <a
+                                        class="btn btn-sm btn-outline-secondary"
+                                        href="{{ url_for('groups.detail', group_id=group.id) }}"
+                                    >
+                                        Ver
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <p class="text-center text-secondary border rounded p-4 mb-0">
+            {% if can_manage %}
+                No hay grupos con esos criterios.
+            {% else %}
+                No eres responsable de ningún grupo todavía.
+            {% endif %}
+        </p>
+    {% endif %}
+{% endblock %}

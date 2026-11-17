@@ -1,0 +1,49 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field, textarea_field %}
+
+{% set creating = group is none %}
+{% set heading = 'Nuevo grupo' if creating else 'Editar grupo' %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb(crumbs) }}
+
+    {{ page_header(heading, None if creating else group.nombre) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ request.path }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {{ text_field(form.nombre, required=True, maxlength=100, autofocus=True) }}
+
+            {{ textarea_field(
+                form.descripcion,
+                maxlength=500,
+                hint="Opcional. Para qué se usa el grupo.",
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    {{ 'Crear grupo' if creating else 'Guardar cambios' }}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('groups.list_groups_page') if creating else url_for('groups.detail', group_id=group.id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

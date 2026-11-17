@@ -10,6 +10,7 @@ from .config import Config
 from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
 from .formatting import local_datetime
+from .groups import bp as groups_bp
 from .logging_config import configure_logging
 from .main import bp as main_bp
 from .navigation import layout_context
@@ -51,6 +52,7 @@ def create_app(
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(catalogs_bp)
+    app.register_blueprint(groups_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(tickets_bp)

@@ -1,0 +1,215 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import breadcrumb, active_badge %}
+{% from "_form_macros.html" import select_field %}
+
+{% block title %}{{ group.nombre }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb(crumbs) }}
+
+    <header class="page-header">
+        <div>
+            <h1 class="page-title text-break">{{ group.nombre }}</h1>
+
+            <p class="page-description">
+                {{ active_badge(group) }}
+                {% if group.descripcion %}
+                    <span class="ms-1">{{ group.descripcion }}</span>
+                {% endif %}
+            </p>
+        </div>
+
+        {# Solo se ofrecen al Administrador; cada ruta comprueba la
+           autorización por su cuenta. #}
+        {% if is_admin %}
+            <div class="d-flex flex-wrap gap-2">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('groups.edit_group', group_id=group.id) }}"
+                >
+                    <i
+                        class="bi bi-pencil me-1"
+                        aria-hidden="true"
+                    ></i>
+                    Editar
+                </a>
+
+                {% if group.activo %}
+                    <a
+                        class="btn btn-outline-danger"
+                        href="{{ url_for('groups.deactivate', group_id=group.id) }}"
+                    >
+                        Desactivar
+                    </a>
+                {% else %}
+                    <a
+                        class="btn btn-outline-primary"
+                        href="{{ url_for('groups.activate', group_id=group.id) }}"
+                    >
+                        Reactivar
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </header>
+
+    {% if not group.activo %}
+        <div class="alert alert-secondary">
+            Este grupo está desactivado: no se pueden cambiar sus técnicos
+            ni sus responsables hasta reactivarlo.
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <section
+                class="card h-100"
+                aria-labelledby="supervisors-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="supervisors-title"
+                    >
+                        Supervisores responsables
+                    </h2>
+
+                    {% if group.supervisores_vigentes %}
+                        <ul class="list-group list-group-flush mb-3">
+                            {% for designation in group.supervisores_vigentes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>
+                                        {{ designation.supervisor.nombre }}
+                                        {{ designation.supervisor.apellido }}
+                                    </span>
+
+                                    {% if is_admin %}
+                                        <a
+                                            class="btn btn-sm btn-outline-danger"
+                                            href="{{ url_for('groups.remove_group_supervisor', group_id=group.id, designation_id=designation.id) }}"
+                                        >
+                                            Retirar
+                                        </a>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-secondary">
+                            Sin supervisor responsable: solo el Administrador
+                            gestiona los técnicos de este grupo.
+                        </p>
+                    {% endif %}
+
+                    {% if supervisor_form %}
+                        {% if supervisor_form.choices %}
+                            <form
+                                method="post"
+                                action="{{ url_for('groups.add_group_supervisor', group_id=group.id) }}"
+                                novalidate
+                            >
+                                {{ supervisor_form.csrf_token }}
+
+                                {{ select_field(
+                                    supervisor_form.usuario,
+                                    supervisor_form.choices,
+                                    label="Designar un responsable",
+                                    placeholder="Selecciona un supervisor",
+                                    required=True,
+                                ) }}
+
+                                <button
+                                    class="btn btn-primary"
+                                    type="submit"
+                                >
+                                    Designar
+                                </button>
+                            </form>
+                        {% else %}
+                            <p class="small text-secondary mb-0">
+                                No hay más supervisores activos para designar.
+                            </p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-6">
+            <section
+                class="card h-100"
+                aria-labelledby="members-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="members-title"
+                    >
+                        Técnicos
+                        <span class="text-secondary fw-normal">
+                            ({{ group.miembros_vigentes|length }})
+                        </span>
+                    </h2>
+
+                    {% if group.miembros_vigentes %}
+                        <ul class="list-group list-group-flush mb-3">
+                            {% for link in group.miembros_vigentes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span>
+                                        {{ link.usuario.nombre }}
+                                        {{ link.usuario.apellido }}
+                                        {% if not link.usuario.activo %}
+                                            <span class="small text-secondary">(inactivo)</span>
+                                        {% endif %}
+                                    </span>
+
+                                    {% if can_members %}
+                                        <a
+                                            class="btn btn-sm btn-outline-danger"
+                                            href="{{ url_for('groups.remove_group_member', group_id=group.id, membership_id=link.id) }}"
+                                        >
+                                            Retirar
+                                        </a>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-secondary">Este grupo no tiene técnicos.</p>
+                    {% endif %}
+
+                    {% if member_form %}
+                        {% if member_form.choices %}
+                            <form
+                                method="post"
+                                action="{{ url_for('groups.add_group_member', group_id=group.id) }}"
+                                novalidate
+                            >
+                                {{ member_form.csrf_token }}
+
+                                {{ select_field(
+                                    member_form.usuario,
+                                    member_form.choices,
+                                    label="Agregar un técnico",
+                                    placeholder="Selecciona un técnico",
+                                    required=True,
+                                ) }}
+
+                                <button
+                                    class="btn btn-primary"
+                                    type="submit"
+                                >
+                                    Agregar
+                                </button>
+                            </form>
+                        {% else %}
+                            <p class="small text-secondary mb-0">
+                                No hay más técnicos activos para agregar.
+                            </p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}

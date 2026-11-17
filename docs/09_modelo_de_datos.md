@@ -571,6 +571,8 @@ fecha_fin IS NULL OR fecha_fin >= fecha_inicio
 - Un grupo sin supervisor responsable es válido: solo el Administrador gestiona sus membresías.
 - Las designaciones y sus cambios se registran en `auditoria_administrativa`.
 
+**Implementación (`v0.4.0`, entrega 4).** Las tres tablas (`grupos`, `usuarios_grupos` y `grupos_supervisores`) se crean con las columnas de este apartado. `grupos` reutiliza las columnas de vigencia y trazabilidad de los catálogos (`CatalogAuditMixin`) más `fecha_desactivacion` y `usuario_desactivacion_id`, y su nombre es único sin distinguir mayúsculas (índice sobre `lower(nombre)`). `usuarios_grupos` y `grupos_supervisores` tienen el índice único parcial sobre la vigencia (`WHERE fecha_fin IS NULL`), el `CHECK` `fecha_fin IS NULL OR fecha_fin >= fecha_inicio` e índices por grupo y por persona. La hora de cierre la pone la base de datos (`now()`), igual que la de inicio, para que el cierre nunca quede antes del inicio. Todas las claves foráneas son `ON DELETE RESTRICT`. Falta, a propósito, `tickets.grupo_id`: llega con la asignación (entrega 5).
+
 ---
 
 # 11. Catálogos de clasificación

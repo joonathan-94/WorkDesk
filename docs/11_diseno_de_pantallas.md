@@ -371,7 +371,7 @@ Leyenda:
 | Administración | — | — | — | ✓ |
 | Usuarios | — | — | — | ✓ |
 | Crear / editar usuario | — | — | — | ✓ |
-| Grupos | — | — | — | ✓ |
+| Grupos | — | — | C | ✓ |
 | Categorías | — | — | — | ✓ |
 | Prioridades | — | — | — | ✓ |
 | Ubicaciones | — | — | — | ✓ |
@@ -2302,6 +2302,14 @@ Debe permitir:
 Crear, desactivar y configurar grupos es exclusivo del Administrador.
 
 No asumir un único grupo por Técnico.
+
+**Implementación (`v0.4.0`, entrega 4)** — reglas en `docs/06` (RN-146):
+
+- **Acceso.** La matriz de la sección 6 se corrige: "Grupos" es del Administrador y, **condicionado a sus grupos (C)**, del Supervisor, que lo necesita para gestionar las membresías que RN-146 le asigna. El Técnico y el Solicitante no lo ven.
+- **Navegación.** El Supervisor tiene la opción **Grupos** en su menú lateral (`/groups`). El Administrador llega desde la tarjeta **Grupos** del hub de Administración, con la ruta de navegación "Administración / Grupos".
+- **Listado** (`/groups`): tabla con nombre, descripción, número de técnicos, responsables y estado, con filtro Todos / Activos / Inactivos. El Administrador ve todos y el botón **Nuevo grupo**; el Supervisor ve solo los suyos (y, si no tiene ninguno, un aviso).
+- **Detalle** (`/groups/<id>`): cabecera con el estado y, solo para el Administrador, **Editar** y **Desactivar** o **Reactivar**. Dos tarjetas: **Supervisores responsables** (el Administrador designa y retira; un grupo sin responsable lo indica) y **Técnicos** (con su cantidad; el Administrador y el Supervisor responsable agregan desde un selector y retiran). Un grupo desactivado muestra un aviso y no ofrece cambiar ni a sus técnicos ni a sus responsables.
+- **Pantallas separadas** (no modales), como el resto de acciones: alta y edición con nombre y descripción; confirmación con motivo opcional para desactivar, reactivar y retirar a un técnico o a un responsable. Agregar y designar se resuelven con un formulario de una línea en el propio detalle.
 
 ---
 
