@@ -1045,6 +1045,8 @@ Además:
 fecha_desasignacion IS NULL OR fecha_desasignacion >= fecha_asignacion
 ```
 
+**Implementación (`v0.4.0`, entrega 5).** `tickets_tecnicos` se crea con las columnas de este apartado, el índice único parcial sobre la vigencia (`WHERE fecha_desasignacion IS NULL`), el `CHECK` de fechas, los dos índices `(ticket_id, fecha_desasignacion)` y `(tecnico_id, fecha_desasignacion)` y todas las claves foráneas `ON DELETE RESTRICT`. La hora de cierre la pone la base de datos (`now()`), como la de inicio. Se añade `tickets.grupo_id` (BIGINT nulo, FK a `grupos`, `ON DELETE RESTRICT`, con índice; un índice compuesto `(grupo_id, estado_id)` queda para cuando haya consultas que lo necesiten). El backend valida que `tecnico_id` sea un **Técnico activo** (el Supervisor y el Administrador no se asignan). Asignar al primer técnico de un ticket `Nuevo` lo pasa a `Asignado` y quitar al último de un ticket `Asignado` lo devuelve a `Nuevo` (transiciones `ASIGNAR` y `DESASIGNACION`).
+
 Al crear una asignación activa, el backend deberá validar que `tecnico_id` corresponda a un usuario habilitado para desempeñarse como Técnico. Un cambio posterior de rol no borra asignaciones históricas; las asociaciones activas se cierran cuando corresponda y el cambio se audita.
 
 ---

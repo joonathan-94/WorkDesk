@@ -62,3 +62,17 @@ def apply_ticket_changes(
 
     # El objeto en memoria debe reflejar lo que acaba de guardarse.
     db.session.refresh(ticket)
+
+
+def lock_ticket(ticket: Ticket) -> None:
+    """Bloquea la fila del ticket (`SELECT ... FOR UPDATE`) y la vuelve a leer.
+
+    Las operaciones que validan contra el estado real del ticket (cambios de
+    estado, asignaciones...) la llaman antes de decidir: si dos personas
+    actúan a la vez, la segunda espera a que la primera confirme y ve su
+    resultado. El bloqueo dura hasta el final de la transacción.
+    """
+    db.session.execute(
+        db.select(Ticket.id).where(Ticket.id == ticket.id).with_for_update()
+    )
+    db.session.refresh(ticket)

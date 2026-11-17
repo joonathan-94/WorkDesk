@@ -37,9 +37,10 @@ MAX_DESCRIPTION_LENGTH = 2000
 class Ticket(db.Model):
     """Entidad central del dominio (docs/09, sección 13).
 
-    Todavía no incluye grupo, impacto ni urgencia: sus catálogos llegan en
-    fases posteriores. Los solicitantes y los técnicos no son columnas de
-    esta tabla sino asociaciones temporales (`tickets_solicitantes`).
+    Todavía no incluye impacto ni urgencia: sus catálogos llegan en fases
+    posteriores. Los solicitantes y los técnicos no son columnas de esta
+    tabla sino asociaciones temporales (`tickets_solicitantes` y
+    `tickets_tecnicos`).
     """
 
     __tablename__ = "tickets"
@@ -67,6 +68,7 @@ class Ticket(db.Model):
         Index("ix_tickets_fecha_creacion", "fecha_creacion"),
         Index("ix_tickets_fecha_cierre", "fecha_cierre"),
         Index("ix_tickets_creado_por_usuario_id", "creado_por_usuario_id"),
+        Index("ix_tickets_grupo_id", "grupo_id"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -120,6 +122,13 @@ class Ticket(db.Model):
     ubicacion_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("ubicaciones.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    # Grupo de atención (opcional): organiza, no limita quién puede actuar.
+    grupo_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("grupos.id", ondelete="RESTRICT"),
         nullable=True,
     )
 
@@ -213,8 +222,19 @@ class Ticket(db.Model):
     prioridad = relationship("Prioridad")
     estado = relationship("Estado")
     ubicacion = relationship("Ubicacion")
+    grupo = relationship("Grupo")
     solicitantes = relationship(
         "TicketRequester",
         back_populates="ticket",
         order_by="TicketRequester.id",
     )
+    tecnicos = relationship(
+        "TicketTechnician",
+        back_populates="ticket",
+        order_by="TicketTechnician.id",
+    )
+
+    @property
+    def tecnicos_vigentes(self) -> list:
+        """Asignaciones actuales (las que no tienen `fecha_desasignacion`)."""
+        return [a for a in self.tecnicos if a.fecha_desasignacion is None]

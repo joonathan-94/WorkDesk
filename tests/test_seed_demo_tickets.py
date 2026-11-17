@@ -14,6 +14,7 @@ from src.workdesk.models import (
     TicketEvent,
     TicketHistory,
     TicketRequester,
+    TicketTechnician,
     Ubicacion,
     User,
 )
@@ -21,6 +22,7 @@ from src.workdesk.models.ticket_history import TicketHistoryImmutableError
 from src.workdesk.seeds import (
     DemoTicketsError,
     seed_catalogs,
+    seed_demo_groups,
     seed_demo_tickets,
     seed_demo_users,
     seed_roles,
@@ -58,6 +60,7 @@ def prepare(app, *, categories=("Redes", "Hardware", "Correo", "Impresoras"),
         seed_roles()
         seed_catalogs()
         seed_demo_users(DEMO_PASSWORD)
+        seed_demo_groups()
 
         for order, name in enumerate(categories, start=1):
             db.session.add(Categoria(nombre=name, orden=order))
@@ -136,10 +139,24 @@ def final_state(demo) -> str:
     state = "NUEVO"
 
     for adjustment in demo.ajustes:
+        # Asignar un técnico a un ticket Nuevo lo pasa a Asignado.
+        if adjustment.asignar is not None and state == "NUEVO":
+            state = "ASIGNADO"
+
         if adjustment.estado is not None:
             state = ACTION_DESTINATION[adjustment.estado]
 
     return state
+
+
+def assignments_of(ticket):
+    return list(
+        db.session.scalars(
+            db.select(TicketTechnician)
+            .where(TicketTechnician.ticket_id == ticket.id)
+            .order_by(TicketTechnician.id)
+        )
+    )
 
 
 def count(model):
@@ -187,6 +204,10 @@ def date_snapshot():
             ticket.fecha_modificacion,
             [event.fecha_hora for event in history_of(ticket)],
             [link.fecha_asociacion for link in requesters_of(ticket)],
+            [
+                (a.fecha_asignacion, a.fecha_desasignacion)
+                for a in assignments_of(ticket)
+            ],
         )
 
     return snapshot
@@ -207,6 +228,7 @@ def content_snapshot():
             ticket.categoria_id,
             ticket.prioridad_id,
             ticket.ubicacion_id,
+            ticket.grupo_id,
             ticket.estado_id,
             ticket.version,
             [
@@ -214,6 +236,7 @@ def content_snapshot():
                 for event in history_of(ticket)
             ],
             [link.solicitante_id for link in requesters_of(ticket)],
+            [a.tecnico_id for a in assignments_of(ticket)],
         )
 
     return snapshot
@@ -381,6 +404,16 @@ def test_validation_rejects_requesters_on_a_ticket_created_by_a_requester():
         (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="INICIAR",
                         motivo_espera="OTRO"),
          "solo PONER_EN_ESPERA admite"),
+        (DemoAdjustment(actor="camila.rojas", despues_horas=1, grupo="Inventado"),
+         "grupo desconocido"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, grupo="Soporte Redes"),
+         "lo fija un Supervisor"),
+        (DemoAdjustment(actor="camila.rojas", despues_horas=1,
+                        asignar="javiera.torres"),
+         "no es un Técnico demo"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        asignar="valentina.pizarro"),
+         "solo un Supervisor asigna a otra persona"),
     ],
 )
 def test_validation_rejects_inconsistent_adjustments(adjustment, message):
@@ -441,7 +474,7 @@ def test_demo_data_includes_every_state_reachable_today_and_every_wait_reason():
         == ["INICIAR", "PONER_EN_ESPERA", "REACTIVAR"]
     ]
 
-    assert finals == {"NUEVO", "EN_PROGRESO", "EN_ESPERA"}
+    assert finals == {"NUEVO", "ASIGNADO", "EN_PROGRESO", "EN_ESPERA"}
     assert reasons == {
         "INFORMACION_PENDIENTE",
         "ESPERA_TERCERO",
@@ -1207,6 +1240,244 @@ def test_a_missing_wait_reason_only_warns_and_the_wait_has_no_reason(
 
 
 def test_refreshing_does_not_touch_the_state_or_the_version(app, seeded):
+    with app.app_context():
+        before = content_snapshot()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert content_snapshot() == before
+
+
+# --- Grupo y asignación ----------------------------------------------------
+
+
+def test_validation_simulates_the_assignment_before_the_state_action():
+    # Asignar a un técnico pasa el ticket a Asignado, desde donde se puede
+    # iniciar; sin la asignación, iniciar también es válido desde Nuevo, pero
+    # poner en espera no.
+    steps = (
+        DemoAdjustment(actor="camila.rojas", despues_horas=1, asignar="diego.soto"),
+        DemoAdjustment(actor="diego.soto", despues_horas=1, estado="INICIAR"),
+    )
+
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=steps),))
+
+    invalid = (
+        DemoAdjustment(
+            actor="camila.rojas",
+            despues_horas=1,
+            asignar="diego.soto",
+            estado="PONER_EN_ESPERA",
+        ),
+    )
+
+    with pytest.raises(DemoTicketsError, match="no es válida desde el estado ASIGNADO"):
+        validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=invalid),))
+
+
+def test_demo_data_covers_groups_and_assignments():
+    steps = [step for demo in DEMO_TICKETS for step in demo.ajustes]
+    group_only = [
+        demo
+        for demo in DEMO_TICKETS
+        if any(s.grupo for s in demo.ajustes)
+        and not any(s.asignar for s in demo.ajustes)
+    ]
+    two_technicians = [
+        demo
+        for demo in DEMO_TICKETS
+        if sum(1 for s in demo.ajustes if s.asignar) >= 2
+    ]
+
+    assert {s.grupo for s in steps if s.grupo} >= {
+        "Soporte Redes",
+        "Soporte Usuarios",
+        "Aplicaciones",
+    }
+    assert any(s.asignar and s.actor == s.asignar for s in steps), "falta una autoasignación"
+    assert any(s.asignar and s.actor != s.asignar for s in steps), "falta una asignación por un Supervisor"
+    assert group_only, "falta un ticket con grupo y sin técnico"
+    assert two_technicians, "falta un ticket con dos técnicos"
+
+
+def test_groups_and_assignments_leave_the_same_history_as_the_application(
+    app,
+    seeded,
+):
+    with app.app_context():
+        ticket = by_clave("disco-lleno-servidor")
+        (assignment,) = assignments_of(ticket)
+        events = history_of(ticket)
+        kinds = [e.tipo_evento for e in events]
+
+        assert ticket.grupo.nombre == "Soporte Redes"
+        assert assignment.tecnico.username == "valentina.pizarro"
+        assert assignment.asignado_por_usuario_id == user("camila.rojas").id
+        assert assignment.fecha_desasignacion is None
+        assert ticket.estado.codigo == "ASIGNADO"
+        # Creación, grupo, técnico y el cambio de estado que provoca asignar.
+        assert kinds == [
+            "TICKET_CREADO",
+            "GRUPO_CAMBIADO",
+            "TECNICO_ASIGNADO",
+            "ESTADO_CAMBIADO",
+        ]
+        assert all(e.contexto["demo_clave"] == "disco-lleno-servidor" for e in events)
+        assert {e.contexto["demo_paso"] for e in events[1:]} == {1}
+        # El grupo sube la versión y el estado derivado también.
+        assert ticket.version == 3
+
+
+def test_a_group_without_technician_leaves_the_ticket_new(app, seeded):
+    with app.app_context():
+        ticket = by_clave("cobertura-wifi-reuniones")
+
+        assert ticket.grupo.nombre == "Soporte Redes"
+        assert assignments_of(ticket) == []
+        assert ticket.estado.codigo == "NUEVO"
+
+
+def test_two_technicians_and_a_self_assignment(app, seeded):
+    with app.app_context():
+        ticket = by_clave("mouse-inalambrico")
+        assignments = assignments_of(ticket)
+
+        assert [a.tecnico.username for a in assignments] == [
+            "felipe.araya",
+            "diego.soto",
+        ]
+        assert [a.asignado_por_usuario_id for a in assignments] == [
+            user("matias.fuentes").id,
+            user("diego.soto").id,
+        ]
+        # Solo el primero movió el estado.
+        assert ticket.estado.codigo == "ASIGNADO"
+        assert (
+            len(
+                [
+                    e
+                    for e in history_of(ticket)
+                    if e.tipo_evento == "ESTADO_CAMBIADO"
+                ]
+            )
+            == 1
+        )
+
+
+def test_an_assignment_carries_the_date_of_its_event(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+
+            for assignment in assignments_of(ticket):
+                event = next(
+                    e
+                    for e in history_of(ticket)
+                    if e.tipo_evento == "TECNICO_ASIGNADO"
+                    and e.contexto.get("asignacion_id") == assignment.id
+                )
+
+                assert assignment.fecha_asignacion == event.fecha_hora
+
+
+def test_the_requester_sees_who_attends_but_not_the_group(app, seeded):
+    client = log_in(app, "sebastian.vargas")
+
+    with app.app_context():
+        public_id = by_clave("teams-no-conecta").public_id
+
+    plain = page_text(client, public_id)
+
+    assert "Atendido por" in plain
+    assert "Diego Soto" in plain
+    assert "Técnico asignado: «Diego Soto»" in plain
+
+    other = log_in(app, "javiera.torres")
+
+    with app.app_context():
+        grouped = by_clave("sistema-contable-lento").public_id
+
+    plain = page_text(other, grouped)
+
+    assert "Atendido por" in plain
+    assert "Aplicaciones" not in plain
+    assert "Grupo" not in plain
+
+
+def test_staff_sees_the_group_and_the_technicians(app, seeded):
+    client = log_in(app, "camila.rojas")
+
+    with app.app_context():
+        public_id = by_clave("sistema-contable-lento").public_id
+
+    plain = page_text(client, public_id)
+
+    assert "Grupo Aplicaciones" in plain
+    assert "Técnico Francisca Muñoz" in plain
+    assert "Grupo: — → «Aplicaciones»" in plain
+
+
+def test_a_missing_group_only_warns_and_the_ticket_has_no_group(app, prepared):
+    with app.app_context():
+        db.session.execute(
+            db.text("UPDATE grupos SET activo = false WHERE nombre = 'Soporte Redes'")
+        )
+        db.session.commit()
+
+        result = seed_demo_tickets(now=NOW)
+
+        assert any("Grupo «Soporte Redes»" in w for w in result.warnings)
+
+        ticket = by_clave("disco-lleno-servidor")
+
+        assert ticket.grupo_id is None
+        # La asignación del mismo paso sí se hizo.
+        assert ticket.estado.codigo == "ASIGNADO"
+
+
+def test_assignment_dates_follow_a_refresh(app, seeded):
+    # Que un refresco da lo mismo que una carga nueva ese día lo comprueba el
+    # test general de fechas (el snapshot incluye las asignaciones); aquí se
+    # comprueba además que cada asignación sigue siendo la de su evento.
+    with app.app_context():
+        first = date_snapshot()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert date_snapshot() != first
+
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+
+            for assignment in assignments_of(ticket):
+                event = next(
+                    e
+                    for e in history_of(ticket)
+                    if e.tipo_evento == "TECNICO_ASIGNADO"
+                    and e.contexto.get("asignacion_id") == assignment.id
+                )
+
+                assert assignment.fecha_asignacion == event.fecha_hora
+
+
+def test_a_hand_made_unassignment_follows_the_refresh_in_order(app, seeded):
+    from src.workdesk.tickets.assignment import unassign_technician
+
+    with app.app_context():
+        ticket = by_clave("mouse-inalambrico")
+        first = assignments_of(ticket)[0]
+
+        unassign_technician(ticket, first.id, actor=user("matias.fuentes"))
+        db.session.commit()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+        db.session.refresh(first)
+
+        assert first.fecha_desasignacion is not None
+        assert first.fecha_desasignacion >= first.fecha_asignacion
+
+
+def test_refresh_keeps_the_group_and_the_assignments(app, seeded):
     with app.app_context():
         before = content_snapshot()
 

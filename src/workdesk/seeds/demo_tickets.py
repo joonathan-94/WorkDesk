@@ -10,8 +10,9 @@ Cómo trabaja:
   existen. Si falta alguna usa la categoría de respaldo o deja el ticket sin
   ubicación, y lo informa.
 - Crea y ajusta los tickets con los servicios reales (`create_ticket`,
-  `update_ticket`, `change_priority` y `change_state`), así que valida,
-  versiona y deja el historial exactamente igual que la aplicación.
+  `update_ticket`, `change_priority`, `set_group`, `assign_technician` y
+  `change_state`), así que valida, versiona y deja el historial exactamente
+  igual que la aplicación.
 - Hace un único `commit` al final: o se carga todo o no se carga nada.
 
 Identidad. Cada ticket de la lista tiene una `clave` estable. Al crearlo, los
@@ -55,6 +56,7 @@ from ..formatting import app_zone
 from ..models import (
     Categoria,
     Estado,
+    Grupo,
     MotivoEspera,
     Prioridad,
     StateAction,
@@ -62,17 +64,19 @@ from ..models import (
     TicketEvent,
     TicketHistory,
     TicketRequester,
+    TicketTechnician,
     TransicionEstado,
     Ubicacion,
     User,
 )
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
+from ..tickets.assignment import assign_technician, set_group
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
 from ..tickets.service import INITIAL_STATE_CODE, TicketRuleError, create_ticket
 from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
-from .demo import DEMO_USERS
+from .demo import DEMO_GROUPS, DEMO_USERS
 from .demo_tickets_data import (
     DEMO_CALENDAR,
     DEMO_CATEGORIES,
@@ -86,6 +90,8 @@ from .demo_tickets_data import (
 
 STAFF_ROLES = ("TECNICO", "SUPERVISOR")
 SOLICITANTE = "SOLICITANTE"
+SUPERVISOR = "SUPERVISOR"
+TECNICO = "TECNICO"
 
 # Marca que el seed deja en `historial_ticket.contexto` de sus eventos.
 MARKER_KEY = "demo_clave"
@@ -266,6 +272,8 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
         adjustment.categoria,
         adjustment.prioridad,
         adjustment.estado,
+        adjustment.grupo,
+        adjustment.asignar,
     )
     if all(change is None for change in changes):
         problems.append(f"{label}: no cambia nada.")
@@ -280,6 +288,27 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
 
     if adjustment.categoria is not None and adjustment.categoria not in DEMO_CATEGORIES:
         problems.append(f"{label}: categoría desconocida «{adjustment.categoria}».")
+
+    if adjustment.grupo is not None:
+        if adjustment.grupo not in {group.nombre for group in DEMO_GROUPS}:
+            problems.append(f"{label}: grupo desconocido «{adjustment.grupo}».")
+
+        if roles.get(adjustment.actor) != SUPERVISOR:
+            problems.append(f"{label}: el grupo lo fija un Supervisor demo.")
+
+    if adjustment.asignar is not None:
+        if roles.get(adjustment.asignar) != TECNICO:
+            problems.append(f"{label}: «{adjustment.asignar}» no es un Técnico demo.")
+
+        # Un Técnico solo se asigna a sí mismo; a otra persona la asigna un
+        # Supervisor.
+        if roles.get(adjustment.actor) != SUPERVISOR and (
+            adjustment.actor != adjustment.asignar
+        ):
+            problems.append(
+                f"{label}: solo un Supervisor asigna a otra persona; un Técnico "
+                "se asigna a sí mismo."
+            )
 
     if adjustment.prioridad is not None:
         if adjustment.prioridad not in PRIORITY_CODES:
@@ -310,6 +339,10 @@ def _check_state_steps(problems, label, ticket) -> None:
 
     for step, adjustment in enumerate(ticket.ajustes, start=1):
         where = f"{label}, ajuste {step}"
+        # Asignar un técnico a un ticket Nuevo lo pasa a Asignado.
+        if adjustment.asignar is not None and current == INITIAL_STATE_CODE:
+            current = "ASIGNADO"
+
         action = adjustment.estado
         has_reason_data = (
             adjustment.motivo_espera is not None or adjustment.texto is not None
@@ -428,9 +461,17 @@ class _Catalogs:
     """Usuarios, prioridades, categorías y ubicaciones ya existentes."""
 
     def __init__(
-        self, users, priorities, categories, fallback, locations, wait_reasons
+        self,
+        users,
+        priorities,
+        categories,
+        fallback,
+        locations,
+        wait_reasons,
+        groups,
     ):
         self.users: dict[str, User] = users
+        self.groups: dict[str, Grupo] = groups
         self.wait_reasons: dict[str, MotivoEspera] = wait_reasons
         self.priorities: dict[str, Prioridad] = priorities
         self.categories: dict[str, Categoria] = categories
@@ -452,6 +493,9 @@ class _Catalogs:
         for demo_ticket in tickets:
             needed.update(demo_ticket.solicitantes)
             needed.update(step.actor for step in demo_ticket.ajustes)
+            needed.update(
+                step.asignar for step in demo_ticket.ajustes if step.asignar
+            )
 
         users = {
             user.username: user
@@ -520,7 +564,22 @@ class _Catalogs:
                 "Faltan las transiciones de estado. Ejecuta primero seed-catalogs."
             )
 
-        return cls(users, priorities, categories, fallback, locations, wait_reasons)
+        groups = {
+            group.nombre.casefold(): group
+            for group in db.session.scalars(
+                db.select(Grupo).where(Grupo.activo.is_(True))
+            )
+        }
+
+        return cls(
+            users,
+            priorities,
+            categories,
+            fallback,
+            locations,
+            wait_reasons,
+            groups,
+        )
 
     def warn(self, message: str) -> None:
         if message not in self.warnings:
@@ -547,6 +606,17 @@ class _Catalogs:
             "de algunos tickets."
         )
         return None
+
+    def group(self, name: str) -> Grupo | None:
+        """Grupo por nombre. Es opcional: si falta o está desactivado el
+        ticket queda sin grupo y se avisa (los crea `seed-demo`)."""
+        found = self.groups.get(name.casefold())
+        if found is None:
+            self.warn(
+                f"Grupo «{name}» no encontrado o desactivado: algunos tickets "
+                "quedaron sin grupo. Ejecuta seed-demo para cargar los grupos."
+            )
+        return found
 
     def wait_reason(self, code: str | None) -> MotivoEspera | None:
         """Motivo de espera por código. Es opcional: si falta o está
@@ -793,6 +863,24 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
             reason=adjustment.motivo,
         )
 
+    if adjustment.grupo is not None:
+        group = catalogs.group(adjustment.grupo)
+
+        if group is not None:
+            set_group(
+                ticket,
+                group.id,
+                actor=actor,
+                expected_version=ticket.version,
+            )
+
+    if adjustment.asignar is not None:
+        assign_technician(
+            ticket,
+            catalogs.users[adjustment.asignar].id,
+            actor=actor,
+        )
+
     if adjustment.estado is not None:
         reason = catalogs.wait_reason(adjustment.motivo_espera)
 
@@ -853,6 +941,17 @@ def _write_new_dates(
             ).all()
         )
 
+        # La asignación nace en el momento de su evento.
+        for context in contexts.values():
+            if context and "asignacion_id" in context:
+                db.session.execute(
+                    update(TicketTechnician.__table__)
+                    .where(
+                        TicketTechnician.__table__.c.id == context["asignacion_id"]
+                    )
+                    .values(fecha_asignacion=times[step])
+                )
+
         for event_id in event_ids:
             marker = {MARKER_KEY: key, MARKER_STEP: step}
 
@@ -890,7 +989,12 @@ def _refresh(
     requesters = TicketRequester.__table__
 
     events = db.session.execute(
-        db.select(history.c.id, history.c.fecha_hora, history.c.contexto)
+        db.select(
+            history.c.id,
+            history.c.fecha_hora,
+            history.c.contexto,
+            history.c.tipo_evento,
+        )
         .where(history.c.ticket_id == ticket.id)
         .order_by(history.c.id)
     ).all()
@@ -941,6 +1045,32 @@ def _refresh(
             update(history)
             .where(history.c.id == event.id)
             .values(fecha_hora=new_time[event.id])
+        )
+
+    # Las asignaciones siguen a sus eventos. Una sola actualización por fila,
+    # para que la desasignación nunca preceda a la asignación.
+    assignment_dates: dict[int, dict] = {}
+
+    for event in events:
+        assignment_id = (event.contexto or {}).get("asignacion_id")
+
+        if assignment_id is None:
+            continue
+
+        if event.tipo_evento == TicketEvent.TECNICO_ASIGNADO.value:
+            assignment_dates.setdefault(assignment_id, {})["fecha_asignacion"] = (
+                new_time[event.id]
+            )
+        elif event.tipo_evento == TicketEvent.TECNICO_DESASIGNADO.value:
+            assignment_dates.setdefault(assignment_id, {})["fecha_desasignacion"] = (
+                new_time[event.id]
+            )
+
+    for assignment_id, values in assignment_dates.items():
+        db.session.execute(
+            update(TicketTechnician.__table__)
+            .where(TicketTechnician.__table__.c.id == assignment_id)
+            .values(**values)
         )
 
     links = db.session.execute(

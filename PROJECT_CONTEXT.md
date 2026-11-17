@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/groups
+feature/ticket-assignment
 ```
 
-Entrega 4 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): grupos de atención con sus técnicos y supervisores responsables, pantallas en `/groups` y ganchos en la administración de usuarios (ver "Grupos"). Incluye una migración.
+Entrega 5 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): asignación de técnicos a los tickets, grupo del ticket y escalamiento manual, con sus pantallas y el seed de demostración ampliado (ver "Asignación"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 3 de `v0.4.0`: visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24) y estados y transiciones (PR #25).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 4 de `v0.4.0`: visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25) y grupos (PR #26).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -96,8 +96,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 1 | Historial: vocabulario en la aplicación y visibilidad por evento | Integrada (PR #23) |
 | 2 | Catálogo de motivos de espera y su administración | Integrada (PR #24) |
 | 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Integrada (PR #25) |
-| 4 | Grupos (`/groups`), con membresías y supervisores responsables | En curso |
-| 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Pendiente |
+| 4 | Grupos (`/groups`), con membresías y supervisores responsables | Integrada (PR #26) |
+| 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | En curso |
 | 6 | Agregar y retirar solicitantes tras crear el ticket | Pendiente |
 | 7 | Comentarios públicos y notas internas | Pendiente |
 | 8 | Adjuntos | Pendiente |
@@ -167,7 +167,7 @@ Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técni
 - la pantalla de Estados y transiciones (UI-021), que sigue pendiente (entrega 12); la tabla de transiciones ya existe (entrega 3);
 - los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
 - dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
-- las columnas de grupo, impacto y urgencia de `tickets`, cuando existan sus catálogos;
+- las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos (la de grupo ya existe: entrega 5);
 - la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado, y se aplicará en el servicio de cierre.
 
 ## Hito completado: v0.2.0
@@ -385,6 +385,7 @@ WorkDesk/
 │   ├── test_system.py
 │   ├── test_ticket_history_visibility.py
 │   ├── test_ticket_model.py
+│   ├── test_ticket_assignment.py
 │   ├── test_ticket_policies.py
 │   ├── test_ticket_state_transitions.py
 │   ├── test_tickets_edit_routes.py
@@ -498,7 +499,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente once migraciones:
+Existen actualmente doce migraciones:
 
 ```text
 create_roles_table
@@ -512,6 +513,7 @@ add_visibility_to_ticket_history_and_drop_event_type_check
 create_wait_reasons_table_and_history_wait_reason
 create_state_transitions_table
 create_groups_tables
+create_ticket_technicians_table_and_ticket_group
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -717,7 +719,7 @@ Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclu
 
 # 11 ter. Modelo de tickets
 
-Modelos en `models/ticket.py`, `models/ticket_requester.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación, un detalle de solo lectura y el listado están descritos más abajo ("Creación y detalle de tickets" y "Listado de tickets"); la edición está en "Edición de tickets" y los cambios de estado en "Estados y transiciones".
+Modelos en `models/ticket.py`, `models/ticket_requester.py`, `models/ticket_technician.py` y `models/ticket_history.py`, con el servicio en `src/workdesk/tickets/service.py`. La creación, un detalle de solo lectura y el listado están descritos más abajo ("Creación y detalle de tickets" y "Listado de tickets"); la edición está en "Edición de tickets" y los cambios de estado en "Estados y transiciones".
 
 ## Ticket (`tickets`)
 
@@ -725,7 +727,7 @@ Entidad central. Campos principales: `public_id`, `titulo` (máximo 200 caracter
 
 - **`public_id`:** lo genera la secuencia de PostgreSQL `tickets_public_id_seq` (segura ante concurrencia), se guarda como texto y la interfaz lo mostrará como `#N`. Para ordenar por antigüedad se usa `id` o las fechas, no `public_id`.
 - **Restricciones:** `version >= 1`; `fecha_cierre` y `motivo_cierre_id` van siempre juntos o ambos vacíos; un cierre automático no tiene usuario que cierra. Que un ticket en estado `CERRADO` tenga fecha y motivo de cierre no puede expresarse en la base (depende del código del estado en otra tabla): lo aplicará el servicio de cierre de `v0.4.0`.
-- **Aún sin** grupo, impacto ni urgencia: sus catálogos y la tabla `grupos` llegan en fases posteriores, y las columnas se añadirán entonces.
+- **Grupo (`grupo_id`, opcional, FK a `grupos`):** lo fijan el Supervisor y el Administrador (ver "Asignación"). **Aún sin** impacto ni urgencia: sus catálogos llegan en fases posteriores, y las columnas se añadirán entonces.
 - Índices por estado, prioridad, categoría, ubicación, fecha de creación, fecha de cierre y creador; todas las claves foráneas son `ON DELETE RESTRICT`.
 
 ## Solicitantes (`tickets_solicitantes`)
@@ -814,6 +816,36 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 **Historial en el detalle:** `describe_history_changes(entry)` devuelve las líneas de lo que cambió (`Título: «a» → «b»`, `Descripción modificada.`, `Ubicación: — → «c»`, `Categoría: …`, `Prioridad: …`) y **nunca incluye el motivo**. La ruta del detalle pasa el motivo a la plantilla solo si el usuario es del personal: el Solicitante ve qué cambió, no por qué. La descripción completa no se repite en el historial. El resumen del detalle muestra también "Actualizado" (`Ticket.fecha_actualizacion`).
 
 
+
+
+## Asignación (entrega 5 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-157) y `docs/09` (15.1). Las reglas están en `tickets/assignment.py`; las rutas (`tickets/routes.py`) solo orquestan.
+
+**Modelo** (`models/ticket_technician.py`, `TicketTechnician`, tabla `tickets_tecnicos`): relación N:M temporal entre tickets y técnicos con `fecha_asignacion`, `asignado_por_usuario_id`, `fecha_desasignacion`, `desasignado_por_usuario_id` y `motivo_desasignacion`. La asignación vigente es la que no tiene `fecha_desasignacion`, con índice único parcial (un técnico no figura dos veces como asignado vigente del mismo ticket; puede volver con una fila nueva), `CHECK` de fechas y los índices `(ticket_id, fecha_desasignacion)` y `(tecnico_id, fecha_desasignacion)`. Las horas las pone la base de datos (`now()`). `Ticket.tecnicos` y `Ticket.tecnicos_vigentes` las exponen y `tickets.grupo_id` (FK a `grupos`, con índice) guarda el grupo.
+
+**Políticas** (`security/authorization.py`): `can_assign_self(user)` (solo un **Técnico**: es el único rol que puede figurar como técnico de un ticket) y `can_manage_assignments(user)` (Supervisor y Administrador: asignar, quitar y reasignar a cualquier técnico, fijar el grupo y escalar).
+
+**Servicio** (`tickets/assignment.py`, sin commit; cada operación bloquea la fila del ticket con `lock_ticket` antes de validar):
+
+- `assign_technician(ticket, technician_id, actor=)`: el técnico debe ser un **Técnico activo** y no estar ya asignado (comprobación más índice único con savepoint). Registra `TECNICO_ASIGNADO` (público; `contexto["asignacion_id"]`). Si el ticket está `Nuevo` lo pasa a `Asignado`.
+- `unassign_technician(ticket, assignment_id, actor=, reason=)`: cierra la asignación (la conserva) y registra `TECNICO_DESASIGNADO` (público). Si era el último técnico de un ticket `Asignado`, lo devuelve a `Nuevo`.
+- `set_group(ticket, group_id, actor=, expected_version=)`: fija o quita (`None`) el grupo. El grupo nuevo debe estar activo; el actual puede conservarse aunque esté desactivado. Devuelve `False` si es el mismo. Sube la versión y registra `GRUPO_CAMBIADO` (**interno**). No cambia el estado.
+- `escalate_ticket(ticket, actor=, expected_version=, group_id=, technician_id=, reason=)`: hay que cambiar el grupo y/o el técnico y el motivo es obligatorio (máx. 500). Un técnico nuevo **reemplaza** a los asignados (sus asignaciones se cierran con el motivo «Escalamiento.»). Sube la versión siempre y registra **un único** evento interno `TICKET_ESCALADO` con el grupo y los técnicos anteriores y nuevos y el motivo en `contexto`. Si el ticket está `Nuevo` y se asigna un técnico, pasa a `Asignado`.
+- Un ticket cerrado lanza `TicketClosedError`. **Estado derivado:** `apply_derived_transition` (en `tickets/lifecycle.py`) aplica `ASIGNAR` (Nuevo → Asignado) y `DESASIGNACION` (Asignado → Nuevo) si la transición está activa, sube la versión y registra `ESTADO_CAMBIADO` con `contexto={"accion": ..., "derivado": True}`.
+- **Versión:** suben `version` el grupo, el escalamiento y el estado derivado; asignar y quitar técnicos por sí solos no (son aditivos). Un test con dos hilos comprueba que dos autoasignaciones del mismo técnico producen una sola asignación y que dos técnicos que se asignan a la vez a un ticket `Nuevo` lo pasan a `Asignado` una sola vez.
+- Consultas: `list_assignable_technicians`, `list_escalation_technicians` y `list_groups_for_ticket` (grupos activos más el actual aunque esté desactivado). `lock_ticket` (en `tickets/versioning.py`) es el bloqueo compartido con `change_state`.
+
+**Rutas** (siempre 404 si el usuario no ve el ticket y 403 si lo ve pero no puede actuar; un ticket cerrado vuelve al detalle con un aviso):
+
+- `POST /tickets/<n>/assign-me` y `/unassign-me`: solo un Técnico (403 al resto).
+- `GET /tickets/<n>/assignment` (pantalla de asignación), `POST .../assignment/technicians/add`, `POST .../assignment/technicians/<assignment_id>/remove` y `POST .../assignment/group`: Supervisor y Administrador (un Técnico solo puede usar `remove` con su propia asignación).
+- `GET, POST /tickets/<n>/escalate`: Supervisor y Administrador. Fijar el grupo y escalar llevan la versión en un campo oculto; un conflicto avisa sin guardar.
+- Formularios (`tickets/forms.py`): `TechnicianPickForm`, `GroupChangeForm` y `EscalationForm`, con las opciones como atributo (sin `SelectField`).
+
+**Detalle:** el Técnico ve **Asignarme** o **Dejar ticket** (un clic, con CSRF); Supervisor y Administrador ven **Asignar**. El resumen muestra al personal **Técnico(s)** (con «(inactivo)» si corresponde) y **Grupo**, y al Solicitante solo **Atendido por** (o «Aún sin asignar»), nunca el grupo. Historial: `Técnico asignado: «…»`, `Técnico desasignado: «…»`, `Grupo: «a» → «b»` y `Ticket escalado` (con líneas de grupo y técnicos); `GRUPO_CAMBIADO` y `TICKET_ESCALADO` son internos y el Solicitante no los recibe (el filtro está en la consulta, como siempre).
+
+**Seed demo:** `DemoAdjustment` admite `grupo` (nombre de un grupo de `seed-demo`, lo fija un Supervisor) y `asignar` (username de un técnico; lo asigna él mismo o un Supervisor). En un paso el orden es datos, prioridad, grupo, asignación y estado. La validación simula que asignar a un técnico pasa un ticket `Nuevo` a `Asignado`. Las fechas de las asignaciones se escriben al crear (la de su evento) y se refrescan con el resto, en una sola actualización por fila para que una desasignación hecha a mano nunca preceda a su asignación. Si un grupo falta o está desactivado el ticket queda sin grupo y se avisa.
 
 ## Grupos (entrega 4 de `v0.4.0`)
 
@@ -1113,6 +1145,13 @@ GET        /tickets/<public_id>
 GET, POST  /tickets/<public_id>/edit
 GET, POST  /tickets/<public_id>/priority
 GET, POST  /tickets/<public_id>/status/<action_slug>
+POST       /tickets/<public_id>/assign-me
+POST       /tickets/<public_id>/unassign-me
+GET        /tickets/<public_id>/assignment
+POST       /tickets/<public_id>/assignment/technicians/add
+POST       /tickets/<public_id>/assignment/technicians/<assignment_id>/remove
+POST       /tickets/<public_id>/assignment/group
+GET, POST  /tickets/<public_id>/escalate
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -1147,7 +1186,7 @@ No representa todavía los dashboards finales del MVP.
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad y cambiar estado (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación y escalamiento (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos y de grupos; Grupos (del Supervisor), en las de grupos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
@@ -1348,17 +1387,18 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
 
-- carga 48 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
-- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera` y `texto`) y, cuando existan asignaciones, cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
+- carga 54 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo` y `asignar`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
 - necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
-- usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
+- usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
 - **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
 - **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `demo_tickets_data.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (`_BusinessClock`) pasará a un módulo compartido con el SLA. Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
 - valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad, y que la secuencia de acciones de estado de cada ticket sea ejecutable desde Nuevo con la matriz de transiciones y con motivos y textos coherentes...);
 - una sola transacción: si algo falla se revierte todo (`DemoTicketsError`);
 - se niega a ejecutarse con `APP_ENV=production`;
-- los tickets sin cambios de estado quedan en `Nuevo`; los ocho últimos de la lista (los del bloque "Tickets con cambios de estado") quedan En progreso o En espera, con los cinco motivos de espera y un ciclo completo (iniciar, esperar y reactivar). **Necesita que `seed-catalogs` haya cargado las transiciones** (si faltan se detiene con ese mensaje) y, si un motivo de espera falta o está desactivado, registra la espera sin motivo y lo avisa. Al volver a ejecutarlo solo se crean los tickets nuevos de la lista: un ticket ya cargado no cambia de estado (hay que recrear la base de desarrollo para verlo en tickets antiguos). Los cambios de estado no necesitan extender el refresco de fechas: sus eventos llevan la marca del seed y la fecha de modificación acompaña al último.
+- **grupo y asignación:** los seis últimos de la lista (bloque "Tickets con grupo y asignación") se asignan a técnicos y se agrupan: uno solo con grupo (queda `Nuevo`), uno con dos técnicos (uno se asigna a sí mismo y otro lo asigna un Supervisor), dos que además se inician y uno que queda en espera. Necesitan los grupos de `seed-demo`: si faltan, se avisa y el ticket queda sin grupo;
+- los tickets sin cambios de estado ni asignación quedan en `Nuevo`; los ocho del bloque "Tickets con cambios de estado" quedan En progreso o En espera, con los cinco motivos de espera y un ciclo completo (iniciar, esperar y reactivar). **Necesita que `seed-catalogs` haya cargado las transiciones** (si faltan se detiene con ese mensaje) y, si un motivo de espera falta o está desactivado, registra la espera sin motivo y lo avisa. Al volver a ejecutarlo solo se crean los tickets nuevos de la lista: un ticket ya cargado no cambia de estado, grupo ni técnicos (hay que recrear la base de desarrollo para verlo en tickets antiguos). Los cambios de estado y de grupo no necesitan extender el refresco de fechas (sus eventos llevan la marca del seed); las asignaciones sí, porque `tickets_tecnicos` tiene fechas propias: se reescriben siguiendo a su evento (`contexto["asignacion_id"]`).
 
 ---
 
@@ -1394,6 +1434,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 5 de `v0.4.0` (asignación):
+
+```text
+1432 tests passing
+```
+
+Los 92 tests nuevos cubren:
+
+- `tests/test_ticket_assignment.py` (68): **servicio** (asignar mueve un ticket `Nuevo` a `Asignado` con su evento derivado, más técnicos y otros estados no cambian el estado ni la versión, transición deshabilitada, autoasignación, solo Técnicos activos, duplicados, ticket cerrado, usuario inactivo, que no hace commit, candidatos; quitar conserva la asignación, el último técnico devuelve a `Nuevo`, ids ajenos o ya quitados, motivo largo; grupo: fijar, quitar, mismo grupo, grupos inactivos y desconocidos, el actual desactivado se conserva, versión caduca y ticket cerrado; escalar: grupo, técnico que reemplaza, ambos, necesidad de un cambio real y de motivo, grupos y técnicos inválidos, versión y ticket cerrado) y **concurrencia con hilos** (dos autoasignaciones del mismo técnico producen una sola, y dos técnicos a la vez pasan el ticket a `Asignado` una sola vez); **visibilidad** (el Solicitante ve «Atendido por» y el técnico asignado pero ni el grupo ni el escalamiento ni su motivo; el personal lo ve todo; sin asignar; técnico inactivo); y **pantallas** (autoasignarse y dejar el ticket, solo Técnicos, un Técnico solo se quita a sí mismo, 403 a Técnicos y Solicitantes en las pantallas de gestión, 404 para tickets ajenos en todas las rutas, asignar y quitar como Supervisor y Administrador, validaciones, grupo con conflicto de versión, ticket cerrado, botones por rol, opción «Tickets» marcada y la pantalla y el formulario de escalamiento).
+- `tests/test_seed_demo_tickets.py` (+16): validación de `grupo` y `asignar` (grupo desconocido, quién fija el grupo, técnico inválido, quién asigna a otra persona), la simulación del estado derivado, que los datos cubran grupo sin técnico, dos técnicos, autoasignación y asignación por un Supervisor, el historial igual al de la aplicación, que cada asignación lleve la fecha de su evento, lo que ven el Solicitante y el personal, un grupo que falta solo avisa, el refresco de fechas de las asignaciones (incluida una desasignación hecha a mano) y que refrescar no toca grupo ni técnicos. `final_state` tiene en cuenta que asignar pasa el ticket a `Asignado`, ya alcanzable en los datos, y `prepare` carga los grupos de `seed-demo`.
+- `tests/test_ticket_policies.py` (+6): `can_assign_self` y `can_manage_assignments` por rol, usuarios inactivos y anónimos. `tests/test_layout.py` (+2 casos): asignación y escalamiento marcan «Tickets».
 
 Estado tras la entrega 4 de `v0.4.0` (grupos):
 

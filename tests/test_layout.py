@@ -146,6 +146,8 @@ def test_anonymous_users_see_no_navigation():
         ("tickets.edit_ticket", ["Tickets"]),
         ("tickets.change_ticket_priority", ["Tickets"]),
         ("tickets.change_ticket_state", ["Tickets"]),
+        ("tickets.assignment_page", ["Tickets"]),
+        ("tickets.escalate", ["Tickets"]),
         # Los grupos cuelgan de Administración para el Administrador.
         ("groups.list_groups_page", ["Administración"]),
         ("groups.detail", ["Administración"]),

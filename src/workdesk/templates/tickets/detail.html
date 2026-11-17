@@ -29,7 +29,7 @@
 
         {# Solo se ofrecen al personal y mientras el ticket no esté cerrado;
            cada ruta comprueba la autorización por su cuenta. #}
-        {% if show_edit or show_priority or state_actions %}
+        {% if show_edit or show_priority or state_actions or can_self_assign or show_assignment %}
             <div class="d-flex flex-wrap gap-2">
                 {# Cambios de estado válidos desde el estado actual y para el
                    rol: puede haber uno o dos. #}
@@ -45,6 +45,46 @@
                         {{ option.info.label }}
                     </a>
                 {% endfor %}
+
+                {# Un Técnico se asigna o deja el ticket con un clic: es
+                   reversible. Supervisor y Administrador abren la pantalla
+                   de asignación. #}
+                {% if can_self_assign %}
+                    <form
+                        method="post"
+                        action="{{ url_for('tickets.unassign_me' if my_assignment else 'tickets.assign_me', public_id=ticket.public_id) }}"
+                    >
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        >
+
+                        <button
+                            class="btn btn-outline-secondary"
+                            type="submit"
+                        >
+                            <i
+                                class="bi bi-person-{{ 'dash' if my_assignment else 'plus' }} me-1"
+                                aria-hidden="true"
+                            ></i>
+                            {{ 'Dejar ticket' if my_assignment else 'Asignarme' }}
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if show_assignment %}
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('tickets.assignment_page', public_id=ticket.public_id) }}"
+                    >
+                        <i
+                            class="bi bi-people me-1"
+                            aria-hidden="true"
+                        ></i>
+                        Asignar
+                    </a>
+                {% endif %}
 
                 {% if show_edit %}
                     <a
@@ -180,6 +220,46 @@
 
                         <dt class="small text-secondary fw-normal">Ubicación</dt>
                         <dd>{{ ticket.ubicacion.nombre if ticket.ubicacion else '—' }}</dd>
+
+                        {# Quién atiende el ticket. El personal ve además el
+                           grupo; el Solicitante, solo "Atendido por" (docs/11,
+                           UI-005). #}
+                        {% set assigned = ticket.tecnicos_vigentes %}
+
+                        <dt class="small text-secondary fw-normal">
+                            {% if is_staff %}
+                                {{ 'Técnico' if assigned|length == 1 else 'Técnicos' }}
+                            {% else %}
+                                Atendido por
+                            {% endif %}
+                        </dt>
+                        <dd>
+                            {% if assigned %}
+                                <ul class="list-unstyled mb-0">
+                                    {% for assignment in assigned %}
+                                        <li>
+                                            {{ assignment.tecnico.nombre }}
+                                            {{ assignment.tecnico.apellido }}
+                                            {% if is_staff and not assignment.tecnico.activo %}
+                                                <span class="small text-secondary">(inactivo)</span>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                {{ 'Sin asignar' if is_staff else 'Aún sin asignar' }}
+                            {% endif %}
+                        </dd>
+
+                        {% if is_staff %}
+                            <dt class="small text-secondary fw-normal">Grupo</dt>
+                            <dd>
+                                {{ ticket.grupo.nombre if ticket.grupo else '—' }}
+                                {% if ticket.grupo and not ticket.grupo.activo %}
+                                    <span class="small text-secondary">(inactivo)</span>
+                                {% endif %}
+                            </dd>
+                        {% endif %}
 
                         <dt class="small text-secondary fw-normal">Creado</dt>
                         <dd>{{ ticket.fecha_creacion|local_datetime }}</dd>

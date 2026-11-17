@@ -33,6 +33,7 @@ from .versioning import (
     TicketClosedError,
     TicketConflictError,
     apply_ticket_changes,
+    lock_ticket,
 )
 
 # Texto libre que acompaña a un motivo de espera que lo admite.
@@ -173,7 +174,7 @@ def change_state(
     if not actor.is_active:
         raise TicketRuleError("El usuario no está activo.")
 
-    _lock_and_reload(ticket)
+    lock_ticket(ticket)
 
     old_state = db.session.get(Estado, ticket.estado_id)
 
@@ -235,11 +236,63 @@ def change_state(
     return new_state
 
 
-def _lock_and_reload(ticket: Ticket) -> None:
-    db.session.execute(
-        db.select(Ticket.id).where(Ticket.id == ticket.id).with_for_update()
+def apply_derived_transition(
+    ticket: Ticket,
+    *,
+    actor: User,
+    action: StateAction,
+    from_state_code: str,
+) -> Estado | None:
+    """Aplica la transición de estado que es consecuencia de otra operación.
+
+    La usa la asignación: asignar al primer técnico de un ticket `Nuevo` lo
+    pasa a `Asignado` (`ASIGNAR`) y quitar al último técnico de un ticket
+    `Asignado` lo devuelve a `Nuevo` (`DESASIGNACION`). Solo actúa si el
+    ticket está en `from_state_code` y la transición existe y está activa
+    (si el Administrador la deshabilitó, el estado no cambia). Quien llama
+    ya bloqueó el ticket. Sube la versión y registra `ESTADO_CAMBIADO`.
+    Devuelve el estado nuevo o None si no hubo cambio.
+    """
+    old_state = db.session.get(Estado, ticket.estado_id)
+
+    if old_state.codigo != from_state_code:
+        return None
+
+    transition = db.session.scalar(
+        db.select(TransicionEstado).where(
+            TransicionEstado.estado_origen_id == old_state.id,
+            TransicionEstado.accion == action.value,
+            TransicionEstado.activa.is_(True),
+        )
     )
-    db.session.refresh(ticket)
+
+    if transition is None:
+        return None
+
+    new_state = transition.estado_destino
+
+    apply_ticket_changes(
+        ticket,
+        actor,
+        ticket.version,
+        {"estado_id": new_state.id},
+    )
+    record_ticket_event(
+        ticket,
+        TicketEvent.ESTADO_CAMBIADO,
+        actor=actor,
+        detail=(
+            f"Estado cambiado de «{old_state.nombre_visible}» "
+            f"a «{new_state.nombre_visible}»."
+        ),
+        old_state=old_state,
+        new_state=new_state,
+        old_value=_state_snapshot(old_state),
+        new_value=_state_snapshot(new_state),
+        context={"accion": action.value, "derivado": True},
+    )
+
+    return new_state
 
 
 def _clean_wait_reason(
