@@ -1,0 +1,116 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import select_field, textarea_field %}
+
+{% block title %}Escalar el ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Escalar', None),
+    ]) }}
+
+    {{ page_header('Escalar ticket', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.escalate', public_id=ticket.public_id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# Versión con la que se abrió la pantalla: permite detectar si
+               otra persona modificó el ticket mientras tanto. #}
+            <input
+                type="hidden"
+                name="{{ form.version.name }}"
+                value="{{ form.version.data if form.version.data is not none else '' }}"
+            >
+
+            {% if form.version.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.version.errors[0] }}
+                </div>
+            {% endif %}
+
+            <p class="text-secondary">
+                Escalar pasa el ticket a otro grupo y/o a otro técnico. No
+                cambia la prioridad. Elige al menos una de las dos cosas;
+                el escalamiento queda registrado en el historial, solo visible
+                para el personal.
+            </p>
+
+            <dl class="row mb-3">
+                <dt class="col-sm-3 text-secondary fw-normal">Grupo actual</dt>
+                <dd class="col-sm-9">
+                    {{ ticket.grupo.nombre if ticket.grupo else 'Sin grupo' }}
+                </dd>
+
+                <dt class="col-sm-3 text-secondary fw-normal">Técnicos actuales</dt>
+                <dd class="col-sm-9 mb-0">
+                    {% for assignment in ticket.tecnicos_vigentes %}
+                        {{ assignment.tecnico.nombre }} {{ assignment.tecnico.apellido }}{% if not loop.last %}, {% endif %}
+                    {% else %}
+                        Sin técnicos asignados
+                    {% endfor %}
+                </dd>
+            </dl>
+
+            {{ select_field(
+                form.grupo,
+                form.group_choices,
+                label="Escalar al grupo",
+                placeholder="No cambiar el grupo",
+            ) }}
+
+            {{ select_field(
+                form.tecnico,
+                form.technician_choices,
+                label="Escalar al técnico",
+                placeholder="No cambiar los técnicos",
+            ) }}
+
+            <p class="small text-secondary">
+                Si eliges un técnico, reemplaza a los técnicos asignados
+                actualmente (sus asignaciones quedan como historial).
+            </p>
+
+            {{ textarea_field(
+                form.motivo,
+                required=True,
+                maxlength=max_reason,
+                rows=4,
+                counter=True,
+                hint="Queda registrado en el historial del ticket.",
+            ) }}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Escalar ticket
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

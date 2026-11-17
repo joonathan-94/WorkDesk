@@ -37,12 +37,12 @@ faltas de tilde, el problema equivocado ("no tengo internet" cuando era un
 cable) y prioridades exageradas. Esa ambigüedad es intencional: es lo que
 ocurre en un soporte de verdad.
 
-Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste) ya
-existen. Cuando existan asignaciones, cierres y comentarios, se añadirán
-campos opcionales con valor por defecto y los tickets ya escritos seguirán
-siendo válidos.
+Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste), el
+grupo (`grupo`) y la asignación de técnicos (`asignar`) ya existen. Cuando
+existan cierres y comentarios, se añadirán campos opcionales con valor por
+defecto y los tickets ya escritos seguirán siendo válidos.
 
-Los tickets cuya historia incluye cambios de estado están al final de la
+Los tickets cuya historia incluye cambios de estado, grupo o asignación están al final de la
 lista: al volver a ejecutar el comando solo se crean los que faltan, y un
 ticket ya cargado no se modifica (para ver los estados en tickets antiguos hay
 que recrear la base de desarrollo).
@@ -109,6 +109,12 @@ class DemoAdjustment:
     en Nuevo). Solo `PONER_EN_ESPERA` admite `motivo_espera` (el código de un
     motivo del catálogo, por ejemplo `ESPERA_TERCERO`) y, si ese motivo lo
     permite (`OTRO`), un `texto` libre. Los dos son opcionales.
+
+    `grupo` es el nombre de uno de los grupos de `seed-demo` y lo fija un
+    Supervisor. `asignar` es el username de un técnico: lo asigna él mismo
+    (se asigna a sí mismo) o un Supervisor; si el ticket está en Nuevo, pasa
+    a Asignado. En un mismo paso el orden es: datos, prioridad, grupo,
+    asignación y, al final, el cambio de estado.
     """
 
     actor: str
@@ -121,6 +127,8 @@ class DemoAdjustment:
     estado: str | None = None
     motivo_espera: str | None = None
     texto: str | None = None
+    grupo: str | None = None
+    asignar: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1086,6 +1094,167 @@ DEMO_TICKETS = (
             DemoAdjustment(
                 actor="felipe.araya",
                 despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    # --- Tickets con grupo y asignación ---------------------------------------
+    DemoTicket(
+        clave="disco-lleno-servidor",
+        titulo="Servidor de archivos con el disco casi lleno",
+        descripcion=(
+            "El servidor de archivos llegó al 94 % de uso. Hay carpetas de "
+            "proyectos antiguos que ocupan mucho espacio y los respaldos "
+            "nocturnos están empezando a fallar. Hay que depurar o ampliar "
+            "el disco antes de que se llene."
+        ),
+        categoria="Sin clasificar",
+        prioridad="MEDIA",
+        creado_por="matias.fuentes",
+        hace_dias=10,
+        hora="11:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=2,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="teams-no-conecta",
+        titulo="no me conecto a las reuniones de teams",
+        descripcion=(
+            "desde hoy cuando entro a una reunion de teams se queda cargando "
+            "y despues me saca. con el celular si funciona. tengo reunion "
+            "con un cliente en la tarde, por favor"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=3,
+        hora="12:40",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                asignar="diego.soto",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="mouse-inalambrico",
+        titulo="el mouse inalambrico se desconecta solo",
+        descripcion=(
+            "el mouse se desconecta cada rato y tengo que sacar y poner "
+            "de nuevo el aparatito del USB. ya le cambie las pilas. a mi "
+            "compañera de al lado le pasa lo mismo con el suyo."
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="paula.contreras",
+        hace_dias=16,
+        hora="10:25",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=3,
+                grupo="Soporte Usuarios",
+                asignar="felipe.araya",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=4,
+                asignar="diego.soto",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="sistema-contable-lento",
+        titulo="el sistema contable esta lentisimo",
+        descripcion=(
+            "el sistema contable se demora como un minuto en abrir cada "
+            "pantalla desde ayer. a todo el equipo de finanzas nos pasa. "
+            "estamos con el cierre del mes y no podemos avanzar."
+        ),
+        categoria="Sin clasificar",
+        prioridad="ALTA",
+        creado_por="javiera.torres",
+        ubicacion=MATTA,
+        hace_dias=7,
+        hora="14:15",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Aplicaciones",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=1,
+                asignar="francisca.munoz",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=5,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="ESPERA_TERCERO",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="cobertura-wifi-reuniones",
+        titulo="Cobertura wifi insuficiente en la sala de reuniones",
+        descripcion=(
+            "Se reporta que en la sala de reuniones del segundo piso la "
+            "señal wifi es muy débil y se cortan las videollamadas. Se deriva "
+            "al grupo de redes para evaluar un punto de acceso adicional."
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="camila.rojas",
+        solicitantes=("andres.silva",),
+        ubicacion=MARCOLETA,
+        hace_dias=5,
+        hora="15:10",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="respaldo-notebook",
+        titulo="quiero respaldar mi notebook antes de que lo cambien",
+        descripcion=(
+            "me dijeron que me van a cambiar el notebook la proxima semana "
+            "y tengo cosas importantes guardadas en el. como hago para no "
+            "perder nada? gracias"
+        ),
+        categoria="Hardware",
+        prioridad="MEDIA",
+        creado_por="ignacio.molina",
+        ubicacion=MARCOLETA,
+        hace_dias=4,
+        hora="09:45",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=2,
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=3,
                 estado="INICIAR",
             ),
         ),

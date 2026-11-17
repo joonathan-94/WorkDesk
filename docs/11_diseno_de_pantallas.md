@@ -1858,6 +1858,15 @@ Resumen simplificado:
 - **Historial:** el evento "Estado cambiado" muestra `Estado: «a» → «b»` a todos los roles. El personal ve además `Motivo de espera: …` y `Motivo: …` (el texto libre).
 - **Avisos:** "El ticket #N pasó a «Estado»." y, si la acción ya no corresponde, "Esta acción no está disponible para el estado actual del ticket.".
 
+**Asignación, grupo y escalamiento (`v0.4.0`, entrega 5)** — reglas en `docs/06` (RN-157):
+
+- **Resumen:** el personal ve **Técnico(s)** (con «(inactivo)» si corresponde) y **Grupo**; el Solicitante ve solo **Atendido por** (o «Aún sin asignar») y nunca el grupo.
+- **Técnico:** en la cabecera, **Asignarme** o **Dejar ticket** (un botón de un clic, reversible).
+- **Supervisor y Administrador:** el botón **Asignar** abre la pantalla `/tickets/<n>/assignment` (separada, no un offcanvas, como el resto de acciones): tarjeta **Técnicos asignados** (con **Quitar** y un selector para asignar a otro técnico activo) y tarjeta **Grupo** (selector con «Sin grupo» y el botón **Guardar grupo**), con el enlace **Escalar**.
+- **Escalar** (`/tickets/<n>/escalate`): muestra el grupo y los técnicos actuales, dos selectores opcionales (grupo y técnico; hay que elegir al menos uno), una nota de que un técnico reemplaza a los actuales y el motivo obligatorio con contador.
+- **Historial:** `Técnico asignado: «…»`, `Técnico desasignado: «…»`, `Grupo: «a» → «b»` y `Ticket escalado` con las líneas de grupo y técnicos. Los dos últimos y el motivo solo los ve el personal.
+- No se muestra ninguna de estas acciones en un ticket cerrado.
+
 ---
 
 ## UI-005A — Resuelto pendiente de validación

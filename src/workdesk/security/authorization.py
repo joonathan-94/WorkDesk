@@ -79,6 +79,23 @@ def can_change_state(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_assign_self(user) -> bool:
+    """Asignarse (y dejar de estar asignado) a un ticket (docs/03, sección 5).
+
+    Solo un Técnico: es el único rol que puede figurar como técnico de un
+    ticket. El Supervisor y el Administrador asignan a otras personas, pero
+    no se asignan a sí mismos.
+    """
+    return has_any_role(user, RoleCode.TECNICO)
+
+
+def can_manage_assignments(user) -> bool:
+    """Asignar, quitar y reasignar técnicos a cualquier persona, fijar el
+    grupo del ticket y escalarlo: Supervisor y Administrador (docs/03,
+    sección 5). El Técnico solo se asigna a sí mismo (`can_assign_self`)."""
+    return has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR)
+
+
 def can_view_ticket(user, ticket) -> bool:
     """Indica si el usuario puede ver el ticket.
 

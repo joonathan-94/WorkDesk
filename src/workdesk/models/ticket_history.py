@@ -36,6 +36,10 @@ class TicketEvent(StrEnum):
     CATEGORIA_CAMBIADA = "CATEGORIA_CAMBIADA"
     PRIORIDAD_CAMBIADA = "PRIORIDAD_CAMBIADA"
     ESTADO_CAMBIADO = "ESTADO_CAMBIADO"
+    TECNICO_ASIGNADO = "TECNICO_ASIGNADO"
+    TECNICO_DESASIGNADO = "TECNICO_DESASIGNADO"
+    GRUPO_CAMBIADO = "GRUPO_CAMBIADO"
+    TICKET_ESCALADO = "TICKET_ESCALADO"
 
 
 class HistoryVisibility(StrEnum):
@@ -63,6 +67,13 @@ DEFAULT_EVENT_VISIBILITY = {
     # El cambio de estado lo ve el Solicitante; el motivo de espera y su
     # texto, no (se muestran solo al personal, como el motivo de prioridad).
     TicketEvent.ESTADO_CAMBIADO: HistoryVisibility.PUBLICO,
+    # Quién atiende el ticket es público ("Atendido por", docs/11, UI-005).
+    # El grupo y el escalamiento son internos: el Solicitante no conoce la
+    # estructura de grupos (docs/11, UI-005).
+    TicketEvent.TECNICO_ASIGNADO: HistoryVisibility.PUBLICO,
+    TicketEvent.TECNICO_DESASIGNADO: HistoryVisibility.PUBLICO,
+    TicketEvent.GRUPO_CAMBIADO: HistoryVisibility.INTERNO,
+    TicketEvent.TICKET_ESCALADO: HistoryVisibility.INTERNO,
 }
 
 
@@ -72,6 +83,10 @@ TICKET_EVENT_LABELS = {
     TicketEvent.CATEGORIA_CAMBIADA: "Categoría cambiada",
     TicketEvent.PRIORIDAD_CAMBIADA: "Prioridad cambiada",
     TicketEvent.ESTADO_CAMBIADO: "Estado cambiado",
+    TicketEvent.TECNICO_ASIGNADO: "Técnico asignado",
+    TicketEvent.TECNICO_DESASIGNADO: "Técnico desasignado",
+    TicketEvent.GRUPO_CAMBIADO: "Grupo cambiado",
+    TicketEvent.TICKET_ESCALADO: "Ticket escalado",
 }
 
 

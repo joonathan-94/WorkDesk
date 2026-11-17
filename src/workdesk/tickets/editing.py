@@ -199,7 +199,7 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
     """Líneas legibles con lo que cambió en un evento del historial.
 
     Sirve para mostrar el historial. **Nunca incluye el motivo** de un cambio
-    de prioridad ni el de una espera: quién puede verlo lo decide la ruta
+    de prioridad ni el de una espera o un escalamiento: quién puede verlo lo decide la ruta
     (docs/06, RN-155).
     """
     old = entry.valor_anterior or {}
@@ -239,6 +239,35 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
         before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
 
         return [f"Estado: {before} → {after}"]
+
+    if entry.tipo_evento == TicketEvent.TECNICO_ASIGNADO:
+        return [f"Técnico asignado: {_shown(new.get('nombre'))}"]
+
+    if entry.tipo_evento == TicketEvent.TECNICO_DESASIGNADO:
+        return [f"Técnico desasignado: {_shown(old.get('nombre'))}"]
+
+    if entry.tipo_evento == TicketEvent.GRUPO_CAMBIADO:
+        before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
+
+        return [f"Grupo: {before} → {after}"]
+
+    if entry.tipo_evento == TicketEvent.TICKET_ESCALADO:
+        lines = []
+        old_group = (old.get("grupo") or {}).get("nombre")
+        new_group = (new.get("grupo") or {}).get("nombre")
+        old_techs = [t.get("nombre") for t in old.get("tecnicos") or []]
+        new_techs = [t.get("nombre") for t in new.get("tecnicos") or []]
+
+        if old_group != new_group:
+            lines.append(f"Grupo: {_shown(old_group)} → {_shown(new_group)}")
+
+        if old_techs != new_techs:
+            lines.append(
+                f"Técnicos: {_shown(', '.join(old_techs) or None)} → "
+                f"{_shown(', '.join(new_techs) or None)}"
+            )
+
+        return lines
 
     return []
 

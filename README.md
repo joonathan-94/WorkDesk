@@ -558,7 +558,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
-| 8 | `seed-demo-tickets` (opcional) | Carga 48 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
+| 8 | `seed-demo-tickets` (opcional) | Carga 54 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
 | 9 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
@@ -578,6 +578,7 @@ Las migraciones actuales crean estas tablas:
 - `estados`, `transiciones_estados`, `prioridades`, `categorias`, `ubicaciones`, `motivos_cierre` y `motivos_espera`: catálogos de tickets y las transiciones válidas entre estados.
 - `tickets`, `tickets_solicitantes` e `historial_ticket`: los tickets, sus solicitantes y su historial.
 - `grupos`, `usuarios_grupos` y `grupos_supervisores`: los grupos de atención, sus técnicos y sus supervisores responsables.
+- `tickets_tecnicos` (y la columna `tickets.grupo_id`): los técnicos asignados a cada ticket y su grupo.
 
 Para comprobar que se aplicaron:
 
@@ -763,7 +764,7 @@ Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo
 
 ### Tener tickets con los que probar
 
-Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 48 tickets de demostración:
+Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 54 tickets de demostración:
 
 ```bash
 python -m flask --app src.workdesk seed-demo-tickets
@@ -779,7 +780,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - Tickets escritos como los escribiría gente real y poco técnica: títulos vagos («no puedo abrir el excel», «el wifi!!!!»), prisa, faltas de tilde, prioridades exageradas y, a veces, el problema equivocado (alguien dice «no tengo internet» y era un cable suelto). Otros los registra el personal a nombre de alguien, con un tono más ordenado.
 - Un reparto realista: cerca de un 70 % lo crean Solicitantes y el resto el personal (con 0, 1 o 2 solicitantes); hay tickets en las cuatro categorías y en `Sin clasificar` (el usuario no siempre sabe elegir), en las cuatro prioridades, en ambas ubicaciones y algunos sin ubicación.
 - Ocho tickets tienen además una historia posterior hecha por el personal: reclasificaciones, cambios de prioridad con motivo y títulos corregidos tras hablar con la persona. Quedan en el historial como en la aplicación real (el Solicitante ve qué cambió, pero no el motivo).
-- Otros ocho, al final de la lista, ya han avanzado en el flujo: quedan **En progreso** o **En espera**, con los cinco motivos de espera (uno con un texto libre) y un ticket que completó el ciclo iniciar, esperar y reactivar. El Solicitante ve que el ticket está en espera, pero no el motivo.
+- Otros catorce, al final de la lista, ya han avanzado en el flujo (seis de ellos con grupo y técnicos asignados, uno solo con grupo y otro con dos técnicos). Los ocho primeros de ese bloque: quedan **En progreso** o **En espera**, con los cinco motivos de espera (uno con un texto libre) y un ticket que completó el ciclo iniciar, esperar y reactivar. El Solicitante ve que el ticket está en espera, pero no el motivo.
 - Fechas repartidas hasta unas nueve semanas atrás, **relativas al día en que lo ejecutes** y medidas en **tiempo laboral**: «hace 3 días» son tres días laborales antes de hoy, cada ticket se crea dentro de la jornada y los pasos posteriores del personal avanzan en horas laborales (el reloj salta noches, fines de semana y feriados). Por defecto la jornada es de lunes a viernes de 09:00 a 18:00 y se cambia en `DEMO_CALENDAR`, en el mismo archivo de datos (cuando exista la pantalla del calendario laboral, con el SLA en `v0.5.0`, el comando usará el que guarde el Administrador y, si no hay ninguno, este). Nada queda fuera de ese calendario ni en el futuro, y si lo ejecutas un fin de semana, cuenta desde el último día laboral. Así los filtros por fecha y «Recién actualizados» se ven vivos en cualquier demostración.
 
 **Cómo se comporta**
@@ -818,7 +819,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 
 1. Inicia sesión. La barra lateral muestra **Dashboard**, **Tickets**, **Crear ticket**, **Administración** y **Mi cuenta**.
 2. **Crear ticket:** envía el formulario incompleto (por ejemplo, solo con el título). Cada campo obligatorio que falta muestra su error y el formulario conserva lo que ya habías escrito. Luego créalo bien, marcando dos solicitantes (el buscador filtra la lista). Debes ver el aviso `Ticket #N creado correctamente.` y el detalle con estado `Nuevo`, el creador y los solicitantes.
-3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 48`, `Abiertos 48` y `Cerrados 0` (más los que hayas creado tú) y dos páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
+3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 54`, `Abiertos 54` y `Cerrados 0` (más los que hayas creado tú) y dos páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
 4. **Buscar:** escribe `impresora`: con los tickets de demostración aparecen nueve, porque la palabra está en títulos y en descripciones. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
 5. **Filtrar y ordenar:** filtra por estado y por prioridad, abre **Más filtros** (categoría, ubicación y fechas) y combínalos con la búsqueda. **Limpiar filtros** los quita. Cambia **Ordenar por** a `Mayor prioridad primero`.
 6. **Editar:** abre un ticket y pulsa **Editar**. Cambia el título y guarda: aparece `Ticket #N actualizado.` y el historial muestra `Título: «antes» → «después»`. Vuelve a guardar sin tocar nada: `No había cambios que guardar.`
@@ -833,7 +834,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 
 1. La barra lateral muestra **Dashboard**, **Mis tickets**, **Crear ticket** y **Mi cuenta**; no hay Administración.
-2. **Mis tickets** lista solo los tickets que creó o donde figura como solicitante: con los datos de demostración, `paula.contreras` ve 7 (los 6 que escribió y uno que registró el personal a su nombre). Compáralo con lo que veías como Administrador.
+2. **Mis tickets** lista solo los tickets que creó o donde figura como solicitante: con los datos de demostración, `paula.contreras` ve 8 (los 7 que escribió y uno que registró el personal a su nombre). Compáralo con lo que veías como Administrador.
 3. Abre uno: ves la descripción, el resumen y el historial, pero no "Creado por" ni los solicitantes, y no hay botones **Editar**, **Cambiar prioridad** ni de cambio de estado.
 4. Entra como `ignacio.molina`, busca `bodega sin red` y ábrelo: el historial muestra qué cambió (la categoría, la prioridad y el título) pero **no el motivo** de la prioridad, que solo ve el personal.
 5. En la barra de direcciones, cambia el número por el de un ticket de otra persona (`/tickets/N`): aparece **Página no encontrada** (404), igual que con un número que no existe (`/tickets/9999`). No se puede deducir qué tickets existen.
@@ -844,11 +845,12 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 
 Entra, por ejemplo, como `diego.soto`.
 
-1. **Tickets** muestra todos los tickets (con los datos de demostración, los 48), incluidos los que crearon otras personas.
+1. **Tickets** muestra todos los tickets (con los datos de demostración, los 54), incluidos los que crearon otras personas.
 2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
 3. **Cambiar el estado:** abre un ticket `Nuevo` y pulsa **Iniciar trabajo**: una pantalla de confirmación muestra `Nuevo → En progreso`; al confirmar, el ticket queda **En progreso** y el historial registra `Estado: «Nuevo» → «En progreso»`. Ahora el botón es **Poner en espera**: elige un motivo (por ejemplo `Otro motivo`, que permite escribir una explicación) y confirma. En el historial, tú ves `Motivo de espera: ...`; el Solicitante ve solo el cambio de estado. Pulsa **Reactivar** para volver a En progreso.
 4. Prueba el aviso de conflicto: abre un ticket en dos pestañas (A y B) y pulsa **Iniciar trabajo** en ambas. Confirma en A; al confirmar en B aparece `Otra persona modificó este ticket mientras decidías...`.
-5. No ve **Administración**; `/admin` responde **Acceso denegado**.
+5. **Asignarte un ticket:** abre un ticket `Nuevo` y pulsa **Asignarme**: queda **Asignado**, el resumen muestra tu nombre en **Técnico** y el historial registra `Técnico asignado` y el cambio de estado. El botón pasa a **Dejar ticket**; púlsalo y el ticket vuelve a `Nuevo`. Como técnico no ves **Asignar** ni **Escalar**: `/tickets/N/assignment` responde **Acceso denegado**.
+6. No ve **Administración**; `/admin` responde **Acceso denegado**.
 
 ### 4. Como Supervisor
 
@@ -859,6 +861,8 @@ Entra, por ejemplo, como `camila.rojas` (o `matias.fuentes`).
 3. Abre un grupo tuyo: ves a los técnicos y a los responsables. **Agrega un técnico** con el selector y **retíralo** (con un motivo opcional). No hay **Editar**, **Desactivar** ni selector para designar responsables, y abrir `/groups/N/edit` responde **Acceso denegado** (403).
 4. Como Administrador, retira a este supervisor del grupo y vuelve a entrar como él: el grupo ya no aparece y su dirección responde 404.
 5. Como Administrador, cambia el rol de un técnico de un grupo (o desactívalo): en el grupo ya no figura como miembro, y la auditoría registra el cierre con el motivo.
+
+**Asignar y escalar tickets.** Abre un ticket y pulsa **Asignar** (no ves **Asignarme**: solo un Técnico se asigna a sí mismo). En la pantalla asigna a un técnico, asigna a un segundo, quita a uno y elige un grupo con **Guardar grupo**. Luego pulsa **Escalar**: elige otro grupo y/u otro técnico y escribe el motivo; sin motivo, o sin cambiar nada, el formulario lo rechaza. En el historial verás `Ticket escalado` con el grupo y los técnicos de antes y de después, y el motivo. Como Solicitante, abre ese mismo ticket: ves **Atendido por** con el técnico actual, pero ni el grupo ni el escalamiento.
 
 Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pertenecer a un grupo no cambia lo que ve ni lo que hace.
 
@@ -888,7 +892,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `seed-demo-tickets`: "Faltan usuarios de demostración... Ejecuta primero seed-demo." | Todavía no cargaste el equipo de demostración. | Ejecuta `seed-demo` y vuelve a intentarlo. No se cargó ningún ticket. |
 | `seed-demo-tickets`: "Faltan los catálogos iniciales. Ejecuta primero seed-catalogs." o "Faltan las transiciones de estado..." | Se saltó el paso 3 de la preparación, o los catálogos se cargaron antes de que existieran las transiciones entre estados. | Ejecuta `seed-catalogs` (no duplica nada) y vuelve a intentarlo. |
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
-| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 48" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
+| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 54" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -957,6 +961,13 @@ GET       /tickets/<public_id>
 GET POST  /tickets/<public_id>/edit
 GET POST  /tickets/<public_id>/priority
 GET POST  /tickets/<public_id>/status/<action_slug>
+POST      /tickets/<public_id>/assign-me
+POST      /tickets/<public_id>/unassign-me
+GET       /tickets/<public_id>/assignment
+POST      /tickets/<public_id>/assignment/technicians/add
+POST      /tickets/<public_id>/assignment/technicians/<assignment_id>/remove
+POST      /tickets/<public_id>/assignment/group
+GET POST  /tickets/<public_id>/escalate
 GET       /health
 ```
 

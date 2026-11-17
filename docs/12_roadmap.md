@@ -920,8 +920,8 @@ La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con test
 1. **Historial** ✓ (PR #23): el vocabulario de eventos pasa a la aplicación y cada evento lleva su visibilidad (público o interno).
 2. **Motivos de espera** ✓ (PR #24): catálogo configurable, su administración y la referencia desde el historial.
 3. **Estados y transiciones** ✓ (PR #25): tabla de transiciones y cambios de estado operativos (iniciar, poner en espera, reactivar), con el control de versión compartido y el seed ampliado.
-4. **Grupos** (en curso): grupos, membresías y supervisores responsables (`/groups`), con tres grupos de ejemplo en `seed-demo`.
-5. **Asignación:** técnicos, grupo del ticket y escalamiento manual.
+4. **Grupos** ✓ (PR #26): grupos, membresías y supervisores responsables (`/groups`), con tres grupos de ejemplo en `seed-demo`.
+5. **Asignación** (en curso): técnicos, grupo del ticket y escalamiento manual, con el seed ampliado.
 6. **Solicitantes del ticket:** agregar y retirar después de la creación.
 7. **Comentarios y notas internas.**
 8. **Adjuntos.**

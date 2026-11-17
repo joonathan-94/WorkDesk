@@ -249,3 +249,91 @@ class StateChangeForm(FlaskForm):
             self.wait_reason_choices,
             "Selecciona un motivo de la lista.",
         )
+
+
+class TechnicianPickForm(FlaskForm):
+    """Elegir al técnico que se asigna a un ticket. Las opciones se pasan
+    como atributo (sin `SelectField`, como el resto de formularios)."""
+
+    tecnico = OptionalIntegerField("Técnico")
+
+    def __init__(self, *args, choices, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.choices = list(choices)
+
+    def validate_tecnico(self, field):
+        _require_choice(
+            field,
+            self.choices,
+            "Elige un técnico de la lista.",
+        )
+
+
+class GroupChangeForm(FlaskForm):
+    """Fijar el grupo de un ticket. Un valor vacío lo deja sin grupo."""
+
+    version = OptionalIntegerField("Versión")
+    grupo = OptionalIntegerField("Grupo")
+
+    def __init__(self, *args, choices, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.choices = list(choices)
+
+    def validate_version(self, field):
+        _require_version(field)
+
+    def validate_grupo(self, field):
+        # Vacío significa "sin grupo": solo se comprueba si se eligió algo.
+        if field.process_errors or field.data is None:
+            return
+
+        _require_choice(field, self.choices, "Selecciona un grupo válido.")
+
+
+class EscalationForm(FlaskForm):
+    """Escalar un ticket a otro grupo y/o a otro técnico, con un motivo
+    obligatorio. Hay que elegir al menos uno de los dos (lo comprueba el
+    servicio, que conoce el valor actual)."""
+
+    version = OptionalIntegerField("Versión")
+    grupo = OptionalIntegerField("Grupo")
+    tecnico = OptionalIntegerField("Técnico")
+
+    motivo = TextAreaField(
+        "Motivo del escalamiento",
+        filters=[_normalize_text],
+        validators=[
+            DataRequired(message="Indica el motivo del escalamiento."),
+            Length(
+                max=MAX_REASON_LENGTH,
+                message=f"Máximo {MAX_REASON_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+    def __init__(self, *args, group_choices, technician_choices, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.group_choices = list(group_choices)
+        self.technician_choices = list(technician_choices)
+
+    def validate_version(self, field):
+        _require_version(field)
+
+    def validate_grupo(self, field):
+        if field.process_errors or field.data is None:
+            return
+
+        _require_choice(field, self.group_choices, "Selecciona un grupo válido.")
+
+    def validate_tecnico(self, field):
+        if field.process_errors or field.data is None:
+            return
+
+        _require_choice(
+            field,
+            self.technician_choices,
+            "Elige un técnico de la lista.",
+        )

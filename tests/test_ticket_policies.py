@@ -5,11 +5,13 @@ import pytest
 from flask_login import AnonymousUserMixin
 
 from src.workdesk.security import (
+    can_assign_self,
     can_change_priority,
     can_change_state,
     can_choose_requesters,
     can_create_ticket,
     can_edit_ticket,
+    can_manage_assignments,
     can_view_ticket,
 )
 
@@ -167,4 +169,32 @@ def test_a_solicitante_can_only_read(policy):
 @pytest.mark.parametrize("policy", _EDIT_POLICIES)
 def test_inactive_and_anonymous_users_cannot_edit(policy):
     assert policy(user("TECNICO", is_active=False)) is False
+    assert policy(AnonymousUserMixin()) is False
+
+
+# --- Asignación ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("role_code", "self_assign", "manage"),
+    [
+        ("SOLICITANTE", False, False),
+        ("TECNICO", True, False),
+        ("SUPERVISOR", False, True),
+        ("ADMINISTRADOR", False, True),
+    ],
+)
+def test_assignment_policies_by_role(role_code, self_assign, manage):
+    # El Técnico solo se asigna a sí mismo; Supervisor y Administrador
+    # asignan a otros pero no se asignan (solo un Técnico puede ser técnico
+    # de un ticket).
+    assert can_assign_self(user(role_code)) is self_assign
+    assert can_manage_assignments(user(role_code)) is manage
+
+
+@pytest.mark.parametrize("policy", [can_assign_self, can_manage_assignments])
+def test_inactive_and_anonymous_users_cannot_assign(policy):
+    for role_code in ("TECNICO", "SUPERVISOR", "ADMINISTRADOR"):
+        assert policy(user(role_code, is_active=False)) is False
+
     assert policy(AnonymousUserMixin()) is False

@@ -19,6 +19,7 @@ from ..models import (
     TicketEvent,
     TicketHistory,
     TicketRequester,
+    TicketTechnician,
     Ubicacion,
     User,
 )
@@ -410,8 +411,12 @@ def get_ticket_by_public_id(public_id: str) -> Ticket | None:
             joinedload(Ticket.categoria),
             joinedload(Ticket.ubicacion),
             joinedload(Ticket.creado_por),
+            joinedload(Ticket.grupo),
             selectinload(Ticket.solicitantes).joinedload(
                 TicketRequester.solicitante
+            ),
+            selectinload(Ticket.tecnicos).joinedload(
+                TicketTechnician.tecnico
             ),
         )
     )

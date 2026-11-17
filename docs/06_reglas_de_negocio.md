@@ -1459,6 +1459,43 @@ Aplica y precisa RN-34 a RN-50 en la implementación de `v0.4.0` (entrega 3). Cu
 
 **Historial y visibilidad.** Cada cambio queda como `ESTADO_CAMBIADO` con el estado anterior y el nuevo, quién y cuándo. El evento es público: el Solicitante ve el cambio de estado. El **motivo de espera y su texto son solo del personal**, igual que el motivo de un cambio de prioridad (RN-155): el Solicitante ve que el ticket está en espera, no por qué.
 
+---
+
+## RN-157 — Asignación, grupo y escalamiento de tickets
+
+Aplica y precisa RN-24 a RN-33 en la implementación de `v0.4.0` (entrega 5).
+
+**Técnicos.** Un ticket tiene 0..N técnicos a la vez y un técnico 0..N tickets. Solo puede asignarse a un **Técnico activo** (el Supervisor y el Administrador asignan a otras personas pero no figuran como técnicos). La asignación es organizativa: un técnico puede actuar sobre cualquier ticket, esté o no asignado y pertenezca o no al grupo (RN-43). Quitar a un técnico cierra su asignación y la conserva; puede volver a asignarse con una asignación nueva. Un técnico desactivado conserva sus asignaciones (RN-104) y se marca «(inactivo)» para el personal, que puede redistribuirlas.
+
+**Quién.**
+
+* El **Técnico** se asigna a sí mismo y deja el ticket con un clic desde el detalle (**Asignarme** / **Dejar ticket**), y puede quitarse solo a sí mismo.
+* El **Supervisor** y el **Administrador** asignan, quitan y reasignan a cualquier técnico, fijan el grupo y escalan, desde la pantalla de **Asignación** (`/tickets/<n>/assignment`).
+* El Solicitante no asigna nada. Todo se comprueba en backend.
+
+**Efecto sobre el estado.** Asignar al primer técnico de un ticket `Nuevo` lo pasa a `Asignado` (transición `ASIGNAR`); quitar al último técnico de un ticket `Asignado` lo devuelve a `Nuevo` (transición `DESASIGNACION`, RN-37). En cualquier otro estado asignar o quitar no cambia el estado. Si el Administrador deshabilitó esa transición, el estado no cambia. El cambio de estado queda en el historial como `ESTADO_CAMBIADO` (marcado como derivado de la asignación).
+
+**Grupo del ticket.** Es opcional (RN-146) y lo fijan el Supervisor y el Administrador. El grupo nuevo debe estar activo; el actual puede conservarse aunque se desactive. Cambiar el grupo no cambia el estado.
+
+**Escalamiento manual** (RF-039 y RF-040). El Supervisor o el Administrador pasan el ticket a otro grupo y/o a otro técnico. Hay que cambiar al menos una de las dos cosas y el **motivo es obligatorio** (hasta 500 caracteres). Un técnico elegido **reemplaza** a los técnicos asignados (sus asignaciones se cierran y se conservan). Es una acción manual: no cambia la prioridad ni se dispara por reglas de SLA (RN-33). Queda como **un único evento interno** `TICKET_ESCALADO`, con el grupo y los técnicos anteriores y nuevos y el motivo.
+
+**Concurrencia.** Cada operación bloquea la fila del ticket antes de validar, así que dos autoasignaciones simultáneas del mismo técnico producen una sola asignación (el índice único parcial es el respaldo), y dos técnicos que se asignan a la vez a un ticket `Nuevo` lo pasan a `Asignado` una sola vez. **Versión:** cambiar el grupo, escalar y el cambio de estado derivado suben la versión del ticket; asignar y quitar técnicos por sí solos no (son aditivos y no pisan datos). Fijar el grupo y escalar llevan la versión con la que se abrió la pantalla y avisan si otra persona modificó el ticket.
+
+**Ticket cerrado.** No se asigna, no se cambia su grupo ni se escala: primero debe reabrirse.
+
+**Historial y visibilidad.**
+
+| Evento | Visible para |
+| --- | --- |
+| `TECNICO_ASIGNADO` y `TECNICO_DESASIGNADO` | Todos (el Solicitante lo ve como «Atendido por») |
+| `GRUPO_CAMBIADO` y `TICKET_ESCALADO` | Solo el personal |
+
+El Solicitante ve en el resumen **«Atendido por»** con los nombres de los técnicos asignados (o «Aún sin asignar») y **nunca** el grupo, el escalamiento ni su motivo (docs/11, UI-005). El personal ve los técnicos, el grupo y el motivo del escalamiento y de quitar a un técnico.
+
+---
+
+# 23. Concurrencia y edición
+
 ## RN-114 — Integridad ante concurrencia
 
 Cuando varios usuarios intenten operar simultáneamente sobre un mismo recurso, WorkDesk deberá impedir que la situación produzca:

@@ -1,11 +1,13 @@
 from .authorization import STAFF_ROLES as STAFF_ROLES
 from .authorization import RoleCode as RoleCode
 from .authorization import can_access_groups as can_access_groups
+from .authorization import can_assign_self as can_assign_self
 from .authorization import can_change_priority as can_change_priority
 from .authorization import can_change_state as can_change_state
 from .authorization import can_choose_requesters as can_choose_requesters
 from .authorization import can_create_ticket as can_create_ticket
 from .authorization import can_edit_ticket as can_edit_ticket
+from .authorization import can_manage_assignments as can_manage_assignments
 from .authorization import can_manage_group_members as can_manage_group_members
 from .authorization import can_manage_groups as can_manage_groups
 from .authorization import can_manage_users as can_manage_users
