@@ -87,12 +87,21 @@ MAIN_NAVIGATION = (
         icon="plus-circle",
         active_prefixes=("tickets.new_ticket",),
     ),
+    # El Supervisor gestiona los técnicos de sus grupos. El Administrador llega
+    # a los grupos desde Administración.
+    NavItem(
+        label="Grupos",
+        endpoint="groups.list_groups_page",
+        icon="diagram-3",
+        roles=(RoleCode.SUPERVISOR,),
+        active_prefixes=("groups.",),
+    ),
     NavItem(
         label="Administración",
         endpoint="admin.index",
         icon="gear",
         roles=(RoleCode.ADMINISTRADOR,),
-        active_prefixes=("admin.", "users.", "catalogs."),
+        active_prefixes=("admin.", "users.", "catalogs.", "groups."),
     ),
 )
 

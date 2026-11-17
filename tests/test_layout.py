@@ -73,11 +73,19 @@ def page(client, make_user, role_code, path="/dashboard"):
 # --- Navegación por rol (lógica) -------------------------------------
 
 
-@pytest.mark.parametrize("role_code", ["TECNICO", "SUPERVISOR"])
-def test_staff_sees_tickets_and_create_ticket(role_code):
+def test_a_technician_sees_tickets_and_create_ticket():
     # El personal ve todos los tickets; Administración es solo del
-    # Administrador.
-    assert labels(stub(role_code)) == ["Dashboard", "Tickets", "Crear ticket"]
+    # Administrador y los grupos, del Supervisor y el Administrador.
+    assert labels(stub("TECNICO")) == ["Dashboard", "Tickets", "Crear ticket"]
+
+
+def test_a_supervisor_also_sees_the_groups_they_manage():
+    assert labels(stub("SUPERVISOR")) == [
+        "Dashboard",
+        "Tickets",
+        "Crear ticket",
+        "Grupos",
+    ]
 
 
 def test_a_solicitante_sees_only_their_own_tickets_option():
@@ -138,6 +146,9 @@ def test_anonymous_users_see_no_navigation():
         ("tickets.edit_ticket", ["Tickets"]),
         ("tickets.change_ticket_priority", ["Tickets"]),
         ("tickets.change_ticket_state", ["Tickets"]),
+        # Los grupos cuelgan de Administración para el Administrador.
+        ("groups.list_groups_page", ["Administración"]),
+        ("groups.detail", ["Administración"]),
         ("account.change_password", []),
         (None, []),
     ],
@@ -349,12 +360,14 @@ def test_hub_links_only_the_implemented_sections(
 
     assert [card.title for card in implemented] == [
         "Usuarios",
+        "Grupos",
         "Categorías",
         "Prioridades",
         "Ubicaciones",
         "Motivos de espera",
     ]
     assert 'href="/users"' in content
+    assert 'href="/groups"' in content
     assert 'href="/admin/categories"' in content
     assert 'href="/admin/priorities"' in content
     assert 'href="/admin/locations"' in content

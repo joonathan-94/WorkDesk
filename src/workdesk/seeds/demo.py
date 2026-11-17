@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from ..audit import AuditAction, record_admin_event
 from ..extensions import db
-from ..models import Role, User
+from ..models import Grupo, GrupoSupervisor, Role, User, UsuarioGrupo
 from ..security import hash_password
 
 
@@ -143,6 +143,107 @@ def seed_demo_users(password: str) -> tuple[int, int]:
             },
             detail="Datos de demostración.",
         )
+
+        created += 1
+
+    db.session.commit()
+
+    return created, skipped
+
+
+@dataclass(frozen=True)
+class DemoGroup:
+    nombre: str
+    descripcion: str
+    supervisores: tuple[str, ...]
+    tecnicos: tuple[str, ...]
+
+
+# Grupos de ejemplo con los usuarios de `DEMO_USERS`. Un técnico puede estar
+# en más de un grupo (Diego Soto, en dos).
+DEMO_GROUPS = (
+    DemoGroup(
+        "Soporte Redes",
+        "Redes, VPN y conectividad.",
+        ("camila.rojas",),
+        ("valentina.pizarro", "diego.soto"),
+    ),
+    DemoGroup(
+        "Soporte Usuarios",
+        "Equipos, correo e impresoras.",
+        ("matias.fuentes",),
+        ("felipe.araya", "diego.soto"),
+    ),
+    DemoGroup(
+        "Aplicaciones",
+        "Sistemas internos y aplicaciones de negocio.",
+        ("camila.rojas", "matias.fuentes"),
+        ("francisca.munoz",),
+    ),
+)
+
+
+def seed_demo_groups() -> tuple[int, int]:
+    """Crea los grupos de demostración que todavía no existan.
+
+    Es idempotente: se omite el grupo cuyo nombre ya exista (sin distinguir
+    mayúsculas), sin tocar sus miembros ni sus responsables. Necesita los
+    usuarios de `seed_demo_users`: quien falte se omite del grupo. Como no
+    hay Administrador en los datos demo, se registran como acciones del
+    sistema (sin creador). Hace commit. Devuelve (creados, omitidos).
+    """
+    users = {
+        u.username: u
+        for u in db.session.scalars(
+            db.select(User).where(
+                User.username.in_({d.username for d in DEMO_USERS})
+            )
+        )
+    }
+    created = 0
+    skipped = 0
+
+    for demo in DEMO_GROUPS:
+        exists = db.session.scalar(
+            db.select(Grupo.id)
+            .where(db.func.lower(Grupo.nombre) == demo.nombre.lower())
+            .limit(1)
+        )
+
+        if exists is not None:
+            skipped += 1
+            continue
+
+        group = Grupo(nombre=demo.nombre, descripcion=demo.descripcion)
+        db.session.add(group)
+        db.session.flush()
+
+        record_admin_event(
+            AuditAction.GRUPO_CREADO,
+            actor=None,
+            entity_type="grupo",
+            entity_id=group.id,
+            detail=group.nombre,
+            new_value={"nombre": group.nombre, "activo": True},
+        )
+
+        for username in demo.supervisores:
+            if username in users:
+                db.session.add(
+                    GrupoSupervisor(
+                        grupo_id=group.id,
+                        supervisor_id=users[username].id,
+                    )
+                )
+
+        for username in demo.tecnicos:
+            if username in users:
+                db.session.add(
+                    UsuarioGrupo(
+                        grupo_id=group.id,
+                        usuario_id=users[username].id,
+                    )
+                )
 
         created += 1
 

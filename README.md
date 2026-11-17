@@ -577,6 +577,7 @@ Las migraciones actuales crean estas tablas:
 - `auditoria_administrativa`: registro inmutable de las acciones administrativas.
 - `estados`, `transiciones_estados`, `prioridades`, `categorias`, `ubicaciones`, `motivos_cierre` y `motivos_espera`: catálogos de tickets y las transiciones válidas entre estados.
 - `tickets`, `tickets_solicitantes` e `historial_ticket`: los tickets, sus solicitantes y su historial.
+- `grupos`, `usuarios_grupos` y `grupos_supervisores`: los grupos de atención, sus técnicos y sus supervisores responsables.
 
 Para comprobar que se aplicaron:
 
@@ -658,7 +659,7 @@ El comando impide crear accidentalmente más de un Administrador inicial mediant
 python -m flask --app src.workdesk seed-demo
 ```
 
-Crea un equipo de soporte ficticio de 12 personas (2 supervisores, 4 técnicos y 6 solicitantes) con correos `@workdesk.local`, útil para mostrar el sistema. No crea ningún Administrador: usa `create-admin` para crear el tuyo.
+Crea un equipo de soporte ficticio de 12 personas (2 supervisores, 4 técnicos y 6 solicitantes) con correos `@workdesk.local`, útil para mostrar el sistema, y tres grupos de ejemplo (Soporte Redes, Soporte Usuarios y Aplicaciones) con sus técnicos y supervisores responsables. Es idempotente: no duplica a las personas ni a los grupos que ya existan, así que puedes volver a ejecutarlo para cargar solo los grupos. No crea ningún Administrador: usa `create-admin` para crear el tuyo.
 
 - La contraseña común de los usuarios demo se pide al ejecutar el comando (oculta). Para ejecutarlo sin interacción se puede definir la variable de entorno `WORKDESK_DEMO_PASSWORD`. Nunca se muestra ni se guarda.
 - Es idempotente: omite a quien ya exista, sin modificarlo.
@@ -825,6 +826,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 8. **Ediciones simultáneas:** abre el mismo ticket en dos pestañas del navegador (A y B) y pulsa **Editar** en ambas. Guarda en A. Al guardar en B aparece `Otra persona modificó este ticket mientras lo editabas...` y el formulario se recarga con los datos de A, sin pisar su cambio.
 9. **Una historia con varias manos:** busca `bodega sin red` y abre ese ticket. Empezó como «se cayo el sistema», que una persona de la bodega clasificó como `Sin clasificar` con prioridad `Crítica`. En el historial verás cómo una técnica lo reclasificó a `Redes`, bajó la prioridad a `Alta` explicando el motivo (que tú, como personal, ves) y otro técnico corrigió el título. Es lo que ocurre en un soporte real: lo que se pide no siempre es el problema.
 10. **Catálogos:** en **Administración → Categorías**, desactiva una categoría que ya usan tickets. Esos tickets la conservan, pero ya no aparece en **Crear ticket**. Reactívala cuando quieras.
+11. **Grupos:** en **Administración → Grupos** ves los tres grupos de demostración (si ejecutaste `seed-demo`). Crea uno nuevo, ábrelo y designa a un supervisor responsable y agrega técnicos con los selectores de cada tarjeta. Prueba **Editar**, **Desactivar** (un grupo desactivado no admite cambios de técnicos ni de responsables) y **Reactivar**.
 
 ### 2. Como Solicitante
 
@@ -847,6 +849,18 @@ Entra, por ejemplo, como `diego.soto`.
 3. **Cambiar el estado:** abre un ticket `Nuevo` y pulsa **Iniciar trabajo**: una pantalla de confirmación muestra `Nuevo → En progreso`; al confirmar, el ticket queda **En progreso** y el historial registra `Estado: «Nuevo» → «En progreso»`. Ahora el botón es **Poner en espera**: elige un motivo (por ejemplo `Otro motivo`, que permite escribir una explicación) y confirma. En el historial, tú ves `Motivo de espera: ...`; el Solicitante ve solo el cambio de estado. Pulsa **Reactivar** para volver a En progreso.
 4. Prueba el aviso de conflicto: abre un ticket en dos pestañas (A y B) y pulsa **Iniciar trabajo** en ambas. Confirma en A; al confirmar en B aparece `Otra persona modificó este ticket mientras decidías...`.
 5. No ve **Administración**; `/admin` responde **Acceso denegado**.
+
+### 4. Como Supervisor
+
+Entra, por ejemplo, como `camila.rojas` (o `matias.fuentes`).
+
+1. La barra lateral muestra la opción **Grupos**. No hay Administración.
+2. **Grupos** lista solo los grupos de los que eres responsable: `camila.rojas` ve Soporte Redes y Aplicaciones; `matias.fuentes`, Soporte Usuarios y Aplicaciones. Cambia el número en la URL (`/groups/N`) por el de un grupo del que no eres responsable: **Página no encontrada** (404).
+3. Abre un grupo tuyo: ves a los técnicos y a los responsables. **Agrega un técnico** con el selector y **retíralo** (con un motivo opcional). No hay **Editar**, **Desactivar** ni selector para designar responsables, y abrir `/groups/N/edit` responde **Acceso denegado** (403).
+4. Como Administrador, retira a este supervisor del grupo y vuelve a entrar como él: el grupo ya no aparece y su dirección responde 404.
+5. Como Administrador, cambia el rol de un técnico de un grupo (o desactívalo): en el grupo ya no figura como miembro, y la auditoría registra el cierre con el motivo.
+
+Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pertenecer a un grupo no cambia lo que ve ni lo que hace.
 
 ### Lo que todavía no verás
 
@@ -927,6 +941,16 @@ GET POST  /admin/wait-reasons/new
 GET POST  /admin/wait-reasons/<id>/edit
 GET POST  /admin/wait-reasons/<id>/deactivate
 GET POST  /admin/wait-reasons/<id>/activate
+GET       /groups
+GET POST  /groups/new
+GET       /groups/<id>
+GET POST  /groups/<id>/edit
+GET POST  /groups/<id>/deactivate
+GET POST  /groups/<id>/activate
+POST      /groups/<id>/members/add
+GET POST  /groups/<id>/members/<membership_id>/remove
+POST      /groups/<id>/supervisors/add
+GET POST  /groups/<id>/supervisors/<designation_id>/remove
 GET       /tickets
 GET POST  /tickets/new
 GET       /tickets/<public_id>

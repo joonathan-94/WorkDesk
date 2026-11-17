@@ -1,10 +1,17 @@
 import re
 
 from src.workdesk.extensions import db
-from src.workdesk.models import AdminAuditLog, Role, User
+from src.workdesk.models import (
+    AdminAuditLog,
+    Grupo,
+    GrupoSupervisor,
+    Role,
+    User,
+    UsuarioGrupo,
+)
 from src.workdesk.security import hash_password, verify_password
 from src.workdesk.seeds import seed_roles
-from src.workdesk.seeds.demo import DEMO_USERS
+from src.workdesk.seeds.demo import DEMO_GROUPS, DEMO_USERS
 from src.workdesk.users.forms import EMAIL_PATTERN, USERNAME_PATTERN
 
 DEMO_PASSWORD = "ClaveDemoSegura2026"
@@ -119,7 +126,13 @@ def test_seed_demo_audits_each_creation_as_a_system_action(app):
     run_seed(app)
 
     with app.app_context():
-        entries = list(db.session.scalars(db.select(AdminAuditLog)))
+        entries = list(
+            db.session.scalars(
+                db.select(AdminAuditLog).where(
+                    AdminAuditLog.entidad_tipo == "usuario"
+                )
+            )
+        )
 
         assert len(entries) == len(DEMO_USERS)
 
@@ -232,3 +245,108 @@ def test_seed_demo_keeps_an_existing_administrator_untouched(app):
 
     assert count_by_role(app)["ADMINISTRADOR"] == 1
     assert len(users(app)) == len(DEMO_USERS) + 1
+
+
+# --- Grupos de demostración ---------------------------------------------
+
+
+def test_seed_demo_loads_the_demo_groups(app):
+    result = run_seed(app)
+
+    assert f"Grupos demo creados: {len(DEMO_GROUPS)}." in result.output
+
+    with app.app_context():
+        groups = {g.nombre: g for g in db.session.scalars(db.select(Grupo))}
+
+        assert set(groups) == {demo.nombre for demo in DEMO_GROUPS}
+
+        for demo in DEMO_GROUPS:
+            group = groups[demo.nombre]
+
+            assert group.activo is True
+            assert sorted(
+                m.usuario.username for m in group.miembros_vigentes
+            ) == sorted(demo.tecnicos)
+            assert sorted(
+                d.supervisor.username for d in group.supervisores_vigentes
+            ) == sorted(demo.supervisores)
+
+
+def test_demo_groups_only_use_technicians_and_supervisors_of_the_team():
+    roles = {demo.username: demo.rol for demo in DEMO_USERS}
+
+    for group in DEMO_GROUPS:
+        assert all(roles[name] == "TECNICO" for name in group.tecnicos)
+        assert all(roles[name] == "SUPERVISOR" for name in group.supervisores)
+
+    # Un técnico en más de un grupo y un grupo con varios responsables.
+    assert any(
+        sum(name in g.tecnicos for g in DEMO_GROUPS) > 1
+        for name in {n for g in DEMO_GROUPS for n in g.tecnicos}
+    )
+    assert any(len(g.supervisores) > 1 for g in DEMO_GROUPS)
+
+
+def test_demo_groups_are_audited_as_system_actions(app):
+    run_seed(app)
+
+    with app.app_context():
+        entries = list(
+            db.session.scalars(
+                db.select(AdminAuditLog).where(
+                    AdminAuditLog.entidad_tipo == "grupo"
+                )
+            )
+        )
+
+        assert len(entries) == len(DEMO_GROUPS)
+
+        for entry in entries:
+            assert entry.accion == "GRUPO_CREADO"
+            assert entry.actor_tipo == "SISTEMA"
+            assert entry.actor_usuario_id is None
+
+
+def test_demo_groups_are_idempotent_and_do_not_touch_existing_ones(app):
+    run_seed(app)
+
+    with app.app_context():
+        group = db.session.scalar(db.select(Grupo).where(Grupo.nombre == "Soporte Redes"))
+        group.descripcion = "Cambiada a mano"
+        group.membresias[0].fecha_fin = db.func.now()
+        db.session.commit()
+        before = (
+            db.session.scalar(db.select(db.func.count(Grupo.id))),
+            db.session.scalar(db.select(db.func.count(UsuarioGrupo.id))),
+            db.session.scalar(db.select(db.func.count(GrupoSupervisor.id))),
+        )
+
+    second = run_seed(app)
+
+    assert "Grupos demo creados: 0." in second.output
+    assert f"Omitidos (ya existían): {len(DEMO_GROUPS)}." in second.output
+
+    with app.app_context():
+        group = db.session.scalar(db.select(Grupo).where(Grupo.nombre == "Soporte Redes"))
+
+        assert group.descripcion == "Cambiada a mano"
+        assert (
+            db.session.scalar(db.select(db.func.count(Grupo.id))),
+            db.session.scalar(db.select(db.func.count(UsuarioGrupo.id))),
+            db.session.scalar(db.select(db.func.count(GrupoSupervisor.id))),
+        ) == before
+
+
+def test_a_demo_supervisor_sees_only_their_groups(app):
+    run_seed(app)
+    client = app.test_client()
+    client.post(
+        "/login",
+        data={"username": "matias.fuentes", "password": DEMO_PASSWORD},
+    )
+
+    page = " ".join(client.get("/groups").get_data(as_text=True).split())
+
+    assert "Soporte Usuarios" in page
+    assert "Aplicaciones" in page
+    assert "Soporte Redes" not in page

@@ -1135,6 +1135,17 @@ Un Supervisor puede gestionar las membresías de técnicos y las asignaciones ú
 
 Los grupos no se eliminan físicamente; se desactivan. Las membresías y designaciones finalizadas se conservan como histórico. Si un usuario deja de tener el rol Supervisor, sus designaciones vigentes finalizan.
 
+**Implementación (`v0.4.0`, entrega 4).**
+
+* **Acceso.** Las pantallas de grupos (`/groups`) son del Administrador y de los Supervisores; el Técnico y el Solicitante reciben 403. El Administrador ve todos los grupos. El Supervisor ve **solo los grupos de los que es responsable vigente**: cualquier otro responde 404, igual que uno inexistente, para no revelar qué grupos existen.
+* **Quién hace qué.** Solo el Administrador crea, edita, activa y desactiva grupos, y designa o retira supervisores responsables. El Administrador y el Supervisor responsable agregan y retiran técnicos de sus grupos. Todo se comprueba en backend.
+* **Técnicos.** Solo un Técnico activo puede ser miembro; una persona no puede figurar dos veces como miembro vigente del mismo grupo (puede volver a entrar tras ser retirada, con una membresía nueva). Un técnico puede estar en varios grupos y la pertenencia no limita lo que ve ni lo que hace (RN-43).
+* **Supervisores responsables.** Solo un Supervisor activo puede ser designado. Un grupo puede tener varios y también ninguno: sin responsable, solo el Administrador gestiona sus técnicos.
+* **Grupo desactivado.** Conserva sus miembros y responsables, pero no admite cambios en ellos hasta reactivarlo.
+* **Cambios en las cuentas.** Si un usuario deja de ser Técnico, se cierran sus membresías; si deja de ser Supervisor, sus designaciones; si se desactiva, ambas. Reactivarlo no las restaura. Cada cierre se audita con su motivo y el historial se conserva.
+* **Auditoría.** Cada acción queda en la auditoría administrativa con `entidad_tipo` `grupo`: `GRUPO_CREADO`, `GRUPO_MODIFICADO`, `GRUPO_ACTIVADO`, `GRUPO_DESACTIVADO`, `GRUPO_MIEMBRO_AGREGADO`, `GRUPO_MIEMBRO_RETIRADO`, `GRUPO_SUPERVISOR_DESIGNADO` y `GRUPO_SUPERVISOR_RETIRADO`. Retirar y desactivar admiten un motivo opcional.
+* **Nombre único** sin distinguir mayúsculas. La asignación de un grupo a los tickets llega con la entrega de asignación.
+
 ---
 
 # 20. Usuarios desactivados
@@ -1331,7 +1342,7 @@ Los datos de demostración son opcionales y nunca forman parte de la instalació
 * Se cargan de forma idempotente: quien ya existe se omite sin modificarse.
 * No se pueden cargar cuando el entorno es de producción.
 * Cada creación se audita como una acción del sistema.
-* **No incluyen datos de configuración** de la organización: las categorías, las ubicaciones y los tickets de ejemplo se crean a mano desde la interfaz (RN-152), no con un seed.
+* **No incluyen datos de configuración** de la organización: las categorías y las ubicaciones se crean a mano desde la interfaz (RN-152), no con un seed. Los tickets de ejemplo y, para poder mostrar el trabajo por grupos, **tres grupos de ejemplo con el equipo ficticio** (RN-146) se cargan con comandos de demostración explícitos.
 
 ---
 

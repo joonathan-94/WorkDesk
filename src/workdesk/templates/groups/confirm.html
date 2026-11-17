@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb(crumbs) }}
+
+    {{ page_header(heading, group.nombre if subject == group.nombre else subject ~ ' · ' ~ group.nombre) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ form_action }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">{{ message }}</div>
+
+            {{ text_field(
+                form.motivo,
+                maxlength=500,
+                hint="Opcional. Queda registrado en la auditoría.",
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn {{ 'btn-danger' if danger else 'btn-primary' }}"
+                    type="submit"
+                >
+                    {{ button }}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('groups.detail', group_id=group.id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

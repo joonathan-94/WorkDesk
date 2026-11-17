@@ -7,6 +7,7 @@ from ..audit import AuditAction, record_admin_event
 from ..auth.credentials import reset_password, set_temporary_password
 from ..auth.security import invalidate_user_sessions, reset_login_failures
 from ..extensions import db
+from ..groups.service import close_user_group_links
 from ..models import Role, User
 from ..search import escape_like
 from ..security import RoleCode
@@ -307,6 +308,17 @@ def change_role(
     invalidate_user_sessions(user)
     user.mark_modified(actor)
 
+    # Quien deja de ser Técnico deja de ser miembro de sus grupos, y quien
+    # deja de ser Supervisor deja de ser responsable (docs/09, 10.2 y 10.3).
+    # El historial se conserva.
+    close_user_group_links(
+        user,
+        actor=actor,
+        reason="Cambio de rol.",
+        members=previous_code == RoleCode.TECNICO,
+        supervisors=previous_code == RoleCode.SUPERVISOR,
+    )
+
     record_admin_event(
         AuditAction.CAMBIO_ROL,
         actor=actor,
@@ -345,6 +357,9 @@ def deactivate_user(
     user.usuario_desactivacion_id = actor.id
     invalidate_user_sessions(user)
     user.mark_modified(actor)
+
+    # Una cuenta desactivada deja sus grupos: no se reabren al reactivarla.
+    close_user_group_links(user, actor=actor, reason="Usuario desactivado.")
 
     record_admin_event(
         AuditAction.USUARIO_DESACTIVADO,

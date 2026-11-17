@@ -1,6 +1,9 @@
 from .admin_audit_log import AdminAuditLog as AdminAuditLog
 from .categoria import Categoria as Categoria
 from .estado import Estado as Estado
+from .grupo import Grupo as Grupo
+from .grupo import GrupoSupervisor as GrupoSupervisor
+from .grupo import UsuarioGrupo as UsuarioGrupo
 from .motivo_cierre import MotivoCierre as MotivoCierre
 from .motivo_espera import MotivoEspera as MotivoEspera
 from .prioridad import Prioridad as Prioridad

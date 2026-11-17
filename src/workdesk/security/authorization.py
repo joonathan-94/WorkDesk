@@ -110,6 +110,45 @@ def can_view_internal_activity(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_access_groups(user) -> bool:
+    """Entrar al área de grupos: el Administrador y los Supervisores.
+
+    El Técnico y el Solicitante no tienen pantalla de grupos (la pertenencia
+    de un técnico a un grupo no limita lo que ve ni lo que hace).
+    """
+    return has_any_role(user, RoleCode.ADMINISTRADOR, RoleCode.SUPERVISOR)
+
+
+def can_manage_groups(user) -> bool:
+    """Crear, editar, activar y desactivar grupos, y designar a sus
+    supervisores responsables (docs/03, sección 5): solo el Administrador."""
+    return has_any_role(user, RoleCode.ADMINISTRADOR)
+
+
+def is_responsible_supervisor(user, group) -> bool:
+    """Indica si el usuario es un Supervisor activo con designación vigente
+    (sin `fecha_fin`) como responsable del grupo."""
+    if not has_any_role(user, RoleCode.SUPERVISOR):
+        return False
+
+    return any(
+        designation.supervisor_id == user.id
+        for designation in group.supervisores_vigentes
+    )
+
+
+def can_view_group(user, group) -> bool:
+    """El Administrador ve todos los grupos; el Supervisor, solo aquellos de
+    los que es responsable. Cualquier otro rol, ninguno."""
+    return can_manage_groups(user) or is_responsible_supervisor(user, group)
+
+
+def can_manage_group_members(user, group) -> bool:
+    """Agregar y retirar técnicos de un grupo (docs/09, 10.2): el
+    Administrador en cualquiera y el Supervisor solo en los suyos."""
+    return can_view_group(user, group)
+
+
 def can_view_audit(user) -> bool:
     return has_any_role(user, RoleCode.ADMINISTRADOR)
 
