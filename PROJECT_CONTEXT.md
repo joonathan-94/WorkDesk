@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-comments
+feature/ticket-attachments
 ```
 
-Entrega 7 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): comentarios públicos y notas internas de los tickets, con sus pantallas y el seed de demostración ampliado (ver "Comentarios y notas internas"). Incluye una migración.
+Entrega 8 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): archivos adjuntos de los tickets (almacenamiento local, validación, descarga autenticada), con sus pantallas y el seed de demostración ampliado (ver "Archivos adjuntos"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 6 de `v0.4.0`: visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 7 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -99,8 +99,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 4 | Grupos (`/groups`), con membresías y supervisores responsables | Integrada (PR #26) |
 | 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Integrada (PR #27) |
 | 6 | Agregar y retirar solicitantes tras crear el ticket | Integrada (PR #28) |
-| 7 | Comentarios públicos y notas internas | En curso |
-| 8 | Adjuntos | Pendiente |
+| 7 | Comentarios públicos y notas internas | Integrada (PR #30) |
+| 8 | Adjuntos | En curso |
 | 9 | Resolución, validación del solicitante, cierre y reapertura | Pendiente |
 | 10 | Relaciones y duplicados | Pendiente |
 | 11 | Bloqueo temporal de edición | Pendiente |
@@ -386,6 +386,7 @@ WorkDesk/
 │   ├── test_ticket_history_visibility.py
 │   ├── test_ticket_model.py
 │   ├── test_ticket_assignment.py
+│   ├── test_ticket_attachments.py
 │   ├── test_ticket_comments.py
 │   ├── test_ticket_policies.py
 │   ├── test_ticket_requesters.py
@@ -446,6 +447,9 @@ SESSION_COOKIE_SECURE
 SESSION_IDLE_MINUTES
 SESSION_MAX_HOURS
 COMMENT_EDIT_WINDOW_MINUTES
+UPLOAD_MAX_BYTES
+UPLOAD_MAX_FILES_PER_TICKET
+UPLOADS_DIR
 LOG_LEVEL
 LOG_MAX_BYTES
 LOG_BACKUP_COUNT
@@ -463,6 +467,8 @@ SESSION_COOKIE_SECURE=false
 SESSION_IDLE_MINUTES=30
 SESSION_MAX_HOURS=8
 COMMENT_EDIT_WINDOW_MINUTES=30
+UPLOAD_MAX_BYTES=10485760
+UPLOAD_MAX_FILES_PER_TICKET=20
 LOG_LEVEL=DEBUG
 LOG_MAX_BYTES=5242880
 LOG_BACKUP_COUNT=5
@@ -503,7 +509,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente trece migraciones:
+Existen actualmente catorce migraciones:
 
 ```text
 create_roles_table
@@ -519,6 +525,7 @@ create_state_transitions_table
 create_groups_tables
 create_ticket_technicians_table_and_ticket_group
 create_comments_table
+create_attachments_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -741,7 +748,7 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 
 ## Historial (`historial_ticket`)
 
-Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO` y `COMENTARIO_ELIMINADO`; los de adjuntos, resolución, cierre y relaciones se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO` y `ARCHIVO_ELIMINADO`; los de resolución, cierre y relaciones se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
 
 **Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, sin migración.
 
@@ -822,6 +829,31 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 
 
 
+
+## Archivos adjuntos (entrega 8 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-160), `docs/09` (18.1) y `docs/10` (secciones 61 a 69). Los archivos se tratan en `tickets/storage.py` (sin base de datos) y los metadatos y reglas en `tickets/attachments.py`; las rutas solo orquestan. **Incluye una migración** (`create_attachments_table`).
+
+**Modelo** (`models/attachment.py`, `Attachment`, tabla `archivos`): `ticket_id`, `comentario_id` (opcional: el adjunto de un comentario o nota hereda su visibilidad), `nombre_original` (depurado, solo metadato), `nombre_interno` (UUID, único), `ruta_archivo` (relativa), `mime_type` (deducido de la extensión), `tamano_bytes`, `hash` (SHA-256), `usuario_subida_id`, `fecha_subida`, y la eliminación lógica (`activo`, `fecha_eliminacion`, `usuario_eliminacion_id`). `CHECK` de tamaño y de coherencia de la eliminación.
+
+**Almacenamiento** (`tickets/storage.py`): lista blanca `ALLOWED_TYPES` (`png`, `jpg`, `jpeg`, `gif`, `pdf`, `txt`, `log`, `csv`, `docx`, `xlsx`, `pptx`) con comprobación de la firma de bytes (los de texto, sin bytes nulos); el MIME declarado por el cliente se ignora. `store_upload` escribe por bloques en `UPLOADS_DIR/_tmp`, calcula el SHA-256 y comprueba el tamaño mientras lee, y solo entonces mueve el archivo a `AAAA/MM/<uuid>`; un rechazo no deja nada. `absolute_path` resuelve contra la raíz y rechaza rutas que salgan de ella. `clean_filename` quita directorios y caracteres de control. `MAX_FILES_PER_REQUEST` = 5.
+
+**Configuración:** `UPLOAD_MAX_BYTES` (10 MB), `UPLOAD_MAX_FILES_PER_TICKET` (20) y `UPLOADS_DIR` (por defecto `instance/uploads`); las dos primeras se validan al iniciar. `MAX_CONTENT_LENGTH` se calcula con ellas y una petición mayor responde 413 (`errors.py`). En los tests, `UPLOADS_DIR` es un directorio temporal (fixture `app`).
+
+**Políticas** (`security/authorization.py`): `can_attach_files` (quien comenta públicamente), `can_view_attachment` (hereda la visibilidad del comentario y se oculta si este se elimina) y `can_delete_attachment` (el Supervisor y el Administrador siempre; el resto, los que subieron ellos dentro de `COMMENT_EDIT_WINDOW_MINUTES`). `visible_attachments_condition` es el equivalente SQL de `can_view_attachment`; un test comprueba que coinciden.
+
+**Servicio** (`tickets/attachments.py`, sin commit; empieza con `begin_ticket_operation`): `add_attachments(ticket, actor=, uploads=, comment=)` valida cantidad por envío y por ticket, guarda, registra `ARCHIVO_ADJUNTADO` por archivo con la visibilidad del comentario y, si algo falla, no deja archivos físicos; `delete_attachment` (lógica, conserva el archivo) registra `ARCHIVO_ELIMINADO`; `discard_files(rutas)` borra los físicos si la transacción no se confirma (las rutas lo llaman ante un fallo de la base de datos). No sube la versión del ticket.
+
+**Rutas** (404 si no se ve el ticket o el archivo —nota interna para un Solicitante, otro ticket o eliminado—, 403 si se ve y no se puede actuar; un ticket cerrado vuelve al detalle con un aviso):
+
+- `POST /tickets/<n>/attachments`: sube a la tarjeta «Archivos».
+- `POST /tickets/<n>/comments` admite también `archivos`: cuelgan del comentario; si uno no es válido no se guarda ni el comentario y se vuelve al detalle con el texto.
+- `GET /tickets/<n>/attachments/<id>/download`: descarga autenticada, siempre `attachment`, `X-Content-Type-Options: nosniff` y sin caché; funciona también en un ticket cerrado. Un archivo físico que falta responde 404.
+- `GET, POST /tickets/<n>/attachments/<id>/delete`: confirmación.
+
+**Detalle:** tarjeta «Archivos (n)» bajo «Actividad» (lista, formulario y límites) y los adjuntos de cada comentario bajo él (macro `file_list`). Las pestañas siguen pendientes.
+
+**Seed demo:** `DemoAdjustment.adjunto = (nombre, texto)` con dos tickets nuevos (65 en total).
 
 ## Comentarios y notas internas (entrega 7 de `v0.4.0`)
 
@@ -1224,6 +1256,9 @@ GET, POST  /tickets/<public_id>/requesters/<participation_id>/remove
 POST       /tickets/<public_id>/comments
 GET, POST  /tickets/<public_id>/comments/<comment_id>/edit
 GET, POST  /tickets/<public_id>/comments/<comment_id>/delete
+POST       /tickets/<public_id>/attachments
+GET        /tickets/<public_id>/attachments/<attachment_id>/download
+GET, POST  /tickets/<public_id>/attachments/<attachment_id>/delete
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -1258,7 +1293,7 @@ No representa todavía los dashboards finales del MVP.
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes y editar o eliminar un comentario (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos y de grupos; Grupos (del Supervisor), en las de grupos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
@@ -1459,10 +1494,10 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
 
-- carga 63 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
-- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario` y `nota_interna`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
+- carga 65 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario`, `nota_interna` y `adjunto`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
 - necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
-- usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
+- usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
 - **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
 - **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `demo_tickets_data.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (`_BusinessClock`) pasará a un módulo compartido con el SLA. Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
@@ -1472,7 +1507,8 @@ python -m flask --app src.workdesk seed-demo-tickets
 - **grupo y asignación:** los seis últimos de la lista (bloque "Tickets con grupo y asignación") se asignan a técnicos y se agrupan: uno solo con grupo (queda `Nuevo`), uno con dos técnicos (uno se asigna a sí mismo y otro lo asigna un Supervisor), dos que además se inician y uno que queda en espera. Necesitan los grupos de `seed-demo`: si faltan, se avisa y el ticket queda sin grupo;
 - los tickets sin cambios de estado ni asignación quedan en `Nuevo`; los ocho del bloque "Tickets con cambios de estado" quedan En progreso o En espera, con los cinco motivos de espera y un ciclo completo (iniciar, esperar y reactivar). **Necesita que `seed-catalogs` haya cargado las transiciones** (si faltan se detiene con ese mensaje) y, si un motivo de espera falta o está desactivado, registra la espera sin motivo y lo avisa. Al volver a ejecutarlo solo se crean los tickets nuevos de la lista: un ticket ya cargado no cambia de estado, grupo ni técnicos (hay que recrear la base de desarrollo para verlo en tickets antiguos). Los cambios de estado y de grupo no necesitan extender el refresco de fechas (sus eventos llevan la marca del seed); las asignaciones sí, porque `tickets_tecnicos` tiene fechas propias: se reescriben siguiendo a su evento (`contexto["asignacion_id"]`). Una asignación sin evento propio —por ejemplo, la que cierra un escalamiento hecho a mano, cuyo evento `TICKET_ESCALADO` no lleva `asignacion_id`— sigue al evento cuya hora coincide con la suya (se crean en la misma transacción) y su cierre nunca queda antes de su asignación (el `CHECK` de la base de datos lo exige);
 - **solicitantes agregados y retirados:** los cuatro últimos de la lista (bloque "Tickets con solicitantes agregados y retirados") cambian de solicitantes después de crearse. Sus filas de `tickets_solicitantes` también tienen fechas propias: se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["participacion_id"]`), en una sola actualización por fila para que un retiro nunca preceda a su asociación; los solicitantes de la creación siguen a la fecha de creación. Ver "Solicitantes del ticket";
-- **comentarios y notas internas:** los cinco últimos de la lista (bloque "Tickets con comentarios y notas internas") tienen una conversación: respuestas del personal, comentarios de un Solicitante y notas internas (uno con más notas que comentarios públicos). Un paso con `comentario` escrito por un Solicitante debe ser solo ese comentario y su actor, el creador o un solicitante del ticket en ese momento (la validación lo simula); el comentario público se escribe antes que la nota y ambos antes del cambio de estado. Los comentarios tienen fechas propias (`fecha_creacion`, `fecha_modificacion` y `fecha_eliminacion`): se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["comentario_id"]`), también las ediciones y eliminaciones hechas a mano. Los comentarios no suben la versión del ticket, así que no mueven su fecha de modificación. Ver "Comentarios y notas internas".
+- **comentarios y notas internas:** los cinco últimos de la lista (bloque "Tickets con comentarios y notas internas") tienen una conversación: respuestas del personal, comentarios de un Solicitante y notas internas (uno con más notas que comentarios públicos). Un paso con `comentario` escrito por un Solicitante debe ser solo ese comentario y su actor, el creador o un solicitante del ticket en ese momento (la validación lo simula); el comentario público se escribe antes que la nota y ambos antes del cambio de estado. Los comentarios tienen fechas propias (`fecha_creacion`, `fecha_modificacion` y `fecha_eliminacion`): se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["comentario_id"]`), también las ediciones y eliminaciones hechas a mano. Los comentarios no suben la versión del ticket, así que no mueven su fecha de modificación. Ver "Comentarios y notas internas";
+- **archivos adjuntos:** los dos últimos de la lista (bloque "Tickets con archivos adjuntos") llevan archivos reales de texto (`adjunto=("nombre.log", "contenido")`, solo `.txt`, `.log` o `.csv`), guardados con el servicio real en `UPLOADS_DIR` (`instance/uploads`; en los tests, un directorio temporal). El archivo cuelga del comentario público del paso, si no de la nota y si no, del ticket. Las fechas (`fecha_subida`, `fecha_eliminacion`) se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["archivo_id"]`); volver a ejecutar el seed no duplica archivos. Ver "Archivos adjuntos".
 
 ---
 
@@ -1508,6 +1544,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 8 de `v0.4.0` (adjuntos):
+
+```text
+1730 tests passing
+```
+
+Los 95 tests nuevos cubren:
+
+- `tests/test_ticket_attachments.py` (83): **almacenamiento** (nombres depurados que nunca son una ruta, lista blanca de extensiones, contenido que debe coincidir con la extensión, MIME declarado ignorado, nombre físico UUID y SHA-256 por bloques, límite de tamaño exacto sin dejar restos, archivo vacío, rutas que no pueden salir de la raíz); **modelo y configuración** (límites mayores que cero, valores por defecto y almacenamiento fuera de `static/`, eventos internos por defecto, restricciones de la base de datos); **servicio** (metadatos y evento público o interno según el comentario, partes vacías del formulario, máximo por envío y por ticket contando solo los activos, un archivo malo no deja restos, ticket cerrado, actor inactivo, compensación con `discard_files`, eliminación lógica que conserva el archivo); **visibilidad** (el Solicitante nunca recibe el adjunto de una nota, un comentario eliminado oculta los suyos, **la condición SQL coincide con la política `can_view_attachment`** para todos los perfiles, y los eventos de archivos de una nota no llegan al Solicitante); y **pantallas** (subir y descargar con `attachment`, `nosniff` y sin caché, avisos, tamaño excedido, 413, 404 sin acceso o entre tickets, archivo físico ausente o ruta manipulada, comentario con archivos y comentario con un archivo malo que conserva el texto, ticket cerrado, nombres escapados y eliminar con su plazo).
+- `tests/test_seed_demo_tickets.py` (+11): validación del `adjunto`, que cuelgue del comentario correcto y exista en disco con su hash, la descarga del Solicitante, las fechas de cada archivo con las de su evento y tras un refresco, que volver a ejecutar no duplique archivos y que una eliminación hecha a mano siga al refresco. Las instantáneas incluyen los adjuntos.
+- `tests/test_layout.py` (+1 caso). `tests/conftest.py`: la fixture `app` usa un directorio temporal para `UPLOADS_DIR`, sin tocar la protección de `workdesk_test`.
 
 Estado tras la entrega 7 de `v0.4.0` (comentarios y notas internas):
 

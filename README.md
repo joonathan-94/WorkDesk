@@ -59,7 +59,7 @@ La tercera versión de WorkDesk está implementada y validada. Es la fase centra
 - **Edición de tickets:** el personal puede editar el título, la descripción, la categoría y la ubicación de un ticket, y cambiar su prioridad indicando un motivo. Cada cambio queda en el historial con lo que había antes y lo que hay ahora, y si dos personas editan a la vez, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
 - **Cierre de la versión:** revisión final, tests que recorren todas las rutas de la aplicación para comprobar que ninguna queda sin autenticación ni sin protección CSRF, y la guía de primera configuración con un recorrido de prueba y una solución de problemas.
 
-Todavía **no se pueden adjuntar archivos, resolver ni cerrar un ticket**: llegan con la `v0.4.0`. Los cambios de estado operativos (iniciar el trabajo, poner en espera y reactivar), la asignación de técnicos con el escalamiento, la gestión de los solicitantes de un ticket y los comentarios públicos y notas internas ya existen: ver [Como Técnico](#3-como-técnico), [Como Supervisor](#4-como-supervisor) y [Como Solicitante](#2-como-solicitante).
+Todavía **no se pueden resolver ni cerrar un ticket**: llegan con la `v0.4.0`. Los cambios de estado operativos (iniciar el trabajo, poner en espera y reactivar), la asignación de técnicos con el escalamiento, la gestión de los solicitantes de un ticket, los comentarios públicos y notas internas y los archivos adjuntos ya existen: ver [Como Técnico](#3-como-técnico), [Como Supervisor](#4-como-supervisor) y [Como Solicitante](#2-como-solicitante).
 
 Al cerrar la versión, la suite contaba con **967 tests automatizados**.
 
@@ -536,6 +536,9 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `PASSWORD_MIN_LENGTH` | `12` | Longitud mínima de las contraseñas (entre 8 y 128). |
 | `SESSION_IDLE_MINUTES` | `30` | Minutos de inactividad tras los cuales se cierra la sesión. |
 | `SESSION_MAX_HOURS` | `8` | Duración máxima de una sesión, aunque se use todo el tiempo. |
+| `UPLOAD_MAX_BYTES` | `10485760` (10 MB) | Tamaño máximo de cada archivo adjunto, en bytes. Debe ser mayor que cero. |
+| `UPLOAD_MAX_FILES_PER_TICKET` | `20` | Cantidad máxima de archivos activos por ticket. Debe ser mayor que cero. |
+| `UPLOADS_DIR` | `instance/uploads` | Carpeta donde se guardan los adjuntos (fuera de `static/`, no se versiona). |
 | `COMMENT_EDIT_WINDOW_MINUTES` | `30` | Minutos durante los que el autor de un comentario puede editarlo o eliminarlo (el Supervisor y el Administrador pueden siempre). Debe ser mayor que cero. |
 | `LOG_LEVEL` | `DEBUG` en desarrollo, `INFO` en otro entorno | Nivel de detalle del registro técnico. |
 | `LOG_MAX_BYTES` | `5242880` (5 MB) | Tamaño máximo de cada archivo de log. |
@@ -559,7 +562,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
-| 8 | `seed-demo-tickets` (opcional) | Carga 63 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
+| 8 | `seed-demo-tickets` (opcional) | Carga 65 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
 | 9 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
@@ -581,6 +584,7 @@ Las migraciones actuales crean estas tablas:
 - `grupos`, `usuarios_grupos` y `grupos_supervisores`: los grupos de atención, sus técnicos y sus supervisores responsables.
 - `tickets_tecnicos` (y la columna `tickets.grupo_id`): los técnicos asignados a cada ticket y su grupo.
 - `comentarios`: los comentarios públicos y las notas internas de los tickets.
+- `archivos`: los metadatos de los archivos adjuntos (el contenido va a `instance/uploads`, no a la base de datos).
 
 Para comprobar que se aplicaron:
 
@@ -766,7 +770,7 @@ Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo
 
 ### Tener tickets con los que probar
 
-Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 63 tickets de demostración:
+Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 65 tickets de demostración:
 
 ```bash
 python -m flask --app src.workdesk seed-demo-tickets
@@ -785,11 +789,12 @@ python -m flask --app src.workdesk seed-demo-tickets
 - Otros catorce, al final de la lista, ya han avanzado en el flujo (seis de ellos con grupo y técnicos asignados, uno solo con grupo y otro con dos técnicos). Los ocho primeros de ese bloque: quedan **En progreso** o **En espera**, con los cinco motivos de espera (uno con un texto libre) y un ticket que completó el ciclo iniciar, esperar y reactivar. El Solicitante ve que el ticket está en espera, pero no el motivo.
 - Otros cuatro, también al final, muestran cambios de solicitantes después de crear el ticket: uno en el que el personal se equivocó de persona y la cambia por la correcta (con el motivo del retiro), uno que nació sin solicitante y al que después se agrega el jefe de bodega, uno al que se suma una segunda persona que luego se retira, y uno que creó un Solicitante a nombre de un colega: se le retira como solicitante pero, como lo creó, lo sigue viendo. Estos cambios son eventos internos del historial: el Solicitante no los ve.
 - Otros cinco, al final de todo, tienen una conversación: respuestas del personal, comentarios del propio Solicitante y notas internas (un ticket con dos notas del equipo y un solo comentario público, para ver lo poco que ve el Solicitante). El Solicitante ve la conversación pública; las notas internas, solo el personal.
+- Dos más, también al final, con archivos adjuntos reales (de texto: un registro de errores de un Solicitante, un diagnóstico del equipo y una lista `.csv` del ticket), guardados en `instance/uploads`. Así se puede probar la descarga y comprobar que los archivos de una nota interna no los ve el Solicitante.
 - Fechas repartidas hasta unas nueve semanas atrás, **relativas al día en que lo ejecutes** y medidas en **tiempo laboral**: «hace 3 días» son tres días laborales antes de hoy, cada ticket se crea dentro de la jornada y los pasos posteriores del personal avanzan en horas laborales (el reloj salta noches, fines de semana y feriados). Por defecto la jornada es de lunes a viernes de 09:00 a 18:00 y se cambia en `DEMO_CALENDAR`, en el mismo archivo de datos (cuando exista la pantalla del calendario laboral, con el SLA en `v0.5.0`, el comando usará el que guarde el Administrador y, si no hay ninguno, este). Nada queda fuera de ese calendario ni en el futuro, y si lo ejecutas un fin de semana, cuenta desde el último día laboral. Así los filtros por fecha y «Recién actualizados» se ven vivos en cualquier demostración.
 
 **Cómo se comporta**
 
-- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 63.`
+- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 65.`
 - Un ticket demo se reconoce aunque después le cambien el título. Si lo editaste a mano mientras probabas, esa edición se desplaza junto con el ticket para que el historial siga en orden y nada quede en el futuro. El contenido (título, descripción, categoría, prioridad...) no se sobrescribe, y los tickets que creaste a mano no se tocan nunca.
 - No crea categorías ni ubicaciones. Si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación, y te avisa con un mensaje `Aviso:`.
 - Si falta `seed-demo` o `seed-catalogs`, se detiene con un mensaje que dice qué ejecutar primero y no carga nada. Si algo falla a mitad de la carga, se revierte todo.
@@ -823,7 +828,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 
 1. Inicia sesión. La barra lateral muestra **Dashboard**, **Tickets**, **Crear ticket**, **Administración** y **Mi cuenta**.
 2. **Crear ticket:** envía el formulario incompleto (por ejemplo, solo con el título). Cada campo obligatorio que falta muestra su error y el formulario conserva lo que ya habías escrito. Luego créalo bien, marcando dos solicitantes (el buscador filtra la lista). Debes ver el aviso `Ticket #N creado correctamente.` y el detalle con estado `Nuevo`, el creador y los solicitantes.
-3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 63`, `Abiertos 63` y `Cerrados 0` (más los que hayas creado tú) y dos páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
+3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 65`, `Abiertos 65` y `Cerrados 0` (más los que hayas creado tú) y dos páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
 4. **Buscar:** escribe `impresora`: con los tickets de demostración aparecen diez, porque la palabra está en títulos y en descripciones. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
 5. **Filtrar y ordenar:** filtra por estado y por prioridad, abre **Más filtros** (categoría, ubicación y fechas) y combínalos con la búsqueda. **Limpiar filtros** los quita. Cambia **Ordenar por** a `Mayor prioridad primero`.
 6. **Editar:** abre un ticket y pulsa **Editar**. Cambia el título y guarda: aparece `Ticket #N actualizado.` y el historial muestra `Título: «antes» → «después»`. Vuelve a guardar sin tocar nada: `No había cambios que guardar.`
@@ -846,19 +851,21 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 7. **Crear ticket:** no hay sección de solicitantes; al crearlo, quedas registrado como su solicitante.
 8. Abre un ticket tuyo: no ves **Gestionar** ni a los demás solicitantes, y `/tickets/N/requesters` responde **Acceso denegado** (403). Decidir quiénes más figuran en un ticket es del personal.
 9. **Comentar:** en la tarjeta **Actividad** de un ticket tuyo escribe un comentario y pulsa **Publicar**: aparece con tu nombre, tu rol y la hora. No hay selector de tipo: un Solicitante escribe siempre comentarios públicos. Mientras pasen menos de 30 minutos (`COMMENT_EDIT_WINDOW_MINUTES`) ves **Editar** y **Eliminar** en los tuyos; después, ya no. Abre `intranet-credenciales` (`sebastian.vargas` es su creador): ves la conversación con soporte, pero ni rastro de las notas internas del equipo.
+10. **Adjuntar:** en tu ticket puedes subir archivos (tarjeta **Archivos**) o adjuntarlos a un comentario (**Adjuntar archivos (opcional)**). Ves y descargas los tuyos y los del equipo en comentarios públicos, pero no los de una nota interna.
 
 ### 3. Como Técnico
 
 Entra, por ejemplo, como `diego.soto`.
 
-1. **Tickets** muestra todos los tickets (con los datos de demostración, los 63), incluidos los que crearon otras personas.
+1. **Tickets** muestra todos los tickets (con los datos de demostración, los 65), incluidos los que crearon otras personas.
 2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
 3. **Cambiar el estado:** abre un ticket `Nuevo` y pulsa **Iniciar trabajo**: una pantalla de confirmación muestra `Nuevo → En progreso`; al confirmar, el ticket queda **En progreso** y el historial registra `Estado: «Nuevo» → «En progreso»`. Ahora el botón es **Poner en espera**: elige un motivo (por ejemplo `Otro motivo`, que permite escribir una explicación) y confirma. En el historial, tú ves `Motivo de espera: ...`; el Solicitante ve solo el cambio de estado. Pulsa **Reactivar** para volver a En progreso.
 4. Prueba el aviso de conflicto: abre un ticket en dos pestañas (A y B) y pulsa **Iniciar trabajo** en ambas. Confirma en A; al confirmar en B aparece `Otra persona modificó este ticket mientras decidías...`.
 5. **Asignarte un ticket:** abre un ticket `Nuevo` y pulsa **Asignarme**: queda **Asignado**, el resumen muestra tu nombre en **Técnico** y el historial registra `Técnico asignado` y el cambio de estado. El botón pasa a **Dejar ticket**; púlsalo y el ticket vuelve a `Nuevo`. Como técnico no ves **Asignar** ni **Escalar**: `/tickets/N/assignment` responde **Acceso denegado**.
 6. **Solicitantes:** en el resumen de un ticket abierto, junto a **Solicitante(s)**, pulsa **Gestionar**. Agrega a otra persona con el selector (aparecen solo las personas activas con rol Solicitante que aún no lo son) y retírala con **Retirar**: pide confirmación y un motivo opcional, y avisa si la persona dejará de ver el ticket. El historial registra `Solicitante agregado` y `Solicitante retirado` (con el motivo), que solo ve el personal. Abre `Proyector de la sala chica no muestra imagen`: ahí se cambió a Constanza por Paula. Entra como `constanza.herrera`: ese ticket ya no aparece y su dirección responde **404**; en cambio `la impresora de proyectos dice error de conexion`, que ella creó, lo sigue viendo aunque el personal la retiró como solicitante (el creador original no cambia).
 7. **Comentarios y notas internas:** en la tarjeta **Actividad** escribe un comentario público y luego una **nota interna** (el selector **Tipo** solo lo ve el personal). La nota aparece con fondo morado, `NOTA INTERNA` y «Solo visible para soporte». Edita el comentario que acabas de escribir (**Editar** guarda el texto anterior en el historial, que no lo muestra) y elimínalo (**Eliminar** pide confirmación y lo oculta para todos). Ni editar ni eliminar cambian «Actualizado». Abre `switch-bodega-puertos`: tiene dos notas del equipo y un comentario público; entra después como `ignacio.molina` y comprueba que solo ve el comentario y que `Actividad` cuenta uno, no tres.
-8. No ve **Administración**; `/admin` responde **Acceso denegado**.
+8. **Archivos adjuntos:** en la tarjeta **Archivos** pulsa **Elegir archivos**, selecciona uno o varios (por ejemplo un `.pdf` o `.png` pequeño) y pulsa **Subir**: aparecen con su tamaño, quién y cuándo; el nombre es un enlace que lo **descarga** (siempre como descarga, nunca se abre en el navegador). Prueba un `.exe` o un archivo con la extensión cambiada a mano (un `.txt` renombrado a `.png`): se rechaza con un aviso y no se guarda nada. Escribe una **nota interna** y adjúntale un archivo: lo ve el personal, pero para el Solicitante no existe ni su descarga (404). Elimina un archivo con **Eliminar**: deja de verse y de descargarse, pero se conserva en `instance/uploads`. Abre `error-sistema-contable-log` para ver archivos de ejemplo (de un Solicitante y del equipo).
+9. No ve **Administración**; `/admin` responde **Acceso denegado**.
 
 ### 4. Como Supervisor
 
@@ -877,7 +884,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 ### Lo que todavía no verás
 
 - La pestaña **Cerrados** estará vacía: aún no se puede cerrar un ticket.
-- No se pueden adjuntar archivos, resolver ni cerrar un ticket: llega con la `v0.4.0`.
+- No se pueden resolver ni cerrar tickets: llega con la `v0.4.0`.
 - El dashboard es una pantalla temporal.
 
 ---
@@ -900,7 +907,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `seed-demo-tickets`: "Faltan usuarios de demostración... Ejecuta primero seed-demo." | Todavía no cargaste el equipo de demostración. | Ejecuta `seed-demo` y vuelve a intentarlo. No se cargó ningún ticket. |
 | `seed-demo-tickets`: "Faltan los catálogos iniciales. Ejecuta primero seed-catalogs." o "Faltan las transiciones de estado..." | Se saltó el paso 3 de la preparación, o los catálogos se cargaron antes de que existieran las transiciones entre estados. | Ejecuta `seed-catalogs` (no duplica nada) y vuelve a intentarlo. |
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
-| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 63" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
+| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 65" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -982,6 +989,9 @@ GET POST  /tickets/<public_id>/requesters/<participation_id>/remove
 POST      /tickets/<public_id>/comments
 GET POST  /tickets/<public_id>/comments/<comment_id>/edit
 GET POST  /tickets/<public_id>/comments/<comment_id>/delete
+POST      /tickets/<public_id>/attachments
+GET       /tickets/<public_id>/attachments/<attachment_id>/download
+GET POST  /tickets/<public_id>/attachments/<attachment_id>/delete
 GET       /health
 ```
 

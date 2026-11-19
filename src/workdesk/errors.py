@@ -46,6 +46,21 @@ def register_error_handlers(app: Flask) -> None:
             404,
         )
 
+    @app.errorhandler(413)
+    def payload_too_large(error: Exception):
+        return (
+            render_template(
+                "errors/error.html",
+                status_code=413,
+                title="Archivo demasiado grande",
+                message=(
+                    "Lo que intentaste enviar supera el tamaño permitido. "
+                    "Reduce el tamaño de los archivos e inténtalo de nuevo."
+                ),
+            ),
+            413,
+        )
+
     @app.errorhandler(500)
     def internal_server_error(error: Exception):
         return (

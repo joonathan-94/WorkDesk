@@ -1,6 +1,8 @@
+import hashlib
 import re
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -8,6 +10,7 @@ from sqlalchemy import update
 
 from src.workdesk.extensions import db
 from src.workdesk.models import (
+    Attachment,
     Categoria,
     Comment,
     Prioridad,
@@ -39,6 +42,7 @@ from src.workdesk.seeds.demo_tickets_data import (
     DemoAdjustment,
     WorkCalendar,
 )
+from src.workdesk.tickets.attachments import attachment_path
 from src.workdesk.tickets.editing import update_ticket
 from src.workdesk.tickets.service import create_ticket
 
@@ -183,6 +187,16 @@ def comments_of(ticket):
     )
 
 
+def attachments_of(ticket):
+    return list(
+        db.session.scalars(
+            db.select(Attachment)
+            .where(Attachment.ticket_id == ticket.id)
+            .order_by(Attachment.id)
+        )
+    )
+
+
 def assignments_of(ticket):
     return list(
         db.session.scalars(
@@ -249,6 +263,10 @@ def date_snapshot():
                 (c.fecha_creacion, c.fecha_modificacion, c.fecha_eliminacion)
                 for c in comments_of(ticket)
             ],
+            [
+                (f.fecha_subida, f.fecha_eliminacion)
+                for f in attachments_of(ticket)
+            ],
         )
 
     return snapshot
@@ -284,6 +302,10 @@ def content_snapshot():
             [
                 (c.autor_usuario_id, c.tipo, c.contenido, c.activo, c.editado)
                 for c in comments_of(ticket)
+            ],
+            [
+                (f.nombre_original, f.hash, f.comentario_id, f.activo)
+                for f in attachments_of(ticket)
             ],
         )
 
@@ -2167,3 +2189,150 @@ def test_refresh_keeps_the_comments(app, seeded):
         seed_demo_tickets(now=NOW + timedelta(days=3))
 
         assert content_snapshot() == before
+
+
+# --- Adjuntos ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("adjustment", "message"),
+    [
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, adjunto=("virus.exe", "MZ")),
+         "debe terminar en .txt, .log o .csv"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, adjunto=("imagen.png", "x")),
+         "debe terminar en .txt, .log o .csv"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, adjunto=("vacio.txt", "  ")),
+         "está vacío"),
+        # Un Solicitante solo adjunta a su propio comentario.
+        (DemoAdjustment(actor="javiera.torres", despues_horas=1, adjunto=("a.txt", "x")),
+         "no es personal"),
+    ],
+)
+def test_validation_rejects_inconsistent_attachment_steps(adjustment, message):
+    ticket = replace(DEMO_TICKETS[0], ajustes=(adjustment,))
+
+    with pytest.raises(DemoTicketsError, match=message):
+        validate_demo_tickets((ticket,))
+
+
+def test_a_requester_can_attach_a_file_to_their_comment():
+    step = DemoAdjustment(
+        actor="javiera.torres",
+        despues_horas=1,
+        comentario="Adjunto el log",
+        adjunto=("log.log", "contenido"),
+    )
+
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=(step,)),))
+
+
+def test_the_files_hang_from_the_right_comment_and_exist_on_disk(app, seeded):
+    with app.app_context():
+        log_ticket = by_clave("error-sistema-contable-log")
+        log, diagnosis = attachments_of(log_ticket)
+        comments = comments_of(log_ticket)
+        csv = attachments_of(by_clave("inventario-notebooks-csv"))[0]
+
+        # El del Solicitante, a su comentario público; el del equipo, al
+        # comentario público de su paso (no a la nota).
+        assert log.comentario_id == comments[0].id
+        assert diagnosis.comentario_id == comments[1].id
+        assert comments[1].tipo == "PUBLICO"
+        # El del tercer ticket es del ticket, sin comentario.
+        assert csv.comentario_id is None
+
+        for item in (log, diagnosis, csv):
+            path = attachment_path(item)
+
+            assert path.is_file()
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == item.hash
+            assert item.tamano_bytes == path.stat().st_size
+
+
+def test_a_requester_downloads_their_ticket_files(app, seeded):
+    client = log_in(app, "javiera.torres")
+
+    with app.app_context():
+        ticket = by_clave("error-sistema-contable-log")
+        public_id = ticket.public_id
+        item = attachments_of(ticket)[0]
+        item_id = item.id
+
+    response = client.get(f"/tickets/{public_id}/attachments/{item_id}/download")
+
+    assert response.status_code == 200
+    assert b"acceso denegado" in response.data
+    assert "attachment" in response.headers["Content-Disposition"]
+
+
+def test_each_file_carries_the_date_of_its_event(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            uploaded = {
+                e.contexto["archivo_id"]: e.fecha_hora
+                for e in history_of(ticket)
+                if e.tipo_evento == "ARCHIVO_ADJUNTADO"
+            }
+
+            for item in attachments_of(ticket):
+                assert item.fecha_subida == uploaded[item.id], demo.clave
+
+
+def test_file_dates_follow_a_refresh_and_the_files_stay(app, seeded):
+    with app.app_context():
+        before = date_snapshot()
+        paths = [attachment_path(f) for f in db.session.scalars(db.select(Attachment))]
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert date_snapshot() != before
+        assert all(p.is_file() for p in paths)
+        assert len(db.session.scalars(db.select(Attachment)).all()) == len(paths)
+
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            uploaded = {
+                e.contexto["archivo_id"]: e.fecha_hora
+                for e in history_of(ticket)
+                if e.tipo_evento == "ARCHIVO_ADJUNTADO"
+            }
+
+            for item in attachments_of(ticket):
+                assert item.fecha_subida == uploaded[item.id], demo.clave
+
+
+def test_running_the_seed_again_does_not_duplicate_files(app, seeded):
+    with app.app_context():
+        files = sorted(Path(app.config["UPLOADS_DIR"]).rglob("*"))
+        files = [f for f in files if f.is_file()]
+
+        seed_demo_tickets(now=NOW + timedelta(days=1))
+
+        again = [f for f in Path(app.config["UPLOADS_DIR"]).rglob("*") if f.is_file()]
+
+        assert len(again) == len(files) == 3
+
+
+def test_a_hand_made_file_deletion_follows_the_refresh(app, seeded):
+    from src.workdesk.tickets.attachments import delete_attachment
+
+    later = NOW + timedelta(days=3)
+
+    with app.app_context():
+        ticket = by_clave("inventario-notebooks-csv")
+        item = attachments_of(ticket)[0]
+
+        delete_attachment(ticket, item.id, actor=user("camila.rojas"))
+        db.session.commit()
+
+        seed_demo_tickets(now=later)
+
+        events = history_of(by_clave("inventario-notebooks-csv"))
+        removal = next(e for e in events if e.tipo_evento == "ARCHIVO_ELIMINADO")
+
+        db.session.refresh(item)
+
+        assert item.fecha_eliminacion == removal.fecha_hora
+        assert item.fecha_eliminacion >= item.fecha_subida
+        assert max(e.fecha_hora for e in events) <= later - timedelta(minutes=1)

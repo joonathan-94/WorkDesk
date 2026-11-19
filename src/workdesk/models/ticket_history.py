@@ -45,6 +45,8 @@ class TicketEvent(StrEnum):
     COMENTARIO_AGREGADO = "COMENTARIO_AGREGADO"
     COMENTARIO_EDITADO = "COMENTARIO_EDITADO"
     COMENTARIO_ELIMINADO = "COMENTARIO_ELIMINADO"
+    ARCHIVO_ADJUNTADO = "ARCHIVO_ADJUNTADO"
+    ARCHIVO_ELIMINADO = "ARCHIVO_ELIMINADO"
 
 
 class HistoryVisibility(StrEnum):
@@ -90,6 +92,10 @@ DEFAULT_EVENT_VISIBILITY = {
     TicketEvent.COMENTARIO_AGREGADO: HistoryVisibility.INTERNO,
     TicketEvent.COMENTARIO_EDITADO: HistoryVisibility.INTERNO,
     TicketEvent.COMENTARIO_ELIMINADO: HistoryVisibility.INTERNO,
+    # Como los de comentario: la visibilidad depende de si el archivo cuelga de
+    # una nota interna, así que quien lo registra la indica siempre.
+    TicketEvent.ARCHIVO_ADJUNTADO: HistoryVisibility.INTERNO,
+    TicketEvent.ARCHIVO_ELIMINADO: HistoryVisibility.INTERNO,
 }
 
 
@@ -108,6 +114,8 @@ TICKET_EVENT_LABELS = {
     TicketEvent.COMENTARIO_AGREGADO: "Comentario agregado",
     TicketEvent.COMENTARIO_EDITADO: "Comentario editado",
     TicketEvent.COMENTARIO_ELIMINADO: "Comentario eliminado",
+    TicketEvent.ARCHIVO_ADJUNTADO: "Archivo adjuntado",
+    TicketEvent.ARCHIVO_ELIMINADO: "Archivo eliminado",
 }
 
 

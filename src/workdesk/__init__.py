@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 
 from .account import bp as account_bp
@@ -17,6 +19,7 @@ from .navigation import layout_context, user_initials
 from .security import MAX_LENGTH, MIN_LENGTH_FLOOR, can_manage_users
 from .system import bp as system_bp
 from .tickets import bp as tickets_bp
+from .tickets.storage import MAX_FILES_PER_REQUEST
 from .users import bp as users_bp
 
 
@@ -32,6 +35,7 @@ def create_app(
     _validate_required_config(app)
     _validate_session_limits(app)
     _validate_comment_edit_window(app)
+    _configure_uploads(app)
     _validate_password_policy(app)
     configure_logging(app)
 
@@ -101,6 +105,21 @@ def _validate_password_policy(app: Flask) -> None:
             "PASSWORD_MIN_LENGTH debe estar entre "
             f"{MIN_LENGTH_FLOOR} y {MAX_LENGTH}."
         )
+
+
+def _configure_uploads(app: Flask) -> None:
+    for key in ("UPLOAD_MAX_BYTES", "UPLOAD_MAX_FILES_PER_TICKET"):
+        if app.config[key] <= 0:
+            raise RuntimeError(f"{key} debe ser un entero mayor que cero.")
+
+    if not app.config.get("UPLOADS_DIR"):
+        app.config["UPLOADS_DIR"] = os.path.join(app.instance_path, "uploads")
+
+    # Flask rechaza con 413, antes de leer el cuerpo, una petición mayor que
+    # esto: el máximo de archivos por envío más un margen para el formulario.
+    app.config["MAX_CONTENT_LENGTH"] = (
+        app.config["UPLOAD_MAX_BYTES"] * MAX_FILES_PER_REQUEST + 1024 * 1024
+    )
 
 
 def _validate_comment_edit_window(app: Flask) -> None:

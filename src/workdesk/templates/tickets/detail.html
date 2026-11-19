@@ -2,6 +2,50 @@
 {% from "_ui_macros.html" import breadcrumb, state_badge, priority_badge %}
 {% from "_form_macros.html" import field_errors, textarea_field %}
 
+{# Lista de adjuntos con su descarga. La descarga y la eliminación comprueban
+   la autorización en el servidor; aquí solo se decide qué enlaces mostrar. #}
+{% macro file_list(rows, is_closed) %}
+    {% if rows %}
+        <ul class="list-unstyled small mb-0 mt-2">
+            {% for row in rows %}
+                {% set file = row.file %}
+                <li class="d-flex flex-wrap align-items-center gap-2">
+                    <i
+                        class="bi bi-paperclip"
+                        aria-hidden="true"
+                    ></i>
+                    <a
+                        class="text-break"
+                        href="{{ url_for('tickets.download_ticket_attachment', public_id=file.ticket.public_id, attachment_id=file.id) }}"
+                    >
+                        {{ file.nombre_original }}
+                    </a>
+                    <span class="text-secondary">
+                        {% if file.tamano_bytes >= 1048576 %}
+                            {{ '%.1f'|format(file.tamano_bytes / 1048576) }} MB
+                        {% else %}
+                            {{ ((file.tamano_bytes + 1023) // 1024) }} KB
+                        {% endif %}
+                        ·
+                        {{ file.subido_por.nombre }} {{ file.subido_por.apellido }}
+                        ·
+                        {{ file.fecha_subida|local_datetime }}
+                    </span>
+
+                    {% if row.can_delete and not is_closed %}
+                        <a
+                            class="text-danger"
+                            href="{{ url_for('tickets.delete_ticket_attachment', public_id=file.ticket.public_id, attachment_id=file.id) }}"
+                        >
+                            Eliminar
+                        </a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endmacro %}
+
 {% block title %}#{{ ticket.public_id }} {{ ticket.titulo }}{% endblock %}
 
 {% block content %}
@@ -201,6 +245,8 @@
 
                                         <p class="ticket-text">{{ comment.contenido }}</p>
 
+                                        {{ file_list(files_by_comment.get(comment.id, []), is_closed) }}
+
                                         {# Solo presentación: las rutas comprueban si
                                            se puede editar o eliminar (y el plazo). #}
                                         {% if (row.can_edit or row.can_delete) and not is_closed %}
@@ -233,6 +279,7 @@
                         <form
                             method="post"
                             action="{{ url_for('tickets.add_ticket_comment', public_id=ticket.public_id) }}"
+                            enctype="multipart/form-data"
                             novalidate
                         >
                             {{ comment_form.csrf_token }}
@@ -295,6 +342,27 @@
                                 counter=True,
                             ) }}
 
+                            <div class="mb-3">
+                                <label
+                                    class="form-label"
+                                    for="comment-files"
+                                >
+                                    Adjuntar archivos (opcional)
+                                </label>
+                                <input
+                                    class="form-control"
+                                    id="comment-files"
+                                    type="file"
+                                    name="archivos"
+                                    multiple
+                                >
+                                <div class="form-text">
+                                    Hasta {{ max_files }} archivos de {{ max_upload_mb }} MB
+                                    ({{ allowed_extensions|join(', ') }}).
+                                    Heredan la visibilidad del comentario.
+                                </div>
+                            </div>
+
                             <button
                                 class="btn btn-primary"
                                 type="submit"
@@ -305,6 +373,72 @@
                     {% elif is_closed %}
                         <p class="small text-secondary mb-0">
                             Un ticket cerrado no admite comentarios nuevos.
+                        </p>
+                    {% endif %}
+                </div>
+            </section>
+
+            {# Archivos del ticket (los de un comentario se ven bajo él). #}
+            <section
+                class="card mb-4"
+                id="archivos"
+                aria-labelledby="files-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="files-title"
+                    >
+                        Archivos
+                        <span class="text-secondary fw-normal">({{ ticket_files|length }})</span>
+                    </h2>
+
+                    {% if ticket_files %}
+                        {{ file_list(ticket_files, is_closed) }}
+                    {% else %}
+                        <p class="text-secondary small">Todavía no hay archivos del ticket.</p>
+                    {% endif %}
+
+                    {% if show_uploader %}
+                        <form
+                            class="mt-3"
+                            method="post"
+                            action="{{ url_for('tickets.add_ticket_attachments', public_id=ticket.public_id) }}"
+                            enctype="multipart/form-data"
+                            novalidate
+                        >
+                            {{ comment_form.csrf_token }}
+
+                            <label
+                                class="form-label"
+                                for="ticket-files"
+                            >
+                                Adjuntar archivos
+                            </label>
+                            <input
+                                class="form-control mb-2"
+                                id="ticket-files"
+                                type="file"
+                                name="archivos"
+                                multiple
+                            >
+                            <div class="form-text mb-3">
+                                Hasta {{ max_files }} archivos de {{ max_upload_mb }} MB
+                                ({{ allowed_extensions|join(', ') }}).
+                                Los ve quien ve el ticket; para un archivo solo
+                                del equipo, adjúntalo a una nota interna.
+                            </div>
+
+                            <button
+                                class="btn btn-outline-primary"
+                                type="submit"
+                            >
+                                Subir
+                            </button>
+                        </form>
+                    {% elif is_closed %}
+                        <p class="small text-secondary mb-0">
+                            Un ticket cerrado no admite archivos nuevos.
                         </p>
                     {% endif %}
                 </div>

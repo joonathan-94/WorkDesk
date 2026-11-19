@@ -1162,6 +1162,8 @@ El archivo físico se mantiene en almacenamiento local protegido.
 - La eliminación lógica debe quedar registrada también en historial cuando corresponda.
 - Los respaldos incluyen metadatos y archivos físicos.
 - El MVP fija SHA-256 como algoritmo de integridad; arquitectura definirá cálculo, representación y verificación.
+
+**Implementación (`v0.4.0`, entrega 8, RN-160).** La tabla `archivos` se crea con el esquema de esta sección más `comentario_id` (FK opcional a `comentarios`, `ON DELETE RESTRICT`): un adjunto subido junto a un comentario o nota hereda su visibilidad. Restricciones: tamaño no negativo y coherencia de la eliminación (activo sin datos de eliminación; eliminado con fecha), `nombre_interno` único e índices por `(ticket_id, fecha_subida)` y `comentario_id`. `ruta_archivo` es relativa a la raíz (`AAAA/MM/<uuid>`); `mime_type` se deduce de la extensión validada; `hash` es el SHA-256 en hexadecimal minúscula. Las horas las pone la base de datos. Cada operación registra `ARCHIVO_ADJUNTADO` (`valor_nuevo` con `{"archivo_id", "nombre", "tamano_bytes", "comentario_id"}`) o `ARCHIVO_ELIMINADO` (`valor_anterior` con `{"archivo_id", "nombre", "comentario_id"}`), con `contexto["archivo_id"]`.
 - Cuando `activo = TRUE`, los campos de eliminación normalmente serán NULL. Si `activo = FALSE`, deberá existir `fecha_eliminacion`; la eliminación lógica no implica automáticamente borrar el fichero físico, cuyo tratamiento dependerá de la política de retención.
 
 ---

@@ -41,7 +41,7 @@ Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste), el
 grupo (`grupo`), la asignación de técnicos (`asignar`) y los solicitantes
 agregados o retirados después de crear el ticket (`agregar_solicitante`,
 `retirar_solicitante` y `motivo_retiro`) y los comentarios públicos y notas
-internas (`comentario` y `nota_interna`) ya existen. Cuando existan cierres,
+internas (`comentario` y `nota_interna`) y los archivos adjuntos (`adjunto`) ya existen. Cuando existan cierres,
 se añadirán campos opcionales con valor por defecto y los tickets ya escritos
 seguirán siendo válidos.
 
@@ -132,9 +132,14 @@ class DemoAdjustment:
     creador o un solicitante del ticket en ese momento y, en ese caso, el paso
     no puede cambiar nada más.
 
+    `adjunto` es un archivo de texto, como `("error.log", "contenido")`: el
+    nombre debe terminar en `.txt`, `.log` o `.csv`. Cuelga del comentario
+    público del paso; si no hay, de la nota interna; y si tampoco, del ticket.
+    Se guarda de verdad en el almacenamiento de adjuntos.
+
     En un mismo paso el orden es: datos, prioridad, grupo, asignación,
     solicitantes (primero se retira y después se agrega), comentario público,
-    nota interna y, al final, el cambio de estado.
+    nota interna, adjunto y, al final, el cambio de estado.
     """
 
     actor: str
@@ -154,6 +159,7 @@ class DemoAdjustment:
     motivo_retiro: str | None = None
     comentario: str | None = None
     nota_interna: str | None = None
+    adjunto: tuple[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -1608,6 +1614,75 @@ DEMO_TICKETS = (
                 nota_interna=(
                     "Crear 4 accesos temporales en el portal de invitados, "
                     "vigencia 12 h."
+                ),
+            ),
+        ),
+    ),
+    # --- Tickets con archivos adjuntos ----------------------------------------
+    DemoTicket(
+        clave="error-sistema-contable-log",
+        titulo="el sistema contable se cierra solo al guardar",
+        descripcion=(
+            "cuando guardo un asiento el sistema contable se cierra sin avisar. "
+            "me pidieron que adjuntara el archivo de errores, aqui va"
+        ),
+        categoria="Sin clasificar",
+        prioridad="ALTA",
+        creado_por="javiera.torres",
+        ubicacion=MATTA,
+        hace_dias=3,
+        hora="11:40",
+        ajustes=(
+            # Un Solicitante adjunta un archivo a su comentario.
+            DemoAdjustment(
+                actor="javiera.torres",
+                despues_horas=1,
+                comentario="Adjunto el archivo de errores que genera el programa.",
+                adjunto=(
+                    "errores-contabilidad.log",
+                    (
+                        "2026-11-17 11:36:02 ERROR  Guardar asiento 4471: acceso denegado\n"
+                        "2026-11-17 11:36:02 ERROR  El proceso terminó de forma inesperada\n"
+                    ),
+                ),
+            ),
+            # La nota interna del equipo lleva su propio archivo, que el
+            # Solicitante no ve.
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=2,
+                asignar="francisca.munoz",
+                estado="INICIAR",
+                nota_interna="Es un permiso: la carpeta compartida cambió de servidor. Dejo el diagnóstico.",
+                adjunto=(
+                    "diagnostico-permisos.txt",
+                    "Usuario: javiera.torres\nCarpeta: \\\\srv-archivos\\contabilidad\nPermiso actual: solo lectura\nPermiso esperado: modificar\n",
+                ),
+                comentario="Javiera, ya encontramos la causa: te faltaba un permiso en la carpeta. Prueba de nuevo y me cuentas.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="inventario-notebooks-csv",
+        titulo="Inventario de notebooks para el cambio de equipos",
+        descripcion=(
+            "Se prepara el cambio de notebooks del área comercial. Se adjunta "
+            "la lista de equipos que se reemplazan."
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="matias.fuentes",
+        solicitantes=("sebastian.vargas",),
+        hace_dias=5,
+        hora="14:10",
+        ajustes=(
+            # Un archivo del ticket, sin comentario.
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                adjunto=(
+                    "notebooks-a-reemplazar.csv",
+                    "usuario,equipo,antiguedad_anos\nsebastian.vargas,NB-0412,5\nandres.silva,NB-0377,6\n",
                 ),
             ),
         ),

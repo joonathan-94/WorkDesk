@@ -1,6 +1,15 @@
 from datetime import UTC, date, datetime
 
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import (
+    abort,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 from flask_login import current_user, login_required
 from flask_wtf import FlaskForm
 
@@ -17,10 +26,12 @@ from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..security import (
     STAFF_ROLES,
     can_assign_self,
+    can_attach_files,
     can_change_priority,
     can_choose_requesters,
     can_comment_publicly,
     can_create_ticket,
+    can_delete_attachment,
     can_delete_comment,
     can_edit_comment,
     can_edit_ticket,
@@ -40,6 +51,14 @@ from .assignment import (
     list_groups_for_ticket,
     set_group,
     unassign_technician,
+)
+from .attachments import (
+    add_attachments,
+    attachment_path,
+    delete_attachment,
+    discard_files,
+    get_attachment,
+    list_attachments,
 )
 from .comments import (
     add_comment,
@@ -92,6 +111,7 @@ from .service import (
     list_ticket_history,
     list_tickets,
 )
+from .storage import MAX_FILES_PER_REQUEST, allowed_extensions
 from .versioning import TicketClosedError, TicketConflictError
 
 # Prioridad que se ofrece preseleccionada al crear un ticket (docs/11, UI-004).
@@ -293,6 +313,20 @@ def _render_detail(ticket, comment_form):
         for comment in list_comments(ticket, _actor())
     ]
 
+    # Adjuntos (ya filtrados por la consulta): los de cada comentario se
+    # muestran bajo él y los del ticket, en la tarjeta «Archivos».
+    files = [
+        {
+            "file": attachment,
+            "can_delete": can_delete_attachment(current_user, attachment, now=now),
+        }
+        for attachment in list_attachments(ticket, _actor())
+    ]
+    files_by_comment: dict = {}
+
+    for row in files:
+        files_by_comment.setdefault(row["file"].comentario_id, []).append(row)
+
     # El motivo de un cambio de prioridad es una nota interna del equipo: el
     # Solicitante ve qué cambió, pero no por qué (docs/06, RN-155).
     history = [
@@ -331,6 +365,12 @@ def _render_detail(ticket, comment_form):
         # Comentarios: el formulario se ofrece mientras el ticket esté abierto y
         # el selector de nota interna solo al personal.
         comments=comments,
+        files_by_comment=files_by_comment,
+        ticket_files=files_by_comment.get(None, []),
+        show_uploader=can_attach_files(current_user, ticket) and not is_closed,
+        max_files=MAX_FILES_PER_REQUEST,
+        max_upload_mb=current_app.config["UPLOAD_MAX_BYTES"] // (1024 * 1024),
+        allowed_extensions=allowed_extensions(),
         comment_form=comment_form,
         show_composer=can_comment_publicly(current_user, ticket) and not is_closed,
         can_write_note=can_write_internal_note(current_user),
@@ -968,6 +1008,8 @@ def add_ticket_comment(public_id: str):
     if kind is CommentType.INTERNO and not can_write_internal_note(current_user):
         abort(403)
 
+    paths: list[str] = []
+
     try:
         comment = add_comment(
             ticket,
@@ -975,13 +1017,34 @@ def add_ticket_comment(public_id: str):
             content=form.contenido.data,
             kind=kind,
         )
+        # Los archivos del mismo envío cuelgan del comentario y heredan su
+        # visibilidad. Si alguno falla, no se guarda ni el comentario.
+        attachments = add_attachments(
+            ticket,
+            actor=_actor(),
+            uploads=request.files.getlist("archivos"),
+            comment=comment,
+        )
+        paths = [attachment.ruta_archivo for attachment in attachments]
         db.session.commit()
-    except TicketRuleError as error:
-        # Incluye el ticket cerrado (`TicketClosedError`).
+    except TicketClosedError as error:
         db.session.rollback()
         flash(str(error), "error")
 
         return redirect(url_for("tickets.detail", public_id=public_id))
+    except TicketRuleError as error:
+        # Por ejemplo, un archivo no permitido: se vuelve al detalle con lo
+        # escrito para no perderlo.
+        db.session.rollback()
+        flash(str(error), "error")
+
+        return _render_detail(ticket, form)
+    except Exception:
+        # Si la base de datos falla tras guardar los archivos, se borran.
+        db.session.rollback()
+        discard_files(paths)
+
+        raise
 
     flash(
         "Nota interna registrada."
@@ -1095,7 +1158,141 @@ def delete_ticket_comment(public_id: str, comment_id: int):
     )
 
 
+# --- Adjuntos ---------------------------------------------------------
+
+
+@bp.post("/<public_id>/attachments")
+@login_required
+def add_ticket_attachments(public_id: str):
+    """Sube archivos al ticket (tarjeta «Archivos»)."""
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_attach_files(current_user, ticket):
+        abort(403)
+
+    form = FlaskForm()
+
+    if not form.validate_on_submit():
+        abort(400)
+
+    paths: list[str] = []
+    back = url_for("tickets.detail", public_id=public_id, _anchor="archivos")
+
+    try:
+        attachments = add_attachments(
+            ticket,
+            actor=_actor(),
+            uploads=request.files.getlist("archivos"),
+        )
+        paths = [attachment.ruta_archivo for attachment in attachments]
+        db.session.commit()
+    except TicketRuleError as error:
+        db.session.rollback()
+        flash(str(error), "error")
+
+        return redirect(back)
+    except Exception:
+        db.session.rollback()
+        discard_files(paths)
+
+        raise
+
+    if not attachments:
+        flash("Elige al menos un archivo.", "warning")
+    else:
+        flash(
+            "Archivo adjuntado."
+            if len(attachments) == 1
+            else f"{len(attachments)} archivos adjuntados.",
+            "success",
+        )
+
+    return redirect(back)
+
+
+@bp.get("/<public_id>/attachments/<int:attachment_id>/download")
+@login_required
+def download_ticket_attachment(public_id: str, attachment_id: int):
+    """Descarga autenticada: se comprueba el acceso al ticket y al adjunto, y
+    el archivo se envía siempre como descarga (nunca se interpreta en el
+    navegador)."""
+    ticket = _visible_ticket_or_404(public_id)
+    attachment = _visible_attachment_or_404(ticket, attachment_id)
+
+    try:
+        path = attachment_path(attachment)
+    except ValueError:
+        abort(404)
+
+    if not path.is_file():
+        current_app.logger.error(
+            "Adjunto sin archivo físico: archivo_id=%s", attachment.id
+        )
+        abort(404)
+
+    response = send_file(
+        path,
+        mimetype=attachment.mime_type,
+        as_attachment=True,
+        download_name=attachment.nombre_original,
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Cache-Control"] = "private, no-store"
+
+    return response
+
+
+@bp.route(
+    "/<public_id>/attachments/<int:attachment_id>/delete",
+    methods=["GET", "POST"],
+)
+@login_required
+def delete_ticket_attachment(public_id: str, attachment_id: int):
+    """Confirmación para eliminar un adjunto (eliminación lógica)."""
+    ticket = _visible_ticket_or_404(public_id)
+    attachment = _visible_attachment_or_404(ticket, attachment_id)
+
+    if not can_delete_attachment(current_user, attachment):
+        abort(403)
+
+    if _is_closed(ticket):
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
+
+    form = FlaskForm()
+
+    if form.validate_on_submit():
+        try:
+            delete_attachment(ticket, attachment_id, actor=_actor())
+            db.session.commit()
+        except TicketRuleError as error:
+            db.session.rollback()
+            flash(str(error), "error")
+        else:
+            flash("Archivo eliminado.", "success")
+
+        return redirect(url_for("tickets.detail", public_id=public_id))
+
+    return render_template(
+        "tickets/attachment_delete.html",
+        ticket=ticket,
+        attachment=attachment,
+        form=form,
+    )
+
+
 # --- Utilidades -------------------------------------------------------
+
+
+def _visible_attachment_or_404(ticket, attachment_id: int):
+    """Adjunto del ticket que el usuario puede ver; 404 en cualquier otro caso
+    (no existe, es de otro ticket, está eliminado o cuelga de una nota
+    interna que no puede ver)."""
+    attachment = get_attachment(ticket, attachment_id, _actor())
+
+    if attachment is None:
+        abort(404)
+
+    return attachment
 
 
 def _visible_comment_or_404(ticket, comment_id: int):

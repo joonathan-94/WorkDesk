@@ -1,0 +1,58 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}Eliminar archivo del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Eliminar archivo', None),
+    ]) }}
+
+    {{ page_header('Eliminar archivo', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.delete_ticket_attachment', public_id=ticket.public_id, attachment_id=attachment.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                El archivo dejará de mostrarse y de poder descargarse. Se
+                conserva, junto con quién lo eliminó y cuándo.
+            </div>
+
+            <p class="mb-0 text-break">
+                <i
+                    class="bi bi-paperclip"
+                    aria-hidden="true"
+                ></i>
+                {{ attachment.nombre_original }}
+                <span class="small text-secondary">
+                    · {{ attachment.subido_por.nombre }} {{ attachment.subido_por.apellido }}
+                    · {{ attachment.fecha_subida|local_datetime }}
+                </span>
+            </p>
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-danger"
+                    type="submit"
+                >
+                    Eliminar archivo
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id, _anchor='archivos') }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

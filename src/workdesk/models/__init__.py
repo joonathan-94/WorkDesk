@@ -1,4 +1,5 @@
 from .admin_audit_log import AdminAuditLog as AdminAuditLog
+from .attachment import Attachment as Attachment
 from .categoria import Categoria as Categoria
 from .comment import Comment as Comment
 from .comment import CommentType as CommentType

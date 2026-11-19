@@ -213,6 +213,55 @@ def can_delete_comment(user, comment, *, now=None, window_minutes=None) -> bool:
     )
 
 
+def can_attach_files(user, ticket) -> bool:
+    """Adjuntar archivos a un ticket: quien puede comentar en él (el personal
+    en cualquiera y el Solicitante en los suyos). Que el ticket esté cerrado
+    lo aplica el servicio."""
+    return can_view_ticket(user, ticket)
+
+
+def can_view_attachment(user, attachment) -> bool:
+    """Ver o descargar un adjunto (docs/06, RN-82). Un adjunto del ticket lo ve
+    quien ve el ticket; uno que cuelga de un comentario o nota hereda su
+    visibilidad (el Solicitante no ve los de una nota interna) y deja de verse
+    si el comentario se elimina. Como `can_view_ticket`, no comprueba el acceso
+    al ticket. `visible_attachments_condition` es su equivalente en SQL.
+    """
+    if not (
+        can_view_internal_activity(user)
+        or has_any_role(user, RoleCode.SOLICITANTE)
+    ):
+        return False
+
+    comment = attachment.comentario
+
+    if comment is None:
+        return True
+
+    return bool(comment.activo) and can_view_comment(user, comment)
+
+
+def can_delete_attachment(user, attachment, *, now=None, window_minutes=None) -> bool:
+    """Eliminar (lógicamente) un adjunto. Misma regla que editar un comentario:
+    el Supervisor y el Administrador, cualquiera que puedan ver; el resto, solo
+    los que subieron ellos, dentro de `COMMENT_EDIT_WINDOW_MINUTES`."""
+    if not can_view_attachment(user, attachment):
+        return False
+
+    if has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR):
+        return True
+
+    if attachment.usuario_subida_id != user.id:
+        return False
+
+    if window_minutes is None:
+        window_minutes = current_app.config["COMMENT_EDIT_WINDOW_MINUTES"]
+
+    now = datetime.now(UTC) if now is None else now
+
+    return now - attachment.fecha_subida <= timedelta(minutes=window_minutes)
+
+
 def can_access_groups(user) -> bool:
     """Entrar al área de grupos: el Administrador y los Supervisores.
 

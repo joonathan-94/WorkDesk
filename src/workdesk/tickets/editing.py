@@ -263,6 +263,12 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
             "Nota interna" if kind == "INTERNO" else "Comentario público"
         ]
 
+    if entry.tipo_evento in (
+        TicketEvent.ARCHIVO_ADJUNTADO,
+        TicketEvent.ARCHIVO_ELIMINADO,
+    ):
+        return [f"Archivo: {_shown((new or old).get('nombre'))}"]
+
     if entry.tipo_evento == TicketEvent.GRUPO_CAMBIADO:
         before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
 

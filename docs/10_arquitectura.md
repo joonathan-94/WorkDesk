@@ -1712,6 +1712,8 @@ No se confiará exclusivamente en el nombre indicado por el usuario.
 
 Los archivos rechazados no deberán quedar disponibles.
 
+**Implementación (`v0.4.0`, entrega 8).** `tickets/storage.py` valida (lista blanca de extensiones y firma de bytes), escribe en un archivo temporal por bloques calculando el SHA-256, comprueba el tamaño mientras lee y solo entonces mueve el archivo a `AAAA/MM/<uuid>`; `tickets/attachments.py` registra los metadatos y el historial, y borra el archivo físico si la base de datos falla. Variables de entorno: `UPLOAD_MAX_BYTES` (10 MB), `UPLOAD_MAX_FILES_PER_TICKET` (20) y `UPLOADS_DIR` (por defecto `instance/uploads`); las dos primeras deben ser mayores que cero (se validan al iniciar) y pasarán a `configuracion` en `v0.7.0`. `MAX_CONTENT_LENGTH` se calcula a partir de ellas y una petición mayor responde 413. Los tests usan un directorio temporal: nunca tocan `instance/uploads`. La descarga se envía siempre como `attachment` con `nosniff`.
+
 ---
 
 # 66. SHA-256
