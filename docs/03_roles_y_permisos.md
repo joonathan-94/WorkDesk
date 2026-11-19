@@ -276,6 +276,8 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Agregar comentario público                |        ✅       |    ✅    |      ✅     |       ✅       |
 | Agregar nota interna                      |        ❌       |    ✅    |      ✅     |       ✅       |
 | Consultar notas internas                  |        ❌       |    ✅    |      ✅     |       ✅       |
+| Editar o eliminar un comentario propio (dentro del plazo) |  ✅  |    ✅    |      ✅     |       ✅       |
+| Editar o eliminar un comentario de otra persona |    ❌       |    ❌    |      ✅     |       ✅       |
 | Resolver ticket                           |        ❌       |    ✅    |      ✅     |       ✅       |
 | Solicitar/cambiar cierre como solicitante |        ✅       |    —    |      —     |       —       |
 | Reabrir ticket propio                     |        ✅       |    —    |      —     |       —       |

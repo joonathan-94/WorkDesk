@@ -14,6 +14,10 @@
     --wd-warning: #f59e0b;
     --wd-danger: #ef4444;
 
+    /* Notas internas (docs/11, 21.1): acento y fondo morados muy suaves. */
+    --wd-purple: #7c3aed;
+    --wd-purple-soft: #f5f3ff;
+
     --wd-radius: 8px;
 
     --wd-shadow:

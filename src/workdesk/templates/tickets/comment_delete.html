@@ -1,0 +1,59 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}Eliminar {{ 'nota interna' if comment.es_nota_interna else 'comentario' }} del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Eliminar ' ~ ('nota interna' if comment.es_nota_interna else 'comentario'), None),
+    ]) }}
+
+    {{ page_header(
+        'Eliminar ' ~ ('nota interna' if comment.es_nota_interna else 'comentario'),
+        '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo,
+    ) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.delete_ticket_comment', public_id=ticket.public_id, comment_id=comment.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                {{ 'La nota interna' if comment.es_nota_interna else 'El comentario' }}
+                dejará de mostrarse a todas las personas. Se conserva, junto con
+                quién lo eliminó y cuándo, y su texto queda en el historial del
+                ticket.
+            </div>
+
+            <p class="small text-secondary mb-1">
+                {{ comment.autor.nombre }} {{ comment.autor.apellido }}
+                ·
+                {{ comment.fecha_creacion|local_datetime }}
+            </p>
+
+            <blockquote class="ticket-text border-start ps-3 mb-0">{{ comment.contenido }}</blockquote>
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-danger"
+                    type="submit"
+                >
+                    Eliminar {{ 'nota interna' if comment.es_nota_interna else 'comentario' }}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id, _anchor='comentario-' ~ comment.id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

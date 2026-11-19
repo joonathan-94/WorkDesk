@@ -1562,6 +1562,8 @@ El sistema nunca deberá serializar indiscriminadamente todos los comentarios y 
 
 La separación se aplicará antes de generar la respuesta.
 
+**Implementación (`v0.4.0`, entrega 7).** `visible_comments_condition(user)` (`tickets/comments.py`) es la única fuente de la regla en SQL (personal: todos los activos; Solicitante: solo los públicos; cualquier otro caso: ninguno) y `list_comments(ticket, viewer)` y `get_comment(...)` la usan; `viewer` es obligatorio para que ninguna pantalla pueda listar sin decidir para quién. La política `can_view_comment` es su equivalente en Python y un test comprueba que coinciden. El plazo en que el autor puede editar o eliminar su comentario es la variable de entorno `COMMENT_EDIT_WINDOW_MINUTES` (30 por defecto, mayor que cero, validada al iniciar); pasará a la tabla `configuracion` en `v0.7.0`, como los límites de sesión.
+
 ---
 
 # 58. Prevención de XSS

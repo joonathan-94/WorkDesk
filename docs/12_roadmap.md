@@ -922,8 +922,8 @@ La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con test
 3. **Estados y transiciones** ✓ (PR #25): tabla de transiciones y cambios de estado operativos (iniciar, poner en espera, reactivar), con el control de versión compartido y el seed ampliado.
 4. **Grupos** ✓ (PR #26): grupos, membresías y supervisores responsables (`/groups`), con tres grupos de ejemplo en `seed-demo`.
 5. **Asignación** ✓ (PR #27): técnicos, grupo del ticket y escalamiento manual, con el seed ampliado.
-6. **Solicitantes del ticket** (en curso): agregar y retirar después de la creación (solo el personal, eventos internos, sin migración), con el seed ampliado.
-7. **Comentarios y notas internas.**
+6. **Solicitantes del ticket** ✓ (PR #28): agregar y retirar después de la creación (solo el personal, eventos internos, sin migración), con el seed ampliado.
+7. **Comentarios y notas internas** (en curso): comentarios públicos y notas internas con el filtro por tipo en la consulta, edición y eliminación con plazo para el autor, y el seed ampliado.
 8. **Adjuntos.**
 9. **Resolución, validación del solicitante, cierre y reapertura.**
 10. **Relaciones y duplicados.**

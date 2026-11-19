@@ -1,5 +1,7 @@
 from .admin_audit_log import AdminAuditLog as AdminAuditLog
 from .categoria import Categoria as Categoria
+from .comment import Comment as Comment
+from .comment import CommentType as CommentType
 from .estado import Estado as Estado
 from .grupo import Grupo as Grupo
 from .grupo import GrupoSupervisor as GrupoSupervisor

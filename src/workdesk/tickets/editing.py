@@ -251,6 +251,18 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
     if entry.tipo_evento == TicketEvent.SOLICITANTE_RETIRADO:
         return [f"Solicitante retirado: {_shown(old.get('nombre'))}"]
 
+    if entry.tipo_evento in (
+        TicketEvent.COMENTARIO_AGREGADO,
+        TicketEvent.COMENTARIO_EDITADO,
+        TicketEvent.COMENTARIO_ELIMINADO,
+    ):
+        # Solo el tipo: el texto nunca se repite en el historial.
+        kind = (new or old).get("tipo") or (entry.contexto or {}).get("tipo")
+
+        return [
+            "Nota interna" if kind == "INTERNO" else "Comentario público"
+        ]
+
     if entry.tipo_evento == TicketEvent.GRUPO_CAMBIADO:
         before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
 

@@ -1124,6 +1124,8 @@ Una única entidad representa comentarios públicos y notas internas.
 - No se crea una tabla separada de versiones de comentarios en el MVP; el historial general conserva las modificaciones.
 - Cuando `activo = TRUE`, `fecha_eliminacion` y `usuario_eliminacion_id` normalmente serán NULL. Si `activo = FALSE`, deberá existir `fecha_eliminacion`; para eliminación humana se registrará `usuario_eliminacion_id` y para procesos automáticos el actor Sistema quedará en historial.
 
+**Implementación (`v0.4.0`, entrega 7, RN-159).** La tabla se crea con el esquema de esta sección y estas restricciones: `tipo IN ('PUBLICO', 'INTERNO')`, contenido no vacío (`length(btrim(contenido)) > 0`), coherencia de la eliminación (activo sin datos de eliminación; eliminado con `fecha_eliminacion`) y `editado` solo con `fecha_modificacion`. Todas las claves foráneas son `ON DELETE RESTRICT` y hay un índice por `(ticket_id, fecha_creacion)`. El límite de 5000 caracteres lo comprueban el servicio y el formulario, no la base de datos (la columna es `TEXT`). Las horas (`fecha_creacion`, `fecha_modificacion`, `fecha_eliminacion`) las pone la base de datos. Cada acción registra un evento interno o público en `historial_ticket` según el tipo del comentario: `COMENTARIO_AGREGADO` (`valor_nuevo` con `{"comentario_id", "tipo"}`), `COMENTARIO_EDITADO` (`valor_anterior` y `valor_nuevo` con `{"contenido"}`) y `COMENTARIO_ELIMINADO` (`valor_anterior` con `{"contenido", "tipo"}`), todos con `contexto["comentario_id"]`. Los adjuntos de una nota interna se vincularán con `archivos.comentario_id` en la entrega 8.
+
 ---
 
 # 18. Archivos adjuntos
@@ -1642,7 +1644,7 @@ Los registros de `historial_ticket` no deberán modificarse ni eliminarse median
 
 Una corrección posterior se representa mediante un nuevo evento compensatorio; el registro original no se sobrescribe silenciosamente.
 
-`actor_tipo` y `tipo_evento` utilizarán códigos controlados por la aplicación. Entre otros, el historial podrá manejar códigos como `TICKET_CREADO`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `SOLICITANTE_AGREGADO`, `PRIORIDAD_CAMBIADA`, `COMENTARIO_EDITADO`, `ARCHIVO_ADJUNTADO`, `TICKET_RESUELTO`, `TICKET_CERRADO` y `TICKET_REABIERTO`.
+`actor_tipo` y `tipo_evento` utilizarán códigos controlados por la aplicación. Entre otros, el historial podrá manejar códigos como `TICKET_CREADO`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `SOLICITANTE_AGREGADO`, `PRIORIDAD_CAMBIADA`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `ARCHIVO_ADJUNTADO`, `TICKET_RESUELTO`, `TICKET_CERRADO` y `TICKET_REABIERTO`.
 
 **Evento `PRIORIDAD_CAMBIADA`.** Registra la prioridad anterior en `valor_anterior`, la nueva en `valor_nuevo` (por ejemplo `{"prioridad_id": 2, "codigo": "MEDIA"}`), el usuario en `actor_usuario_id`, la fecha en `fecha_hora` y el motivo, obligatorio, en `contexto` como `{"motivo": "..."}`. `detalle` puede contener una descripción legible. No requiere columnas nuevas.
 

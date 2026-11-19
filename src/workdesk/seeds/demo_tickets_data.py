@@ -40,12 +40,13 @@ ocurre en un soporte de verdad.
 Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste), el
 grupo (`grupo`), la asignación de técnicos (`asignar`) y los solicitantes
 agregados o retirados después de crear el ticket (`agregar_solicitante`,
-`retirar_solicitante` y `motivo_retiro`) ya existen. Cuando existan cierres y
-comentarios, se añadirán campos opcionales con valor por defecto y los
-tickets ya escritos seguirán siendo válidos.
+`retirar_solicitante` y `motivo_retiro`) y los comentarios públicos y notas
+internas (`comentario` y `nota_interna`) ya existen. Cuando existan cierres,
+se añadirán campos opcionales con valor por defecto y los tickets ya escritos
+seguirán siendo válidos.
 
-Los tickets cuya historia incluye cambios de estado, grupo, asignación o
-solicitantes están al final de la lista: al volver a ejecutar el comando solo
+Los tickets cuya historia incluye cambios de estado, grupo, asignación,
+solicitantes o comentarios están al final de la lista: al volver a ejecutar el comando solo
 se crean los que faltan, y un ticket ya cargado no se modifica (para ver esos
 cambios en tickets antiguos hay que recrear la base de desarrollo).
 """
@@ -103,7 +104,8 @@ class DemoAdjustment:
 
     `despues_horas` son horas laborales desde el paso anterior. Debe cambiar
     algo: título, descripción, categoría, prioridad, estado, grupo,
-    asignación o solicitantes. Cambiar la prioridad exige `motivo`.
+    asignación, solicitantes o escribir un comentario o una nota. Cambiar la
+    prioridad exige `motivo`.
 
     `estado` es una acción de estado (`INICIAR`, `PONER_EN_ESPERA` o
     `REACTIVAR`) que se ejecuta al final del paso, después de los demás
@@ -124,9 +126,15 @@ class DemoAdjustment:
     lo sea; `motivo_retiro` es el motivo opcional de la retirada. Quien creó el
     ticket sigue viéndolo aunque se le retire como solicitante.
 
+    `comentario` es un comentario público y `nota_interna` una nota interna
+    (solo la ve el personal). La nota la escribe siempre el personal; el
+    comentario también puede escribirlo un Solicitante, que debe ser el
+    creador o un solicitante del ticket en ese momento y, en ese caso, el paso
+    no puede cambiar nada más.
+
     En un mismo paso el orden es: datos, prioridad, grupo, asignación,
-    solicitantes (primero se retira y después se agrega) y, al final, el
-    cambio de estado.
+    solicitantes (primero se retira y después se agrega), comentario público,
+    nota interna y, al final, el cambio de estado.
     """
 
     actor: str
@@ -144,6 +152,8 @@ class DemoAdjustment:
     agregar_solicitante: str | None = None
     retirar_solicitante: str | None = None
     motivo_retiro: str | None = None
+    comentario: str | None = None
+    nota_interna: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1386,6 +1396,219 @@ DEMO_TICKETS = (
                     "el ticket."
                 ),
                 agregar_solicitante="andres.silva",
+            ),
+        ),
+    ),
+    # --- Tickets con comentarios y notas internas -----------------------------
+    DemoTicket(
+        clave="intranet-credenciales",
+        titulo="no puedo entrar a la intranet de ventas",
+        descripcion=(
+            "desde esta mañana la intranet me dice «credenciales invalidas». "
+            "no cambie nada, ayer entre sin problema. necesito subir unos "
+            "pedidos antes del mediodia"
+        ),
+        categoria="Sin clasificar",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=4,
+        hora="10:15",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+                comentario=(
+                    "Hola Sebastián, soy Felipe de soporte. ¿Cambiaste tu "
+                    "contraseña de Windows esta semana? A veces la intranet "
+                    "se queda con la anterior."
+                ),
+            ),
+            # El Solicitante también comenta, desde su propio ticket.
+            DemoAdjustment(
+                actor="sebastian.vargas",
+                despues_horas=2,
+                comentario=(
+                    "Si, la cambie el lunes porque el correo me lo pidio. "
+                    "¿Es por eso?"
+                ),
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                nota_interna=(
+                    "La intranet sincroniza las credenciales con el directorio "
+                    "cada 24 h. Forzar la sincronización desde el panel de "
+                    "administración."
+                ),
+                comentario=(
+                    "Sí, es por eso. Ya forzamos la sincronización: prueba "
+                    "entrar de nuevo en unos 10 minutos y me cuentas."
+                ),
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="teclado-derrame-rrhh",
+        titulo="se me cayo cafe al teclado",
+        descripcion=(
+            "se me cayo cafe en el teclado y algunas teclas se quedan pegadas. "
+            "lo limpie con una toalla pero sigue igual. ¿me lo pueden cambiar?"
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="paula.contreras",
+        hace_dias=6,
+        hora="15:30",
+        ajustes=(
+            # Una respuesta pública y una nota que el solicitante no ve.
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                comentario=(
+                    "Hola Paula, no te preocupes, pasa seguido. Te dejamos un "
+                    "teclado de reemplazo en tu escritorio esta tarde."
+                ),
+                nota_interna=(
+                    "Tercer teclado de RRHH este trimestre. Sacar uno del stock "
+                    "de reserva y avisar a Camila para ver si conviene comprar "
+                    "teclados lavables."
+                ),
+            ),
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=3,
+                nota_interna=(
+                    "Anotado. Con la compra de diciembre pedimos teclados "
+                    "lavables para las oficinas con más derrames."
+                ),
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="licencia-office-constanza",
+        titulo="Licencia de Office de Constanza vencida",
+        descripcion=(
+            "Constanza informa que Excel le muestra «producto sin licencia». "
+            "Se registra para revisar la asignación de licencias del área de "
+            "Administración."
+        ),
+        categoria="Sin clasificar",
+        prioridad="MEDIA",
+        creado_por="matias.fuentes",
+        solicitantes=("constanza.herrera",),
+        hace_dias=3,
+        hora="12:05",
+        ajustes=(
+            DemoAdjustment(
+                actor="constanza.herrera",
+                despues_horas=1,
+                comentario=(
+                    "Hola, lo de Excel me sigue pasando. Ayer a las 17:00 aún "
+                    "funcionaba."
+                ),
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=2,
+                asignar="francisca.munoz",
+                estado="INICIAR",
+                nota_interna=(
+                    "La licencia quedó asociada al notebook anterior: el "
+                    "inventario no se actualizó cuando se lo cambiaron."
+                ),
+                comentario=(
+                    "Constanza, encontramos el problema: la licencia quedó "
+                    "asociada al equipo anterior. La reasignamos hoy y se "
+                    "activa sola al abrir Excel."
+                ),
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="switch-bodega-puertos",
+        titulo="Switch de la bodega con puertos intermitentes",
+        descripcion=(
+            "Ignacio reporta cortes de red de pocos segundos en la bodega, "
+            "sobre todo en los puestos de despacho. Se revisa el switch de la "
+            "sala técnica."
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="diego.soto",
+        solicitantes=("ignacio.molina",),
+        ubicacion=MARCOLETA,
+        hace_dias=2,
+        hora="09:40",
+        ajustes=(
+            # Dos notas del equipo y un solo comentario público: Ignacio ve
+            # únicamente el último.
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                nota_interna=(
+                    "Logs del switch: errores CRC en los puertos 3 y 4, casi "
+                    "seguro cableado. Hay cable de repuesto en el pañol de TI."
+                ),
+            ),
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=3,
+                nota_interna=(
+                    "Programar el cambio para el jueves temprano. Que Diego "
+                    "avise a Ignacio para coordinar con el despacho."
+                ),
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                comentario=(
+                    "Hola Ignacio, el jueves en la mañana vamos a cambiar unos "
+                    "cables en la bodega. Puede haber cortes de un par de "
+                    "minutos; te avisamos antes de empezar."
+                ),
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="wifi-visitas-clave",
+        titulo="la clave del wifi de visitas no funciona",
+        descripcion=(
+            "vienen unos auditores el jueves y la clave del wifi de visitas "
+            "que tenia anotada no les funciona. ¿me pueden dar la nueva?"
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="javiera.torres",
+        ubicacion=MATTA,
+        hace_dias=1,
+        hora="16:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                comentario=(
+                    "Hola Javiera, la clave de visitas cambia cada mes. Te la "
+                    "paso en un rato, ¿cuántas personas van a conectarse?"
+                ),
+            ),
+            DemoAdjustment(
+                actor="javiera.torres",
+                despues_horas=1,
+                comentario="Serían cuatro personas, desde las 9 del jueves.",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                comentario=(
+                    "Perfecto. Te dejamos cuatro accesos temporales para el "
+                    "jueves; el detalle te lo entrego mañana en persona."
+                ),
+                nota_interna=(
+                    "Crear 4 accesos temporales en el portal de invitados, "
+                    "vigencia 12 h."
+                ),
             ),
         ),
     ),
