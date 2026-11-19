@@ -270,6 +270,26 @@ class TechnicianPickForm(FlaskForm):
         )
 
 
+class RequesterPickForm(FlaskForm):
+    """Elegir a la persona que se agrega como solicitante de un ticket. Las
+    opciones se pasan como atributo (sin `SelectField`, como el resto de
+    formularios)."""
+
+    solicitante = OptionalIntegerField("Solicitante")
+
+    def __init__(self, *args, choices, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.choices = list(choices)
+
+    def validate_solicitante(self, field):
+        _require_choice(
+            field,
+            self.choices,
+            "Elige a una persona de la lista.",
+        )
+
+
 class GroupChangeForm(FlaskForm):
     """Fijar el grupo de un ticket. Un valor vacío lo deja sin grupo."""
 

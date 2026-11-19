@@ -22,13 +22,12 @@ from ..models import (
 )
 from .service import (
     CLOSED_STATE_CODE,
+    MAX_REASON_LENGTH,
     TicketRuleError,
     clean_title_and_description,
     record_ticket_event,
 )
 from .versioning import TicketClosedError, apply_ticket_changes
-
-MAX_REASON_LENGTH = 500
 
 
 def update_ticket(
@@ -245,6 +244,12 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
 
     if entry.tipo_evento == TicketEvent.TECNICO_DESASIGNADO:
         return [f"Técnico desasignado: {_shown(old.get('nombre'))}"]
+
+    if entry.tipo_evento == TicketEvent.SOLICITANTE_AGREGADO:
+        return [f"Solicitante agregado: {_shown(new.get('nombre'))}"]
+
+    if entry.tipo_evento == TicketEvent.SOLICITANTE_RETIRADO:
+        return [f"Solicitante retirado: {_shown(old.get('nombre'))}"]
 
     if entry.tipo_evento == TicketEvent.GRUPO_CAMBIADO:
         before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))

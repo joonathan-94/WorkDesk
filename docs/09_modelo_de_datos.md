@@ -1002,6 +1002,8 @@ fecha_retiro IS NULL OR fecha_retiro >= fecha_asociacion
 
 **Implementación (`v0.3.0`).** Ambas restricciones existen en la base de datos: la unicidad como índice único parcial (`WHERE fecha_retiro IS NULL`) y el orden de las fechas como `CHECK`. Además hay índices por `ticket_id` y por `solicitante_id`.
 
+**Cambios posteriores a la creación (`v0.4.0`, entrega 6, RN-158).** No requiere migración: las columnas de retiro ya existían. Agregar a alguien crea una fila con `asociado_por_usuario_id`; retirarlo rellena `fecha_retiro` y `retirado_por_usuario_id` (la hora la pone la base de datos, como al asociar) y conserva la fila; volver a agregarlo crea una fila nueva. La tabla no guarda el motivo del retiro: va en el historial. Cada operación registra un evento interno en `historial_ticket`: `SOLICITANTE_AGREGADO` (`valor_nuevo` con la persona) y `SOLICITANTE_RETIRADO` (`valor_anterior` con la persona y, si lo hubo, el motivo en `contexto["motivo"]`), ambos con `contexto["participacion_id"]` (el id de la fila de `tickets_solicitantes`). La persona se guarda como `{"usuario_id", "username", "nombre"}`.
+
 ---
 
 # 15. Técnicos y asignaciones
@@ -1640,7 +1642,7 @@ Los registros de `historial_ticket` no deberán modificarse ni eliminarse median
 
 Una corrección posterior se representa mediante un nuevo evento compensatorio; el registro original no se sobrescribe silenciosamente.
 
-`actor_tipo` y `tipo_evento` utilizarán códigos controlados por la aplicación. Entre otros, el historial podrá manejar códigos como `TICKET_CREADO`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `PRIORIDAD_CAMBIADA`, `COMENTARIO_EDITADO`, `ARCHIVO_ADJUNTADO`, `TICKET_RESUELTO`, `TICKET_CERRADO` y `TICKET_REABIERTO`.
+`actor_tipo` y `tipo_evento` utilizarán códigos controlados por la aplicación. Entre otros, el historial podrá manejar códigos como `TICKET_CREADO`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `SOLICITANTE_AGREGADO`, `PRIORIDAD_CAMBIADA`, `COMENTARIO_EDITADO`, `ARCHIVO_ADJUNTADO`, `TICKET_RESUELTO`, `TICKET_CERRADO` y `TICKET_REABIERTO`.
 
 **Evento `PRIORIDAD_CAMBIADA`.** Registra la prioridad anterior en `valor_anterior`, la nueva en `valor_nuevo` (por ejemplo `{"prioridad_id": 2, "codigo": "MEDIA"}`), el usuario en `actor_usuario_id`, la fecha en `fecha_hora` y el motivo, obligatorio, en `contexto` como `{"motivo": "..."}`. `detalle` puede contener una descripción legible. No requiere columnas nuevas.
 

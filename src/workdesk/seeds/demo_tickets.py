@@ -10,9 +10,9 @@ Cómo trabaja:
   existen. Si falta alguna usa la categoría de respaldo o deja el ticket sin
   ubicación, y lo informa.
 - Crea y ajusta los tickets con los servicios reales (`create_ticket`,
-  `update_ticket`, `change_priority`, `set_group`, `assign_technician` y
-  `change_state`), así que valida, versiona y deja el historial exactamente
-  igual que la aplicación.
+  `update_ticket`, `change_priority`, `set_group`, `assign_technician`,
+  `add_requester`, `remove_requester` y `change_state`), así que valida,
+  versiona y deja el historial exactamente igual que la aplicación.
 - Hace un único `commit` al final: o se carga todo o no se carga nada.
 
 Identidad. Cada ticket de la lista tiene una `clave` estable. Al crearlo, los
@@ -74,6 +74,7 @@ from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..tickets.assignment import assign_technician, set_group
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
+from ..tickets.requesters import add_requester, remove_requester
 from ..tickets.service import INITIAL_STATE_CODE, TicketRuleError, create_ticket
 from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
 from .demo import DEMO_GROUPS, DEMO_USERS
@@ -191,6 +192,7 @@ def validate_demo_tickets(
             _check_adjustment(problems, f"{label}, ajuste {step}", adjustment, roles)
 
         _check_state_steps(problems, label, ticket)
+        _check_requester_steps(problems, label, ticket, roles)
 
     if problems:
         raise DemoTicketsError(
@@ -274,6 +276,8 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
         adjustment.estado,
         adjustment.grupo,
         adjustment.asignar,
+        adjustment.agregar_solicitante,
+        adjustment.retirar_solicitante,
     )
     if all(change is None for change in changes):
         problems.append(f"{label}: no cambia nada.")
@@ -310,6 +314,30 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
                 "se asigna a sí mismo."
             )
 
+    for field_name in ("agregar_solicitante", "retirar_solicitante"):
+        username = getattr(adjustment, field_name)
+
+        if username is not None and roles.get(username) != SOLICITANTE:
+            problems.append(f"{label}: «{username}» no es un Solicitante demo.")
+
+    if (
+        adjustment.agregar_solicitante is not None
+        and adjustment.agregar_solicitante == adjustment.retirar_solicitante
+    ):
+        problems.append(
+            f"{label}: no tiene sentido retirar y agregar a la misma persona."
+        )
+
+    if adjustment.motivo_retiro is not None:
+        if adjustment.retirar_solicitante is None:
+            problems.append(
+                f"{label}: motivo_retiro solo va con retirar_solicitante."
+            )
+
+        _check_text(
+            problems, label, "motivo de retiro", adjustment.motivo_retiro, MAX_REASON_LENGTH
+        )
+
     if adjustment.prioridad is not None:
         if adjustment.prioridad not in PRIORITY_CODES:
             problems.append(f"{label}: prioridad desconocida «{adjustment.prioridad}».")
@@ -319,6 +347,37 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
             problems.append(f"{label}: cambiar la prioridad exige un motivo.")
         elif len(reason) > MAX_REASON_LENGTH:
             problems.append(f"{label}: el motivo supera los {MAX_REASON_LENGTH} caracteres.")
+
+
+def _check_requester_steps(problems, label, ticket, roles) -> None:
+    """Comprueba que quien se retira es solicitante en ese momento y quien se
+    agrega no lo es todavía, siguiendo los pasos del ticket en orden.
+
+    Empieza con los solicitantes de la creación: quien crea siendo Solicitante
+    es su propio solicitante; el personal indica `solicitantes`. En un mismo
+    paso primero se retira y después se agrega.
+    """
+    if roles.get(ticket.creado_por) == SOLICITANTE:
+        current = {ticket.creado_por}
+    else:
+        current = set(ticket.solicitantes)
+
+    for step, adjustment in enumerate(ticket.ajustes, start=1):
+        where = f"{label}, ajuste {step}"
+        removed = adjustment.retirar_solicitante
+        added = adjustment.agregar_solicitante
+
+        if removed is not None:
+            if removed in current:
+                current.discard(removed)
+            else:
+                problems.append(f"{where}: «{removed}» no es solicitante en ese momento.")
+
+        if added is not None:
+            if added in current:
+                problems.append(f"{where}: «{added}» ya es solicitante en ese momento.")
+            else:
+                current.add(added)
 
 
 # Transiciones tal como las carga `seed-catalogs`:
@@ -495,6 +554,16 @@ class _Catalogs:
             needed.update(step.actor for step in demo_ticket.ajustes)
             needed.update(
                 step.asignar for step in demo_ticket.ajustes if step.asignar
+            )
+            needed.update(
+                step.agregar_solicitante
+                for step in demo_ticket.ajustes
+                if step.agregar_solicitante
+            )
+            needed.update(
+                step.retirar_solicitante
+                for step in demo_ticket.ajustes
+                if step.retirar_solicitante
             )
 
         users = {
@@ -817,15 +886,21 @@ def _create(demo: DemoTicket, catalogs: _Catalogs, times: list[datetime]) -> Non
     modified_at = None
 
     for step, adjustment in enumerate(demo.ajustes, start=1):
+        version_before = ticket.version
         _apply_adjustment(ticket, adjustment, catalogs)
 
         event_ids = _event_ids_after(ticket.id, last_event_id)
         if event_ids:
             steps.append((step, event_ids))
             last_event_id = event_ids[-1]
+
+        # Como en la aplicación, solo lo que sube la versión del ticket cuenta
+        # como una modificación (y mueve "Actualizado"): agregar o retirar
+        # solicitantes, o asignar a un técnico más, no lo hacen.
+        if ticket.version != version_before:
             modified_at = times[step]
 
-    _write_new_dates(ticket, bool(requesters), demo.clave, steps, times, modified_at)
+    _write_new_dates(ticket, demo.clave, steps, times, modified_at)
 
 
 def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
@@ -881,6 +956,30 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
             actor=actor,
         )
 
+    # Primero se retira y después se agrega (en ese orden se puede cambiar a
+    # una persona por otra en un mismo paso).
+    if adjustment.retirar_solicitante is not None:
+        retired = catalogs.users[adjustment.retirar_solicitante]
+        participation = next(
+            link
+            for link in ticket.solicitantes_vigentes
+            if link.solicitante_id == retired.id
+        )
+
+        remove_requester(
+            ticket,
+            participation.id,
+            actor=actor,
+            reason=adjustment.motivo_retiro,
+        )
+
+    if adjustment.agregar_solicitante is not None:
+        add_requester(
+            ticket,
+            catalogs.users[adjustment.agregar_solicitante].id,
+            actor=actor,
+        )
+
     if adjustment.estado is not None:
         reason = catalogs.wait_reason(adjustment.motivo_espera)
 
@@ -908,7 +1007,6 @@ def _event_ids_after(ticket_id: int, after_id: int) -> list[int]:
 
 def _write_new_dates(
     ticket: Ticket,
-    has_requesters: bool,
     key: str,
     steps: list[tuple[int, list[int]]],
     times: list[datetime],
@@ -925,21 +1023,35 @@ def _write_new_dates(
         .values(fecha_creacion=times[0], fecha_modificacion=modified_at)
     )
 
-    if has_requesters:
-        db.session.execute(
-            update(requesters)
-            .where(requesters.c.ticket_id == ticket.id)
-            .values(fecha_asociacion=times[0])
+    # Los solicitantes de la creación se asocian cuando nace el ticket; los
+    # que se agregan o retiran después, en el momento de su evento (más
+    # abajo). Una sola actualización por fila, para que el retiro nunca
+    # preceda a la asociación.
+    link_dates: dict[int, dict] = {
+        link_id: {"fecha_asociacion": times[0]}
+        for link_id in db.session.scalars(
+            db.select(requesters.c.id).where(requesters.c.ticket_id == ticket.id)
         )
+    }
 
     for step, event_ids in steps:
-        contexts = dict(
-            db.session.execute(
-                db.select(history.c.id, history.c.contexto).where(
-                    history.c.id.in_(event_ids)
-                )
-            ).all()
-        )
+        rows = db.session.execute(
+            db.select(history.c.id, history.c.tipo_evento, history.c.contexto).where(
+                history.c.id.in_(event_ids)
+            )
+        ).all()
+        contexts = {row.id: row.contexto for row in rows}
+
+        for row in rows:
+            link_id = (row.contexto or {}).get("participacion_id")
+
+            if link_id is None:
+                continue
+
+            if row.tipo_evento == TicketEvent.SOLICITANTE_AGREGADO.value:
+                link_dates[link_id]["fecha_asociacion"] = times[step]
+            elif row.tipo_evento == TicketEvent.SOLICITANTE_RETIRADO.value:
+                link_dates[link_id]["fecha_retiro"] = times[step]
 
         # La asignación nace en el momento de su evento.
         for context in contexts.values():
@@ -964,6 +1076,11 @@ def _write_new_dates(
                 )
             )
 
+    for link_id, values in link_dates.items():
+        db.session.execute(
+            update(requesters).where(requesters.c.id == link_id).values(**values)
+        )
+
 
 # --- Refrescar ------------------------------------------------------------
 
@@ -977,8 +1094,9 @@ def _refresh(
     - Los eventos que no son del seed (ediciones hechas a mano después) se
       desplazan lo mismo que el último evento del seed, para que sigan después
       de él y nunca queden en el futuro.
-    - La fecha de modificación acompaña al evento que la originó, y los
-      solicitantes se asocian en la nueva fecha de creación.
+    - La fecha de modificación acompaña al evento que la originó. Los
+      solicitantes de la creación se asocian en la nueva fecha de creación y
+      los que se agregaron o retiraron después siguen a sus eventos.
 
     No toca el contenido del ticket ni crea ningún evento.
     """
@@ -1073,6 +1191,22 @@ def _refresh(
             .values(**values)
         )
 
+    # Los solicitantes que se agregaron o retiraron después de crear el ticket
+    # siguen a sus eventos (tanto los del seed como los hechos a mano).
+    added_at: dict[int, datetime] = {}
+    retired_at: dict[int, datetime] = {}
+
+    for event in events:
+        participation_id = (event.contexto or {}).get("participacion_id")
+
+        if participation_id is None:
+            continue
+
+        if event.tipo_evento == TicketEvent.SOLICITANTE_AGREGADO.value:
+            added_at[participation_id] = new_time[event.id]
+        elif event.tipo_evento == TicketEvent.SOLICITANTE_RETIRADO.value:
+            retired_at[participation_id] = new_time[event.id]
+
     links = db.session.execute(
         db.select(
             requesters.c.id, requesters.c.fecha_asociacion, requesters.c.fecha_retiro
@@ -1080,16 +1214,19 @@ def _refresh(
     ).all()
 
     for link in links:
-        associated = (
-            new_created
-            if link.fecha_asociacion == old_created
-            else clamp(link.fecha_asociacion + delta)
-        )
-        retired = (
-            None
-            if link.fecha_retiro is None
-            else max(associated, clamp(link.fecha_retiro + delta))
-        )
+        if link.id in added_at:
+            associated = added_at[link.id]
+        elif link.fecha_asociacion == old_created:
+            associated = new_created
+        else:
+            associated = clamp(link.fecha_asociacion + delta)
+
+        if link.fecha_retiro is None:
+            retired = None
+        elif link.id in retired_at:
+            retired = max(associated, retired_at[link.id])
+        else:
+            retired = max(associated, clamp(link.fecha_retiro + delta))
 
         db.session.execute(
             update(requesters)

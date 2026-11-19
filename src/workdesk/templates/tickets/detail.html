@@ -4,7 +4,7 @@
 {% block title %}#{{ ticket.public_id }} {{ ticket.titulo }}{% endblock %}
 
 {% block content %}
-    {% set requesters = ticket.solicitantes|selectattr('fecha_retiro', 'none')|list %}
+    {% set requesters = ticket.solicitantes_vigentes %}
 
     {{ breadcrumb([
         ('Tickets' if is_staff else 'Mis tickets', url_for('tickets.list_tickets_page')),
@@ -277,6 +277,18 @@
 
                             <dt class="small text-secondary fw-normal">
                                 {{ 'Solicitante' if requesters|length == 1 else 'Solicitantes' }}
+
+                                {# Agregar o retirar solicitantes: solo el personal
+                                   y mientras el ticket no esté cerrado (la ruta
+                                   lo comprueba por su cuenta). #}
+                                {% if show_requesters %}
+                                    <a
+                                        class="ms-1"
+                                        href="{{ url_for('tickets.requesters_page', public_id=ticket.public_id) }}"
+                                    >
+                                        Gestionar
+                                    </a>
+                                {% endif %}
                             </dt>
                             <dd class="mb-0">
                                 {% if requesters %}

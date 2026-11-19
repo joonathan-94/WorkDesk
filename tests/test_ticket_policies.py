@@ -12,6 +12,7 @@ from src.workdesk.security import (
     can_create_ticket,
     can_edit_ticket,
     can_manage_assignments,
+    can_manage_requesters,
     can_view_ticket,
 )
 
@@ -198,3 +199,33 @@ def test_inactive_and_anonymous_users_cannot_assign(policy):
         assert policy(user(role_code, is_active=False)) is False
 
     assert policy(AnonymousUserMixin()) is False
+
+
+# --- Agregar y retirar solicitantes -----------------------------------
+
+
+@pytest.mark.parametrize("role_code", STAFF_ROLES)
+def test_staff_can_manage_requesters(role_code):
+    assert can_manage_requesters(user(role_code)) is True
+
+
+def test_a_solicitante_cannot_manage_requesters():
+    # Ni siquiera en un ticket propio: decidir quiénes más figuran en un
+    # ticket es del personal.
+    assert can_manage_requesters(user("SOLICITANTE")) is False
+
+
+def test_inactive_and_anonymous_users_cannot_manage_requesters():
+    for role_code in STAFF_ROLES:
+        assert can_manage_requesters(user(role_code, is_active=False)) is False
+
+    assert can_manage_requesters(AnonymousUserMixin()) is False
+
+
+def test_managing_requesters_follows_the_same_rule_as_choosing_them():
+    # Elegirlos al crear y gestionarlos después son la misma decisión (RN-10
+    # y RN-11): si una cambia, la otra debe cambiar con ella.
+    for role_code in ALL_ROLES:
+        assert can_manage_requesters(user(role_code)) is can_choose_requesters(
+            user(role_code)
+        )

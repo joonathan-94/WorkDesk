@@ -19,9 +19,11 @@ from ..security import (
     can_create_ticket,
     can_edit_ticket,
     can_manage_assignments,
+    can_manage_requesters,
     can_view_ticket,
     has_any_role,
 )
+from ..users.forms import ReasonForm
 from . import bp
 from .assignment import (
     assign_technician,
@@ -42,6 +44,7 @@ from .forms import (
     EscalationForm,
     GroupChangeForm,
     PriorityChangeForm,
+    RequesterPickForm,
     StateChangeForm,
     TechnicianPickForm,
     TicketEditForm,
@@ -54,6 +57,7 @@ from .lifecycle import (
     available_actions,
     change_state,
 )
+from .requesters import add_requester, list_addable_requesters, remove_requester
 from .service import (
     CLOSED_STATE_CODE,
     DEFAULT_SORT,
@@ -195,10 +199,7 @@ def new_ticket():
             for location in list_locations("activo")
         ],
         requester_choices=(
-            [
-                (user.id, f"{user.apellido}, {user.nombre} ({user.username})")
-                for user in list_requester_candidates()
-            ]
+            _requester_choices(list_requester_candidates())
             if choose_requesters
             else None
         ),
@@ -290,6 +291,7 @@ def detail(public_id: str):
         can_self_assign=can_assign_self(current_user) and not is_closed,
         my_assignment=_my_assignment(ticket),
         show_assignment=can_manage_assignments(current_user) and not is_closed,
+        show_requesters=can_manage_requesters(current_user) and not is_closed,
     )
 
 
@@ -466,10 +468,7 @@ def change_ticket_state(public_id: str, action_slug: str):
         abort(403)
 
     if _is_closed(ticket):
-        return _closed_redirect(
-            ticket,
-            "Un ticket cerrado no se puede modificar. Primero debe reabrirse.",
-        )
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
 
     # Se comprueba también en GET: una pantalla abierta antes de que otra
     # persona cambiara el estado ya no corresponde al ticket.
@@ -607,10 +606,7 @@ def assignment_page(public_id: str):
         abort(403)
 
     if _is_closed(ticket):
-        return _closed_redirect(
-            ticket,
-            "Un ticket cerrado no se puede modificar. Primero debe reabrirse.",
-        )
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
 
     technician_form = TechnicianPickForm(
         choices=_people(list_assignable_technicians(ticket))
@@ -749,10 +745,7 @@ def escalate(public_id: str):
         abort(403)
 
     if _is_closed(ticket):
-        return _closed_redirect(
-            ticket,
-            "Un ticket cerrado no se puede modificar. Primero debe reabrirse.",
-        )
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
 
     initial = {"version": ticket.version} if request.method == "GET" else {}
 
@@ -794,6 +787,115 @@ def escalate(public_id: str):
     return render_template(
         "tickets/escalate.html",
         ticket=ticket,
+        form=form,
+        max_reason=MAX_REASON_LENGTH,
+    )
+
+
+# --- Solicitantes -----------------------------------------------------
+
+
+@bp.get("/<public_id>/requesters")
+@login_required
+def requesters_page(public_id: str):
+    """Solicitantes del ticket: el personal los ve, agrega y retira."""
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_manage_requesters(current_user):
+        abort(403)
+
+    if _is_closed(ticket):
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
+
+    return render_template(
+        "tickets/requesters.html",
+        ticket=ticket,
+        requester_form=RequesterPickForm(
+            choices=_requester_choices(list_addable_requesters(ticket))
+        ),
+    )
+
+
+@bp.post("/<public_id>/requesters/add")
+@login_required
+def add_ticket_requester(public_id: str):
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_manage_requesters(current_user):
+        abort(403)
+
+    form = RequesterPickForm(
+        choices=_requester_choices(list_addable_requesters(ticket))
+    )
+
+    if not form.validate_on_submit():
+        flash(
+            form.solicitante.errors[0]
+            if form.solicitante.errors
+            else "No se pudo agregar al solicitante.",
+            "error",
+        )
+
+        return redirect(url_for("tickets.requesters_page", public_id=public_id))
+
+    return _run_assignment(
+        ticket,
+        lambda: add_requester(ticket, form.solicitante.data, actor=_actor()),
+        "Solicitante agregado.",
+        back="tickets.requesters_page",
+    )
+
+
+@bp.route(
+    "/<public_id>/requesters/<int:participation_id>/remove",
+    methods=["GET", "POST"],
+)
+@login_required
+def remove_ticket_requester(public_id: str, participation_id: int):
+    """Confirmación (con motivo opcional) para retirar a un solicitante.
+
+    Retirarlo le quita el acceso al ticket, así que no es un clic sin más (a
+    diferencia de quitar un técnico, que es solo organizativo).
+    """
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_manage_requesters(current_user):
+        abort(403)
+
+    if _is_closed(ticket):
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
+
+    link = next(
+        (r for r in ticket.solicitantes_vigentes if r.id == participation_id),
+        None,
+    )
+
+    if link is None:
+        flash("Esa persona ya no es solicitante del ticket.", "error")
+
+        return redirect(url_for("tickets.requesters_page", public_id=public_id))
+
+    form = ReasonForm()
+
+    if form.validate_on_submit():
+        name = f"{link.solicitante.nombre} {link.solicitante.apellido}"
+
+        return _run_assignment(
+            ticket,
+            lambda: remove_requester(
+                ticket,
+                participation_id,
+                actor=_actor(),
+                reason=form.motivo.data,
+            ),
+            f"{name} dejó de ser solicitante del ticket.",
+            back="tickets.requesters_page",
+        )
+
+    return render_template(
+        "tickets/requester_remove.html",
+        ticket=ticket,
+        link=link,
         form=form,
         max_reason=MAX_REASON_LENGTH,
     )
@@ -855,6 +957,13 @@ def _is_closed(ticket) -> bool:
     return ticket.estado.codigo == CLOSED_STATE_CODE
 
 
+# Aviso de las operaciones que cuelgan del ticket (asignación, escalamiento,
+# solicitantes...) cuando el ticket ya está cerrado.
+_CLOSED_MODIFY_MESSAGE = (
+    "Un ticket cerrado no se puede modificar. Primero debe reabrirse."
+)
+
+
 def _closed_redirect(
     ticket,
     message="Un ticket cerrado no se puede editar. Primero debe reabrirse.",
@@ -897,7 +1006,8 @@ def _edit_initial_values(ticket) -> dict:
 
 
 def _run_assignment(ticket, operation, success_message, *, back, quiet=False):
-    """Ejecuta una operación de asignación, confirma y vuelve a `back`.
+    """Ejecuta una operación que cuelga del ticket (asignación, solicitantes),
+    confirma y vuelve a `back`.
 
     Un ticket cerrado, un conflicto de versión o una regla incumplida se
     muestran como aviso sin guardar nada.
@@ -936,6 +1046,15 @@ def _my_assignment(ticket):
 
 def _people(users) -> list[tuple[int, str]]:
     return [(user.id, f"{user.nombre} {user.apellido}") for user in users]
+
+
+def _requester_choices(users) -> list[tuple[int, str]]:
+    """Opciones para elegir solicitantes. Incluyen el usuario para distinguir
+    a personas con el mismo nombre."""
+    return [
+        (user.id, f"{user.apellido}, {user.nombre} ({user.username})")
+        for user in users
+    ]
 
 
 def _group_choices(ticket, *, active_only=False) -> list[tuple[int, str]]:

@@ -149,6 +149,29 @@ def final_state(demo) -> str:
     return state
 
 
+def initial_requesters(demo) -> list[str]:
+    """Solicitantes con los que nace un ticket demo: quien crea siendo
+    Solicitante es su propio solicitante; el personal indica a quiénes."""
+    if ROLES[demo.creado_por] == "SOLICITANTE":
+        return [demo.creado_por]
+
+    return list(demo.solicitantes)
+
+
+def final_requesters(demo) -> list[str]:
+    """Solicitantes vigentes de un ticket demo tras todos sus ajustes."""
+    current = initial_requesters(demo)
+
+    for step in demo.ajustes:
+        if step.retirar_solicitante is not None:
+            current.remove(step.retirar_solicitante)
+
+        if step.agregar_solicitante is not None:
+            current.append(step.agregar_solicitante)
+
+    return current
+
+
 def assignments_of(ticket):
     return list(
         db.session.scalars(
@@ -203,7 +226,10 @@ def date_snapshot():
             ticket.fecha_creacion,
             ticket.fecha_modificacion,
             [event.fecha_hora for event in history_of(ticket)],
-            [link.fecha_asociacion for link in requesters_of(ticket)],
+            [
+                (link.fecha_asociacion, link.fecha_retiro)
+                for link in requesters_of(ticket)
+            ],
             [
                 (a.fecha_asignacion, a.fecha_desasignacion)
                 for a in assignments_of(ticket)
@@ -235,7 +261,10 @@ def content_snapshot():
                 (event.id, event.tipo_evento, event.actor_usuario_id, event.detalle)
                 for event in history_of(ticket)
             ],
-            [link.solicitante_id for link in requesters_of(ticket)],
+            [
+                (link.solicitante_id, link.fecha_retiro is None, link.retirado_por_usuario_id)
+                for link in requesters_of(ticket)
+            ],
             [a.tecnico_id for a in assignments_of(ticket)],
         )
 
@@ -549,19 +578,30 @@ def test_tickets_follow_the_creation_rules(app, seeded):
         for demo in DEMO_TICKETS:
             ticket = by_clave(demo.clave)
             creator = db.session.get(User, ticket.creado_por_usuario_id)
-            requesters = sorted(
-                link.solicitante.username for link in requesters_of(ticket)
+            current = sorted(
+                link.solicitante.username
+                for link in requesters_of(ticket)
+                if link.fecha_retiro is None
+            )
+            # Los de la creación: quien crea siendo Solicitante es su propio
+            # solicitante; los del personal son los que indica `solicitantes`.
+            # Las filas agregadas después son las que tienen su evento.
+            added_later = {
+                event.contexto["participacion_id"]
+                for event in history_of(ticket)
+                if event.tipo_evento == TicketEvent.SOLICITANTE_AGREGADO.value
+            }
+            at_creation = sorted(
+                link.solicitante.username
+                for link in requesters_of(ticket)
+                if link.id not in added_later
             )
 
             assert creator.username == demo.creado_por
             assert ticket.estado.codigo == final_state(demo)
             assert ticket.descripcion == demo.descripcion
-
-            if ROLES[demo.creado_por] == "SOLICITANTE":
-                # Quien crea siendo Solicitante es su propio solicitante.
-                assert requesters == [demo.creado_por]
-            else:
-                assert requesters == sorted(demo.solicitantes)
+            assert current == sorted(final_requesters(demo))
+            assert at_creation == sorted(initial_requesters(demo))
 
 
 def test_catalog_values_are_resolved_by_name(app, seeded):
@@ -577,10 +617,12 @@ def test_catalog_values_are_resolved_by_name(app, seeded):
 
 def test_a_demo_requester_only_sees_their_own_tickets(app, seeded):
     username = "paula.contreras"
+    # Los tickets que creó o donde es solicitante vigente al terminar los
+    # ajustes (quien se retira deja de ver el ticket, salvo que lo haya creado).
     expected = {
         demo.clave
         for demo in DEMO_TICKETS
-        if demo.creado_por == username or username in demo.solicitantes
+        if demo.creado_por == username or username in final_requesters(demo)
     }
 
     client = app.test_client()
@@ -932,13 +974,28 @@ def test_no_event_is_ever_in_the_future_and_everything_is_in_order(app, prepared
             for moment in times:
                 assert_inside_the_default_calendar(moment)
 
-            for link in requesters_of(ticket):
-                assert link.fecha_asociacion == ticket.fecha_creacion
+            # Cada participación empieza en la creación o en su evento y, si
+            # se retiró, nunca antes de empezar.
+            added = {
+                event.contexto["participacion_id"]: event.fecha_hora
+                for event in history_of(ticket)
+                if event.tipo_evento == TicketEvent.SOLICITANTE_AGREGADO.value
+            }
 
-            if demo.ajustes:
-                assert ticket.fecha_modificacion == times[-1]
-            else:
-                assert ticket.fecha_modificacion is None
+            for link in requesters_of(ticket):
+                assert link.fecha_asociacion == added.get(link.id, ticket.fecha_creacion)
+
+                if link.fecha_retiro is not None:
+                    assert link.fecha_retiro >= link.fecha_asociacion
+                    assert link.fecha_retiro <= early
+
+            # Como en la aplicación: la fecha de modificación existe si y solo
+            # si algo subió la versión del ticket (agregar o retirar
+            # solicitantes no lo hace) y es la de uno de sus eventos.
+            assert (ticket.version > 1) is (ticket.fecha_modificacion is not None)
+
+            if ticket.fecha_modificacion is not None:
+                assert ticket.fecha_modificacion in times
 
 
 # --- Tiempo laboral -----------------------------------------------------
@@ -1484,3 +1541,317 @@ def test_refresh_keeps_the_group_and_the_assignments(app, seeded):
         seed_demo_tickets(now=NOW + timedelta(days=3))
 
         assert content_snapshot() == before
+
+
+# --- Solicitantes agregados y retirados ------------------------------------
+
+
+def events_of(ticket, *kinds):
+    return [
+        event
+        for event in history_of(ticket)
+        if event.tipo_evento in {kind.value for kind in kinds}
+    ]
+
+
+def link_for(ticket, username):
+    return next(
+        link for link in requesters_of(ticket) if link.solicitante.username == username
+    )
+
+
+@pytest.mark.parametrize(
+    ("adjustment", "message"),
+    [
+        # `excel-bloqueado` (el primero) lo crea Javiera, que es su solicitante.
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        agregar_solicitante="felipe.araya"),
+         "no es un Solicitante demo"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        retirar_solicitante="felipe.araya"),
+         "no es un Solicitante demo"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        retirar_solicitante="andres.silva"),
+         "no es solicitante en ese momento"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        agregar_solicitante="javiera.torres"),
+         "ya es solicitante en ese momento"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        retirar_solicitante="javiera.torres",
+                        agregar_solicitante="javiera.torres"),
+         "retirar y agregar a la misma persona"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        agregar_solicitante="andres.silva",
+                        motivo_retiro="Sin sentido"),
+         "motivo_retiro solo va con retirar_solicitante"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        retirar_solicitante="javiera.torres",
+                        motivo_retiro="x" * 501),
+         "motivo de retiro supera los 500"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1,
+                        retirar_solicitante="javiera.torres",
+                        motivo_retiro=" con espacios "),
+         "motivo de retiro está vacío o tiene espacios"),
+        (DemoAdjustment(actor="paula.contreras", despues_horas=1,
+                        agregar_solicitante="andres.silva"),
+         "no es personal"),
+    ],
+)
+def test_validation_rejects_inconsistent_requester_steps(adjustment, message):
+    ticket = replace(DEMO_TICKETS[0], ajustes=(adjustment,))
+
+    with pytest.raises(DemoTicketsError, match=message):
+        validate_demo_tickets((ticket,))
+
+
+def test_validation_follows_the_requesters_step_by_step():
+    # Retirar a alguien y volver a agregarlo más tarde es válido...
+    steps = (
+        DemoAdjustment(actor="diego.soto", despues_horas=1,
+                       retirar_solicitante="javiera.torres"),
+        DemoAdjustment(actor="diego.soto", despues_horas=1,
+                       agregar_solicitante="javiera.torres"),
+    )
+
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=steps),))
+
+    # ...y cambiar a una persona por otra en un mismo paso también.
+    swap = (
+        DemoAdjustment(actor="diego.soto", despues_horas=1,
+                       retirar_solicitante="javiera.torres",
+                       agregar_solicitante="andres.silva"),
+    )
+
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=swap),))
+
+    # Pero no agregar dos veces a la misma persona.
+    twice = (
+        DemoAdjustment(actor="diego.soto", despues_horas=1,
+                       agregar_solicitante="andres.silva"),
+        DemoAdjustment(actor="diego.soto", despues_horas=1,
+                       agregar_solicitante="andres.silva"),
+    )
+
+    with pytest.raises(DemoTicketsError, match="ya es solicitante en ese momento"):
+        validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=twice),))
+
+
+def test_demo_data_covers_the_requester_changes():
+    steps = [(demo, step) for demo in DEMO_TICKETS for step in demo.ajustes]
+
+    # Cambiar a una persona por otra en un mismo paso.
+    assert any(
+        step.retirar_solicitante and step.agregar_solicitante for _, step in steps
+    )
+    # Agregar a quien nace en un ticket sin solicitantes (RN-12).
+    assert any(
+        step.agregar_solicitante and not initial_requesters(demo)
+        for demo, step in steps
+    )
+    # Agregar a alguien y retirarlo en un paso posterior.
+    def adds_then_retires(demo):
+        added = set()
+
+        for step in demo.ajustes:
+            if step.retirar_solicitante in added:
+                return True
+
+            if step.agregar_solicitante is not None:
+                added.add(step.agregar_solicitante)
+
+        return False
+
+    assert any(adds_then_retires(demo) for demo in DEMO_TICKETS)
+    # Retirar a quien creó el ticket (que lo sigue viendo).
+    assert any(
+        step.retirar_solicitante == demo.creado_por for demo, step in steps
+    )
+
+
+def test_a_wrongly_associated_requester_is_replaced(app, seeded):
+    with app.app_context():
+        ticket = by_clave("proyector-sala-chica")
+        removed = link_for(ticket, "constanza.herrera")
+        added = link_for(ticket, "paula.contreras")
+        felipe = user("felipe.araya")
+
+        assert [r.solicitante.username for r in ticket.solicitantes_vigentes] == [
+            "paula.contreras"
+        ]
+        assert removed.fecha_retiro is not None
+        assert removed.retirado_por_usuario_id == felipe.id
+        assert added.asociado_por_usuario_id == felipe.id
+
+        # Primero se retira y después se agrega, con la marca de su paso.
+        kinds = [e.tipo_evento for e in history_of(ticket)]
+
+        assert kinds == ["TICKET_CREADO", "SOLICITANTE_RETIRADO", "SOLICITANTE_AGREGADO"]
+        assert all(e.contexto["demo_clave"] == "proyector-sala-chica" for e in history_of(ticket))
+
+        retired_event, added_event = history_of(ticket)[1:]
+
+        assert retired_event.visibilidad == "INTERNO"
+        assert retired_event.contexto["motivo"].startswith("Constanza solo avisó")
+        assert retired_event.contexto["participacion_id"] == removed.id
+        assert added_event.contexto["participacion_id"] == added.id
+        # No se tocó la versión ni la fecha de modificación (como en la
+        # aplicación: los solicitantes no modifican el ticket).
+        assert ticket.version == 1
+        assert ticket.fecha_modificacion is None
+        assert ticket.estado.codigo == "NUEVO"
+
+
+def test_a_requester_can_be_added_to_a_ticket_that_started_without_any(app, seeded):
+    with app.app_context():
+        ticket = by_clave("ups-bodega-mantencion")
+        (link,) = requesters_of(ticket)
+        (event,) = events_of(ticket, TicketEvent.SOLICITANTE_AGREGADO)
+        created = history_of(ticket)[0]
+
+        assert link.solicitante.username == "ignacio.molina"
+        assert link.asociado_por_usuario_id == user("valentina.pizarro").id
+        # Se asocia en el momento de su evento, después de crear el ticket.
+        assert link.fecha_asociacion == event.fecha_hora
+        assert link.fecha_asociacion > created.fecha_hora
+        assert ticket.fecha_actualizacion == ticket.fecha_creacion
+
+
+def test_a_requester_added_and_retired_later_keeps_both_dates(app, seeded):
+    with app.app_context():
+        ticket = by_clave("vpn-se-corta")
+        original = link_for(ticket, "sebastian.vargas")
+        guest = link_for(ticket, "andres.silva")
+        (added,) = events_of(ticket, TicketEvent.SOLICITANTE_AGREGADO)
+        (retired,) = events_of(ticket, TicketEvent.SOLICITANTE_RETIRADO)
+
+        assert original.fecha_retiro is None
+        assert original.fecha_asociacion == ticket.fecha_creacion
+        assert guest.fecha_asociacion == added.fecha_hora
+        assert guest.fecha_retiro == retired.fecha_hora
+        assert guest.fecha_retiro > guest.fecha_asociacion
+        assert retired.contexto["motivo"] == "Su problema era otro y se atendió por separado."
+        assert [e.tipo_evento for e in history_of(ticket)] == [
+            "TICKET_CREADO",
+            "SOLICITANTE_AGREGADO",
+            "SOLICITANTE_RETIRADO",
+        ]
+
+
+def test_the_creator_keeps_seeing_the_ticket_after_being_retired(app, seeded):
+    with app.app_context():
+        ticket = by_clave("impresora-proyectos-a-nombre-de")
+        public_id = ticket.public_id
+
+        assert link_for(ticket, "constanza.herrera").fecha_retiro is not None
+        assert [r.solicitante.username for r in ticket.solicitantes_vigentes] == [
+            "andres.silva"
+        ]
+
+    # Constanza sigue viéndolo porque lo creó; Andrés porque es el solicitante.
+    for username in ("constanza.herrera", "andres.silva"):
+        client = log_in(app, username)
+
+        assert client.get(f"/tickets/{public_id}").status_code == 200, username
+        assert f'href="/tickets/{public_id}"' in client.get(
+            "/tickets?vista=todos"
+        ).get_data(as_text=True), username
+
+    # Quien no tiene relación con el ticket, no.
+    assert log_in(app, "paula.contreras").get(f"/tickets/{public_id}").status_code == 404
+
+
+def test_a_retired_requester_who_did_not_create_the_ticket_loses_access(app, seeded):
+    with app.app_context():
+        public_id = by_clave("proyector-sala-chica").public_id
+
+    assert log_in(app, "constanza.herrera").get(f"/tickets/{public_id}").status_code == 404
+    assert log_in(app, "paula.contreras").get(f"/tickets/{public_id}").status_code == 200
+
+
+def test_the_requester_events_are_only_for_staff_in_the_demo(app, seeded):
+    with app.app_context():
+        public_id = by_clave("proyector-sala-chica").public_id
+
+    requester = page_text(log_in(app, "paula.contreras"), public_id)
+
+    assert "Ticket creado" in requester
+    assert "Solicitante agregado" not in requester
+    assert "Solicitante retirado" not in requester
+    assert "Constanza Herrera" not in requester
+    assert "la sala la tenía reservada Paula" not in requester
+
+    staff = page_text(log_in(app, "felipe.araya"), public_id)
+
+    assert "Solicitante retirado: «Constanza Herrera»" in staff
+    assert "Solicitante agregado: «Paula Contreras»" in staff
+    assert "Motivo: Constanza solo avisó por teléfono; la sala la tenía reservada Paula." in staff
+    assert "Solicitante Gestionar" in staff
+
+
+def test_requester_dates_follow_a_refresh_in_order(app, seeded):
+    with app.app_context():
+        first = date_snapshot()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert date_snapshot() != first
+
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            added = {
+                e.contexto["participacion_id"]: e.fecha_hora
+                for e in events_of(ticket, TicketEvent.SOLICITANTE_AGREGADO)
+            }
+            retired = {
+                e.contexto["participacion_id"]: e.fecha_hora
+                for e in events_of(ticket, TicketEvent.SOLICITANTE_RETIRADO)
+            }
+
+            for link in requesters_of(ticket):
+                assert link.fecha_asociacion == added.get(link.id, ticket.fecha_creacion)
+
+                if link.id in retired:
+                    assert link.fecha_retiro == retired[link.id]
+                    assert link.fecha_retiro >= link.fecha_asociacion
+                else:
+                    assert link.fecha_retiro is None
+
+
+def test_a_hand_made_requester_change_follows_the_refresh(app, seeded):
+    from src.workdesk.tickets.requesters import add_requester, remove_requester
+
+    later = NOW + timedelta(days=3)
+
+    with app.app_context():
+        ticket = by_clave("proyector-sala-chica")
+        diego = user("diego.soto")
+
+        # A mano: se suma a Javiera y después se retira a Paula.
+        added = add_requester(ticket, user("javiera.torres").id, actor=diego)
+        db.session.commit()
+        remove_requester(
+            ticket,
+            link_for(ticket, "paula.contreras").id,
+            actor=diego,
+            reason="A mano",
+        )
+        db.session.commit()
+
+        seed_demo_tickets(now=later)
+
+        ticket = by_clave("proyector-sala-chica")
+        events = history_of(ticket)
+        times = [e.fecha_hora for e in events]
+        hand_added = events_of(ticket, TicketEvent.SOLICITANTE_AGREGADO)[-1]
+        hand_removed = events_of(ticket, TicketEvent.SOLICITANTE_RETIRADO)[-1]
+
+        # Los eventos hechos a mano siguen en orden y no quedan en el futuro.
+        assert times == sorted(times)
+        assert max(times) <= later - timedelta(minutes=1)
+        # Y sus participaciones los acompañan, con el retiro nunca antes de empezar.
+        db.session.refresh(added)
+        paula = link_for(ticket, "paula.contreras")
+
+        assert added.fecha_asociacion == hand_added.fecha_hora
+        assert paula.fecha_retiro == hand_removed.fecha_hora
+        assert paula.fecha_retiro >= paula.fecha_asociacion

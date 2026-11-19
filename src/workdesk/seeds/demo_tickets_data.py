@@ -38,14 +38,16 @@ cable) y prioridades exageradas. Esa ambigüedad es intencional: es lo que
 ocurre en un soporte de verdad.
 
 Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste), el
-grupo (`grupo`) y la asignación de técnicos (`asignar`) ya existen. Cuando
-existan cierres y comentarios, se añadirán campos opcionales con valor por
-defecto y los tickets ya escritos seguirán siendo válidos.
+grupo (`grupo`), la asignación de técnicos (`asignar`) y los solicitantes
+agregados o retirados después de crear el ticket (`agregar_solicitante`,
+`retirar_solicitante` y `motivo_retiro`) ya existen. Cuando existan cierres y
+comentarios, se añadirán campos opcionales con valor por defecto y los
+tickets ya escritos seguirán siendo válidos.
 
-Los tickets cuya historia incluye cambios de estado, grupo o asignación están al final de la
-lista: al volver a ejecutar el comando solo se crean los que faltan, y un
-ticket ya cargado no se modifica (para ver los estados en tickets antiguos hay
-que recrear la base de desarrollo).
+Los tickets cuya historia incluye cambios de estado, grupo, asignación o
+solicitantes están al final de la lista: al volver a ejecutar el comando solo
+se crean los que faltan, y un ticket ya cargado no se modifica (para ver esos
+cambios en tickets antiguos hay que recrear la base de desarrollo).
 """
 
 from dataclasses import dataclass
@@ -100,8 +102,8 @@ class DemoAdjustment:
     """Un paso posterior del personal sobre un ticket ya creado.
 
     `despues_horas` son horas laborales desde el paso anterior. Debe cambiar
-    algo: título, descripción, categoría, prioridad o estado. Cambiar la
-    prioridad exige `motivo`.
+    algo: título, descripción, categoría, prioridad, estado, grupo,
+    asignación o solicitantes. Cambiar la prioridad exige `motivo`.
 
     `estado` es una acción de estado (`INICIAR`, `PONER_EN_ESPERA` o
     `REACTIVAR`) que se ejecuta al final del paso, después de los demás
@@ -113,8 +115,18 @@ class DemoAdjustment:
     `grupo` es el nombre de uno de los grupos de `seed-demo` y lo fija un
     Supervisor. `asignar` es el username de un técnico: lo asigna él mismo
     (se asigna a sí mismo) o un Supervisor; si el ticket está en Nuevo, pasa
-    a Asignado. En un mismo paso el orden es: datos, prioridad, grupo,
-    asignación y, al final, el cambio de estado.
+    a Asignado.
+
+    `agregar_solicitante` y `retirar_solicitante` son el username de un
+    Solicitante demo que el personal agrega o retira como solicitante del
+    ticket. Retirar a alguien exige que sea solicitante en ese momento (el
+    creador que es Solicitante lo es desde el principio) y agregarlo, que no
+    lo sea; `motivo_retiro` es el motivo opcional de la retirada. Quien creó el
+    ticket sigue viéndolo aunque se le retire como solicitante.
+
+    En un mismo paso el orden es: datos, prioridad, grupo, asignación,
+    solicitantes (primero se retira y después se agrega) y, al final, el
+    cambio de estado.
     """
 
     actor: str
@@ -129,6 +141,9 @@ class DemoAdjustment:
     texto: str | None = None
     grupo: str | None = None
     asignar: str | None = None
+    agregar_solicitante: str | None = None
+    retirar_solicitante: str | None = None
+    motivo_retiro: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1256,6 +1271,121 @@ DEMO_TICKETS = (
                 actor="valentina.pizarro",
                 despues_horas=3,
                 estado="INICIAR",
+            ),
+        ),
+    ),
+    # --- Tickets con solicitantes agregados y retirados -----------------------
+    DemoTicket(
+        clave="proyector-sala-chica",
+        titulo="Proyector de la sala chica no muestra imagen",
+        descripcion=(
+            "Constanza llamó por teléfono: el proyector de la sala chica "
+            "enciende, pero no muestra imagen cuando se conecta un notebook. "
+            "Se registra a su nombre mientras se confirma quién tiene "
+            "reservada la sala."
+        ),
+        categoria="Hardware",
+        prioridad="MEDIA",
+        creado_por="felipe.araya",
+        solicitantes=("constanza.herrera",),
+        ubicacion=MARCOLETA,
+        hace_dias=6,
+        hora="10:05",
+        ajustes=(
+            # Se asoció a la persona equivocada: se corrige.
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                retirar_solicitante="constanza.herrera",
+                motivo_retiro=(
+                    "Constanza solo avisó por teléfono; la sala la tenía "
+                    "reservada Paula."
+                ),
+                agregar_solicitante="paula.contreras",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="ups-bodega-mantencion",
+        titulo="Mantención preventiva de la UPS de la bodega",
+        descripcion=(
+            "Mantención semestral de la UPS de la bodega: revisar las "
+            "baterías, limpiar los filtros y probar la autonomía con un corte "
+            "simulado. Es una tarea interna del equipo de infraestructura, "
+            "por eso nace sin solicitante."
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="valentina.pizarro",
+        ubicacion=MARCOLETA,
+        hace_dias=9,
+        hora="09:30",
+        ajustes=(
+            # El jefe de bodega pide que lo mantengan informado.
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=3,
+                agregar_solicitante="ignacio.molina",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="vpn-se-corta",
+        titulo="VPN que se corta cada pocos minutos",
+        descripcion=(
+            "Sebastián se conecta a la VPN desde su casa y a los pocos "
+            "minutos se corta y tiene que volver a entrar. Ya reinició el "
+            "computador y el router sin resultado."
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="matias.fuentes",
+        solicitantes=("sebastian.vargas",),
+        hace_dias=5,
+        hora="11:20",
+        ajustes=(
+            # Otra persona reporta lo mismo y se suma al ticket...
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                agregar_solicitante="andres.silva",
+            ),
+            # ...pero después se comprueba que su problema era otro.
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=6,
+                retirar_solicitante="andres.silva",
+                motivo_retiro="Su problema era otro y se atendió por separado.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="impresora-proyectos-a-nombre-de",
+        titulo="la impresora de proyectos dice error de conexion",
+        descripcion=(
+            "hola, escribo yo porque andres esta en terreno y no tiene "
+            "tiempo. la impresora de la oficina de proyectos no imprime "
+            "desde ayer, sale un cartel de 'error de conexion'. el necesita "
+            "imprimir unos planos para el jueves."
+        ),
+        categoria="Impresoras",
+        prioridad="MEDIA",
+        creado_por="constanza.herrera",
+        ubicacion=MARCOLETA,
+        hace_dias=2,
+        hora="14:50",
+        ajustes=(
+            # Quien creó el ticket deja de ser solicitante, pero lo sigue
+            # viendo: el creador original no cambia.
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                retirar_solicitante="constanza.herrera",
+                motivo_retiro=(
+                    "Quien usa la impresora es Andrés; Constanza solo creó "
+                    "el ticket."
+                ),
+                agregar_solicitante="andres.silva",
             ),
         ),
     ),

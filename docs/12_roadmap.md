@@ -838,7 +838,7 @@ Esta es la fase central del MVP.
 - **Sin datos de ejemplo en los seeds.** Los seeds cargan solo lo estructural. Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz, para que una instalación real no arranque con datos ficticios; el README explica cómo.
 - **Visibilidad del Solicitante:** ve los tickets que creó o en los que es solicitante vigente. Técnico, Supervisor y Administrador ven todos (RF-011). Un ticket ajeno responde 404, igual que uno inexistente, para no revelar qué números existen.
 - **Categoría al crear:** es obligatoria; `Sin clasificar` se ofrece siempre al final de la lista y nunca preseleccionada.
-- **Solicitantes al crear:** si crea un Solicitante, queda como su propio solicitante; Técnico, Supervisor y Administrador eligen 0..N solicitantes. Agregar o quitar solicitantes después llega en `v0.4.0`.
+- **Solicitantes al crear:** si crea un Solicitante, queda como su propio solicitante; Técnico, Supervisor y Administrador eligen 0..N solicitantes. Agregar o quitar solicitantes después llega en `v0.4.0` (entrega 6).
 - **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación, y cambian la prioridad con motivo obligatorio. El Solicitante solo lee, y un ticket cerrado no se edita.
 - **Fuera de esta fase:** grupo, impacto y urgencia (sus catálogos llegan más adelante) y la pantalla de Estados y transiciones (UI-021), que se implementa en `v0.4.0` junto con el flujo de estados.
 
@@ -921,8 +921,8 @@ La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con test
 2. **Motivos de espera** ✓ (PR #24): catálogo configurable, su administración y la referencia desde el historial.
 3. **Estados y transiciones** ✓ (PR #25): tabla de transiciones y cambios de estado operativos (iniciar, poner en espera, reactivar), con el control de versión compartido y el seed ampliado.
 4. **Grupos** ✓ (PR #26): grupos, membresías y supervisores responsables (`/groups`), con tres grupos de ejemplo en `seed-demo`.
-5. **Asignación** (en curso): técnicos, grupo del ticket y escalamiento manual, con el seed ampliado.
-6. **Solicitantes del ticket:** agregar y retirar después de la creación.
+5. **Asignación** ✓ (PR #27): técnicos, grupo del ticket y escalamiento manual, con el seed ampliado.
+6. **Solicitantes del ticket** (en curso): agregar y retirar después de la creación (solo el personal, eventos internos, sin migración), con el seed ampliado.
 7. **Comentarios y notas internas.**
 8. **Adjuntos.**
 9. **Resolución, validación del solicitante, cierre y reapertura.**
@@ -935,6 +935,7 @@ La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con test
 - grupos (opcionales) y supervisores responsables de cada grupo (`grupos_supervisores`), con gestión de membresías por el Administrador y por el Supervisor en sus grupos;
 - múltiples técnicos;
 - asignación directa a técnicos, con o sin grupo;
+- solicitantes que se agregan y se retiran después de crear el ticket;
 - cambio de estado;
 - comentarios públicos;
 - notas internas;

@@ -1867,6 +1867,14 @@ Resumen simplificado:
 - **Historial:** `Técnico asignado: «…»`, `Técnico desasignado: «…»`, `Grupo: «a» → «b»` y `Ticket escalado` con las líneas de grupo y técnicos. Los dos últimos y el motivo solo los ve el personal.
 - No se muestra ninguna de estas acciones en un ticket cerrado.
 
+**Solicitantes del ticket (`v0.4.0`, entrega 6)** — reglas en `docs/06` (RN-158):
+
+- **Acceso:** en el resumen, junto a **Solicitante(s)**, el personal ve el enlace **Gestionar** (solo con el ticket abierto). El Solicitante no lo ve, ni ve a los demás solicitantes (UI-005).
+- **Pantalla Solicitantes** (`/tickets/<n>/requesters`, separada, con la ruta "Tickets / #N / Solicitantes"): tarjeta **Solicitantes actuales** (nombre y usuario, con el botón **Retirar** de cada uno y una nota con quién creó el ticket) y tarjeta **Agregar un solicitante** (selector con las personas activas con rol Solicitante que aún no lo son, con el formato «Apellido, Nombre (usuario)», como al crear el ticket).
+- **Retirar** (`/tickets/<n>/requesters/<id>/remove`): pantalla de confirmación con una advertencia (la persona deja de ver el ticket, o lo sigue viendo si lo creó) y un motivo opcional con la indicación "Queda en el historial del ticket, solo visible para el personal.".
+- **Historial:** `Solicitante agregado: «…»` y `Solicitante retirado: «…»` (con el motivo del retiro), solo para el personal: son eventos internos.
+- No se muestra ninguna de estas acciones en un ticket cerrado.
+
 ---
 
 ## UI-005A — Resuelto pendiente de validación

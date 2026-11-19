@@ -38,6 +38,10 @@ from ..security import (
 INITIAL_STATE_CODE = "NUEVO"
 CLOSED_STATE_CODE = "CERRADO"
 
+# Máximo de caracteres de un motivo (cambio de prioridad, asignación,
+# solicitantes...).
+MAX_REASON_LENGTH = 500
+
 # Listado (docs/11, UI-003).
 PAGE_SIZE = 20
 MAX_SEARCH_LENGTH = 100
@@ -554,6 +558,34 @@ def record_ticket_event(
     db.session.flush()
 
     return entry
+
+
+def clean_optional_reason(reason: str | None) -> str | None:
+    """Recorta un motivo opcional: devuelve None si queda vacío y lanza
+    `TicketRuleError` si supera `MAX_REASON_LENGTH`."""
+    reason = (reason or "").strip()
+
+    if len(reason) > MAX_REASON_LENGTH:
+        raise TicketRuleError(
+            f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres."
+        )
+
+    return reason or None
+
+
+def full_name(user: User) -> str:
+    """Nombre y apellido de una persona, como se muestran en el historial."""
+    return f"{user.nombre} {user.apellido}"
+
+
+def person_snapshot(user: User) -> dict:
+    """Datos de una persona para guardar en `valor_anterior` o `valor_nuevo`
+    de un evento (así el historial se lee aunque la persona cambie después)."""
+    return {
+        "usuario_id": user.id,
+        "username": user.username,
+        "nombre": full_name(user),
+    }
 
 
 def _get_active(model, record_id: int, label: str):
