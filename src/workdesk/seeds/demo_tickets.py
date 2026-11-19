@@ -1184,11 +1184,37 @@ def _refresh(
                 new_time[event.id]
             )
 
-    for assignment_id, values in assignment_dates.items():
+    # Una asignación que no tiene su propio evento también debe seguir al
+    # ticket: un escalamiento hecho a mano cierra las asignaciones y crea la
+    # nueva en la misma transacción que su evento, así que sus fechas coinciden
+    # con la hora de ese evento y se mueven con él. Si no coinciden con
+    # ninguno, se conservan. Una sola actualización por fila y el cierre nunca
+    # antes de la asignación (la base de datos lo exige).
+    technicians = TicketTechnician.__table__
+
+    stored = db.session.execute(
+        db.select(
+            technicians.c.id,
+            technicians.c.fecha_asignacion,
+            technicians.c.fecha_desasignacion,
+        ).where(technicians.c.ticket_id == ticket.id)
+    ).all()
+
+    for row in stored:
+        explicit = assignment_dates.get(row.id, {})
+        assigned = explicit.get("fecha_asignacion") or by_old_time.get(
+            row.fecha_asignacion, row.fecha_asignacion
+        )
+        values = {"fecha_asignacion": assigned}
+
+        if row.fecha_desasignacion is not None:
+            closed = explicit.get("fecha_desasignacion") or by_old_time.get(
+                row.fecha_desasignacion, row.fecha_desasignacion
+            )
+            values["fecha_desasignacion"] = max(assigned, closed)
+
         db.session.execute(
-            update(TicketTechnician.__table__)
-            .where(TicketTechnician.__table__.c.id == assignment_id)
-            .values(**values)
+            update(technicians).where(technicians.c.id == row.id).values(**values)
         )
 
     # Los solicitantes que se agregaron o retiraron después de crear el ticket
