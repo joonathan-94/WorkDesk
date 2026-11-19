@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field %}
+
+{% block title %}Retirar solicitante del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Solicitantes', url_for('tickets.requesters_page', public_id=ticket.public_id)),
+        ('Retirar', None),
+    ]) }}
+
+    {{ page_header('Retirar solicitante', link.solicitante.nombre ~ ' ' ~ link.solicitante.apellido ~ ' · #' ~ ticket.public_id) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.remove_ticket_requester', public_id=ticket.public_id, participation_id=link.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                {% if link.solicitante_id == ticket.creado_por_usuario_id %}
+                    {{ link.solicitante.nombre }} {{ link.solicitante.apellido }}
+                    creó este ticket, así que lo seguirá viendo aunque deje de
+                    ser solicitante.
+                {% else %}
+                    {{ link.solicitante.nombre }} {{ link.solicitante.apellido }}
+                    dejará de ser solicitante del ticket y dejará de verlo.
+                {% endif %}
+                La participación queda en el historial y se puede volver a
+                agregar más adelante.
+            </div>
+
+            {{ text_field(
+                form.motivo,
+                maxlength=max_reason,
+                hint="Opcional. Queda en el historial del ticket, solo visible para el personal.",
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-danger"
+                    type="submit"
+                >
+                    Retirar solicitante
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.requesters_page', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

@@ -235,6 +235,11 @@ class Ticket(db.Model):
     )
 
     @property
+    def solicitantes_vigentes(self) -> list:
+        """Participaciones actuales (las que no tienen `fecha_retiro`)."""
+        return [r for r in self.solicitantes if r.fecha_retiro is None]
+
+    @property
     def tecnicos_vigentes(self) -> list:
         """Asignaciones actuales (las que no tienen `fecha_desasignacion`)."""
         return [a for a in self.tecnicos if a.fecha_desasignacion is None]

@@ -1,0 +1,127 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import select_field %}
+
+{% block title %}Solicitantes del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Solicitantes', None),
+    ]) }}
+
+    {{ page_header('Solicitantes', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <section
+                class="card h-100"
+                aria-labelledby="requesters-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="requesters-title"
+                    >
+                        Solicitantes actuales
+                    </h2>
+
+                    {% if ticket.solicitantes_vigentes %}
+                        <ul class="list-group list-group-flush mb-3">
+                            {% for link in ticket.solicitantes_vigentes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center gap-3 px-0">
+                                    <span class="text-break">
+                                        {{ link.solicitante.nombre }}
+                                        {{ link.solicitante.apellido }}
+                                        <span class="small text-secondary">
+                                            ({{ link.solicitante.username }})
+                                        </span>
+                                        {% if not link.solicitante.activo %}
+                                            <span class="small text-secondary">(inactivo)</span>
+                                        {% endif %}
+                                    </span>
+
+                                    <a
+                                        class="btn btn-sm btn-outline-danger flex-shrink-0"
+                                        href="{{ url_for('tickets.remove_ticket_requester', public_id=ticket.public_id, participation_id=link.id) }}"
+                                    >
+                                        Retirar
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-secondary">
+                            Este ticket no tiene solicitantes. Puede gestionarse
+                            igualmente (por ejemplo, una mantención interna).
+                        </p>
+                    {% endif %}
+
+                    <p class="small text-secondary mb-0">
+                        Los solicitantes ven este ticket y su historial público.
+                        Al retirar a una persona deja de verlo, salvo que además
+                        lo haya creado: el creador original
+                        ({{ ticket.creado_por.nombre }} {{ ticket.creado_por.apellido }})
+                        no cambia nunca.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section
+                class="card h-100"
+                aria-labelledby="add-requester-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="add-requester-title"
+                    >
+                        Agregar un solicitante
+                    </h2>
+
+                    {% if requester_form.choices %}
+                        <form
+                            method="post"
+                            action="{{ url_for('tickets.add_ticket_requester', public_id=ticket.public_id) }}"
+                            novalidate
+                        >
+                            {{ requester_form.csrf_token }}
+
+                            {{ select_field(
+                                requester_form.solicitante,
+                                requester_form.choices,
+                                label="Persona",
+                                placeholder="Selecciona a una persona",
+                                required=True,
+                            ) }}
+
+                            <button
+                                class="btn btn-primary"
+                                type="submit"
+                            >
+                                Agregar
+                            </button>
+                        </form>
+                    {% else %}
+                        <p class="small text-secondary mb-0">
+                            No hay más personas con el rol Solicitante para
+                            agregar.
+                        </p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <p class="mt-4">
+        <a
+            class="btn btn-outline-secondary"
+            href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+        >
+            Volver al ticket
+        </a>
+    </p>
+{% endblock %}

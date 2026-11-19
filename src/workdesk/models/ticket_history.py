@@ -40,6 +40,8 @@ class TicketEvent(StrEnum):
     TECNICO_DESASIGNADO = "TECNICO_DESASIGNADO"
     GRUPO_CAMBIADO = "GRUPO_CAMBIADO"
     TICKET_ESCALADO = "TICKET_ESCALADO"
+    SOLICITANTE_AGREGADO = "SOLICITANTE_AGREGADO"
+    SOLICITANTE_RETIRADO = "SOLICITANTE_RETIRADO"
 
 
 class HistoryVisibility(StrEnum):
@@ -74,6 +76,11 @@ DEFAULT_EVENT_VISIBILITY = {
     TicketEvent.TECNICO_DESASIGNADO: HistoryVisibility.PUBLICO,
     TicketEvent.GRUPO_CAMBIADO: HistoryVisibility.INTERNO,
     TicketEvent.TICKET_ESCALADO: HistoryVisibility.INTERNO,
+    # El Solicitante no ve a las demás personas que figuran en el ticket
+    # (docs/06, RN-153; docs/11, UI-005): quién se agrega o se retira como
+    # solicitante es solo del personal.
+    TicketEvent.SOLICITANTE_AGREGADO: HistoryVisibility.INTERNO,
+    TicketEvent.SOLICITANTE_RETIRADO: HistoryVisibility.INTERNO,
 }
 
 
@@ -87,6 +94,8 @@ TICKET_EVENT_LABELS = {
     TicketEvent.TECNICO_DESASIGNADO: "Técnico desasignado",
     TicketEvent.GRUPO_CAMBIADO: "Grupo cambiado",
     TicketEvent.TICKET_ESCALADO: "Ticket escalado",
+    TicketEvent.SOLICITANTE_AGREGADO: "Solicitante agregado",
+    TicketEvent.SOLICITANTE_RETIRADO: "Solicitante retirado",
 }
 
 

@@ -22,7 +22,6 @@ from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
 from ..models import (
-    Estado,
     Grupo,
     Role,
     StateAction,
@@ -33,15 +32,18 @@ from ..models import (
 )
 from ..security import RoleCode
 from .lifecycle import apply_derived_transition
-from .service import CLOSED_STATE_CODE, TicketRuleError, record_ticket_event
+from .service import (
+    TicketRuleError,
+    clean_optional_reason,
+    full_name,
+    person_snapshot,
+    record_ticket_event,
+)
 from .versioning import (
-    TicketClosedError,
     TicketConflictError,
     apply_ticket_changes,
-    lock_ticket,
+    begin_ticket_operation,
 )
-
-MAX_REASON_LENGTH = 500
 
 _ALREADY_ASSIGNED = "Ese técnico ya está asignado al ticket."
 
@@ -113,8 +115,8 @@ def assign_technician(
         ticket,
         TicketEvent.TECNICO_ASIGNADO,
         actor=actor,
-        detail=f"Técnico asignado: {_full_name(technician)}.",
-        new_value=_person(technician),
+        detail=f"Técnico asignado: {full_name(technician)}.",
+        new_value=person_snapshot(technician),
         context={"asignacion_id": assignment.id},
     )
 
@@ -151,7 +153,7 @@ def unassign_technician(
     if assignment is None:
         raise TicketRuleError("Ese técnico ya no está asignado al ticket.")
 
-    reason = _clean_optional_reason(reason)
+    reason = clean_optional_reason(reason)
     technician = assignment.tecnico
 
     _close_assignment(assignment, actor, reason)
@@ -167,8 +169,8 @@ def unassign_technician(
         ticket,
         TicketEvent.TECNICO_DESASIGNADO,
         actor=actor,
-        detail=f"Técnico desasignado: {_full_name(technician)}.",
-        old_value=_person(technician),
+        detail=f"Técnico desasignado: {full_name(technician)}.",
+        old_value=person_snapshot(technician),
         context=context,
     )
 
@@ -317,21 +319,12 @@ def escalate_ticket(
 
 
 def _begin(ticket: Ticket, actor: User) -> None:
-    """Prepara una operación: usuario activo, ticket bloqueado y no cerrado."""
-    if not actor.is_active:
-        raise TicketRuleError("El usuario no está activo.")
+    """Prepara una operación: usuario activo, ticket bloqueado y no cerrado.
 
-    lock_ticket(ticket)
-
-    state = db.session.get(Estado, ticket.estado_id)
-
-    if state.codigo == CLOSED_STATE_CODE:
-        raise TicketClosedError(
-            "Un ticket cerrado no se puede modificar. Primero debe reabrirse."
-        )
-
-    # Las asignaciones pueden haber cambiado desde que se cargó el ticket.
-    db.session.expire(ticket, ["tecnicos", "grupo"])
+    Las asignaciones y el grupo pudieron cambiar desde que se cargó el ticket
+    (mientras esperaba el bloqueo), así que se vuelven a leer.
+    """
+    begin_ticket_operation(ticket, actor, expire=("tecnicos", "grupo"))
 
 
 def _check_version(ticket: Ticket, expected_version: int) -> None:
@@ -440,31 +433,8 @@ def _group_snapshot(group: Grupo | None) -> dict:
 def _escalation_snapshot(group: Grupo | None, assignments) -> dict:
     return {
         "grupo": _group_snapshot(group),
-        "tecnicos": [_person(a.tecnico) for a in assignments],
+        "tecnicos": [person_snapshot(a.tecnico) for a in assignments],
     }
-
-
-def _person(user: User) -> dict:
-    return {
-        "usuario_id": user.id,
-        "username": user.username,
-        "nombre": _full_name(user),
-    }
-
-
-def _full_name(user: User) -> str:
-    return f"{user.nombre} {user.apellido}"
-
-
-def _clean_optional_reason(reason: str | None) -> str | None:
-    reason = (reason or "").strip()
-
-    if len(reason) > MAX_REASON_LENGTH:
-        raise TicketRuleError(
-            f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres."
-        )
-
-    return reason or None
 
 
 def _clean_required_reason(reason: str | None) -> str:
@@ -473,4 +443,4 @@ def _clean_required_reason(reason: str | None) -> str:
     if not reason:
         raise TicketRuleError("Indica el motivo del escalamiento.")
 
-    return _clean_optional_reason(reason)
+    return clean_optional_reason(reason)

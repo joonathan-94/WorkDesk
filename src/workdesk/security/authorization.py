@@ -53,6 +53,17 @@ def can_choose_requesters(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_manage_requesters(user) -> bool:
+    """Agregar y retirar solicitantes de un ticket ya creado (docs/06, RN-11).
+
+    Es la misma regla que elegirlos al crear (`can_choose_requesters`): el
+    personal puede; el Solicitante no decide quiénes más figuran en un
+    ticket. Que el ticket esté cerrado es una regla del ticket, no del rol, y
+    la aplica el servicio.
+    """
+    return has_any_role(user, *STAFF_ROLES)
+
+
 def can_edit_ticket(user) -> bool:
     """Editar título, descripción, categoría y ubicación de un ticket.
 

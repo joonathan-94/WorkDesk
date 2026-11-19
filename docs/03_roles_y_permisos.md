@@ -270,6 +270,7 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Asignar técnicos                          |        ❌       |    ❌    |      ✅     |       ✅       |
 | Reasignar técnicos                        |        ❌       |    ❌    |      ✅     |       ✅       |
 | Asignar múltiples técnicos                |        ❌       |    ❌    |      ✅     |       ✅       |
+| Agregar y retirar solicitantes de un ticket |      ❌       |    ✅    |      ✅     |       ✅       |
 | Cambiar prioridad                         |        ❌       |    ✅    |      ✅     |       ✅       |
 | Cambiar estado                            | ⚠️ Según flujo |    ✅    |      ✅     |       ✅       |
 | Agregar comentario público                |        ✅       |    ✅    |      ✅     |       ✅       |

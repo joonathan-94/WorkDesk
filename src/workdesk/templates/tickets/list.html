@@ -6,7 +6,7 @@
 {% block content %}
     {# Solicitante(s) vigentes de un ticket: el primero y cuántos más. #}
     {% macro requesters_summary(ticket) %}
-        {% set current = ticket.solicitantes|selectattr('fecha_retiro', 'none')|list %}
+        {% set current = ticket.solicitantes_vigentes %}
 
         {% if current %}
             {{ current[0].solicitante.nombre }} {{ current[0].solicitante.apellido }}

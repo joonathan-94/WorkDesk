@@ -5,15 +5,18 @@ Cada ticket lleva una versión que sube con cada cambio de su estructura
 que leyó: si otra persona lo modificó entretanto, el guardado se rechaza en
 lugar de pisar su cambio en silencio.
 
-Lo comparten la edición de datos (`tickets/editing.py`) y los cambios de
-estado (`tickets/lifecycle.py`). Nada de aquí hace commit.
+Lo comparten la edición de datos (`tickets/editing.py`), los cambios de
+estado (`tickets/lifecycle.py`), la asignación (`tickets/assignment.py`) y los
+solicitantes (`tickets/requesters.py`). Nada de aquí hace commit.
 """
+
+from collections.abc import Sequence
 
 from sqlalchemy import func, update
 
 from ..extensions import db
-from ..models import Ticket, User
-from .service import TicketRuleError
+from ..models import Estado, Ticket, User
+from .service import CLOSED_STATE_CODE, TicketRuleError
 
 
 class TicketClosedError(TicketRuleError):
@@ -76,3 +79,36 @@ def lock_ticket(ticket: Ticket) -> None:
         db.select(Ticket.id).where(Ticket.id == ticket.id).with_for_update()
     )
     db.session.refresh(ticket)
+
+
+def begin_ticket_operation(
+    ticket: Ticket,
+    actor: User,
+    *,
+    expire: Sequence[str] = (),
+) -> None:
+    """Prepara una operación que modifica el ticket o lo que cuelga de él.
+
+    Comprueba que el actor esté activo, bloquea la fila del ticket
+    (`lock_ticket`) y rechaza un ticket cerrado con `TicketClosedError`
+    (antes debe reabrirse). Después descarta de la sesión las relaciones
+    indicadas en `expire` (técnicos, solicitantes...): pudieron cambiar
+    mientras esta operación esperaba el bloqueo y hay que volver a leerlas.
+
+    Es el principio común de las operaciones que validan contra el estado
+    real del ticket (asignación, solicitantes...).
+    """
+    if not actor.is_active:
+        raise TicketRuleError("El usuario no está activo.")
+
+    lock_ticket(ticket)
+
+    state = db.session.get(Estado, ticket.estado_id)
+
+    if state.codigo == CLOSED_STATE_CODE:
+        raise TicketClosedError(
+            "Un ticket cerrado no se puede modificar. Primero debe reabrirse."
+        )
+
+    if expire:
+        db.session.expire(ticket, list(expire))

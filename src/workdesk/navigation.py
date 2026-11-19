@@ -56,6 +56,8 @@ TICKET_SCREENS = (
     "tickets.change_ticket_state",
     "tickets.assignment_page",
     "tickets.escalate",
+    "tickets.requesters_page",
+    "tickets.remove_ticket_requester",
 )
 
 MAIN_NAVIGATION = (

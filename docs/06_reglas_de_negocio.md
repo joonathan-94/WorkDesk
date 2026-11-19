@@ -1494,6 +1494,26 @@ El Solicitante ve en el resumen **«Atendido por»** con los nombres de los téc
 
 ---
 
+## RN-158 — Solicitantes de un ticket tras crearlo
+
+Aplica y precisa RN-10 a RN-13 y RF-014 en la implementación de `v0.4.0` (entrega 6). Al crear el ticket se asocian los solicitantes iniciales (RN-153); aquí se describe cómo cambian después.
+
+**Quién.** El personal (Técnico, Supervisor y Administrador) agrega y retira solicitantes desde la pantalla **Solicitantes** (`/tickets/<n>/requesters`), a la que llega con el enlace «Gestionar» del resumen del ticket. Es la misma regla que elegirlos al crear (RN-10): el Solicitante no decide quiénes más figuran en un ticket, ni siquiera en el suyo. Se comprueba en backend: quien puede ver el ticket pero no gestionarlo recibe un **403**; quien no puede verlo, el mismo **404** que un ticket inexistente (RN-153).
+
+**Quién puede ser solicitante.** Un usuario **activo con rol Solicitante** que todavía no sea solicitante vigente del ticket. Quien creó el ticket puede agregarse como cualquier otro (por ejemplo, para volver a asociar a alguien que se retiró).
+
+**Retirar.** Es una pantalla de confirmación con un motivo opcional (hasta 500 caracteres), no un clic suelto, porque retirar a alguien le **quita el acceso** al ticket (RN-153), salvo que además lo haya creado: el creador original no cambia nunca (RN-13) y sigue viéndolo en «Mis tickets». La participación no se elimina: se cierra con la fecha y quién la retiró, y la persona puede volver a agregarse más adelante con una participación nueva. Un ticket puede quedarse sin solicitantes (RN-12).
+
+**Quien se agrega ve el ticket completo.** Pasa a ver el ticket y todo su historial público, también lo anterior a su incorporación: la visibilidad depende de ser solicitante vigente, no de cuándo se agregó.
+
+**Ticket cerrado.** No se agregan ni se retiran solicitantes: primero debe reabrirse.
+
+**Concurrencia y versión.** Cada operación bloquea la fila del ticket antes de validar: dos altas simultáneas de la misma persona producen una sola participación vigente (el índice único parcial es el respaldo) y dos retiros simultáneos, uno solo. Agregar y retirar solicitantes **no sube la versión** del ticket ni cuenta como una modificación (no cambia «Actualizado»): no toca ninguno de los datos que se editan, así que quien abrió la edición antes del cambio puede guardar sin conflicto.
+
+**Historial y visibilidad.** `SOLICITANTE_AGREGADO` y `SOLICITANTE_RETIRADO` son **eventos internos**: solo el personal los ve (con el motivo del retiro, si lo hubo). El Solicitante no ve quiénes más figuran en el ticket ni estos cambios (docs/11, UI-005). El motivo del retiro se guarda en el historial; la tabla `tickets_solicitantes` no tiene una columna para él.
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia
