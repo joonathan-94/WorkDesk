@@ -1534,6 +1534,64 @@ def test_a_hand_made_unassignment_follows_the_refresh_in_order(app, seeded):
         assert first.fecha_desasignacion >= first.fecha_asignacion
 
 
+def test_an_assignment_closed_by_a_hand_made_escalation_follows_the_refresh(
+    app,
+    seeded,
+):
+    # El escalamiento cierra la asignación del seed y crea otra en la misma
+    # transacción que su evento, que no lleva `asignacion_id`. Al refrescar, la
+    # asignación del seed se mueve a la nueva fecha: su cierre debe moverse con
+    # el evento y nunca quedar antes (restricción de la base de datos).
+    from src.workdesk.tickets.assignment import escalate_ticket
+
+    with app.app_context():
+        ticket = by_clave("disco-lleno-servidor")
+        first = assignments_of(ticket)[0]
+        escalate_ticket(
+            ticket,
+            actor=user("camila.rojas"),
+            expected_version=ticket.version,
+            group_id=None,
+            technician_id=user("diego.soto").id,
+            reason="A mano",
+        )
+        db.session.commit()
+
+        # Se simula que ocurrió una hora después de la asignación del seed (el
+        # servicio sella la hora real).
+        moment = first.fecha_asignacion + timedelta(hours=1)
+        escalation = events_of(ticket, TicketEvent.TICKET_ESCALADO)[0]
+        second = next(a for a in assignments_of(ticket) if a.id != first.id)
+
+        db.session.execute(
+            update(TicketHistory.__table__)
+            .where(TicketHistory.__table__.c.id == escalation.id)
+            .values(fecha_hora=moment)
+        )
+        db.session.execute(
+            update(TicketTechnician.__table__)
+            .where(TicketTechnician.__table__.c.id == first.id)
+            .values(fecha_desasignacion=moment)
+        )
+        db.session.execute(
+            update(TicketTechnician.__table__)
+            .where(TicketTechnician.__table__.c.id == second.id)
+            .values(fecha_asignacion=moment)
+        )
+        db.session.commit()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        db.session.refresh(first)
+        db.session.refresh(second)
+        db.session.refresh(escalation)
+
+        assert first.fecha_desasignacion >= first.fecha_asignacion
+        assert first.fecha_desasignacion == escalation.fecha_hora
+        assert second.fecha_asignacion == escalation.fecha_hora
+        assert second.fecha_desasignacion is None
+
+
 def test_refresh_keeps_the_group_and_the_assignments(app, seeded):
     with app.app_context():
         before = content_snapshot()
