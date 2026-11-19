@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from flask_wtf import FlaskForm
 
 from ..catalogs.service import (
     list_categories,
@@ -10,17 +11,23 @@ from ..catalogs.service import (
     list_wait_reasons,
 )
 from ..extensions import db
+from ..models import CommentType
+from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..security import (
     STAFF_ROLES,
     can_assign_self,
     can_change_priority,
     can_choose_requesters,
+    can_comment_publicly,
     can_create_ticket,
+    can_delete_comment,
+    can_edit_comment,
     can_edit_ticket,
     can_manage_assignments,
     can_manage_requesters,
     can_view_ticket,
+    can_write_internal_note,
     has_any_role,
 )
 from ..users.forms import ReasonForm
@@ -34,6 +41,13 @@ from .assignment import (
     set_group,
     unassign_technician,
 )
+from .comments import (
+    add_comment,
+    delete_comment,
+    edit_comment,
+    get_comment,
+    list_comments,
+)
 from .editing import (
     MAX_REASON_LENGTH,
     change_priority,
@@ -41,6 +55,8 @@ from .editing import (
     update_ticket,
 )
 from .forms import (
+    CommentEditForm,
+    CommentForm,
     EscalationForm,
     GroupChangeForm,
     PriorityChangeForm,
@@ -253,9 +269,29 @@ def new_ticket():
 @bp.get("/<public_id>")
 @login_required
 def detail(public_id: str):
-    ticket = _visible_ticket_or_404(public_id)
+    return _render_detail(_visible_ticket_or_404(public_id), CommentForm())
+
+
+def _render_detail(ticket, comment_form):
+    """Muestra el detalle del ticket. Lo comparten el GET del detalle y el
+    envío de un comentario que no pasa la validación (para mostrar los errores
+    sin perder lo escrito)."""
     is_staff = has_any_role(current_user, *STAFF_ROLES)
     is_closed = _is_closed(ticket)
+    now = datetime.now(UTC)
+
+    # Los comentarios salen de una consulta que ya filtra por tipo: la nota
+    # interna no llega nunca al Solicitante (docs/10, sección 57). Los
+    # permisos de editar y eliminar solo deciden qué enlaces se muestran;
+    # cada ruta vuelve a comprobarlos.
+    comments = [
+        {
+            "comment": comment,
+            "can_edit": can_edit_comment(current_user, comment, now=now),
+            "can_delete": can_delete_comment(current_user, comment, now=now),
+        }
+        for comment in list_comments(ticket, _actor())
+    ]
 
     # El motivo de un cambio de prioridad es una nota interna del equipo: el
     # Solicitante ve qué cambió, pero no por qué (docs/06, RN-155).
@@ -292,6 +328,13 @@ def detail(public_id: str):
         my_assignment=_my_assignment(ticket),
         show_assignment=can_manage_assignments(current_user) and not is_closed,
         show_requesters=can_manage_requesters(current_user) and not is_closed,
+        # Comentarios: el formulario se ofrece mientras el ticket esté abierto y
+        # el selector de nota interna solo al personal.
+        comments=comments,
+        comment_form=comment_form,
+        show_composer=can_comment_publicly(current_user, ticket) and not is_closed,
+        can_write_note=can_write_internal_note(current_user),
+        max_comment=MAX_COMMENT_LENGTH,
     )
 
 
@@ -901,7 +944,170 @@ def remove_ticket_requester(public_id: str, participation_id: int):
     )
 
 
+# --- Comentarios y notas internas -------------------------------------
+
+
+@bp.post("/<public_id>/comments")
+@login_required
+def add_ticket_comment(public_id: str):
+    """Publica un comentario o una nota interna (formulario del detalle)."""
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_comment_publicly(current_user, ticket):
+        abort(403)
+
+    form = CommentForm()
+
+    if not form.validate_on_submit():
+        # Se vuelve al detalle con los errores y lo que ya se había escrito.
+        return _render_detail(ticket, form)
+
+    kind = CommentType(form.tipo.data)
+
+    # Una nota interna es solo del personal: enviar el tipo a mano no basta.
+    if kind is CommentType.INTERNO and not can_write_internal_note(current_user):
+        abort(403)
+
+    try:
+        comment = add_comment(
+            ticket,
+            actor=_actor(),
+            content=form.contenido.data,
+            kind=kind,
+        )
+        db.session.commit()
+    except TicketRuleError as error:
+        # Incluye el ticket cerrado (`TicketClosedError`).
+        db.session.rollback()
+        flash(str(error), "error")
+
+        return redirect(url_for("tickets.detail", public_id=public_id))
+
+    flash(
+        "Nota interna registrada."
+        if kind is CommentType.INTERNO
+        else "Comentario publicado.",
+        "success",
+    )
+
+    return redirect(
+        url_for(
+            "tickets.detail",
+            public_id=public_id,
+            _anchor=f"comentario-{comment.id}",
+        )
+    )
+
+
+@bp.route("/<public_id>/comments/<int:comment_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_ticket_comment(public_id: str, comment_id: int):
+    ticket = _visible_ticket_or_404(public_id)
+    comment = _visible_comment_or_404(ticket, comment_id)
+
+    # Quien ve el comentario pero no puede editarlo (no es suyo, o venció el
+    # plazo) recibe un 403.
+    if not can_edit_comment(current_user, comment):
+        abort(403)
+
+    if _is_closed(ticket):
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
+
+    initial = {"contenido": comment.contenido} if request.method == "GET" else {}
+    form = CommentEditForm(**initial)
+
+    if form.validate_on_submit():
+        try:
+            changed = edit_comment(
+                ticket,
+                comment_id,
+                actor=_actor(),
+                content=form.contenido.data,
+            )
+            db.session.commit()
+        except TicketRuleError as error:
+            db.session.rollback()
+            flash(str(error), "error")
+
+            return redirect(url_for("tickets.detail", public_id=public_id))
+
+        flash(
+            "Comentario actualizado."
+            if changed
+            else "No había cambios que guardar.",
+            "success" if changed else "warning",
+        )
+
+        return redirect(
+            url_for(
+                "tickets.detail",
+                public_id=public_id,
+                _anchor=f"comentario-{comment_id}",
+            )
+        )
+
+    return render_template(
+        "tickets/comment_edit.html",
+        ticket=ticket,
+        comment=comment,
+        form=form,
+        max_comment=MAX_COMMENT_LENGTH,
+    )
+
+
+@bp.route("/<public_id>/comments/<int:comment_id>/delete", methods=["GET", "POST"])
+@login_required
+def delete_ticket_comment(public_id: str, comment_id: int):
+    """Confirmación para eliminar un comentario o nota (eliminación lógica)."""
+    ticket = _visible_ticket_or_404(public_id)
+    comment = _visible_comment_or_404(ticket, comment_id)
+
+    if not can_delete_comment(current_user, comment):
+        abort(403)
+
+    if _is_closed(ticket):
+        return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
+
+    form = FlaskForm()
+
+    if form.validate_on_submit():
+        was_note = comment.es_nota_interna
+
+        try:
+            delete_comment(ticket, comment_id, actor=_actor())
+            db.session.commit()
+        except TicketRuleError as error:
+            db.session.rollback()
+            flash(str(error), "error")
+        else:
+            flash(
+                "Nota interna eliminada." if was_note else "Comentario eliminado.",
+                "success",
+            )
+
+        return redirect(url_for("tickets.detail", public_id=public_id))
+
+    return render_template(
+        "tickets/comment_delete.html",
+        ticket=ticket,
+        comment=comment,
+        form=form,
+    )
+
+
 # --- Utilidades -------------------------------------------------------
+
+
+def _visible_comment_or_404(ticket, comment_id: int):
+    """Comentario del ticket que el usuario puede ver; 404 en cualquier otro
+    caso (no existe, es de otro ticket, está eliminado o es una nota interna
+    y el usuario es un Solicitante)."""
+    comment = get_comment(ticket, comment_id, _actor())
+
+    if comment is None:
+        abort(404)
+
+    return comment
 
 
 def _choice_arg(name: str, options) -> int | None:

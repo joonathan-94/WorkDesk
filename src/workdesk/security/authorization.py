@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from functools import wraps
 
@@ -136,6 +137,80 @@ def can_view_internal_activity(user) -> bool:
     5): ni en el detalle, ni en el historial, ni en los conteos.
     """
     return has_any_role(user, *STAFF_ROLES)
+
+
+# Tipo de comentario que solo ve el personal (`CommentType.INTERNO`). Se repite
+# aquí para que este módulo no dependa de los modelos; un test comprueba que
+# coincide con el del modelo.
+INTERNAL_COMMENT_TYPE = "INTERNO"
+
+
+def can_comment_publicly(user, ticket) -> bool:
+    """Escribir un comentario público (docs/03, sección 5): el personal en
+    cualquier ticket y el Solicitante solo en los suyos, es decir, quien puede
+    ver el ticket. Que el ticket esté cerrado es una regla del ticket y la
+    aplica el servicio.
+    """
+    return can_view_ticket(user, ticket)
+
+
+def can_write_internal_note(user) -> bool:
+    """Escribir una nota interna: solo el personal. El Solicitante nunca,
+    ni en sus propios tickets."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_view_comment(user, comment) -> bool:
+    """Ver un comentario del ticket: el personal ve todos; el Solicitante, solo
+    los públicos. Como `can_view_ticket`, no comprueba el acceso al ticket:
+    quien llama debe haberlo comprobado antes. `visible_comments_condition`
+    (`tickets/comments.py`) es su equivalente en SQL y deben coincidir.
+    """
+    if can_view_internal_activity(user):
+        return True
+
+    return (
+        has_any_role(user, RoleCode.SOLICITANTE)
+        and comment.tipo != INTERNAL_COMMENT_TYPE
+    )
+
+
+def can_edit_comment(user, comment, *, now=None, window_minutes=None) -> bool:
+    """Editar un comentario o nota (docs/09, 17.1).
+
+    - El Supervisor y el Administrador pueden editar cualquier comentario que
+      puedan ver, también los de otras personas y fuera de plazo.
+    - Cualquier otra persona solo edita los suyos, dentro de
+      `COMMENT_EDIT_WINDOW_MINUTES` desde que los publicó (30 por defecto).
+
+    `now` y `window_minutes` permiten comprobarlo sin reloj ni configuración.
+    """
+    if not can_view_comment(user, comment):
+        return False
+
+    if has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR):
+        return True
+
+    if comment.autor_usuario_id != user.id:
+        return False
+
+    if window_minutes is None:
+        window_minutes = current_app.config["COMMENT_EDIT_WINDOW_MINUTES"]
+
+    now = datetime.now(UTC) if now is None else now
+
+    return now - comment.fecha_creacion <= timedelta(minutes=window_minutes)
+
+
+def can_delete_comment(user, comment, *, now=None, window_minutes=None) -> bool:
+    """Eliminar (lógicamente) un comentario o nota. Hoy sigue la misma regla
+    que editarlo; se separa porque los documentos los nombran aparte."""
+    return can_edit_comment(
+        user,
+        comment,
+        now=now,
+        window_minutes=window_minutes,
+    )
 
 
 def can_access_groups(user) -> bool:

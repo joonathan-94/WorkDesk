@@ -47,6 +47,13 @@ class Config:
         os.getenv("SESSION_MAX_HOURS", "8")
     )
 
+    # Minutos durante los que el autor de un comentario puede editarlo o
+    # eliminarlo (docs/09, 17.1). Pasará a la tabla `configuracion` cuando
+    # exista la administración (`v0.7.0`).
+    COMMENT_EDIT_WINDOW_MINUTES = int(
+        os.getenv("COMMENT_EDIT_WINDOW_MINUTES", "30")
+    )
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = get_bool_env(

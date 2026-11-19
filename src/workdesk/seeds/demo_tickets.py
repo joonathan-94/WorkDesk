@@ -11,8 +11,9 @@ Cómo trabaja:
   ubicación, y lo informa.
 - Crea y ajusta los tickets con los servicios reales (`create_ticket`,
   `update_ticket`, `change_priority`, `set_group`, `assign_technician`,
-  `add_requester`, `remove_requester` y `change_state`), así que valida,
-  versiona y deja el historial exactamente igual que la aplicación.
+  `add_requester`, `remove_requester`, `add_comment` y `change_state`), así
+  que valida, versiona y deja el historial exactamente igual que la
+  aplicación.
 - Hace un único `commit` al final: o se carga todo o no se carga nada.
 
 Identidad. Cada ticket de la lista tiene una `clave` estable. Al crearlo, los
@@ -55,6 +56,8 @@ from ..extensions import db
 from ..formatting import app_zone
 from ..models import (
     Categoria,
+    Comment,
+    CommentType,
     Estado,
     Grupo,
     MotivoEspera,
@@ -70,8 +73,10 @@ from ..models import (
     User,
 )
 from ..models.categoria import FALLBACK_CATEGORY_CODE
+from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..tickets.assignment import assign_technician, set_group
+from ..tickets.comments import add_comment
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
 from ..tickets.requesters import add_requester, remove_requester
@@ -259,8 +264,38 @@ def _check_people(problems, label, ticket, roles) -> None:
             problems.append(f"{label}: «{username}» no es un Solicitante demo.")
 
 
+# Campos que solo cambia el personal. Un paso con alguno de ellos no puede
+# tener a un Solicitante como actor.
+_STAFF_ONLY_FIELDS = (
+    "titulo",
+    "descripcion",
+    "categoria",
+    "prioridad",
+    "estado",
+    "grupo",
+    "asignar",
+    "agregar_solicitante",
+    "retirar_solicitante",
+    "nota_interna",
+)
+
+
+def _is_requester_comment(adjustment, roles) -> bool:
+    """Un paso que es únicamente el comentario público de un Solicitante."""
+    return (
+        roles.get(adjustment.actor) == SOLICITANTE
+        and adjustment.comentario is not None
+        and all(getattr(adjustment, name) is None for name in _STAFF_ONLY_FIELDS)
+    )
+
+
 def _check_adjustment(problems, label, adjustment, roles) -> None:
-    if roles.get(adjustment.actor) not in STAFF_ROLES:
+    # Un Solicitante solo aparece comentando en su ticket (que sea el creador o
+    # un solicitante lo comprueba `_check_requester_steps`); todo lo demás lo
+    # hace el personal.
+    if roles.get(adjustment.actor) not in STAFF_ROLES and not _is_requester_comment(
+        adjustment, roles
+    ):
         problems.append(
             f"{label}: «{adjustment.actor}» no es personal (Técnico o Supervisor) demo."
         )
@@ -278,9 +313,20 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
         adjustment.asignar,
         adjustment.agregar_solicitante,
         adjustment.retirar_solicitante,
+        adjustment.comentario,
+        adjustment.nota_interna,
     )
     if all(change is None for change in changes):
         problems.append(f"{label}: no cambia nada.")
+
+    for name, text_label in (
+        ("comentario", "comentario"),
+        ("nota_interna", "nota interna"),
+    ):
+        value = getattr(adjustment, name)
+
+        if value is not None:
+            _check_text(problems, label, text_label, value, MAX_COMMENT_LENGTH)
 
     if adjustment.titulo is not None:
         _check_text(problems, label, "título", adjustment.titulo, MAX_TITLE_LENGTH)
@@ -378,6 +424,17 @@ def _check_requester_steps(problems, label, ticket, roles) -> None:
                 problems.append(f"{where}: «{added}» ya es solicitante en ese momento.")
             else:
                 current.add(added)
+
+        # Un Solicitante solo comenta en un ticket suyo.
+        if (
+            _is_requester_comment(adjustment, roles)
+            and adjustment.actor not in current
+            and adjustment.actor != ticket.creado_por
+        ):
+            problems.append(
+                f"{where}: «{adjustment.actor}» no es solicitante ni creó el "
+                "ticket, así que no puede comentarlo."
+            )
 
 
 # Transiciones tal como las carga `seed-catalogs`:
@@ -980,6 +1037,24 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
             actor=actor,
         )
 
+    # El comentario público y la nota interna (en ese orden) antes del cambio
+    # de estado, como lo haría quien responde y luego cambia el ticket.
+    if adjustment.comentario is not None:
+        add_comment(
+            ticket,
+            actor=actor,
+            content=adjustment.comentario,
+            kind=CommentType.PUBLICO,
+        )
+
+    if adjustment.nota_interna is not None:
+        add_comment(
+            ticket,
+            actor=actor,
+            content=adjustment.nota_interna,
+            kind=CommentType.INTERNO,
+        )
+
     if adjustment.estado is not None:
         reason = catalogs.wait_reason(adjustment.motivo_espera)
 
@@ -1053,6 +1128,15 @@ def _write_new_dates(
             elif row.tipo_evento == TicketEvent.SOLICITANTE_RETIRADO.value:
                 link_dates[link_id]["fecha_retiro"] = times[step]
 
+        # Un comentario o nota nace en el momento de su evento.
+        for context in contexts.values():
+            if context and "comentario_id" in context:
+                db.session.execute(
+                    update(Comment.__table__)
+                    .where(Comment.__table__.c.id == context["comentario_id"])
+                    .values(fecha_creacion=times[step])
+                )
+
         # La asignación nace en el momento de su evento.
         for context in contexts.values():
             if context and "asignacion_id" in context:
@@ -1097,6 +1181,8 @@ def _refresh(
     - La fecha de modificación acompaña al evento que la originó. Los
       solicitantes de la creación se asocian en la nueva fecha de creación y
       los que se agregaron o retiraron después siguen a sus eventos.
+    - Los comentarios y notas siguen a sus eventos (publicación, edición y
+      eliminación).
 
     No toca el contenido del ticket ni crea ningún evento.
     """
@@ -1259,3 +1345,50 @@ def _refresh(
             .where(requesters.c.id == link.id)
             .values(fecha_asociacion=associated, fecha_retiro=retired)
         )
+
+    # Los comentarios y notas siguen a sus eventos (los del seed y los hechos a
+    # mano): la fecha de publicación, la de la última edición y la de la
+    # eliminación. Lo que no tiene evento (por ejemplo, una edición que no
+    # existe) se conserva.
+    published_at: dict[int, datetime] = {}
+    edited_at: dict[int, datetime] = {}
+    deleted_at: dict[int, datetime] = {}
+
+    for event in events:
+        comment_id = (event.contexto or {}).get("comentario_id")
+
+        if comment_id is None:
+            continue
+
+        if event.tipo_evento == TicketEvent.COMENTARIO_AGREGADO.value:
+            published_at[comment_id] = new_time[event.id]
+        elif event.tipo_evento == TicketEvent.COMENTARIO_EDITADO.value:
+            edited_at[comment_id] = new_time[event.id]
+        elif event.tipo_evento == TicketEvent.COMENTARIO_ELIMINADO.value:
+            deleted_at[comment_id] = new_time[event.id]
+
+    comments = Comment.__table__
+    stored_comments = db.session.execute(
+        db.select(
+            comments.c.id,
+            comments.c.fecha_modificacion,
+            comments.c.fecha_eliminacion,
+        ).where(comments.c.ticket_id == ticket.id)
+    ).all()
+
+    for row in stored_comments:
+        values = {}
+
+        if row.id in published_at:
+            values["fecha_creacion"] = published_at[row.id]
+
+        if row.fecha_modificacion is not None and row.id in edited_at:
+            values["fecha_modificacion"] = edited_at[row.id]
+
+        if row.fecha_eliminacion is not None and row.id in deleted_at:
+            values["fecha_eliminacion"] = deleted_at[row.id]
+
+        if values:
+            db.session.execute(
+                update(comments).where(comments.c.id == row.id).values(**values)
+            )

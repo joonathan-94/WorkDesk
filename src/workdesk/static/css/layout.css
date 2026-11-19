@@ -549,6 +549,100 @@ a.hub-card:focus-visible {
     white-space: pre-wrap;
 }
 
+/* --- Comentarios y notas internas ------------------------------------ */
+
+.comment {
+    display: flex;
+    gap: 12px;
+
+    padding: 12px;
+
+    border: 1px solid var(--wd-border);
+    border-radius: var(--wd-radius);
+
+    background: var(--wd-surface);
+}
+
+/* Al llegar desde un aviso (ancla), se destaca el comentario. */
+.comment:target {
+    outline: 2px solid var(--wd-primary);
+    outline-offset: 2px;
+}
+
+.comment__avatar {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+
+    width: 36px;
+    height: 36px;
+
+    border: 1px solid var(--wd-border);
+    border-radius: 50%;
+
+    background: var(--wd-background);
+    color: var(--wd-text-secondary);
+
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.comment__body {
+    flex: 1 1 auto;
+
+    min-width: 0;
+}
+
+.comment__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+
+    margin-bottom: 4px;
+
+    color: var(--wd-text-secondary);
+
+    font-size: 0.8125rem;
+}
+
+.comment__author {
+    color: var(--wd-text-primary);
+
+    font-weight: 600;
+}
+
+.comment__actions {
+    display: flex;
+    gap: 12px;
+
+    margin-top: 8px;
+
+    font-size: 0.8125rem;
+}
+
+/* Nota interna: fondo y acento morados, nunca se muestra al Solicitante. */
+.comment--internal {
+    border-color: var(--wd-purple);
+    border-left-width: 3px;
+
+    background: var(--wd-purple-soft);
+}
+
+.comment--internal .comment__avatar {
+    border-color: var(--wd-purple);
+
+    color: var(--wd-purple);
+}
+
+.comment__note-label {
+    color: var(--wd-purple);
+
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
 /* --- Catálogos ------------------------------------------------------- */
 
 /* Muestra del color de una prioridad. Siempre va acompañada de texto. */

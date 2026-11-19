@@ -13,7 +13,7 @@ from .formatting import local_datetime
 from .groups import bp as groups_bp
 from .logging_config import configure_logging
 from .main import bp as main_bp
-from .navigation import layout_context
+from .navigation import layout_context, user_initials
 from .security import MAX_LENGTH, MIN_LENGTH_FLOOR, can_manage_users
 from .system import bp as system_bp
 from .tickets import bp as tickets_bp
@@ -31,6 +31,7 @@ def create_app(
 
     _validate_required_config(app)
     _validate_session_limits(app)
+    _validate_comment_edit_window(app)
     _validate_password_policy(app)
     configure_logging(app)
 
@@ -59,6 +60,8 @@ def create_app(
     app.register_blueprint(users_bp)
 
     app.add_template_filter(local_datetime, "local_datetime")
+    # Iniciales de una persona para el avatar de un comentario.
+    app.add_template_filter(user_initials, "initials")
 
     # Las plantillas consultan las políticas para decidir qué mostrar. Eso
     # es solo presentación: la autorización real se aplica en las rutas.
@@ -97,6 +100,14 @@ def _validate_password_policy(app: Flask) -> None:
         raise RuntimeError(
             "PASSWORD_MIN_LENGTH debe estar entre "
             f"{MIN_LENGTH_FLOOR} y {MAX_LENGTH}."
+        )
+
+
+def _validate_comment_edit_window(app: Flask) -> None:
+    # Con 0 o menos nadie podría corregir un comentario recién escrito.
+    if app.config["COMMENT_EDIT_WINDOW_MINUTES"] <= 0:
+        raise RuntimeError(
+            "COMMENT_EDIT_WINDOW_MINUTES debe ser un entero mayor que cero."
         )
 
 

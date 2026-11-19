@@ -42,6 +42,9 @@ class TicketEvent(StrEnum):
     TICKET_ESCALADO = "TICKET_ESCALADO"
     SOLICITANTE_AGREGADO = "SOLICITANTE_AGREGADO"
     SOLICITANTE_RETIRADO = "SOLICITANTE_RETIRADO"
+    COMENTARIO_AGREGADO = "COMENTARIO_AGREGADO"
+    COMENTARIO_EDITADO = "COMENTARIO_EDITADO"
+    COMENTARIO_ELIMINADO = "COMENTARIO_ELIMINADO"
 
 
 class HistoryVisibility(StrEnum):
@@ -81,6 +84,12 @@ DEFAULT_EVENT_VISIBILITY = {
     # solicitante es solo del personal.
     TicketEvent.SOLICITANTE_AGREGADO: HistoryVisibility.INTERNO,
     TicketEvent.SOLICITANTE_RETIRADO: HistoryVisibility.INTERNO,
+    # La visibilidad de un evento de comentario depende del tipo del
+    # comentario (una nota interna nunca llega al Solicitante), así que quien
+    # lo registra la indica siempre; el valor por defecto es el seguro.
+    TicketEvent.COMENTARIO_AGREGADO: HistoryVisibility.INTERNO,
+    TicketEvent.COMENTARIO_EDITADO: HistoryVisibility.INTERNO,
+    TicketEvent.COMENTARIO_ELIMINADO: HistoryVisibility.INTERNO,
 }
 
 
@@ -96,6 +105,9 @@ TICKET_EVENT_LABELS = {
     TicketEvent.TICKET_ESCALADO: "Ticket escalado",
     TicketEvent.SOLICITANTE_AGREGADO: "Solicitante agregado",
     TicketEvent.SOLICITANTE_RETIRADO: "Solicitante retirado",
+    TicketEvent.COMENTARIO_AGREGADO: "Comentario agregado",
+    TicketEvent.COMENTARIO_EDITADO: "Comentario editado",
+    TicketEvent.COMENTARIO_ELIMINADO: "Comentario eliminado",
 }
 
 

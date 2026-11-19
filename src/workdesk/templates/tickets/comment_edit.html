@@ -1,0 +1,72 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% block title %}Editar {{ 'nota interna' if comment.es_nota_interna else 'comentario' }} del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Editar ' ~ ('nota interna' if comment.es_nota_interna else 'comentario'), None),
+    ]) }}
+
+    {{ page_header(
+        'Editar ' ~ ('nota interna' if comment.es_nota_interna else 'comentario'),
+        '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo,
+    ) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.edit_ticket_comment', public_id=ticket.public_id, comment_id=comment.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {% if comment.es_nota_interna %}
+                <p class="small text-secondary">
+                    Es una nota interna: solo la ve el personal de soporte. El
+                    tipo no se puede cambiar una vez publicada.
+                </p>
+            {% else %}
+                <p class="small text-secondary">
+                    Es un comentario público: lo ve también el solicitante. El
+                    tipo no se puede cambiar una vez publicado.
+                </p>
+            {% endif %}
+
+            {{ textarea_field(
+                form.contenido,
+                required=True,
+                maxlength=max_comment,
+                rows=6,
+                counter=True,
+                hint="El texto anterior queda en el historial del ticket.",
+            ) }}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.detail', public_id=ticket.public_id, _anchor='comentario-' ~ comment.id) }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

@@ -1514,6 +1514,38 @@ Aplica y precisa RN-10 a RN-13 y RF-014 en la implementación de `v0.4.0` (entre
 
 ---
 
+## RN-159 — Comentarios públicos y notas internas
+
+Aplica y precisa RN-78 a RN-80, RF-066 a RF-071 y CU-025 y CU-026 en la implementación de `v0.4.0` (entrega 7). Una única entidad (`comentarios`) representa los dos tipos.
+
+**Quién escribe.**
+
+* **Comentario público:** el personal (Técnico, Supervisor y Administrador) en cualquier ticket y el Solicitante en los suyos, es decir, el creador y los solicitantes vigentes (RN-153). Quien fue retirado como solicitante ya no ve el ticket y por tanto no comenta.
+* **Nota interna:** solo el personal. El Solicitante nunca puede escribirla, ni siquiera en un ticket propio ni enviando el formulario a mano: se comprueba en backend y responde **403**.
+* Un ticket **cerrado** no admite comentarios nuevos: primero debe reabrirse. Un ticket `Resuelto` sigue abierto y sí los admite.
+
+**Quién ve.** El personal ve todos los comentarios. El Solicitante ve **solo los públicos**: una nota interna no llega nunca a su pantalla, ni a su historial, ni en un conteo, y sus rutas responden **404** (como si no existiera). El filtro por tipo está en la propia consulta, nunca en la plantilla ni en JavaScript (docs/10, sección 57), y un test comprueba que la política `can_view_comment` y la condición SQL coinciden para todos los roles.
+
+**Tipo inmutable.** El tipo se fija al crear. Editar nunca lo cambia: pasar un comentario de público a interno (o al revés) alteraría retroactivamente quién lo ve.
+
+**Editar y eliminar.**
+
+* El **autor** edita o elimina el suyo durante `COMMENT_EDIT_WINDOW_MINUTES` desde que lo publicó (30 por defecto, variable de entorno que pasará a la configuración administrable en `v0.7.0`; debe ser mayor que cero).
+* El **Supervisor** y el **Administrador** editan o eliminan cualquier comentario que puedan ver, también los de otras personas y fuera de plazo (docs/09, 17.1).
+* Un Técnico no edita lo de otra persona y un Solicitante tampoco (ni siquiera el comentario del personal en su ticket). Quien ve el comentario pero no puede editarlo recibe un **403**.
+* La **eliminación es lógica**: el comentario se conserva con quién y cuándo lo eliminó y deja de mostrarse a todas las personas. Hoy sigue la misma regla que editar, por decisión de esta entrega: los documentos no distinguen quién elimina.
+* La edición y la eliminación se piden en pantallas separadas (editar con el texto actual; eliminar con una confirmación), como el resto de acciones.
+
+**Límites.** El contenido es obligatorio y admite hasta 5000 caracteres (los saltos de línea cuentan una vez, como el contador). Se muestra siempre como texto: el HTML se escapa y los saltos de línea se conservan.
+
+**Historial y visibilidad.** Cada acción registra un evento con el identificador del comentario y su tipo: `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO` (con el contenido anterior y el nuevo) y `COMENTARIO_ELIMINADO` (con el contenido y el tipo anteriores). La visibilidad del evento sigue la del comentario: los de una nota interna son internos y los de un comentario público, públicos. **El historial nunca muestra el texto**, solo indica qué ocurrió y de qué tipo; el texto anterior queda guardado para auditoría y no sale en pantalla.
+
+**Versión y concurrencia.** Comentar, editar y eliminar **no suben la versión** del ticket ni cambian «Actualizado»: no tocan ninguno de sus datos. Aun así cada operación bloquea la fila del ticket antes de validar y rechaza un ticket cerrado; dos ediciones simultáneas del mismo comentario se aplican una tras otra (el contenido anterior del segundo evento es el nuevo del primero) y dos eliminaciones, una sola.
+
+**Fuera de esta entrega:** las notificaciones a los técnicos cuando comenta el Solicitante (RF-068, `v0.5.0`) y los adjuntos de una nota interna, que heredarán su visibilidad (entrega 8).
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

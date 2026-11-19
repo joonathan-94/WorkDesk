@@ -3,6 +3,8 @@ from wtforms import Field, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 from ..catalogs.forms import OptionalIntegerField
+from ..models import CommentType
+from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from .editing import MAX_REASON_LENGTH
 from .lifecycle import MAX_WAIT_TEXT_LENGTH
@@ -268,6 +270,38 @@ class TechnicianPickForm(FlaskForm):
             self.choices,
             "Elige un técnico de la lista.",
         )
+
+
+class CommentEditForm(FlaskForm):
+    """Contenido de un comentario o nota (edición). El tipo no se puede
+    cambiar una vez publicado."""
+
+    contenido = TextAreaField(
+        "Comentario",
+        filters=[_normalize_text],
+        validators=[
+            DataRequired(message="Escribe el comentario."),
+            Length(
+                max=MAX_COMMENT_LENGTH,
+                message=f"Máximo {MAX_COMMENT_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+
+class CommentForm(CommentEditForm):
+    """Comentario público o nota interna nueva, desde el detalle del ticket.
+
+    El Solicitante no ve el selector de tipo y envía siempre `PUBLICO`. Que
+    quien pida una nota interna pueda escribirla no lo decide el formulario
+    sino la ruta (`can_write_internal_note`): enviar `INTERNO` a mano no sirve.
+    """
+
+    tipo = StringField("Tipo", default=CommentType.PUBLICO.value)
+
+    def validate_tipo(self, field):
+        if field.data not in {kind.value for kind in CommentType}:
+            raise ValidationError("Elige el tipo de comentario.")
 
 
 class RequesterPickForm(FlaskForm):

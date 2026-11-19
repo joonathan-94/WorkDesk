@@ -1,5 +1,6 @@
 {% extends "layouts/app.html" %}
 {% from "_ui_macros.html" import breadcrumb, state_badge, priority_badge %}
+{% from "_form_macros.html" import field_errors, textarea_field %}
 
 {% block title %}#{{ ticket.public_id }} {{ ticket.titulo }}{% endblock %}
 
@@ -136,6 +137,176 @@
                     </h2>
 
                     <p class="ticket-text">{{ ticket.descripcion }}</p>
+                </div>
+            </section>
+
+            {# Comentarios públicos y notas internas. La lista llega ya filtrada
+               por la consulta (el Solicitante no recibe las notas internas);
+               aquí solo se muestra. #}
+            <section
+                class="card mb-4"
+                id="actividad"
+                aria-labelledby="activity-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="activity-title"
+                    >
+                        Actividad
+                        <span class="text-secondary fw-normal">({{ comments|length }})</span>
+                    </h2>
+
+                    {% if comments %}
+                        <ul class="list-unstyled d-flex flex-column gap-3 mb-4">
+                            {% for row in comments %}
+                                {% set comment = row.comment %}
+
+                                <li
+                                    class="comment{% if comment.es_nota_interna %} comment--internal{% endif %}"
+                                    id="comentario-{{ comment.id }}"
+                                >
+                                    <span
+                                        class="comment__avatar"
+                                        aria-hidden="true"
+                                    >
+                                        {{ comment.autor|initials }}
+                                    </span>
+
+                                    <div class="comment__body">
+                                        <div class="comment__meta">
+                                            <span class="comment__author">
+                                                {{ comment.autor.nombre }} {{ comment.autor.apellido }}
+                                            </span>
+                                            <span>
+                                                {{ comment.autor.rol.nombre }}
+                                                ·
+                                                {{ comment.fecha_creacion|local_datetime }}
+                                            </span>
+
+                                            {% if comment.editado %}
+                                                <span>(editado)</span>
+                                            {% endif %}
+
+                                            {% if comment.es_nota_interna %}
+                                                <span class="comment__note-label">
+                                                    <i
+                                                        class="bi bi-eye-slash me-1"
+                                                        aria-hidden="true"
+                                                    ></i>NOTA INTERNA
+                                                </span>
+                                                <span>Solo visible para soporte</span>
+                                            {% endif %}
+                                        </div>
+
+                                        <p class="ticket-text">{{ comment.contenido }}</p>
+
+                                        {# Solo presentación: las rutas comprueban si
+                                           se puede editar o eliminar (y el plazo). #}
+                                        {% if (row.can_edit or row.can_delete) and not is_closed %}
+                                            <div class="comment__actions">
+                                                {% if row.can_edit %}
+                                                    <a href="{{ url_for('tickets.edit_ticket_comment', public_id=ticket.public_id, comment_id=comment.id) }}">
+                                                        Editar
+                                                    </a>
+                                                {% endif %}
+
+                                                {% if row.can_delete %}
+                                                    <a
+                                                        class="text-danger"
+                                                        href="{{ url_for('tickets.delete_ticket_comment', public_id=ticket.public_id, comment_id=comment.id) }}"
+                                                    >
+                                                        Eliminar
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-secondary">Todavía no hay comentarios.</p>
+                    {% endif %}
+
+                    {% if show_composer %}
+                        <form
+                            method="post"
+                            action="{{ url_for('tickets.add_ticket_comment', public_id=ticket.public_id) }}"
+                            novalidate
+                        >
+                            {{ comment_form.csrf_token }}
+
+                            {# Solo el personal elige: el Solicitante escribe siempre
+                               un comentario público (la ruta lo comprueba). #}
+                            {% if can_write_note %}
+                                <fieldset class="mb-3">
+                                    <legend class="form-label fs-6">Tipo</legend>
+
+                                    <div class="form-check">
+                                        <input
+                                            class="form-check-input"
+                                            type="radio"
+                                            name="tipo"
+                                            id="tipo-publico"
+                                            value="PUBLICO"
+                                            {% if comment_form.tipo.data != 'INTERNO' %}checked{% endif %}
+                                        >
+                                        <label
+                                            class="form-check-label"
+                                            for="tipo-publico"
+                                        >
+                                            Comentario público
+                                            <span class="small text-secondary d-block">
+                                                Lo ve también el solicitante.
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input
+                                            class="form-check-input"
+                                            type="radio"
+                                            name="tipo"
+                                            id="tipo-interno"
+                                            value="INTERNO"
+                                            {% if comment_form.tipo.data == 'INTERNO' %}checked{% endif %}
+                                        >
+                                        <label
+                                            class="form-check-label"
+                                            for="tipo-interno"
+                                        >
+                                            Nota interna
+                                            <span class="small text-secondary d-block">
+                                                Solo visible para soporte.
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    {{ field_errors(comment_form.tipo) }}
+                                </fieldset>
+                            {% endif %}
+
+                            {{ textarea_field(
+                                comment_form.contenido,
+                                required=True,
+                                maxlength=max_comment,
+                                rows=4,
+                                counter=True,
+                            ) }}
+
+                            <button
+                                class="btn btn-primary"
+                                type="submit"
+                            >
+                                Publicar
+                            </button>
+                        </form>
+                    {% elif is_closed %}
+                        <p class="small text-secondary mb-0">
+                            Un ticket cerrado no admite comentarios nuevos.
+                        </p>
+                    {% endif %}
                 </div>
             </section>
 
@@ -310,4 +481,10 @@
             </section>
         </div>
     </div>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
 {% endblock %}

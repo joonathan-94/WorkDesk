@@ -1875,6 +1875,14 @@ Resumen simplificado:
 - **Historial:** `Solicitante agregado: «…»` y `Solicitante retirado: «…»` (con el motivo del retiro), solo para el personal: son eventos internos.
 - No se muestra ninguna de estas acciones en un ticket cerrado.
 
+**Comentarios y notas internas (`v0.4.0`, entrega 7)** — reglas en `docs/06` (RN-159):
+
+- **Tarjeta «Actividad (n)»** en el detalle, entre la descripción y el historial (las pestañas Actividad / Archivos / Historial del diseño llegarán junto con los adjuntos, para no reescribir el detalle dos veces). El número cuenta solo lo que el usuario puede ver. Cada comentario muestra un avatar con las iniciales, el nombre, el rol, la fecha, «(editado)» si corresponde y el texto (se conservan los saltos de línea y se escapa el HTML).
+- **Nota interna:** fondo morado muy suave, acento morado, el texto `NOTA INTERNA` con un icono y «Solo visible para soporte» (UI-21.1). Usa los tokens `--wd-purple` y `--wd-purple-soft` (nuevos en `app.css`). El Solicitante nunca la recibe.
+- **Formulario en línea** bajo la lista (los comentarios son *inline*, sección 4.2): el personal elige **Comentario público** (por defecto) o **Nota interna**, con su explicación; el Solicitante solo escribe comentarios públicos y no ve el selector. Texto obligatorio con contador de 5000 caracteres y botón **Publicar**. Si no pasa la validación se vuelve al detalle con los errores y lo escrito. En un ticket cerrado se sustituye por «Un ticket cerrado no admite comentarios nuevos.».
+- **Editar y eliminar:** enlaces bajo cada comentario, solo para quien puede (el autor dentro del plazo; Supervisor y Administrador siempre) y mientras el ticket esté abierto. **Editar** abre una pantalla con el texto actual (el tipo no cambia); **Eliminar** abre una confirmación con el texto y el aviso de que dejará de mostrarse a todas las personas.
+- **Historial:** `Comentario agregado`, `Comentario editado` y `Comentario eliminado`, con el tipo (`Comentario público` o `Nota interna`) y nunca el texto. Los de una nota interna solo los ve el personal.
+
 ---
 
 ## UI-005A — Resuelto pendiente de validación

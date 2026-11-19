@@ -9,6 +9,7 @@ from sqlalchemy import update
 from src.workdesk.extensions import db
 from src.workdesk.models import (
     Categoria,
+    Comment,
     Prioridad,
     Ticket,
     TicketEvent,
@@ -172,6 +173,16 @@ def final_requesters(demo) -> list[str]:
     return current
 
 
+def comments_of(ticket):
+    return list(
+        db.session.scalars(
+            db.select(Comment)
+            .where(Comment.ticket_id == ticket.id)
+            .order_by(Comment.id)
+        )
+    )
+
+
 def assignments_of(ticket):
     return list(
         db.session.scalars(
@@ -234,6 +245,10 @@ def date_snapshot():
                 (a.fecha_asignacion, a.fecha_desasignacion)
                 for a in assignments_of(ticket)
             ],
+            [
+                (c.fecha_creacion, c.fecha_modificacion, c.fecha_eliminacion)
+                for c in comments_of(ticket)
+            ],
         )
 
     return snapshot
@@ -266,6 +281,10 @@ def content_snapshot():
                 for link in requesters_of(ticket)
             ],
             [a.tecnico_id for a in assignments_of(ticket)],
+            [
+                (c.autor_usuario_id, c.tipo, c.contenido, c.activo, c.editado)
+                for c in comments_of(ticket)
+            ],
         )
 
     return snapshot
@@ -1913,3 +1932,238 @@ def test_a_hand_made_requester_change_follows_the_refresh(app, seeded):
         assert added.fecha_asociacion == hand_added.fecha_hora
         assert paula.fecha_retiro == hand_removed.fecha_hora
         assert paula.fecha_retiro >= paula.fecha_asociacion
+
+
+# --- Comentarios y notas internas ------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("adjustment", "message"),
+    [
+        # `excel-bloqueado` (el primero) lo crea Javiera, que es su solicitante.
+        (DemoAdjustment(actor="paula.contreras", despues_horas=1, comentario="Hola"),
+         "no es solicitante ni creó el ticket"),
+        (DemoAdjustment(actor="javiera.torres", despues_horas=1, comentario="Hola",
+                        titulo="Otro título"),
+         "no es personal"),
+        (DemoAdjustment(actor="javiera.torres", despues_horas=1, nota_interna="Secreto"),
+         "no es personal"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, comentario="x" * 5001),
+         "comentario supera los 5000"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, nota_interna="y" * 5001),
+         "nota interna supera los 5000"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, comentario=" con espacios "),
+         "comentario está vacío o tiene espacios"),
+    ],
+)
+def test_validation_rejects_inconsistent_comment_steps(adjustment, message):
+    ticket = replace(DEMO_TICKETS[0], ajustes=(adjustment,))
+
+    with pytest.raises(DemoTicketsError, match=message):
+        validate_demo_tickets((ticket,))
+
+
+def test_validation_accepts_the_creator_and_a_current_requester_commenting():
+    # Javiera crea `excel-bloqueado`; en el ticket comenta quien es solicitante
+    # en ese momento, aunque se haya agregado después.
+    creator = (
+        DemoAdjustment(actor="javiera.torres", despues_horas=1, comentario="Gracias"),
+    )
+    added = (
+        DemoAdjustment(actor="diego.soto", despues_horas=1, agregar_solicitante="andres.silva"),
+        DemoAdjustment(actor="andres.silva", despues_horas=1, comentario="A mí también me pasa"),
+    )
+
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=creator),))
+    validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=added),))
+
+    # Pero no después de retirarlo.
+    retired = added + (
+        DemoAdjustment(actor="diego.soto", despues_horas=1, retirar_solicitante="andres.silva"),
+        DemoAdjustment(actor="andres.silva", despues_horas=1, comentario="Sigo aquí"),
+    )
+
+    with pytest.raises(DemoTicketsError, match="no es solicitante ni creó el ticket"):
+        validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=retired),))
+
+
+def test_demo_data_covers_the_comment_cases():
+    steps = [step for demo in DEMO_TICKETS for step in demo.ajustes]
+
+    assert any(s.comentario and ROLES[s.actor] != "SOLICITANTE" for s in steps)
+    assert any(s.comentario and ROLES[s.actor] == "SOLICITANTE" for s in steps), (
+        "falta un comentario de un Solicitante"
+    )
+    assert any(s.nota_interna for s in steps), "falta una nota interna"
+    assert any(s.comentario and s.nota_interna for s in steps), "falta un paso con ambas"
+    assert any(s.comentario and s.estado for s in steps), (
+        "falta un comentario junto a un cambio de estado"
+    )
+    # Un ticket con más notas que comentarios públicos: el Solicitante ve poco.
+    assert any(
+        sum(1 for s in demo.ajustes if s.nota_interna)
+        > sum(1 for s in demo.ajustes if s.comentario)
+        for demo in DEMO_TICKETS
+    )
+
+
+def test_a_conversation_leaves_the_same_history_as_the_application(app, seeded):
+    with app.app_context():
+        ticket = by_clave("intranet-credenciales")
+        comments = comments_of(ticket)
+        events = history_of(ticket)
+        notes = [
+            e
+            for e in events
+            if e.tipo_evento == "COMENTARIO_AGREGADO" and e.visibilidad == "INTERNO"
+        ]
+
+        # Dentro de un paso, el comentario público va antes que la nota.
+        assert [(c.autor.username, c.tipo) for c in comments] == [
+            ("felipe.araya", "PUBLICO"),
+            ("sebastian.vargas", "PUBLICO"),
+            ("felipe.araya", "PUBLICO"),
+            ("felipe.araya", "INTERNO"),
+        ]
+        assert [e.tipo_evento for e in events].count("COMENTARIO_AGREGADO") == 4
+        assert len(notes) == 1
+        assert all(e.contexto["demo_clave"] == "intranet-credenciales" for e in events)
+        assert ticket.estado.codigo == "EN_PROGRESO"
+
+
+def test_comments_alone_do_not_modify_the_ticket(app, seeded):
+    with app.app_context():
+        ticket = by_clave("teclado-derrame-rrhh")
+
+        assert len(comments_of(ticket)) == 3
+        assert ticket.version == 1
+        assert ticket.fecha_modificacion is None
+        assert ticket.fecha_actualizacion == ticket.fecha_creacion
+
+
+def test_each_comment_carries_the_date_of_its_event(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            published = {
+                e.contexto["comentario_id"]: e.fecha_hora
+                for e in history_of(ticket)
+                if e.tipo_evento == "COMENTARIO_AGREGADO"
+            }
+
+            for comment in comments_of(ticket):
+                assert comment.fecha_creacion == published[comment.id], demo.clave
+                assert comment.fecha_creacion >= ticket.fecha_creacion
+
+
+def test_the_requester_sees_the_public_conversation_but_never_the_notes(app, seeded):
+    client = log_in(app, "sebastian.vargas")
+
+    with app.app_context():
+        public_id = by_clave("intranet-credenciales").public_id
+
+    html = client.get(f"/tickets/{public_id}").get_data(as_text=True)
+    plain = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+    assert "Actividad (3)" in plain
+    assert "Ya forzamos la sincronización" in plain
+    assert "¿Es por eso?" in plain
+    assert "sincroniza las credenciales" not in html
+    assert "NOTA INTERNA" not in html
+    assert "Solo visible para soporte" not in html
+
+
+def test_a_requester_sees_one_comment_where_staff_wrote_two_notes(app, seeded):
+    client = log_in(app, "ignacio.molina")
+
+    with app.app_context():
+        public_id = by_clave("switch-bodega-puertos").public_id
+
+    html = client.get(f"/tickets/{public_id}").get_data(as_text=True)
+    plain = " ".join(re.sub(r"<[^>]+>", " ", html).split())
+
+    assert "Actividad (1)" in plain
+    assert "cambiar unos cables en la bodega" in plain
+    assert "errores CRC" not in html
+    assert "NOTA INTERNA" not in html
+
+
+def test_staff_sees_the_notes_marked_as_internal(app, seeded):
+    client = log_in(app, "camila.rojas")
+
+    with app.app_context():
+        public_id = by_clave("switch-bodega-puertos").public_id
+
+    plain = page_text(client, public_id)
+
+    assert "Actividad (3)" in plain
+    assert "errores CRC en los puertos 3 y 4" in plain
+    assert plain.count("NOTA INTERNA") == 2
+    assert "Solo visible para soporte" in plain
+
+
+def test_comment_dates_follow_a_refresh(app, seeded):
+    with app.app_context():
+        first = date_snapshot()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert date_snapshot() != first
+
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            published = {
+                e.contexto["comentario_id"]: e.fecha_hora
+                for e in history_of(ticket)
+                if e.tipo_evento == "COMENTARIO_AGREGADO"
+            }
+
+            for comment in comments_of(ticket):
+                assert comment.fecha_creacion == published[comment.id], demo.clave
+
+
+def test_a_hand_made_edit_and_deletion_follow_the_refresh_in_order(app, seeded):
+    from src.workdesk.tickets.comments import delete_comment, edit_comment
+
+    later = NOW + timedelta(days=3)
+
+    with app.app_context():
+        ticket = by_clave("wifi-visitas-clave")
+        first, second, *_ = comments_of(ticket)
+        camila = user("camila.rojas")
+
+        # A mano: se corrige un comentario y se elimina otro.
+        edit_comment(ticket, first.id, actor=camila, content="Texto corregido a mano")
+        db.session.commit()
+        delete_comment(ticket, second.id, actor=camila)
+        db.session.commit()
+
+        seed_demo_tickets(now=later)
+
+        ticket = by_clave("wifi-visitas-clave")
+        events = history_of(ticket)
+        times = [e.fecha_hora for e in events]
+        edit = next(e for e in events if e.tipo_evento == "COMENTARIO_EDITADO")
+        deletion = next(e for e in events if e.tipo_evento == "COMENTARIO_ELIMINADO")
+
+        db.session.refresh(first)
+        db.session.refresh(second)
+
+        # Los eventos hechos a mano siguen en orden y no quedan en el futuro...
+        assert times == sorted(times)
+        assert max(times) <= later - timedelta(minutes=1)
+        # ...y el comentario los acompaña, sin perder lo que se escribió.
+        assert first.fecha_modificacion == edit.fecha_hora
+        assert second.fecha_eliminacion == deletion.fecha_hora
+        assert first.fecha_modificacion >= first.fecha_creacion
+        assert first.contenido == "Texto corregido a mano"
+        assert second.activo is False
+
+
+def test_refresh_keeps_the_comments(app, seeded):
+    with app.app_context():
+        before = content_snapshot()
+
+        seed_demo_tickets(now=NOW + timedelta(days=3))
+
+        assert content_snapshot() == before
