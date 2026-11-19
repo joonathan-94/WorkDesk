@@ -2,11 +2,13 @@ from .authorization import STAFF_ROLES as STAFF_ROLES
 from .authorization import RoleCode as RoleCode
 from .authorization import can_access_groups as can_access_groups
 from .authorization import can_assign_self as can_assign_self
+from .authorization import can_attach_files as can_attach_files
 from .authorization import can_change_priority as can_change_priority
 from .authorization import can_change_state as can_change_state
 from .authorization import can_choose_requesters as can_choose_requesters
 from .authorization import can_comment_publicly as can_comment_publicly
 from .authorization import can_create_ticket as can_create_ticket
+from .authorization import can_delete_attachment as can_delete_attachment
 from .authorization import can_delete_comment as can_delete_comment
 from .authorization import can_edit_comment as can_edit_comment
 from .authorization import can_edit_ticket as can_edit_ticket
@@ -15,6 +17,7 @@ from .authorization import can_manage_group_members as can_manage_group_members
 from .authorization import can_manage_groups as can_manage_groups
 from .authorization import can_manage_requesters as can_manage_requesters
 from .authorization import can_manage_users as can_manage_users
+from .authorization import can_view_attachment as can_view_attachment
 from .authorization import can_view_audit as can_view_audit
 from .authorization import can_view_comment as can_view_comment
 from .authorization import can_view_group as can_view_group

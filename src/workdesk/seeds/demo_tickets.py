@@ -49,12 +49,15 @@ se tocan nunca.
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from io import BytesIO
 
 from sqlalchemy import update
+from werkzeug.datastructures import FileStorage
 
 from ..extensions import db
 from ..formatting import app_zone
 from ..models import (
+    Attachment,
     Categoria,
     Comment,
     CommentType,
@@ -76,11 +79,13 @@ from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..tickets.assignment import assign_technician, set_group
+from ..tickets.attachments import add_attachments
 from ..tickets.comments import add_comment
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
 from ..tickets.requesters import add_requester, remove_requester
 from ..tickets.service import INITIAL_STATE_CODE, TicketRuleError, create_ticket
+from ..tickets.storage import ALLOWED_TYPES
 from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
 from .demo import DEMO_GROUPS, DEMO_USERS
 from .demo_tickets_data import (
@@ -315,9 +320,22 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
         adjustment.retirar_solicitante,
         adjustment.comentario,
         adjustment.nota_interna,
+        adjustment.adjunto,
     )
     if all(change is None for change in changes):
         problems.append(f"{label}: no cambia nada.")
+
+    if adjustment.adjunto is not None:
+        file_name, file_text = adjustment.adjunto
+        kind = ALLOWED_TYPES.get(file_name.rpartition(".")[2].lower(), (None, None))[1]
+
+        if kind != "text":
+            problems.append(
+                f"{label}: el adjunto «{file_name}» debe terminar en .txt, .log o .csv."
+            )
+
+        if not file_text.strip():
+            problems.append(f"{label}: el adjunto «{file_name}» está vacío.")
 
     for name, text_label in (
         ("comentario", "comentario"),
@@ -1039,8 +1057,10 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
 
     # El comentario público y la nota interna (en ese orden) antes del cambio
     # de estado, como lo haría quien responde y luego cambia el ticket.
+    public = note = None
+
     if adjustment.comentario is not None:
-        add_comment(
+        public = add_comment(
             ticket,
             actor=actor,
             content=adjustment.comentario,
@@ -1048,11 +1068,28 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
         )
 
     if adjustment.nota_interna is not None:
-        add_comment(
+        note = add_comment(
             ticket,
             actor=actor,
             content=adjustment.nota_interna,
             kind=CommentType.INTERNO,
+        )
+
+    # El archivo cuelga del comentario público del paso; si no hay, de la nota;
+    # y si tampoco, del ticket. Se guarda de verdad con el servicio.
+    if adjustment.adjunto is not None:
+        file_name, file_text = adjustment.adjunto
+
+        add_attachments(
+            ticket,
+            actor=actor,
+            uploads=[
+                FileStorage(
+                    stream=BytesIO(file_text.encode("utf-8")),
+                    filename=file_name,
+                )
+            ],
+            comment=public or note,
         )
 
     if adjustment.estado is not None:
@@ -1135,6 +1172,15 @@ def _write_new_dates(
                     update(Comment.__table__)
                     .where(Comment.__table__.c.id == context["comentario_id"])
                     .values(fecha_creacion=times[step])
+                )
+
+        # Un archivo adjunto, en el de su evento.
+        for context in contexts.values():
+            if context and "archivo_id" in context:
+                db.session.execute(
+                    update(Attachment.__table__)
+                    .where(Attachment.__table__.c.id == context["archivo_id"])
+                    .values(fecha_subida=times[step])
                 )
 
         # La asignación nace en el momento de su evento.
@@ -1391,4 +1437,41 @@ def _refresh(
         if values:
             db.session.execute(
                 update(comments).where(comments.c.id == row.id).values(**values)
+            )
+
+    # Los adjuntos siguen a sus eventos: la fecha de subida y, si se eliminó, la
+    # de eliminación.
+    uploaded_at: dict[int, datetime] = {}
+    removed_at: dict[int, datetime] = {}
+
+    for event in events:
+        file_id = (event.contexto or {}).get("archivo_id")
+
+        if file_id is None:
+            continue
+
+        if event.tipo_evento == TicketEvent.ARCHIVO_ADJUNTADO.value:
+            uploaded_at[file_id] = new_time[event.id]
+        elif event.tipo_evento == TicketEvent.ARCHIVO_ELIMINADO.value:
+            removed_at[file_id] = new_time[event.id]
+
+    files = Attachment.__table__
+    stored_files = db.session.execute(
+        db.select(files.c.id, files.c.fecha_eliminacion).where(
+            files.c.ticket_id == ticket.id
+        )
+    ).all()
+
+    for row in stored_files:
+        values = {}
+
+        if row.id in uploaded_at:
+            values["fecha_subida"] = uploaded_at[row.id]
+
+        if row.fecha_eliminacion is not None and row.id in removed_at:
+            values["fecha_eliminacion"] = removed_at[row.id]
+
+        if values:
+            db.session.execute(
+                update(files).where(files.c.id == row.id).values(**values)
             )

@@ -13,7 +13,7 @@ TEST_PASSWORD = "WorkDeskTest123!"
 
 
 @pytest.fixture()
-def app():
+def app(tmp_path):
     test_database_url = os.getenv("TEST_DATABASE_URL")
 
     if not test_database_url:
@@ -36,6 +36,9 @@ def app():
             "SQLALCHEMY_DATABASE_URI": test_database_url,
             "WTF_CSRF_ENABLED": False,
             "SESSION_COOKIE_SECURE": False,
+            # Los adjuntos de los tests van a un directorio temporal: nunca
+            # tocan `instance/uploads`.
+            "UPLOADS_DIR": str(tmp_path / "uploads"),
         }
     )
 

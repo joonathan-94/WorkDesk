@@ -54,6 +54,19 @@ class Config:
         os.getenv("COMMENT_EDIT_WINDOW_MINUTES", "30")
     )
 
+    # Adjuntos (docs/10, secciones 61 a 69). Pasarán a la tabla
+    # `configuracion` cuando exista la administración (`v0.7.0`).
+    # Tamaño máximo de cada archivo, en bytes (10 MB por defecto).
+    UPLOAD_MAX_BYTES = int(
+        os.getenv("UPLOAD_MAX_BYTES", str(10 * 1024 * 1024))
+    )
+    # Cantidad máxima de archivos activos por ticket.
+    UPLOAD_MAX_FILES_PER_TICKET = int(
+        os.getenv("UPLOAD_MAX_FILES_PER_TICKET", "20")
+    )
+    # Raíz del almacenamiento. Si no se define, `instance/uploads`.
+    UPLOADS_DIR = os.getenv("UPLOADS_DIR")
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = get_bool_env(

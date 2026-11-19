@@ -1883,6 +1883,14 @@ Resumen simplificado:
 - **Editar y eliminar:** enlaces bajo cada comentario, solo para quien puede (el autor dentro del plazo; Supervisor y Administrador siempre) y mientras el ticket esté abierto. **Editar** abre una pantalla con el texto actual (el tipo no cambia); **Eliminar** abre una confirmación con el texto y el aviso de que dejará de mostrarse a todas las personas.
 - **Historial:** `Comentario agregado`, `Comentario editado` y `Comentario eliminado`, con el tipo (`Comentario público` o `Nota interna`) y nunca el texto. Los de una nota interna solo los ve el personal.
 
+**Archivos adjuntos (`v0.4.0`, entrega 8)** — reglas en `docs/06` (RN-160):
+
+- **Tarjeta «Archivos (n)»** bajo «Actividad», con la lista de los archivos del ticket (clip, nombre como enlace de descarga, tamaño, quién y cuándo, y **Eliminar** si corresponde) y el formulario **Adjuntar archivos** (selector múltiple con los límites y las extensiones permitidas, y el botón **Subir**). Los archivos de un comentario o nota se muestran bajo él.
+- **Formulario de comentarios:** añade **Adjuntar archivos (opcional)**; los archivos heredan la visibilidad del comentario (los de una nota interna no los ve el Solicitante). Si un archivo no es válido no se guarda nada y se vuelve al detalle con el texto escrito.
+- **Eliminar** abre una confirmación aparte. En un ticket cerrado la tarjeta dice «Un ticket cerrado no admite archivos nuevos.» (se pueden seguir descargando).
+- **Historial:** `Archivo adjuntado` y `Archivo eliminado` con el nombre; los de un archivo de nota interna solo los ve el personal.
+- Las pestañas Actividad / Archivos / Historial del diseño siguen pendientes (hoy son tarjetas apiladas).
+
 ---
 
 ## UI-005A — Resuelto pendiente de validación

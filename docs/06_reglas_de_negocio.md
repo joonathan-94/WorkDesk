@@ -1542,7 +1542,31 @@ Aplica y precisa RN-78 a RN-80, RF-066 a RF-071 y CU-025 y CU-026 en la implemen
 
 **Versión y concurrencia.** Comentar, editar y eliminar **no suben la versión** del ticket ni cambian «Actualizado»: no tocan ninguno de sus datos. Aun así cada operación bloquea la fila del ticket antes de validar y rechaza un ticket cerrado; dos ediciones simultáneas del mismo comentario se aplican una tras otra (el contenido anterior del segundo evento es el nuevo del primero) y dos eliminaciones, una sola.
 
-**Fuera de esta entrega:** las notificaciones a los técnicos cuando comenta el Solicitante (RF-068, `v0.5.0`) y los adjuntos de una nota interna, que heredarán su visibilidad (entrega 8).
+**Fuera de esta entrega:** las notificaciones a los técnicos cuando comenta el Solicitante (RF-068, `v0.5.0`) y los adjuntos de una nota interna, que heredan su visibilidad (RN-160).
+
+---
+
+## RN-160 — Archivos adjuntos
+
+Aplica y precisa RN-81 a RN-84 y RF-072 a RF-076 en la implementación de `v0.4.0` (entrega 8).
+
+**Quién adjunta.** Quien puede comentar públicamente en el ticket: el personal en cualquiera y el Solicitante en los suyos. Se hace desde el detalle: en la tarjeta **Archivos** (archivos del ticket) o junto a un comentario o nota interna (el formulario de comentarios admite archivos). Un ticket cerrado no admite archivos nuevos. Adjuntar durante la creación del ticket queda fuera de esta entrega.
+
+**Quién ve y descarga.** Un archivo del ticket lo ve quien ve el ticket. Un archivo que cuelga de un comentario **hereda su visibilidad**: el Solicitante no ve ni puede descargar los de una nota interna (404, como si no existieran), y si el comentario se elimina, sus archivos dejan de verse y descargarse para todos. El filtro está en la propia consulta (`visible_attachments_condition`) y un test comprueba que coincide con la política `can_view_attachment` para todos los roles. Para un archivo solo del equipo se adjunta a una nota interna.
+
+**Validación.** Se valida antes de guardar y un archivo rechazado no queda disponible:
+
+* **Extensión** de una lista blanca: `png`, `jpg`, `jpeg`, `gif`, `pdf`, `txt`, `log`, `csv`, `docx`, `xlsx` y `pptx`. Todo lo demás (ejecutables, scripts, HTML, SVG, archivos comprimidos...) se rechaza.
+* **Contenido** coherente con la extensión (firma de bytes; los de texto no pueden contener bytes nulos). No se confía en el nombre ni en el tipo MIME que declara el cliente: el MIME se deduce de la extensión validada.
+* **Tamaño** máximo por archivo (`UPLOAD_MAX_BYTES`, 10 MB), **cantidad** máxima de archivos activos por ticket (`UPLOAD_MAX_FILES_PER_TICKET`, 20) y hasta 5 archivos por envío. Una petición mayor que el total posible responde **413**. Son variables de entorno que pasarán a la configuración administrable en `v0.7.0`.
+
+**Almacenamiento y descarga.** Los binarios van al sistema de archivos local, **fuera de `static/`** (`instance/uploads`, o `UPLOADS_DIR`), con un nombre interno UUID impredecible y organizados por año y mes; la base de datos guarda solo los metadatos y el SHA-256 (calculado por bloques). El nombre original se depura (sin directorios ni caracteres de control) y solo se usa como nombre sugerido al descargar. La descarga es siempre autenticada, comprueba el acceso al ticket y al archivo, resuelve la ruta contra la raíz configurada (una ruta que saliera de ella responde 404) y se envía **siempre como descarga** (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, sin caché). Si la base de datos falla después de guardar el archivo, se borra el físico.
+
+**Eliminar.** La eliminación es lógica: el archivo deja de mostrarse y descargarse, pero el registro y el archivo físico se conservan (docs/10, sección 69). Sigue la misma regla que editar un comentario: el Supervisor y el Administrador, cualquier archivo que puedan ver; el resto, solo los que subieron ellos dentro de `COMMENT_EDIT_WINDOW_MINUTES`.
+
+**Historial y visibilidad.** `ARCHIVO_ADJUNTADO` y `ARCHIVO_ELIMINADO` registran el nombre y el comentario del que cuelga; la visibilidad del evento sigue a la del comentario (internos si cuelga de una nota). Subir o eliminar archivos no sube la versión del ticket ni cambia «Actualizado». Cada operación bloquea la fila del ticket antes de validar.
+
+**Fuera de esta entrega:** vista previa de imágenes, eliminación física y retención, y configuración desde la interfaz (`v0.7.0`).
 
 ---
 
