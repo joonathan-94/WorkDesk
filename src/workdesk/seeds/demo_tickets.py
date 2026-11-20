@@ -70,8 +70,10 @@ from ..models import (
     Ticket,
     TicketEvent,
     TicketHistory,
+    TicketRelation,
     TicketRequester,
     TicketTechnician,
+    TipoRelacionTicket,
     TransicionEstado,
     Ubicacion,
     User,
@@ -85,6 +87,7 @@ from ..tickets.attachments import add_attachments
 from ..tickets.comments import add_comment
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
+from ..tickets.relations import add_relation, mark_duplicate
 from ..tickets.requesters import add_requester, remove_requester
 from ..tickets.service import (
     CLOSED_STATE_CODE,
@@ -154,6 +157,7 @@ def validate_demo_tickets(
     problems: list[str] = _calendar_problems(calendar)
     calendar_ok = not problems
     keys: set[str] = set()
+    duplicates: dict[str, str] = {}
     titles: set[str] = set()
 
     for number, ticket in enumerate(tickets, start=1):
@@ -210,6 +214,7 @@ def validate_demo_tickets(
 
         _check_state_steps(problems, label, ticket)
         _check_requester_steps(problems, label, ticket, roles)
+        _check_relation_steps(problems, label, ticket, tickets[: number - 1], duplicates)
 
     if problems:
         raise DemoTicketsError(
@@ -289,6 +294,8 @@ _STAFF_ONLY_FIELDS = (
     "agregar_solicitante",
     "retirar_solicitante",
     "nota_interna",
+    "relacionar",
+    "duplicado_de",
 )
 
 
@@ -361,6 +368,8 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
         adjustment.comentario,
         adjustment.nota_interna,
         adjustment.adjunto,
+        adjustment.relacionar,
+        adjustment.duplicado_de,
     )
     if all(change is None for change in changes):
         problems.append(f"{label}: no cambia nada.")
@@ -500,6 +509,64 @@ def _check_requester_steps(problems, label, ticket, roles) -> None:
                 )
 
 
+def _check_relation_steps(problems, label, ticket, earlier, duplicates) -> None:
+    """Comprueba las relaciones y los duplicados de un ticket: apuntan a un ticket
+    anterior de la lista y más antiguo (para que la relación no preceda a su
+    creación), no se repiten, un duplicado va solo (sin `estado`) y su principal
+    no es a su vez un duplicado."""
+    known = {other.clave: other for other in earlier}
+    linked: set[str] = set()
+
+    for step, adjustment in enumerate(ticket.ajustes, start=1):
+        where = f"{label}, ajuste {step}"
+
+        if adjustment.duplicado_de is not None and adjustment.estado is not None:
+            problems.append(
+                f"{where}: duplicado_de cierra el ticket; no puede ir con `estado`."
+            )
+
+        for field_name in ("relacionar", "duplicado_de"):
+            key = getattr(adjustment, field_name)
+
+            if key is None:
+                continue
+
+            other = known.get(key)
+
+            if other is None:
+                problems.append(
+                    f"{where}: «{key}» debe ser la clave de un ticket que aparezca "
+                    "antes en la lista."
+                )
+
+                continue
+
+            if other.hace_dias < ticket.hace_dias or (
+                other.hace_dias == ticket.hace_dias and other.hora > ticket.hora
+            ):
+                problems.append(
+                    f"{where}: «{key}» es más reciente que este ticket: la relación "
+                    "no puede ser anterior a su creación."
+                )
+
+            if field_name == "relacionar":
+                if key in linked:
+                    problems.append(f"{where}: ya se relacionó con «{key}».")
+
+                linked.add(key)
+            else:
+                if key in duplicates:
+                    problems.append(
+                        f"{where}: «{key}» ya es un duplicado de otro: elige el "
+                        "ticket principal."
+                    )
+
+                if ticket.clave in duplicates:
+                    problems.append(f"{where}: el ticket ya es un duplicado.")
+
+                duplicates[ticket.clave] = key
+
+
 # Transiciones tal como las carga `seed-catalogs`:
 # (estado de origen, acción) -> estado de destino.
 _TRANSITIONS = {
@@ -544,6 +611,19 @@ def _check_state_steps(problems, label, ticket) -> None:
                 )
 
                 continue
+
+        # Marcar un duplicado cierra el ticket por el cierre directo.
+        if action is None and adjustment.duplicado_de is not None:
+            closed_to = _TRANSITIONS.get((current, StateAction.CIERRE_DIRECTO.value))
+
+            if closed_to is None:
+                problems.append(
+                    f"{where}: no se puede marcar como duplicado desde el estado {current}."
+                )
+            else:
+                current = closed_to
+
+            continue
 
         if action is None:
             if (
@@ -806,6 +886,21 @@ class _Catalogs:
         if uses_states and not has_transitions:
             raise DemoTicketsError(
                 "Faltan las transiciones de estado. Ejecuta primero seed-catalogs."
+            )
+
+        uses_relations = any(
+            step.relacionar or step.duplicado_de
+            for demo in tickets
+            for step in demo.ajustes
+        )
+        has_relation_types = (
+            db.session.scalar(db.select(db.func.count(TipoRelacionTicket.id))) >= 2
+        )
+
+        if uses_relations and not has_relation_types:
+            raise DemoTicketsError(
+                "Faltan los tipos de relación entre tickets. Ejecuta primero "
+                "seed-catalogs."
             )
 
         groups = {
@@ -1155,6 +1250,12 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
             actor=actor,
         )
 
+    if adjustment.relacionar is not None:
+        other = _find_ticket(adjustment.relacionar)
+
+        if other is not None:
+            add_relation(ticket, other.public_id, actor=actor)
+
     # El comentario público y la nota interna (en ese orden) antes del cambio
     # de estado, como lo haría quien responde y luego cambia el ticket.
     public = note = None
@@ -1191,6 +1292,17 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
             ],
             comment=public or note,
         )
+
+    if adjustment.duplicado_de is not None:
+        principal = _find_ticket(adjustment.duplicado_de)
+
+        if principal is not None:
+            mark_duplicate(
+                ticket,
+                principal.public_id,
+                actor=actor,
+                expected_version=ticket.version,
+            )
 
     if adjustment.estado is not None:
         action = StateAction(adjustment.estado)
@@ -1340,6 +1452,29 @@ def _write_new_dates(
                     update(Attachment.__table__)
                     .where(Attachment.__table__.c.id == context["archivo_id"])
                     .values(fecha_subida=times[step])
+                )
+
+        # Una relación nace (y, si se quita, se desactiva) en el momento de su
+        # evento. El cierre de un duplicado lleva el mismo `relacion_id`, pero
+        # su fecha no es la de la relación: solo cuentan los eventos de la
+        # relación.
+        for row in rows:
+            relation_id = (row.contexto or {}).get("relacion_id")
+
+            if relation_id is None:
+                continue
+
+            if row.tipo_evento == TicketEvent.RELACION_AGREGADA.value:
+                db.session.execute(
+                    update(TicketRelation.__table__)
+                    .where(TicketRelation.__table__.c.id == relation_id)
+                    .values(fecha_creacion=times[step])
+                )
+            elif row.tipo_evento == TicketEvent.RELACION_ELIMINADA.value:
+                db.session.execute(
+                    update(TicketRelation.__table__)
+                    .where(TicketRelation.__table__.c.id == relation_id)
+                    .values(fecha_desactivacion=times[step])
                 )
 
         # La asignación nace en el momento de su evento.
@@ -1618,6 +1753,45 @@ def _refresh(
         if values:
             db.session.execute(
                 update(comments).where(comments.c.id == row.id).values(**values)
+            )
+
+    # Las relaciones siguen a los eventos de relación: la fecha de creación y,
+    # si se quitó, la de desactivación (los del seed y los hechos a mano). El
+    # evento de cierre de un duplicado lleva el mismo `relacion_id`, pero no es
+    # el de la relación.
+    related_at: dict[int, datetime] = {}
+    unrelated_at: dict[int, datetime] = {}
+
+    for event in events:
+        relation_id = (event.contexto or {}).get("relacion_id")
+
+        if relation_id is None:
+            continue
+
+        if event.tipo_evento == TicketEvent.RELACION_AGREGADA.value:
+            related_at[relation_id] = new_time[event.id]
+        elif event.tipo_evento == TicketEvent.RELACION_ELIMINADA.value:
+            unrelated_at[relation_id] = new_time[event.id]
+
+    relations = TicketRelation.__table__
+    stored_relations = db.session.execute(
+        db.select(relations.c.id, relations.c.fecha_desactivacion).where(
+            relations.c.id.in_([*related_at, *unrelated_at])
+        )
+    ).all()
+
+    for row in stored_relations:
+        values = {}
+
+        if row.id in related_at:
+            values["fecha_creacion"] = related_at[row.id]
+
+        if row.fecha_desactivacion is not None and row.id in unrelated_at:
+            values["fecha_desactivacion"] = unrelated_at[row.id]
+
+        if values:
+            db.session.execute(
+                update(relations).where(relations.c.id == row.id).values(**values)
             )
 
     # Los adjuntos siguen a sus eventos: la fecha de subida y, si se eliminó, la

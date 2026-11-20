@@ -84,6 +84,10 @@ EXCEPTIONAL_CLOSE_REASON = "CIERRE_EXCEPCIONAL"
 DIRECT_CLOSE_DEFAULT_REASON = "CIERRE_DIRECTO"
 DIRECT_CLOSE_REASONS = (DIRECT_CLOSE_DEFAULT_REASON, "CANCELACION")
 
+# Lo fija el flujo de duplicados (`tickets/relations.py`), que cierra el ticket
+# duplicado con el mismo mecanismo del cierre directo.
+DUPLICATE_CLOSE_REASON = "DUPLICADO"
+
 
 class StateTransitionError(TicketRuleError):
     """La acción no es válida desde el estado actual del ticket."""
@@ -353,6 +357,8 @@ def change_state(
     wait_reason_id: int | None = None,
     text: str | None = None,
     close_reason_id: int | None = None,
+    close_reason_code: str | None = None,
+    extra_context: dict | None = None,
 ) -> Estado:
     """Ejecuta la acción de estado y devuelve el estado nuevo del ticket.
 
@@ -369,6 +375,10 @@ def change_state(
     - `wait_reason_id` solo se admite al poner en espera, `close_reason_id`
       solo al cerrar directamente y `text` según la acción (ver
       `StateActionInfo.text_label`).
+    - `close_reason_code` y `extra_context` no los usa ninguna pantalla: los
+      usa el flujo de duplicados para cerrar con el motivo `DUPLICADO` (solo
+      el cierre directo lo admite) y dejar en el evento de cierre el ticket
+      principal.
 
     Sube la versión del ticket y registra los eventos de la acción con el
     estado anterior y el nuevo.
@@ -418,7 +428,7 @@ def change_state(
         )
 
     wait_reason, close_reason, text = _clean_inputs(
-        info, wait_reason_id, close_reason_id, text
+        info, wait_reason_id, close_reason_id, text, close_reason_code
     )
     new_state = transition.estado_destino
 
@@ -446,6 +456,7 @@ def change_state(
         wait_reason=wait_reason,
         close_reason=close_reason,
         cycle=max(cycle, 1),
+        extra_context=extra_context,
     )
 
     return new_state
@@ -512,6 +523,7 @@ def _clean_inputs(
     wait_reason_id: int | None,
     close_reason_id: int | None,
     text: str | None,
+    close_reason_code: str | None = None,
 ) -> tuple[MotivoEspera | None, MotivoCierre | None, str | None]:
     """Valida lo que acompaña a la acción y devuelve el motivo de espera, el
     motivo de cierre y el texto ya limpios."""
@@ -528,7 +540,7 @@ def _clean_inputs(
     if wait_reason_id is not None or (text and info.text_label is None):
         raise TicketRuleError("Esta acción no admite un motivo de espera.")
 
-    close_reason = _resolve_close_reason(info, close_reason_id)
+    close_reason = _resolve_close_reason(info, close_reason_id, close_reason_code)
 
     if info.text_label is None:
         return None, close_reason, None
@@ -577,6 +589,7 @@ def _clean_wait_reason(
 def _resolve_close_reason(
     info: StateActionInfo,
     close_reason_id: int | None,
+    close_reason_code: str | None = None,
 ) -> MotivoCierre | None:
     """Motivo de cierre de la acción.
 
@@ -584,7 +597,16 @@ def _resolve_close_reason(
     ofrece (el de por defecto si no elige) y deben estar activos. En la
     confirmación y el cierre excepcional el motivo lo fija el flujo y no se
     puede elegir. Las demás acciones no cierran.
+
+    `close_reason_code` es el motivo que fija otro flujo (duplicados): solo lo
+    admite el cierre directo y es estructural, como los demás que fija el flujo.
     """
+    if close_reason_code is not None:
+        if info.action is not StateAction.CIERRE_DIRECTO or close_reason_id is not None:
+            raise TicketRuleError("Esta acción no admite un motivo de cierre.")
+
+        return _reason_by_code(close_reason_code)
+
     if info.close_reasons:
         if close_reason_id is None:
             return _reason_by_code(DIRECT_CLOSE_DEFAULT_REASON, active_only=True)
@@ -668,6 +690,7 @@ def _record_action_events(
     wait_reason: MotivoEspera | None,
     close_reason: MotivoCierre | None,
     cycle: int,
+    extra_context: dict | None = None,
 ) -> None:
     """Registra el historial de la acción.
 
@@ -678,7 +701,7 @@ def _record_action_events(
     action = info.action
     old_value = _state_snapshot(old_state)
     new_value = _state_snapshot(new_state)
-    context: dict = {"accion": action.value}
+    context: dict = {"accion": action.value} | (extra_context or {})
     states = {
         "old_state": old_state,
         "new_state": new_state,

@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-resolution-closing
+feature/ticket-relations
 ```
 
-Entrega 9 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): resolución, validación del solicitante, cierre (directo, por confirmación y excepcional) y reapertura de los tickets, con la regla «un ticket cerrado tiene fecha y motivo de cierre», sus pantallas y el seed de demostración ampliado (ver "Resolución, validación, cierre y reapertura"). Incluye una migración.
+Entrega 10 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): relaciones entre tickets y duplicados (relacionar, y marcar un ticket como duplicado de otro, lo que lo cierra con el motivo «Duplicado»), solo para el personal, con sus pantallas y el seed de demostración ampliado (ver "Relaciones y duplicados"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 8 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30 y la 8, adjuntos, el PR #31): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 9 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30, la 8, adjuntos, el PR #31 y la 9, resolución y cierre, el PR #32): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -101,8 +101,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 6 | Agregar y retirar solicitantes tras crear el ticket | Integrada (PR #28) |
 | 7 | Comentarios públicos y notas internas | Integrada (PR #30) |
 | 8 | Adjuntos | Integrada (PR #31) |
-| 9 | Resolución, validación del solicitante, cierre y reapertura | En curso |
-| 10 | Relaciones y duplicados | Pendiente |
+| 9 | Resolución, validación del solicitante, cierre y reapertura | Integrada (PR #32) |
+| 10 | Relaciones y duplicados | En curso |
 | 11 | Bloqueo temporal de edición | Pendiente |
 | 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Pendiente |
 
@@ -165,7 +165,7 @@ Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técni
 
 - el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
 - la pantalla de Estados y transiciones (UI-021), que sigue pendiente (entrega 12); la tabla de transiciones ya existe (entrega 3);
-- los eventos del historial (estado, asignación, comentarios, adjuntos, resolución y cierre; solo faltan los de relaciones). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
+- los eventos del historial (estado, asignación, comentarios, adjuntos, resolución, cierre y relaciones: ya existen todos). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
 - dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
 - las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos (la de grupo ya existe: entrega 5);
 - la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado: la aplica el servicio de cierre (entrega 9, hecha).
@@ -389,6 +389,7 @@ WorkDesk/
 │   ├── test_ticket_attachments.py
 │   ├── test_ticket_comments.py
 │   ├── test_ticket_policies.py
+│   ├── test_ticket_relations.py
 │   ├── test_ticket_requesters.py
 │   ├── test_ticket_resolution.py
 │   ├── test_ticket_state_transitions.py
@@ -512,7 +513,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente quince migraciones:
+Existen actualmente dieciséis migraciones:
 
 ```text
 create_roles_table
@@ -530,6 +531,7 @@ create_ticket_technicians_table_and_ticket_group
 create_comments_table
 create_attachments_table
 create_validations_table
+create_ticket_relations_tables
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -713,7 +715,7 @@ Seis catálogos que los tickets necesitan, cada uno con su modelo en `src/workde
 
 Prioridad, categoría, ubicación, motivo de cierre y motivo de espera comparten el mixin `CatalogAuditMixin` (`models/_catalog.py`): `activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion`, `usuario_modificacion_id` y el método `mark_modified(actor)`. Desactivar un valor no afecta a los tickets que ya lo referencian: solo impide elegirlo en operaciones nuevas.
 
-**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades, la categoría `Sin clasificar`, los seis motivos de cierre y los cinco motivos de espera. Es idempotente: cada registro se identifica por su `codigo` y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
+**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades, la categoría `Sin clasificar`, los seis motivos de cierre y los cinco motivos de espera, y los dos tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`, ver "Relaciones y duplicados"). Es idempotente: cada registro se identifica por su `codigo` y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
 
 ## Administración de catálogos (entrega 3 de `v0.3.0`)
 
@@ -752,7 +754,7 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 
 ## Historial (`historial_ticket`)
 
-Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO` y `TICKET_REABIERTO`; los de relaciones se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO`, `TICKET_REABIERTO`, `RELACION_AGREGADA` y `RELACION_ELIMINADA`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
 
 **Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, sin migración.
 
@@ -833,6 +835,30 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 
 
 
+
+## Relaciones y duplicados (entrega 10 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-162) y `docs/09` (19). El servicio está en `tickets/relations.py` y las rutas (`tickets/routes.py`) solo orquestan. **Incluye una migración** (`create_ticket_relations_tables`).
+
+**Modelos.** `TipoRelacionTicket` (`models/tipo_relacion.py`, tabla `tipos_relacion_ticket`, con `CatalogAuditMixin`; `codigo` único, `nombre`, `descripcion` y `es_simetrica`) y `RelationType` (`DUPLICADO` y `RELACIONADO`). `TicketRelation` (`models/ticket_relation.py`, tabla `tickets_relaciones`): `ticket_origen_id`, `ticket_destino_id`, `tipo_relacion_id`, `comentario`, `usuario_creacion_id`, `fecha_creacion` (la pone la base de datos), `activo`, `fecha_desactivacion` y `usuario_desactivacion_id`. En `DUPLICADO` el origen es el ticket duplicado y el destino el principal; en `RELACIONADO` el par se guarda con el id menor primero. Restricciones: origen distinto de destino, coherencia de la desactivación y un **índice único parcial sobre el par vigente** (`least(origen, destino)`, `greatest(origen, destino)` y el tipo, `WHERE activo`) que impide repetir una relación aunque se invierta. Las claves foráneas son `ON DELETE RESTRICT`. Esa migración se escribió con el índice funcional (Alembic lo genera bien) y `db check` queda limpio.
+
+**Datos iniciales.** `seed-catalogs` carga los dos tipos (`INITIAL_RELATION_TYPES`; el comando informa `tipos de relación: N`). Quien tenga una base anterior debe volver a ejecutarlo. No hay pantalla de administración: los tipos son estructurales.
+
+**Política** (`security/authorization.py`): `can_manage_relations(user)` (Técnico, Supervisor y Administrador; sirve para ver y para gestionar). Que el ticket esté abierto lo aplica el servicio.
+
+**Servicio** (`tickets/relations.py`, sin commit):
+
+- `list_relations(ticket)`: las relaciones vigentes con el otro ticket (y su estado), el tipo y quién la creó en **una sola consulta** (hay un test); devuelve `RelationView(kind, relation, other, removable)` con `kind` `duplicado_de` (este ticket es duplicado de `other`), `principal_de` (`other` es duplicado de este) o `relacionado`. `removable` es falso para la relación de un duplicado que sigue cerrado.
+- `add_relation(ticket, other_number, *, actor, comment=)`: empieza con `begin_ticket_operation` (el ticket debe estar abierto); el otro, por su número, en cualquier estado; no consigo mismo ni repetida (comprobación más índice único con savepoint). Registra `RELACION_AGREGADA` (interno, solo en este ticket).
+- `remove_relation(ticket, relation_id, *, actor)`: eliminación lógica bajo `SELECT ... FOR UPDATE` de la relación (dos personas que la quitan a la vez la quitan una sola vez; hay un test con dos hilos). Un duplicado cerrado no se quita. Registra `RELACION_ELIMINADA`.
+- `mark_duplicate(ticket, principal_number, *, actor, expected_version, comment=)`: bloquea las dos filas **en orden de id**, valida que no haya cadenas ni ciclos (el principal no es duplicado, el ticket no es principal de otros y no figura ya como duplicado), crea la relación, registra `RELACION_AGREGADA` y cierra el ticket con `change_state(..., action=CIERRE_DIRECTO, close_reason_code="DUPLICADO", extra_context={"duplicado_de", "relacion_id"})`. Reutiliza así el único camino de cierre (la regla «cerrado ⇒ fecha y motivo» de la entrega 9). `change_state` ganó los parámetros `close_reason_code` y `extra_context`, que no usa ninguna pantalla: solo este flujo; el motivo es estructural, como los demás que fija el flujo, y solo el cierre directo lo admite.
+- `parse_ticket_number` acepta `12` o `#12`.
+
+**Pantallas** (404 si el usuario no ve el ticket, 403 si es Solicitante; un ticket cerrado vuelve al detalle con un aviso salvo la pantalla de relaciones, que sigue visible): `GET /tickets/<n>/relations`, `POST /tickets/<n>/relations/add`, `GET, POST /tickets/<n>/relations/<id>/remove` (confirmación) y `GET, POST /tickets/<n>/duplicate` (confirmación; lleva la versión y conserva lo escrito ante un error). El detalle muestra la tarjeta **Relaciones (n)** solo al personal. Formularios: `RelationForm` y `DuplicateForm`. `TICKET_SCREENS` incluye las tres pantallas.
+
+**Historial.** `RELACION_AGREGADA` y `RELACION_ELIMINADA` son **internos** (el Solicitante no los recibe) y se registran solo en el ticket desde el que se actúa (`valor_nuevo` o `valor_anterior` con `{relacion_id, tipo, ticket, titulo}`; `contexto["relacion_id"]`). El cierre de un duplicado es `TICKET_CERRADO` (público, motivo «Duplicado») con `contexto["duplicado_de"]`: el Solicitante ve que se cerró como duplicado, pero no de cuál.
+
+**Seed demo:** `DemoAdjustment` admite `relacionar` y `duplicado_de` (la clave de otro ticket de la lista, anterior y más antiguo), con cuatro tickets nuevos (76 en total; ver "22. CLI").
 
 ## Resolución, validación, cierre y reapertura (entrega 9 de `v0.4.0`)
 
@@ -1294,6 +1320,10 @@ GET, POST  /tickets/<public_id>/comments/<comment_id>/delete
 POST       /tickets/<public_id>/attachments
 GET        /tickets/<public_id>/attachments/<attachment_id>/download
 GET, POST  /tickets/<public_id>/attachments/<attachment_id>/delete
+GET        /tickets/<public_id>/relations
+POST       /tickets/<public_id>/relations/add
+GET, POST  /tickets/<public_id>/relations/<relation_id>/remove
+GET, POST  /tickets/<public_id>/duplicate
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -1509,7 +1539,7 @@ python -m flask --app src.workdesk seed-demo
 python -m flask --app src.workdesk seed-demo-tickets
 ```
 
-`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las transiciones entre estados, las prioridades, la categoría `Sin clasificar`, los motivos de cierre y los motivos de espera. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
+`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las transiciones entre estados, las prioridades, la categoría `Sin clasificar`, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
 
 `create-admin`:
 
@@ -1529,7 +1559,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
 
-- carga 72 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- carga 76 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
 - **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario`, `nota_interna` y `adjunto`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
 - necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
 - usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
@@ -1545,6 +1575,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - **comentarios y notas internas:** los cinco últimos de la lista (bloque "Tickets con comentarios y notas internas") tienen una conversación: respuestas del personal, comentarios de un Solicitante y notas internas (uno con más notas que comentarios públicos). Un paso con `comentario` escrito por un Solicitante debe ser solo ese comentario y su actor, el creador o un solicitante del ticket en ese momento (la validación lo simula); el comentario público se escribe antes que la nota y ambos antes del cambio de estado. Los comentarios tienen fechas propias (`fecha_creacion`, `fecha_modificacion` y `fecha_eliminacion`): se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["comentario_id"]`), también las ediciones y eliminaciones hechas a mano. Los comentarios no suben la versión del ticket, así que no mueven su fecha de modificación. Ver "Comentarios y notas internas";
 - **archivos adjuntos:** los dos últimos de la lista (bloque "Tickets con archivos adjuntos") llevan archivos reales de texto (`adjunto=("nombre.log", "contenido")`, solo `.txt`, `.log` o `.csv`), guardados con el servicio real en `UPLOADS_DIR` (`instance/uploads`; en los tests, un directorio temporal). El archivo cuelga del comentario público del paso, si no de la nota y si no, del ticket. Las fechas (`fecha_subida`, `fecha_eliminacion`) se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["archivo_id"]`); volver a ejecutar el seed no duplica archivos. Ver "Archivos adjuntos".
 - **resolución, cierre y reapertura:** los siete últimos de la lista (bloque "Tickets con resolución, cierre y reapertura") recorren cada camino: uno Resuelto pendiente de validación, uno confirmado por su solicitante (cerrado con `RESOLUCION_VALIDADA`), uno rechazado y resuelto por segunda vez (dos ciclos), un cierre directo sin solicitante, una cancelación (cierre directo con `motivo_cierre="CANCELACION"`), uno Resuelto sin solicitante cerrado por un Supervisor (cierre excepcional) y uno cerrado y reabierto. Los pasos usan `estado` con `RESOLVER`, `CIERRE_DIRECTO`, `CIERRE_EXCEPCIONAL`, `CONFIRMAR`, `RECHAZAR` o `REABRIR` y `texto` (la solución, el motivo de un rechazo o de un cierre) y los ejecutan los servicios reales. `CONFIRMAR` y `RECHAZAR` los ejecuta un Solicitante que sea solicitante del ticket en ese momento (el paso no puede cambiar nada más salvo su comentario público); `CIERRE_EXCEPCIONAL`, un Supervisor; y un ticket cerrado solo admite un paso `REABRIR`, solo. Las fechas de la resolución y el cierre (`tickets.fecha_resolucion` y `fecha_cierre`) y de cada validación (`validaciones.fecha_validacion`) se escriben al crear y se refrescan siguiendo a sus eventos (`TICKET_RESUELTO`, `TICKET_CERRADO` y `contexto["validacion_id"]`), también los hechos a mano; una reapertura hecha a mano deja el ticket sin fechas de cierre. Ver "Resolución, validación, cierre y reapertura".
+- **relaciones y duplicados:** los cuatro últimos de la lista (bloque "Tickets con duplicados y relaciones"): dos tickets que repiten el del wifi de la bodega (`duplicado_de="wifi-bodega"`, que queda como principal de los dos, sin cambios y sin eventos de relación propios) y dos relacionados con otros (`relacionar="..."`). `duplicado_de` cierra el ticket por `mark_duplicate`, así que no puede ir con `estado`; `relacionar` y `duplicado_de` son la clave de un ticket que aparezca **antes** en la lista y sea más antiguo (la relación no puede preceder a su creación), no se repiten, el principal no es a su vez un duplicado y un ticket cerrado solo admite reabrirlo. Las fechas de cada relación (`fecha_creacion` y, si se quita, `fecha_desactivacion`) se escriben al crear y se refrescan siguiendo a sus eventos `RELACION_AGREGADA` y `RELACION_ELIMINADA` (no al de cierre del duplicado, que comparte `relacion_id`), también los hechos a mano. El comando se detiene si faltan los tipos de relación y pide ejecutar `seed-catalogs`. Ver "Relaciones y duplicados".
 
 ---
 
@@ -1580,6 +1611,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 10 de `v0.4.0` (relaciones y duplicados):
+
+```text
+1982 tests passing
+```
+
+Los 116 tests nuevos cubren:
+
+- `tests/test_ticket_relations.py` (95): **catálogo y políticas** (los dos tipos, simétrica o no; los eventos son internos y tienen nombre; solo el personal gestiona relaciones y un usuario inactivo no); **base de datos** (rechaza un ticket relacionado consigo mismo, un par repetido **también invertido**, y una desactivación incoherente; tipos distintos pueden unir el mismo par y una relación quitada admite una nueva); **número de ticket** (`12`, `#12`, espacios y ceros; todo lo demás se rechaza); **relacionar** (par normalizado desde cualquier lado, un evento interno solo en el ticket que actúa, no sube la versión ni «Actualizado», se lista desde los dos tickets, no consigo mismo ni dos veces ni a la inversa, ticket inexistente, comentario con límite exacto, un ticket cerrado no actúa pero puede ser el otro lado, actor inactivo, el servicio no hace commit); **quitar** (eliminación lógica con quién y cuándo, se puede volver a establecer, desde cualquiera de los dos tickets, ids ajenos o ya quitados, ticket cerrado, **dos personas que la quitan a la vez la quitan una sola vez**); **marcar un duplicado** (cierra con `DUPLICADO` con fecha, motivo y quién, el principal queda intacto, el historial deja la relación y luego el cierre, desde los cuatro estados abiertos, no desde Resuelto ni Cerrado, el principal puede estar en cualquier estado, no consigo mismo ni ticket inexistente, **sin cadenas ni ciclos** en ningún sentido, no se marca dos veces, un principal con varios duplicados, no transfiere nada, versión caducada, nada queda a medias si falla, **dos duplicados opuestos a la vez no se bloquean y solo uno prospera**, la relación de un duplicado cerrado no se quita y la de uno reabierto sí); **historial** (el Solicitante nunca recibe los eventos, líneas legibles); y **pantallas** (el Solicitante recibe 403 en todas y 404 si no ve el ticket, la tarjeta y la pantalla solo para el personal, relacionar con sus avisos, confirmación para quitar, la pantalla de duplicado, conservar lo escrito ante un error, conflicto de versión, qué ve el Solicitante de un duplicado cerrado —que se cerró como duplicado, pero no de cuál ni la nota—, ticket cerrado, ticket Resuelto, menú «Tickets» y que cargar las relaciones es **una sola consulta**).
+- `tests/test_seed_demo_tickets.py` (+21): validación de los pasos nuevos (claves anteriores y más antiguas, no repetir, duplicado solo y sin `estado`, un ticket cerrado solo admite reabrirlo, no cadenas, solo el personal), que los datos cubran duplicados, un principal con dos duplicados y una relación, el historial igual al de la aplicación, el principal intacto, las fechas de cada relación con las de su evento (y el cierre del duplicado con el suyo), lo que ve cada rol, el refresco y una eliminación hecha a mano, y que el comando pida `seed-catalogs` si faltan los tipos. Las instantáneas incluyen ahora las relaciones.
+- `tests/test_catalogs.py`: el diccionario de `seed_catalogs` incluye `tipos_relacion`.
 
 Estado tras la entrega 9 de `v0.4.0` (resolución, cierre y reapertura):
 
@@ -2279,7 +2322,7 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases posteriores (lo que `v0.3.0` dejó decidido para `v0.4.0` está en "Próximo hito"):
 
-- `v0.4.0`: relaciones y duplicados, el bloqueo temporal de edición (RN-115 a RN-117) y la pantalla de Estados y transiciones; el resto (estados, asignación, comentarios, notas internas, adjuntos, resolución, cierre y reapertura) ya existe;
+- `v0.4.0`: el bloqueo temporal de edición (RN-115 a RN-117) y la pantalla de Estados y transiciones; el resto (estados, asignación, comentarios, notas internas, adjuntos, resolución, cierre y reapertura) ya existe;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
 - `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;

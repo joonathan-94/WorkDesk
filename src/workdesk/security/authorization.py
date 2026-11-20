@@ -165,6 +165,14 @@ def can_reopen_ticket(user, ticket, *, now=None, window_days=None) -> bool:
     return now - ticket.fecha_cierre <= timedelta(days=window_days)
 
 
+def can_manage_relations(user) -> bool:
+    """Ver y gestionar las relaciones entre tickets: relacionar tickets y
+    marcar un ticket como duplicado de otro (docs/06, RN-162). Solo el
+    personal; el Solicitante no ve las relaciones. Que el ticket esté abierto
+    lo aplica el servicio."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
 def can_assign_self(user) -> bool:
     """Asignarse (y dejar de estar asignado) a un ticket (docs/03, sección 5).
 

@@ -1,0 +1,49 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}Quitar relación del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Relaciones', url_for('tickets.relations_page', public_id=ticket.public_id)),
+        ('Quitar', None),
+    ]) }}
+
+    {{ page_header('Quitar relación', '#' ~ ticket.public_id ~ ' · #' ~ view.other.public_id) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.remove_ticket_relation', public_id=ticket.public_id, relation_id=view.relation.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                Se quitará la relación entre el ticket #{{ ticket.public_id }}
+                y el #{{ view.other.public_id }}
+                («{{ view.other.titulo }}»). La relación queda en el historial
+                y se puede volver a establecer más adelante.
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-danger"
+                    type="submit"
+                >
+                    Quitar relación
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.relations_page', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

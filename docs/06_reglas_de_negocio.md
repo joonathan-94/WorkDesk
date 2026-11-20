@@ -1613,6 +1613,29 @@ El personal nunca confirma ni rechaza por el solicitante, y el Solicitante nunca
 
 ---
 
+## RN-162 — Relaciones entre tickets y duplicados
+
+Aplica y precisa RN-74 a RN-77 y RF-062 a RF-065 en la implementación de `v0.4.0` (entrega 10). Hay dos tipos de relación (`tipos_relacion_ticket`): **`DUPLICADO`**, con dirección (del ticket duplicado al principal), y **`RELACIONADO`**, simétrica.
+
+**Quién.** Solo el personal (Técnico, Supervisor y Administrador) ve y gestiona las relaciones. El Solicitante no las ve: ni la tarjeta del detalle, ni las pantallas (responden 403, y 404 si ni siquiera ve el ticket), ni los eventos del historial. Siempre se comprueba en el backend (`can_manage_relations`).
+
+**Relacionar.** Desde la tarjeta **Relaciones** del detalle, en `/tickets/<n>/relations`: se escribe el número del otro ticket (`12` o `#12`), que puede estar en cualquier estado; el ticket desde el que se actúa debe estar abierto. No se puede relacionar un ticket consigo mismo ni repetir una relación vigente, tampoco al revés: el par se guarda normalizado (id menor primero) y un índice único sobre el par vigente (`least`, `greatest` y el tipo) lo respalda en la base. Un comentario opcional (máx. 500) explica por qué. Quitar una relación es una eliminación lógica: se conserva con quién y cuándo, y puede volver a establecerse con una fila nueva.
+
+**Marcar como duplicado.** En `/tickets/<n>/duplicate`: crea la relación `DUPLICADO` y **cierra el ticket duplicado** con el motivo de cierre «Duplicado» (no existe un estado «Duplicado», RN-77), todo en la misma transacción y por el mismo camino del cierre directo (`change_state`, ver RN-161). Por eso el ticket cerrado tiene fecha, motivo y quién cerró como cualquier otro cierre, y sube su versión (la pantalla lleva la versión como la edición). **No transfiere** comentarios, archivos ni solicitantes al principal: cada ticket conserva su historial. Reglas:
+
+* el principal debe existir y ser otro ticket, en cualquier estado (se puede marcar un duplicado de un ticket ya cerrado);
+* el principal no puede ser a su vez un duplicado, y un ticket que ya es el principal de otros no puede pasar a ser duplicado: **no hay cadenas ni ciclos**. Las dos filas se bloquean en orden de id, así que dos personas que marcan duplicados opuestos a la vez no se bloquean entre sí y solo una prospera;
+* el ticket debe poder cerrarse directamente (Nuevo, Asignado, En progreso o En espera): un Resuelto no se cierra de forma directa (RN-60), y uno cerrado debe reabrirse antes;
+* un ticket figura como duplicado de uno solo.
+
+**Deshacerlo.** La relación de un duplicado que sigue cerrado no se quita: es el rastro del cierre. Si el ticket se reabre, la relación se conserva hasta que alguien la quite explícitamente (y reabrir ya conserva el cierre anterior en el historial).
+
+**Historial y visibilidad.** Los eventos `RELACION_AGREGADA` y `RELACION_ELIMINADA` son **internos** y se registran en el ticket desde el que se actúa; el otro ticket muestra la relación en su tarjeta (con quién y cuándo, que salen de la propia tabla). El cierre de un duplicado es el evento público `TICKET_CERRADO` con el motivo «Duplicado» y el ticket principal en `contexto["duplicado_de"]`: el Solicitante ve que su ticket se cerró como duplicado, pero no de cuál. Agregar o quitar una relación no sube la versión del ticket ni cambia «Actualizado»; marcar un duplicado sí, porque lo cierra.
+
+**Fuera de esta entrega:** la advertencia de posibles duplicados al crear un ticket (RN-74 y RF-061: «podrá advertir», con búsqueda textual simple, `docs/10`, sección 92) y la pestaña **Relaciones** del diseño (hoy es una tarjeta, como las demás).
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

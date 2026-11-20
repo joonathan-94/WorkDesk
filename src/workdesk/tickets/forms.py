@@ -8,6 +8,7 @@ from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from .editing import MAX_REASON_LENGTH
 from .lifecycle import MAX_WAIT_TEXT_LENGTH
+from .relations import MAX_RELATION_COMMENT_LENGTH
 
 
 def _strip(value):
@@ -278,6 +279,44 @@ class StateChangeForm(FlaskForm):
             self.close_reason_choices,
             "Selecciona un motivo de la lista.",
         )
+
+
+class RelationForm(FlaskForm):
+    """Relacionar un ticket con otro, o marcarlo como duplicado de otro.
+
+    El otro ticket se identifica por su número (con o sin «#»). Que exista y
+    que la relación sea válida lo comprueba el servicio; aquí solo la forma.
+    """
+
+    ticket = StringField(
+        "Número del ticket",
+        filters=[_strip],
+        validators=[
+            DataRequired(message="Escribe el número del ticket."),
+            Length(max=20, message="El número es demasiado largo."),
+        ],
+    )
+
+    comentario = TextAreaField(
+        "Comentario",
+        filters=[_normalize_text],
+        validators=[
+            Length(
+                max=MAX_RELATION_COMMENT_LENGTH,
+                message=f"Máximo {MAX_RELATION_COMMENT_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+
+class DuplicateForm(RelationForm):
+    """Marcar un ticket como duplicado: además lleva la versión con la que se
+    abrió la pantalla, porque cierra el ticket."""
+
+    version = OptionalIntegerField("Versión")
+
+    def validate_version(self, field):
+        _require_version(field)
 
 
 class TechnicianPickForm(FlaskForm):

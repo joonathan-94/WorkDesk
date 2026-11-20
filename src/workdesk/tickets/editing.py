@@ -293,6 +293,17 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
     ):
         return [f"Archivo: {_shown((new or old).get('nombre'))}"]
 
+    if entry.tipo_evento == TicketEvent.RELACION_AGREGADA:
+        other = f"#{new.get('ticket', '?')}"
+
+        if new.get("tipo") == "DUPLICADO":
+            return [f"Duplicado de {other}"]
+
+        return [f"Relacionado con {other}"]
+
+    if entry.tipo_evento == TicketEvent.RELACION_ELIMINADA:
+        return [f"Relación con #{old.get('ticket', '?')} eliminada"]
+
     if entry.tipo_evento == TicketEvent.GRUPO_CAMBIADO:
         before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
 

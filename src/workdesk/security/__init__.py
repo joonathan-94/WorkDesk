@@ -19,6 +19,7 @@ from .authorization import can_edit_ticket as can_edit_ticket
 from .authorization import can_manage_assignments as can_manage_assignments
 from .authorization import can_manage_group_members as can_manage_group_members
 from .authorization import can_manage_groups as can_manage_groups
+from .authorization import can_manage_relations as can_manage_relations
 from .authorization import can_manage_requesters as can_manage_requesters
 from .authorization import can_manage_users as can_manage_users
 from .authorization import can_reopen_ticket as can_reopen_ticket

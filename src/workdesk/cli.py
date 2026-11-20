@@ -46,7 +46,8 @@ def register_commands(app: Flask) -> None:
             f"prioridades: {created['prioridades']}, "
             f"categorías: {created['categorias']}, "
             f"motivos de cierre: {created['motivos_cierre']}, "
-            f"motivos de espera: {created['motivos_espera']}."
+            f"motivos de espera: {created['motivos_espera']}, "
+            f"tipos de relación: {created['tipos_relacion']}."
         )
 
     @app.cli.command("create-admin")
