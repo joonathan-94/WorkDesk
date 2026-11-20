@@ -86,7 +86,7 @@ from ..tickets.assignment import assign_technician, set_group
 from ..tickets.attachments import add_attachments
 from ..tickets.comments import add_comment
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
-from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
+from ..tickets.lifecycle import change_state
 from ..tickets.relations import add_relation, mark_duplicate
 from ..tickets.requesters import add_requester, remove_requester
 from ..tickets.service import (
@@ -95,6 +95,7 @@ from ..tickets.service import (
     TicketRuleError,
     create_ticket,
 )
+from ..tickets.state_actions import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS
 from ..tickets.storage import ALLOWED_TYPES
 from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
 from .demo import DEMO_GROUPS, DEMO_USERS
@@ -888,6 +889,19 @@ class _Catalogs:
                 "Faltan las transiciones de estado. Ejecuta primero seed-catalogs."
             )
 
+        # La demostración recorre todo el flujo: si el Administrador deshabilitó
+        # alguna transición, el ticket que la necesita fallaría a mitad de la
+        # carga. Mejor avisar antes, y con las transiciones a la vista.
+        disabled = _disabled_transitions() if uses_states else []
+
+        if disabled:
+            raise DemoTicketsError(
+                "Hay transiciones deshabilitadas que la demostración necesita: "
+                + "; ".join(disabled)
+                + ". Habilítalas en Administración → Estados y transiciones y "
+                "vuelve a ejecutar el comando."
+            )
+
         uses_relations = any(
             step.relacionar or step.duplicado_de
             for demo in tickets
@@ -985,6 +999,22 @@ class _Catalogs:
 
 
 # --- Identidad ------------------------------------------------------------
+
+
+def _disabled_transitions() -> list[str]:
+    """Las transiciones que el Administrador deshabilitó, escritas como
+    «Origen → Destino (Acción)» con los nombres visibles actuales."""
+    disabled = db.session.scalars(
+        db.select(TransicionEstado)
+        .where(TransicionEstado.activa.is_(False))
+        .order_by(TransicionEstado.id)
+    )
+
+    return [
+        f"{t.estado_origen.nombre_visible} → {t.estado_destino.nombre_visible} "
+        f"({t.accion_nombre})"
+        for t in disabled
+    ]
 
 
 def _find_ticket(key: str) -> Ticket | None:

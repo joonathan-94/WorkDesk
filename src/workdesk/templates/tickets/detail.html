@@ -705,12 +705,12 @@
                         <dd>{{ ticket.fecha_actualizacion|local_datetime }}</dd>
 
                         {% if ticket.fecha_resolucion %}
-                            <dt class="small text-secondary fw-normal">Resuelto</dt>
+                            <dt class="small text-secondary fw-normal">Fecha de resolución</dt>
                             <dd>{{ ticket.fecha_resolucion|local_datetime }}</dd>
                         {% endif %}
 
                         {% if ticket.fecha_cierre %}
-                            <dt class="small text-secondary fw-normal">Cerrado</dt>
+                            <dt class="small text-secondary fw-normal">Fecha de cierre</dt>
                             <dd>
                                 {{ ticket.fecha_cierre|local_datetime }}
                                 {% if ticket.motivo_cierre %}

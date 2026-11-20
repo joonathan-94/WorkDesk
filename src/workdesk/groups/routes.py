@@ -4,9 +4,11 @@ from flask_login import current_user
 from ..extensions import db
 from ..security import (
     RoleCode,
+    admin_only,
     can_manage_group_members,
     can_manage_groups,
     can_view_group,
+    current_actor,
     roles_required,
 )
 from ..users.forms import ReasonForm
@@ -33,7 +35,6 @@ from .service import (
 # roles recibe 403. Dentro del área, cada acción se vuelve a comprobar aquí,
 # en backend: ocultar un botón no autoriza nada.
 area_only = roles_required(RoleCode.ADMINISTRADOR, RoleCode.SUPERVISOR)
-admin_only = roles_required(RoleCode.ADMINISTRADOR)
 
 
 # --- Listado y detalle ------------------------------------------------
@@ -47,7 +48,7 @@ def list_groups_page():
 
     return render_template(
         "groups/list.html",
-        groups=list_groups(_actor(), status),
+        groups=list_groups(current_actor(), status),
         status=status,
         crumbs=_crumbs(),
         can_manage=can_manage_groups(current_user),
@@ -98,7 +99,7 @@ def new_group():
     if form.validate_on_submit():
         try:
             group = create_group(
-                actor=_actor(),
+                actor=current_actor(),
                 nombre=form.nombre.data,
                 descripcion=form.descripcion.data,
             )
@@ -131,7 +132,7 @@ def edit_group(group_id: int):
         try:
             changed = update_group(
                 group,
-                actor=_actor(),
+                actor=current_actor(),
                 nombre=form.nombre.data,
                 descripcion=form.descripcion.data,
             )
@@ -183,7 +184,7 @@ def add_group_member(group_id: int):
 
     if form.validate_on_submit():
         try:
-            link = add_member(group, form.usuario.data, actor=_actor())
+            link = add_member(group, form.usuario.data, actor=current_actor())
             db.session.commit()
         except GroupRuleError as error:
             db.session.rollback()
@@ -236,7 +237,7 @@ def remove_group_member(group_id: int, membership_id: int):
         operation=lambda reason: remove_member(
             group,
             membership_id,
-            actor=_actor(),
+            actor=current_actor(),
             reason=reason,
         ),
         success=f"{_full_name(link.usuario)} fue retirado del grupo.",
@@ -263,7 +264,7 @@ def add_group_supervisor(group_id: int):
             designation = designate_supervisor(
                 group,
                 form.usuario.data,
-                actor=_actor(),
+                actor=current_actor(),
             )
             db.session.commit()
         except GroupRuleError as error:
@@ -320,7 +321,7 @@ def remove_group_supervisor(group_id: int, designation_id: int):
         operation=lambda reason: remove_supervisor(
             group,
             designation_id,
-            actor=_actor(),
+            actor=current_actor(),
             reason=reason,
         ),
         success=(
@@ -371,7 +372,7 @@ def _status_page(group_id: int, *, deactivate: bool):
         danger=deactivate,
         operation=lambda reason: operation(
             group,
-            actor=_actor(),
+            actor=current_actor(),
             reason=reason,
         ),
         success=(
@@ -494,7 +495,3 @@ def _choices(users) -> list[tuple[int, str]]:
 
 def _full_name(user) -> str:
     return f"{user.nombre} {user.apellido}"
-
-
-def _actor():
-    return current_user._get_current_object()

@@ -26,9 +26,12 @@ class TicketEvent(StrEnum):
     El vocabulario vive solo en la aplicación (`record_ticket_event` rechaza
     cualquier evento que no esté aquí), igual que `AuditAction` en la
     auditoría administrativa: la base de datos no lo restringe, así que añadir
-    un evento no requiere una migración. Contiene los eventos que existen hoy;
-    v0.4.0 añade los de estado, asignación, comentarios, resolución y cierre
-    (docs/09, 24.1).
+    un evento no requiere una migración (docs/09, 24.1).
+
+    Un evento nuevo obliga a decidir tres cosas, y un test comprueba que no
+    falte ninguna: cómo se llama (`TICKET_EVENT_LABELS`), quién lo ve
+    (`DEFAULT_EVENT_VISIBILITY`) y qué cuenta su línea del historial
+    (`tickets/history.py`).
     """
 
     TICKET_CREADO = "TICKET_CREADO"

@@ -6,6 +6,7 @@ from sqlalchemy.orm import contains_eager
 from ..audit import AuditAction, record_admin_event
 from ..auth.credentials import reset_password, set_temporary_password
 from ..auth.security import invalidate_user_sessions, reset_login_failures
+from ..cleaning import blank_to_none
 from ..extensions import db
 from ..groups.service import close_user_group_links
 from ..models import Role, User
@@ -162,9 +163,9 @@ def create_user(
         apellido=apellido.strip(),
         username=username,
         email=email,
-        telefono=_blank_to_none(telefono),
-        cargo=_blank_to_none(cargo),
-        departamento_area=_blank_to_none(departamento_area),
+        telefono=blank_to_none(telefono),
+        cargo=blank_to_none(cargo),
+        departamento_area=blank_to_none(departamento_area),
         rol_id=role.id,
         usuario_creacion_id=actor.id,
     )
@@ -227,9 +228,9 @@ def update_profile(
         "nombre": nombre.strip(),
         "apellido": apellido.strip(),
         "email": normalize_email(email),
-        "telefono": _blank_to_none(telefono),
-        "cargo": _blank_to_none(cargo),
-        "departamento_area": _blank_to_none(departamento_area),
+        "telefono": blank_to_none(telefono),
+        "cargo": blank_to_none(cargo),
+        "departamento_area": blank_to_none(departamento_area),
     }
 
     changed = {
@@ -326,7 +327,7 @@ def change_role(
         entity_id=user.id,
         old_value={"rol": previous_code},
         new_value={"rol": role.codigo},
-        reason=_blank_to_none(reason),
+        reason=blank_to_none(reason),
     )
 
 
@@ -368,7 +369,7 @@ def deactivate_user(
         entity_id=user.id,
         old_value={"activo": True},
         new_value={"activo": False},
-        reason=_blank_to_none(reason),
+        reason=blank_to_none(reason),
     )
 
 
@@ -399,7 +400,7 @@ def activate_user(
         entity_id=user.id,
         old_value={"activo": False},
         new_value={"activo": True},
-        reason=_blank_to_none(reason),
+        reason=blank_to_none(reason),
     )
 
 
@@ -459,12 +460,3 @@ def _is_in_use(column, value: str, *, exclude_id: int | None = None) -> bool:
         statement = statement.where(User.id != exclude_id)
 
     return db.session.scalar(statement.limit(1)) is not None
-
-
-def _blank_to_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-
-    value = value.strip()
-
-    return value or None

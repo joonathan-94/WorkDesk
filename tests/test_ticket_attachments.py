@@ -23,7 +23,6 @@ from src.workdesk.models import (
     Attachment,
     Comment,
     CommentType,
-    Ticket,
     TicketEvent,
     TicketHistory,
     User,
@@ -44,10 +43,16 @@ from src.workdesk.tickets.attachments import (
     visible_attachments_condition,
 )
 from src.workdesk.tickets.comments import add_comment, delete_comment
-from src.workdesk.tickets.editing import describe_history_changes
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.service import TicketRuleError, list_ticket_history
 from src.workdesk.tickets.versioning import TicketClosedError
-from tests.ticket_helpers import login, make_ticket, plain_text, set_state
+from tests.ticket_helpers import (
+    login,
+    make_ticket,
+    plain_text,
+    set_state,
+    ticket_by_public_id,
+)
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"fake-image-data" * 10
 PDF = b"%PDF-1.4\n" + b"fake-pdf" * 10
@@ -86,10 +91,6 @@ def user(team, key) -> User:
     return db.session.get(User, team[key]["id"])
 
 
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(db.select(Ticket).where(Ticket.public_id == public_id))
-
-
 def new_ticket(app, catalog, team):
     return make_ticket(
         app, catalog, team["req"]["id"], requester_ids=[team["req"]["id"]]
@@ -98,7 +99,7 @@ def new_ticket(app, catalog, team):
 
 def attach(public_id, team, who="req", files=None, comment=None):
     created = add_attachments(
-        get_ticket(public_id),
+        ticket_by_public_id(public_id),
         actor=user(team, who),
         uploads=[upload("captura.png")] if files is None else files,
         comment=comment,
@@ -109,7 +110,7 @@ def attach(public_id, team, who="req", files=None, comment=None):
 
 
 def comment_on(public_id, team, who="tec", kind=CommentType.PUBLICO, text="Hola"):
-    comment = add_comment(get_ticket(public_id), actor=user(team, who), content=text, kind=kind)
+    comment = add_comment(ticket_by_public_id(public_id), actor=user(team, who), content=text, kind=kind)
     db.session.commit()
 
     return comment
@@ -321,7 +322,7 @@ def test_the_database_rejects_inconsistent_attachments(app, catalog, team):
 
     with app.app_context():
         base = {
-            "ticket_id": get_ticket(public_id).id,
+            "ticket_id": ticket_by_public_id(public_id).id,
             "nombre_original": "a.png",
             "nombre_interno": "i" * 32,
             "ruta_archivo": "2026/11/x",
@@ -359,7 +360,7 @@ def test_an_attachment_is_stored_with_its_metadata_and_a_public_event(
 
     with app.app_context():
         (item,) = attach(public_id, team, "req", [upload("captura.png", PNG)])
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert item.nombre_original == "captura.png"
         assert item.mime_type == "image/png"
@@ -395,7 +396,7 @@ def test_an_attachment_on_a_note_records_an_internal_event(app, catalog, team):
         note = comment_on(public_id, team, "tec", CommentType.INTERNO, "Nota")
         (item,) = attach(public_id, team, "tec", comment=note)
 
-        (entry,) = events(get_ticket(public_id).id, TicketEvent.ARCHIVO_ADJUNTADO)
+        (entry,) = events(ticket_by_public_id(public_id).id, TicketEvent.ARCHIVO_ADJUNTADO)
 
         assert item.comentario_id == note.id
         assert entry.visibilidad == "INTERNO"
@@ -408,7 +409,7 @@ def test_empty_form_parts_are_ignored(app, catalog, team, tmp_path):
         # El navegador envía una parte sin nombre cuando no se elige archivo.
         assert attach(public_id, team, files=[upload("", b"")]) == []
         assert attach(public_id, team, files=[]) == []
-        assert events(get_ticket(public_id).id, TicketEvent.ARCHIVO_ADJUNTADO) == []
+        assert events(ticket_by_public_id(public_id).id, TicketEvent.ARCHIVO_ADJUNTADO) == []
 
 
 def test_too_many_files_in_one_request_are_rejected_without_leftovers(
@@ -436,7 +437,7 @@ def test_the_ticket_file_limit_counts_active_files_only(app, catalog, team):
             attach(public_id, team, files=[upload("c.png")])
 
         db.session.rollback()
-        delete_attachment(get_ticket(public_id), first.id, actor=user(team, "sup"))
+        delete_attachment(ticket_by_public_id(public_id), first.id, actor=user(team, "sup"))
         db.session.commit()
 
         # Eliminado el primero, vuelve a haber lugar.
@@ -470,7 +471,7 @@ def test_an_inactive_actor_cannot_attach(app, catalog, team, make_user):
 
     with app.app_context(), pytest.raises(TicketRuleError, match="no está activo"):
         add_attachments(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             actor=db.session.get(User, inactive["id"]),
             uploads=[upload("a.png")],
         )
@@ -481,7 +482,7 @@ def test_a_rolled_back_upload_can_be_discarded(app, catalog, team):
 
     with app.app_context():
         (item,) = add_attachments(
-            get_ticket(public_id), actor=user(team, "req"), uploads=[upload("a.png")]
+            ticket_by_public_id(public_id), actor=user(team, "req"), uploads=[upload("a.png")]
         )
         path = attachment_path(item)
         relative = item.ruta_archivo
@@ -505,7 +506,7 @@ def test_deleting_is_logical_and_keeps_the_physical_file(app, catalog, team):
         (item,) = attach(public_id, team)
         path = attachment_path(item)
 
-        delete_attachment(get_ticket(public_id), item.id, actor=user(team, "sup"))
+        delete_attachment(ticket_by_public_id(public_id), item.id, actor=user(team, "sup"))
         db.session.commit()
         db.session.refresh(item)
 
@@ -513,15 +514,15 @@ def test_deleting_is_logical_and_keeps_the_physical_file(app, catalog, team):
         assert item.fecha_eliminacion is not None
         assert item.usuario_eliminacion_id == team["sup"]["id"]
         assert path.exists()
-        assert list_attachments(get_ticket(public_id), user(team, "tec")) == []
+        assert list_attachments(ticket_by_public_id(public_id), user(team, "tec")) == []
 
-        (entry,) = events(get_ticket(public_id).id, TicketEvent.ARCHIVO_ELIMINADO)
+        (entry,) = events(ticket_by_public_id(public_id).id, TicketEvent.ARCHIVO_ELIMINADO)
 
         assert entry.visibilidad == "PUBLICO"
         assert entry.valor_anterior["nombre"] == "captura.png"
 
         with pytest.raises(TicketRuleError, match="ya no existe"):
-            delete_attachment(get_ticket(public_id), item.id, actor=user(team, "sup"))
+            delete_attachment(ticket_by_public_id(public_id), item.id, actor=user(team, "sup"))
 
 
 def test_deleting_an_unknown_or_foreign_attachment_is_rejected(app, catalog, team):
@@ -533,7 +534,7 @@ def test_deleting_an_unknown_or_foreign_attachment_is_rejected(app, catalog, tea
 
         for attachment_id in (999_999, foreign.id):
             with pytest.raises(TicketRuleError, match="ya no existe"):
-                delete_attachment(get_ticket(first), attachment_id, actor=user(team, "sup"))
+                delete_attachment(ticket_by_public_id(first), attachment_id, actor=user(team, "sup"))
 
             db.session.rollback()
 
@@ -556,7 +557,7 @@ def test_the_requester_never_gets_the_attachment_of_a_note(app, catalog, team):
 
     with app.app_context():
         _, public_file, note_file, _ = _setup_visibility(public_id, team)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         def names(key):
             return [a.nombre_original for a in list_attachments(ticket, user(team, key))]
@@ -575,11 +576,11 @@ def test_deleting_the_comment_hides_its_attachments_from_everyone(app, catalog, 
         comment = comment_on(public_id, team, "tec")
         (item,) = attach(public_id, team, "tec", comment=comment)
 
-        delete_comment(get_ticket(public_id), comment.id, actor=user(team, "sup"))
+        delete_comment(ticket_by_public_id(public_id), comment.id, actor=user(team, "sup"))
         db.session.commit()
 
         for key in ("req", "tec", "sup"):
-            assert get_attachment(get_ticket(public_id), item.id, user(team, key)) is None
+            assert get_attachment(ticket_by_public_id(public_id), item.id, user(team, key)) is None
 
 
 def test_the_sql_visibility_matches_the_policy(app, catalog, team, make_user):
@@ -590,7 +591,7 @@ def test_the_sql_visibility_matches_the_policy(app, catalog, team, make_user):
         _setup_visibility(public_id, team)
         gone = comment_on(public_id, team, "tec", CommentType.PUBLICO, "Se va")
         gone_file = attach(public_id, team, "tec", [upload("huerfano.png")], gone)[0]
-        delete_comment(get_ticket(public_id), gone.id, actor=user(team, "sup"))
+        delete_comment(ticket_by_public_id(public_id), gone.id, actor=user(team, "sup"))
         db.session.get(User, inactive["id"]).activo = False
         db.session.commit()
 
@@ -624,7 +625,7 @@ def test_the_requester_does_not_see_note_file_events_in_the_history(app, catalog
         def kinds(key):
             return [
                 e.detalle
-                for e in list_ticket_history(get_ticket(public_id), user(team, key))
+                for e in list_ticket_history(ticket_by_public_id(public_id), user(team, key))
                 if e.tipo_evento == "ARCHIVO_ADJUNTADO"
             ]
 
@@ -840,7 +841,7 @@ def test_a_deleted_comment_makes_its_file_undownloadable(client, app, catalog, t
     with app.app_context():
         comment = comment_on(public_id, team, "tec")
         item_id = attach(public_id, team, "tec", comment=comment)[0].id
-        delete_comment(get_ticket(public_id), comment.id, actor=user(team, "sup"))
+        delete_comment(ticket_by_public_id(public_id), comment.id, actor=user(team, "sup"))
         db.session.commit()
 
     login(client, team["sup"])
@@ -903,8 +904,8 @@ def test_uploading_does_not_change_the_updated_date(client, app, catalog, team):
     post_files(client, f"/tickets/{public_id}/attachments", ("a.png", PNG))
 
     with app.app_context():
-        assert get_ticket(public_id).fecha_modificacion is None
-        assert get_ticket(public_id).version == 1
+        assert ticket_by_public_id(public_id).fecha_modificacion is None
+        assert ticket_by_public_id(public_id).version == 1
 
 
 def test_file_names_are_shown_escaped(client, app, catalog, team):
@@ -1003,13 +1004,13 @@ def test_the_history_lines_for_files_never_show_content(app, catalog, team):
 
     with app.app_context():
         (item,) = attach(public_id, team, files=[upload("informe.pdf", PDF)])
-        delete_attachment(get_ticket(public_id), item.id, actor=user(team, "sup"))
+        delete_attachment(ticket_by_public_id(public_id), item.id, actor=user(team, "sup"))
         db.session.commit()
 
         lines = [
             describe_history_changes(e)
             for e in events(
-                get_ticket(public_id).id,
+                ticket_by_public_id(public_id).id,
                 TicketEvent.ARCHIVO_ADJUNTADO,
                 TicketEvent.ARCHIVO_ELIMINADO,
             )

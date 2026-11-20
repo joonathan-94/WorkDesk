@@ -3,7 +3,7 @@
 # WorkDesk — Roadmap de implementación
 
 **Versión:** 1.2  
-**Estado:** ACTUALIZADO — `v0.1.0`, `v0.2.0` y `v0.3.0` (núcleo de tickets) implementados, integrados en `main` y etiquetados; la siguiente fase es `v0.4.0`  
+**Estado:** ACTUALIZADO — `v0.1.0`, `v0.2.0`, `v0.3.0` (núcleo de tickets) y `v0.4.0` (asignación, colaboración y ciclo de vida) implementados, integrados en `main` y etiquetados; la siguiente fase es `v0.5.0`  
 **Proyecto:** WorkDesk  
 **Horizonte objetivo del MVP:** máximo 3 meses  
 **Modalidad inicial:** desarrollo local, sin despliegue externo  
@@ -47,7 +47,7 @@ La validación actual incluye:
 ✓ revisión técnica final completada
 ```
 
-`v0.1.0` está etiquetado. Antes de comenzar `v0.2.0` se sincronizó la documentación con las decisiones consolidadas (prioridad y SLA, grupos, contraseñas, sesiones, auditoría mínima, rutas y Bootstrap, PR #4). `v0.2.0` se completó después, mediante entregas incrementales (PR #5 a #13); ver la fase 2.
+`v0.1.0` está etiquetado. Antes de comenzar `v0.2.0` se sincronizó la documentación con las decisiones consolidadas (prioridad y SLA, grupos, contraseñas, sesiones, auditoría mínima, rutas y Bootstrap, PR #4). `v0.2.0` se completó después, mediante entregas incrementales (PR #5 a #13); ver la fase 2. `v0.3.0` (núcleo de tickets, PR #14 a #20) y `v0.4.0` (asignación, colaboración y ciclo de vida, PR #23 a #35) siguieron el mismo camino; ver las fases 3 y 4. Las cuatro versiones están etiquetadas.
 
 ---
 
@@ -559,7 +559,7 @@ Propuesta:
 v0.1.0   Fundación técnica
 v0.2.0   Usuarios, autenticación completa y RBAC
 v0.3.0   Núcleo de tickets
-v0.4.0   Colaboración y adjuntos
+v0.4.0   Asignación, colaboración y ciclo de vida
 v0.5.0   SLA y notificaciones
 v0.6.0   Dashboards y carga de trabajo
 v0.7.0   Administración y conocimiento
@@ -838,9 +838,9 @@ Esta es la fase central del MVP.
 - **Sin datos de ejemplo en los seeds.** Los seeds cargan solo lo estructural. Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz, para que una instalación real no arranque con datos ficticios; el README explica cómo.
 - **Visibilidad del Solicitante:** ve los tickets que creó o en los que es solicitante vigente. Técnico, Supervisor y Administrador ven todos (RF-011). Un ticket ajeno responde 404, igual que uno inexistente, para no revelar qué números existen.
 - **Categoría al crear:** es obligatoria; `Sin clasificar` se ofrece siempre al final de la lista y nunca preseleccionada.
-- **Solicitantes al crear:** si crea un Solicitante, queda como su propio solicitante; Técnico, Supervisor y Administrador eligen 0..N solicitantes. Agregar o quitar solicitantes después llega en `v0.4.0` (entrega 6).
+- **Solicitantes al crear:** si crea un Solicitante, queda como su propio solicitante; Técnico, Supervisor y Administrador eligen 0..N solicitantes. Agregar o quitar solicitantes después llegó en `v0.4.0` (entrega 6).
 - **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación, y cambian la prioridad con motivo obligatorio. El Solicitante solo lee, y un ticket cerrado no se edita.
-- **Fuera de esta fase:** grupo, impacto y urgencia (sus catálogos llegan más adelante) y la pantalla de Estados y transiciones (UI-021), que se implementa en `v0.4.0` junto con el flujo de estados.
+- **Fuera de esta fase:** grupo, impacto y urgencia (sus catálogos llegan más adelante) y la pantalla de Estados y transiciones (UI-021), que se implementó en `v0.4.0` (entrega 12) junto con el flujo de estados.
 
 ### Implementación
 
@@ -913,6 +913,8 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con la ed
 **Semana:** 5  
 **Versión:** `v0.4.0`
 
+**Estado de ejecución:** implementada, validada e integrada en `main` (PR #23 a #35). 2201 tests automatizados (1034 al empezar la fase). Se implementó en 12 entregas, cada una en su propia rama, con tests y Pull Request, y cada una amplió el seed de demostración (de 40 a 76 tickets).
+
 ### Entregas de `v0.4.0`
 
 La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con tests y Pull Request, como `v0.2.0` y `v0.3.0`:
@@ -927,8 +929,27 @@ La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con test
 8. **Adjuntos** ✓ (PR #31): almacenamiento local fuera de `static/`, validación por extensión y contenido, SHA-256, descarga autenticada y visibilidad heredada de la nota interna, con el seed ampliado.
 9. **Resolución, validación del solicitante, cierre y reapertura** ✓ (PR #32): resolver, confirmar o rechazar la solución, cierre directo y excepcional y reapertura, con la regla «cerrado ⇒ fecha y motivo de cierre», la tabla `validaciones`, el plazo de reapertura `REOPEN_WINDOW_DAYS` y el seed ampliado.
 10. **Relaciones y duplicados** ✓ (PR #33): relacionar tickets, marcar un ticket como duplicado de otro (lo cierra con el motivo «Duplicado»), solo para el personal, con el seed ampliado.
-11. **Bloqueo temporal de edición** (en curso, RN-115 a RN-117): el ticket queda reservado mientras alguien edita sus datos o su prioridad, con aviso de quién edita, renovación mientras la pantalla está abierta y expiración automática; la versión sigue siendo la barrera final.
-12. **Pantalla de Estados y transiciones (UI-021)** y cierre de la versión.
+11. **Bloqueo temporal de edición** ✓ (PR #34, RN-115 a RN-117): el ticket queda reservado mientras alguien edita sus datos o su prioridad, con aviso de quién edita, renovación mientras la pantalla está abierta y expiración automática; la versión sigue siendo la barrera final.
+12. **Pantalla de Estados y transiciones (UI-021) y cierre de la versión** ✓ (PR #35, RN-164): el Administrador renombra los estados y habilita o deshabilita las transiciones opcionales sin poder romper el flujo. Incluye una revisión de toda la fase: el catálogo de acciones separado del motor de estados, `tickets/routes/` como paquete, un descriptor por evento del historial, los ayudantes repetidos unificados y una red de seguridad que comprueba la autorización de todas las rutas; además de la documentación de cierre.
+
+### Decisiones de la fase
+
+- **El vocabulario del historial vive en la aplicación.** Se eliminó el `CHECK` de `historial_ticket.tipo_evento`: añadir un evento ya no necesita una migración, pero obliga a decidir tres cosas (cómo se llama, quién lo ve y qué cuenta su línea del historial) y un test lo exige. La fase terminó con 23 eventos.
+- **Quién ve qué se decide en la consulta, nunca en la plantilla.** Cada evento declara si es público o interno y la consulta del historial filtra según el rol; los comentarios (`visible_comments_condition`) y los adjuntos (`visible_attachments_condition`) siguen el mismo patrón. Cada condición SQL tiene su política equivalente en Python y un test comprueba que coinciden para todos los roles. Una nota interna no llega al Solicitante por ninguna superficie: ni el detalle, ni el historial, ni los conteos, ni los archivos, ni las descargas.
+- **Una acción, una pantalla.** Cada acción (cambiar el estado, asignar, comentar, relacionar...) es una pantalla de confirmación o un formulario de una línea, con CSRF, que funciona sin JavaScript. Los modales y los paneles laterales quedan como mejora progresiva para `v0.9.0`; el JavaScript de la fase es opcional (contadores, filtros de listas y el latido del bloqueo de edición).
+- **404 si no lo ve, 403 si lo ve pero no puede.** La regla de `v0.3.0` se mantuvo en todas las rutas nuevas. La entrega 12 añadió una red de seguridad (`tests/test_route_authorization.py`) que recorre el mapa de rutas y comprueba la propiedad del ticket, el rol y las áreas de administración, igual que `test_route_protection.py` hace con la autenticación y el CSRF: una ruta nueva queda cubierta sin tocar el test.
+- **Un único camino para cambiar el estado.** `change_state` es el único que escribe el estado y los datos de resolución y cierre, y por eso «cerrado ⇒ fecha y motivo de cierre» no puede romperse; marcar un duplicado lo reutiliza. La asignación también mueve el estado por esa vía: el primer técnico pasa un ticket `Nuevo` a `Asignado` y quitar al último lo devuelve (acción `DESASIGNACION`, que `08_flujo_de_tickets.md` no listaba).
+- **Concurrencia con la fila del ticket bloqueada.** Toda operación que cambia un ticket lo bloquea (`SELECT ... FOR UPDATE`) antes de validar, y cada operación que compite por un recurso (asignarse, confirmar la solución, quitar una relación, tomar el bloqueo de edición, renombrar un estado, deshabilitar transiciones) tiene su test con dos hilos.
+- **Lo aditivo no sube la versión.** Comentarios, notas, adjuntos, relaciones y cambios de solicitantes no tocan `tickets.version` ni «Actualizado»: una nota interna no se delata en el listado del Solicitante y quien abrió la edición antes no recibe un conflicto por algo que no tocó.
+- **Parámetros por variable de entorno hasta `v0.7.0`.** El plazo de edición de comentarios, el de reapertura, los límites de los adjuntos y los tiempos del bloqueo de edición se leen de variables de entorno validadas al iniciar. Pasarán a la configuración administrable cuando exista su pantalla.
+- **El seed de demostración creció con cada entrega.** Usa los servicios reales y escribe fechas relativas al día en que se ejecuta. Además de servir para probar y mostrar el sistema, destapó fallos que los tests de servicio no veían, como el refresco de fechas con escalamientos hechos a mano (PR #29).
+- **La revisión final es parte de la entrega.** La entrega 12 no solo añade la pantalla: ordena lo que creció durante la fase. El catálogo de acciones de estado salió de `lifecycle.py`, `tickets/routes.py` (casi 1850 líneas) pasó a un paquete por áreas sin cambiar ninguna ruta, el historial dejó una cadena de condiciones por un descriptor por evento y los ayudantes repetidos se unificaron, con tests que impiden que el catálogo y las políticas se separen.
+
+### Lo que cambió respecto del plan inicial
+
+- **Entró alcance que el plan dejaba fuera.** Agregar y retirar solicitantes después de crear el ticket (la fase 3 lo daba por hecho y la lista de esta fase no lo recogía), el escalamiento manual (RN-31) como acción propia y el catálogo de motivos de espera (RN-49) se sumaron al alcance: el primero como la entrega 6 y los otros dos dentro de las entregas 5 y 2.
+- **La documentación se fue corrigiendo sobre la marcha**, cada vez que el código obligaba a decidir algo que no estaba escrito o que estaba escrito de otra forma: el nombre de la fase en el README, la matriz de permisos de Grupos (`docs/11`), las rutas de bloqueo que sugerían los primeros borradores de `docs/10`, la acción `DESASIGNACION` que `docs/08` no listaba y, al cerrar, los rangos de reglas de negocio de `docs/07`, que seguían una numeración anterior a la de `docs/06`.
+- **Los datos de demostración destaparon fallos que los tests de servicio no veían.** Refrescar las fechas de un ticket con un escalamiento hecho a mano violaba un `CHECK` de `tickets_tecnicos`: un fallo de la entrega 5 que se corrigió aparte (PR #29) y quedó cubierto por un test de regresión en la entrega 6. Desde entonces, cada entrega que añade fechas nuevas extiende el refresco y el test que compara un refresco con una carga nueva.
 
 ### Implementación
 
@@ -984,6 +1005,18 @@ retorno al flujo activo
 
 El flujo completo de un ticket puede ejecutarse desde creación hasta cierre.
 
+Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bloqueo temporal de edición, las relaciones y los duplicados, la administración de grupos, de los motivos de espera y de los estados y transiciones, y un recorrido automático de la autorización de todas las rutas.
+
+### Lo que `v0.4.0` deja para las fases siguientes
+
+- **`v0.5.0`:** el cierre automático por inactividad (la transición `AUTO_CIERRE` y el motivo `INACTIVIDAD` ya existen, pero nada los usa), el SLA con su calendario laboral y las notificaciones internas, entre ellas las que avisan a los técnicos cuando el Solicitante comenta (RF-068). Mientras tanto, un ticket resuelto sin solicitante solo lo cierra el Supervisor o el Administrador (cierre excepcional).
+- **`v0.6.0`:** la reasignación masiva y la carga de trabajo.
+- **`v0.7.0`:** los parámetros que hoy son variables de entorno (plazo de edición de comentarios, plazo de reapertura, límites de los adjuntos y tiempos del bloqueo de edición) pasan a la configuración administrable.
+- **`v0.9.0`:** las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), los modales y paneles laterales como mejora progresiva, y el color y el orden de los estados (RF-118).
+- **`v0.7.0`:** la advertencia de posibles tickets duplicados al crear uno (RF-061), junto a la base de conocimiento, que comparte la búsqueda.
+- **Sin fase asignada todavía:** los adjuntos desde el formulario de creación; las columnas de impacto y urgencia, cuando existan sus catálogos; y la liberación manual de un bloqueo de edición por el Supervisor o el Administrador.
+- **Después del MVP:** la actualización en tiempo real de quién edita un ticket (sección 32), la vista previa de imágenes y la eliminación física de archivos con sus políticas de retención.
+
 ---
 
 # 18. FASE 5 — SLA y notificaciones internas
@@ -1018,6 +1051,10 @@ El SLA se calcula en tiempo laboral, así que el calendario se construye en esta
 - **calendario por defecto:** mientras el Administrador no haya guardado ninguno, todo el sistema (el SLA y los datos de demostración) usa `DEMO_CALENDAR` (lunes a viernes de 09:00 a 18:00, sin feriados) y la pantalla lo indica. En cuanto se guarda uno, todos usan el guardado. Una única función resuelve el calendario vigente (`docs/09`, sección 40.8);
 - `seed-demo-tickets` pasa a leer el calendario resuelto (el guardado o el predeterminado): `DEMO_CALENDAR` y la configuración de la interfaz conviven.
 
+### Cierre automático
+
+El planificador que dispara los avisos de SLA (`docs/10`, secciones 84 a 87) ejecuta también el cierre automático de los tickets `Resuelto` que el solicitante no valida (RN-58) y de los resueltos sin solicitante (RN-59). Reutiliza lo que `v0.4.0` dejó preparado: la transición `AUTO_CIERRE` (cargada y marcada como esencial, pero que nada ejecuta todavía), el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente`. Debe cerrar por el mismo camino que las demás acciones (`change_state`), de modo que el ticket quede con fecha y motivo de cierre como siempre, y el plazo debe ser configurable.
+
 ### Notificaciones internas
 
 Eventos iniciales recomendados:
@@ -1044,6 +1081,7 @@ No implementar correo.
 ✓ puede pausarse
 ✓ vuelve a continuar
 ✓ genera indicadores
+✓ un ticket resuelto que nadie valida se cierra solo
 ✓ notificaciones aparecen
 ✓ usuario puede marcarlas como leídas
 ```
@@ -1136,7 +1174,8 @@ Implementar:
 - detalle;
 - borrador/publicado cuando corresponda;
 - creación/edición según permiso;
-- publicación según permiso.
+- publicación según permiso;
+- advertencia de posibles tickets duplicados al crear uno (RF-061): sin bloquear la creación, muestra tickets abiertos parecidos (título y categoría, reciente) con búsqueda por palabras (`ILIKE`), la misma que usará la base de conocimiento. La sensibilidad se configura con la tabla `configuracion`.
 
 ### Criterio de salida
 
@@ -1623,7 +1662,7 @@ Mientras tanto, la regla para el desarrollo de interfaz es usar siempre tokens (
 
 # 33. Próximo paso inmediato
 
-La documentación inicial, la preparación del repositorio, `v0.1.0 — Fundación técnica`, la identidad visual oficial, `v0.2.0 — Usuarios, autenticación completa y RBAC` y `v0.3.0 — Núcleo de tickets` ya fueron realizadas e integradas en `main`.
+La documentación inicial, la preparación del repositorio, `v0.1.0 — Fundación técnica`, la identidad visual oficial, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0 — Asignación, colaboración y ciclo de vida` ya fueron realizadas e integradas en `main`.
 
 El estado inmediato del proyecto es:
 
@@ -1633,21 +1672,23 @@ main
 → documentación de contexto (PR #2) e identidad visual (PR #3)
 → v0.2.0 integrado (PR #4 a #13) y etiquetado
 → v0.3.0 integrado (PR #14 a #20) y etiquetado
+→ v0.4.0 integrado (PR #23 a #35) y etiquetado
 ```
 
-Entre `v0.3.0` y `v0.4.0` se añadió el comando opcional `seed-demo-tickets` (unos 40 tickets de demostración con textos realistas, fechas relativas y datos separados de la lógica), pensado para probar y mostrar el sistema y para ampliarse con cada fase: cuando existan estados, asignaciones, cierres y comentarios, se añaden campos opcionales a su lista de datos.
+Entre `v0.3.0` y `v0.4.0` se añadió el comando opcional `seed-demo-tickets` (PR #21), pensado para probar y mostrar el sistema. Creció con cada entrega de `v0.4.0` hasta los 76 tickets de demostración actuales, con textos realistas, fechas relativas, datos separados de la lógica y todos los caminos del ciclo de vida (estados, asignaciones, comentarios, adjuntos, cierres y relaciones). Seguirá ampliándose con cada fase: cuando existan el SLA y las notificaciones, se añaden campos opcionales a su lista de datos.
 
-El siguiente paso del proyecto es `v0.4.0 — Asignación, colaboración y ciclo de vida` (fase 4, sección 17). Antes de escribir código conviene:
+El siguiente paso del proyecto es `v0.5.0 — SLA y notificaciones internas` (fase 5, sección 18). Antes de escribir código conviene:
 
 ```text
-1. revisar lo que v0.3.0 dejó para esta fase (sección 16);
-2. revisar las decisiones de negocio pendientes (estados y transiciones,
-   bloqueo de edición, asignación);
+1. revisar lo que v0.4.0 dejó para esta fase (sección 17): el cierre
+   automático por inactividad y los avisos a los técnicos;
+2. revisar las decisiones de negocio pendientes del SLA (continuidad ante
+   cambios de prioridad, pausa en espera y calendario laboral);
 3. dividir la fase en entregas pequeñas, cada una con su rama, tests y
-   Pull Request, como se hizo en v0.2.0 y v0.3.0.
+   Pull Request, como se hizo en las fases anteriores.
 ```
 
-`v0.4.0` reutiliza la infraestructura validada en las fases anteriores: autorización por roles y políticas de tickets, auditoría, historial inmutable (`record_ticket_event`), control de versión, layout con Bootstrap, navegación por rol, formularios y patrones de servicio, listado y confirmación, evitando rehacer componentes. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
+`v0.5.0` reutiliza la infraestructura validada en las fases anteriores: las políticas de autorización y su red de seguridad sobre todas las rutas, el historial con su visibilidad por evento, el motor de estados (`change_state` y `apply_derived_transition`, que son por donde pasa todo cambio de estado y, por tanto, donde el SLA tendrá que reaccionar al entrar y salir de `En espera`), el motor de tiempo laboral del seed de demostración, y los patrones de servicio, de confirmación y de administración de catálogos. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
 
 ---
 

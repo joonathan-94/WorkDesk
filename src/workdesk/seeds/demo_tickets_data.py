@@ -37,17 +37,16 @@ faltas de tilde, el problema equivocado ("no tengo internet" cuando era un
 cable) y prioridades exageradas. Esa ambigüedad es intencional: es lo que
 ocurre en un soporte de verdad.
 
-Los cambios de estado (`estado`, `motivo_espera` y `texto` de un ajuste), el
-grupo (`grupo`), la asignación de técnicos (`asignar`) y los solicitantes
-agregados o retirados después de crear el ticket (`agregar_solicitante`,
-`retirar_solicitante` y `motivo_retiro`) y los comentarios públicos y notas
-internas (`comentario` y `nota_interna`) y los archivos adjuntos (`adjunto`) ya existen. Cuando existan cierres,
-se añadirán campos opcionales con valor por defecto y los tickets ya escritos
-seguirán siendo válidos.
+Cada ajuste admite campos opcionales con valor por defecto (ver
+`DemoAdjustment`): cambios de estado, grupo, asignación de técnicos,
+solicitantes agregados o retirados, comentarios y notas internas, archivos
+adjuntos, resolución, validación, cierre y reapertura, y relaciones y
+duplicados. Cuando una fase nueva añada algo al ticket se suma un campo
+opcional más, y los tickets ya escritos siguen siendo válidos.
 
-Los tickets cuya historia incluye cambios de estado, grupo, asignación,
-solicitantes o comentarios están al final de la lista: al volver a ejecutar el comando solo
-se crean los que faltan, y un ticket ya cargado no se modifica (para ver esos
+Los tickets cuya historia va más allá de la creación están al final de la
+lista, agrupados por tema. Al volver a ejecutar el comando solo se crean los
+que faltan y un ticket ya cargado no cambia de contenido (para ver esos
 cambios en tickets antiguos hay que recrear la base de desarrollo).
 """
 

@@ -55,9 +55,15 @@ def make_ticket(app, catalog, creator_id, requester_ids=(), **overrides):
 
 
 def ticket_by_public_id(public_id) -> Ticket:
+    """El ticket por su identificador público (dentro de un app context)."""
     return db.session.scalar(
         db.select(Ticket).where(Ticket.public_id == public_id)
     )
+
+
+def person(user_id) -> User:
+    """El usuario por su id (dentro de un app context)."""
+    return db.session.get(User, user_id)
 
 
 def set_state(app, public_id, code):

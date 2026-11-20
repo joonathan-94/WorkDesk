@@ -73,6 +73,7 @@ HUB_SECTIONS = (
                 title="Estados y transiciones",
                 description="Nombres y transiciones del flujo.",
                 icon="diagram-2",
+                endpoint="catalogs.states_page",
             ),
         ),
     ),

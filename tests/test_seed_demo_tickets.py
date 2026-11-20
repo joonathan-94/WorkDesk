@@ -3100,3 +3100,55 @@ def test_the_command_asks_for_the_relation_types_first(app):
             seed_demo_tickets(now=NOW)
 
         assert db.session.scalar(db.select(db.func.count(Ticket.id))) == 0
+
+
+def test_the_command_asks_to_enable_the_transitions_it_needs(app):
+    """Si el Administrador deshabilitó transiciones que la demostración
+    recorre, se detiene antes de cargar nada y dice cuáles son."""
+    from src.workdesk.models import TransicionEstado
+
+    prepare(app)
+
+    with app.app_context():
+        resolve = db.session.scalar(
+            db.select(TransicionEstado).where(
+                TransicionEstado.accion == "RESOLVER",
+                TransicionEstado.estado_origen.has(codigo="NUEVO"),
+            )
+        )
+        resolve.activa = False
+        db.session.commit()
+
+        with pytest.raises(DemoTicketsError) as error:
+            seed_demo_tickets(now=NOW)
+
+        message = str(error.value)
+
+        assert "transiciones deshabilitadas" in message
+        assert "Nuevo → Resuelto (Resolver)" in message
+        assert "Estados y transiciones" in message
+        assert db.session.scalar(db.select(db.func.count(Ticket.id))) == 0
+
+        # Con la transición habilitada de nuevo, carga con normalidad.
+        resolve.activa = True
+        db.session.commit()
+        seed_demo_tickets(now=NOW)
+
+        assert db.session.scalar(db.select(db.func.count(Ticket.id))) == len(DEMO_TICKETS)
+
+
+def test_renaming_the_states_does_not_affect_the_demo(app):
+    """La demostración trabaja con los códigos de los estados, no con sus
+    nombres: un Administrador que los renombró puede cargarla igual."""
+    prepare(app)
+
+    with app.app_context():
+        from src.workdesk.models import Estado
+
+        for index, state in enumerate(db.session.scalars(db.select(Estado)), start=1):
+            state.nombre_visible = f"Estado {index}"
+
+        db.session.commit()
+        result = seed_demo_tickets(now=NOW)
+
+        assert result.created == len(DEMO_TICKETS)

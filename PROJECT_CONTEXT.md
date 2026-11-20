@@ -59,17 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.3.0 — Núcleo de tickets
+v0.4.0 — Asignación, colaboración y ciclo de vida
 ```
 
-La versión `v0.3.0` está:
+La versión `v0.4.0` está:
 
 - implementada;
-- testeada (967 tests);
+- testeada (2201 tests);
 - documentada;
-- mergeada en `main` (PR #14 a #20).
+- mergeada en `main` (PR #23 a #35).
 
-Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC` y `v0.3.0` están etiquetadas.
+Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0` están etiquetadas.
 
 ## Rama estable
 
@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-edit-lock
+main
 ```
 
-Entrega 11 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): bloqueo temporal de edición de los tickets (RN-115 a RN-117), con aviso de quién edita, renovación mientras la pantalla está abierta y expiración automática, junto al control de versión ya existente (ver "Bloqueo temporal de edición"). Incluye una migración. No cambia el seed de demostración: un bloqueo es transitorio.
+Con `v0.4.0` cerrada no hay una rama de trabajo abierta: la fase siguiente (`v0.5.0`) empezará en la suya. La última fue `feature/states-screen-close-v0-4-0` (entrega 12): la pantalla de Estados y transiciones, la revisión final del código de la fase y la documentación de cierre (ver "Administración de estados y transiciones" y "Revisión final de la fase"). No incluye migraciones ni cambia el seed de demostración, salvo un aviso claro si faltan transiciones.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 10 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30, la 8, adjuntos, el PR #31, la 9, resolución y cierre, el PR #32 y la 10, relaciones y duplicados, el PR #33): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -103,8 +103,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 8 | Adjuntos | Integrada (PR #31) |
 | 9 | Resolución, validación del solicitante, cierre y reapertura | Integrada (PR #32) |
 | 10 | Relaciones y duplicados | Integrada (PR #33) |
-| 11 | Bloqueo temporal de edición | En curso |
-| 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Pendiente |
+| 11 | Bloqueo temporal de edición | Integrada (PR #34) |
+| 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Integrada (PR #35) |
 
 ## Identidad visual (integrada en `main`)
 
@@ -147,28 +147,54 @@ Decisiones de la fase:
 - **Sin datos de ejemplo en los seeds.** Categorías, ubicaciones y tickets de ejemplo se crean a mano desde la interfaz; ningún seed los incluye, para que una instalación real no arranque con datos ficticios. El README documenta cómo hacerlo.
 - **Visibilidad del Solicitante:** ve los tickets que creó o donde es solicitante vigente. Técnico, Supervisor y Administrador ven todos. Un ticket al que no se tiene acceso responde 404, igual que uno inexistente.
 - **Edición:** Técnico, Supervisor y Administrador editan título, descripción, categoría y ubicación y cambian la prioridad con motivo obligatorio; el Solicitante solo lee. El Solicitante ve en el historial qué cambió, pero no el motivo.
-- **Concurrencia:** en esta fase solo existe el control de versión (`tickets.version`). El bloqueo temporal de edición (RN-115 a RN-117: aviso de quién edita, expiración y renovación) se difiere a `v0.4.0`, junto con comentarios y cambios de estado.
-- **Estados y transiciones** (UI-021) se difieren a `v0.4.0`, cuando exista el flujo de estados y la tabla de transiciones.
+- **Concurrencia:** en esta fase solo existe el control de versión (`tickets.version`). El bloqueo temporal de edición (RN-115 a RN-117: aviso de quién edita, expiración y renovación) se difirió a `v0.4.0`, donde se implementó.
+- **Estados y transiciones** (UI-021) se difirieron a `v0.4.0`, cuando existió el flujo de estados y la tabla de transiciones; están implementados.
 
 Cierre de la versión (entrega 7), sin migraciones ni cambios de funcionalidad:
 
 - `tests/test_route_protection.py` recorre el mapa de rutas real y comprueba que todas redirigen al login sin sesión, salvo las públicas (`auth.login`, `system.health` y `static`, listadas en `PUBLIC_ENDPOINTS`), y que toda ruta POST responde 400 sin token CSRF. Una ruta nueva queda cubierta automáticamente: si el test falla al añadirla, no se arregla el test; o se protege la ruta o, si de verdad es pública, se añade de forma consciente a `PUBLIC_ENDPOINTS`.
 - El README incorpora la guía de primera configuración paso a paso (requisitos, PostgreSQL, `.env` y preparación inicial), un recorrido de prueba por rol con un fragmento opcional que genera 25 tickets de ejemplo desde `flask shell`, y una tabla de solución de problemas.
 
-## Próximo hito
+## Hito completado: v0.4.0
 
 ```text
 v0.4.0 — Asignación, colaboración y ciclo de vida
 ```
 
-Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técnicos, cambios de estado, comentarios públicos y notas internas, adjuntos, resolución, cierre y reapertura. Además, `v0.3.0` dejó decididas estas piezas, que le corresponden:
+Es la fase en que el ticket pasa a trabajarse en equipo: grupos, asignación, estados, comentarios y notas internas, adjuntos, resolución, cierre y reapertura, relaciones, bloqueo de edición y la administración de los estados. Se dividió en 12 entregas (la tabla está en "Rama de trabajo actual"), cada una con su rama, tests, Pull Request y ampliación del seed de demostración. Sus reglas están en `docs/06` (RN-146 y RN-156 a RN-164) y su alcance en `docs/12_roadmap.md` (fase 4, con las decisiones de la fase).
 
-- el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente (entrega 11, hecha);
-- la pantalla de Estados y transiciones (UI-021), que sigue pendiente (entrega 12); la tabla de transiciones ya existe (entrega 3);
-- los eventos del historial (estado, asignación, comentarios, adjuntos, resolución, cierre y relaciones: ya existen todos). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
-- dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
-- las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos (la de grupo ya existe: entrega 5);
-- la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado: la aplica el servicio de cierre (entrega 9, hecha).
+Decisiones de la fase:
+
+- **El vocabulario de eventos del historial vive solo en la aplicación** (se eliminó el CHECK de `tipo_evento`). Un evento nuevo obliga a decidir su nombre, su visibilidad y su descriptor, y un test lo exige. Hoy son 23.
+- **Quién ve qué se decide en la consulta**, nunca en la plantilla: lo mismo para el historial, los comentarios y los adjuntos. Cada condición SQL tiene su política Python equivalente y un test comprueba que coinciden para todos los roles.
+- **Una acción, una pantalla** (sin modales, y funcionan sin JavaScript): 404 si no se ve el ticket y 403 si se ve y no se puede actuar.
+- **`change_state` es el único camino que escribe el estado** y los datos de resolución y cierre, así que «cerrado ⇒ fecha y motivo de cierre» no puede romperse; marcar un duplicado y la asignación lo reutilizan.
+- **Lo aditivo no sube la versión del ticket:** comentarios, notas, adjuntos, relaciones y cambios de solicitantes.
+- **Los parámetros que serán configuración** (plazos de edición y de reapertura, límites de adjuntos y tiempos del bloqueo) son variables de entorno hasta `v0.7.0`.
+
+## Próximo hito
+
+```text
+v0.5.0 — SLA y notificaciones internas
+```
+
+Su alcance está en `docs/12_roadmap.md` (fase 5): SLA por prioridad calculado en tiempo laboral, con un calendario laboral administrable; pausa en `En espera`; avisos de próximo a vencer y vencido; y notificaciones internas. `v0.4.0` dejó preparado o decidido para esta fase:
+
+- el cierre automático de un ticket `Resuelto` que nadie valida: la transición `AUTO_CIERRE`, el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente` ya existen, pero nada los usa. Hasta entonces, un ticket resuelto sin solicitante solo lo cierra un Supervisor o el Administrador con el cierre excepcional;
+- las notificaciones a los técnicos cuando el Solicitante comenta (RF-068) y el aviso de reapertura (RN-72 y RN-96);
+- el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasa a un módulo compartido con el SLA, y `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado;
+- por el motor de estados pasa todo cambio de estado (`change_state` y `apply_derived_transition`): ahí tendrá que reaccionar el SLA al entrar y salir de `En espera`;
+- la política de continuidad del SLA ante un cambio de prioridad (RN-88): `change_priority` todavía no la aplica.
+
+Asignada a `v0.7.0`: la advertencia de posibles duplicados al crear un ticket (RF-061), junto a la base de conocimiento, con la que comparte la búsqueda.
+
+Pendiente, sin fase asignada, para decidirlo al planificar:
+
+- los adjuntos desde el formulario de creación del ticket;
+- las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
+- la liberación manual de un bloqueo de edición por el Supervisor o el Administrador;
+- las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`);
+- los parámetros que hoy son variables de entorno, en la configuración administrable (`v0.7.0`).
 
 ## Hito completado: v0.2.0
 
@@ -318,6 +344,7 @@ WorkDesk/
 │       ├── security/
 │       ├── seeds/
 │       ├── tickets/
+│       │   └── routes/
 │       ├── users/
 │       ├── static/
 │       │   ├── css/
@@ -352,14 +379,15 @@ WorkDesk/
 │       │   ├── tickets/
 │       │   └── users/
 │       ├── __init__.py
+│       ├── cleaning.py
 │       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
-│       ├── formatting.py
-│       ├── search.py
 │       ├── extensions.py
+│       ├── formatting.py
 │       ├── logging_config.py
-│       └── navigation.py
+│       ├── navigation.py
+│       └── search.py
 ├── tests/
 │   ├── conftest.py
 │   ├── test_account_password.py
@@ -373,22 +401,26 @@ WorkDesk/
 │   ├── test_catalogs_service.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
+│   ├── test_formatting.py
+│   ├── test_groups.py
 │   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
+│   ├── test_route_authorization.py
 │   ├── test_route_protection.py
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
-│   ├── test_formatting.py
-│   ├── test_groups.py
+│   ├── test_state_actions.py
+│   ├── test_states_admin.py
 │   ├── test_system.py
-│   ├── test_ticket_history_visibility.py
-│   ├── test_ticket_model.py
 │   ├── test_ticket_assignment.py
 │   ├── test_ticket_attachments.py
 │   ├── test_ticket_comments.py
 │   ├── test_ticket_edit_lock.py
+│   ├── test_ticket_history.py
+│   ├── test_ticket_history_visibility.py
+│   ├── test_ticket_model.py
 │   ├── test_ticket_policies.py
 │   ├── test_ticket_relations.py
 │   ├── test_ticket_requesters.py
@@ -712,7 +744,7 @@ Seis catálogos que los tickets necesitan, cada uno con su modelo en `src/workde
 
 | Catálogo | Tabla | Notas |
 | --- | --- | --- |
-| `Estado` | `estados` | Los seis estructurales (`NUEVO`, `ASIGNADO`, `EN_PROGRESO`, `EN_ESPERA`, `RESUELTO`, `CERRADO`). El código es inmutable; solo el nombre visible, la descripción y el color serán configurables. Sin columnas de vigencia. |
+| `Estado` | `estados` | Los seis estructurales (`NUEVO`, `ASIGNADO`, `EN_PROGRESO`, `EN_ESPERA`, `RESUELTO`, `CERRADO`). El código es inmutable; el nombre visible y la descripción se editan desde la administración (`v0.4.0`, entrega 12) y el color y el orden no se editan. Sin columnas de vigencia. |
 | `Prioridad` | `prioridades` | Baja, Media, Alta y Crítica. `nivel > 0` y único entre las activas (índice parcial). Nombre único sin distinguir mayúsculas. |
 | `Categoria` | `categorias` | `codigo` opcional y único. Nombre único sin distinguir mayúsculas. La categoría de respaldo `SIN_CLASIFICAR` (orden 0) siempre existe y no puede desactivarse. |
 | `Ubicacion` | `ubicaciones` | Nombre único sin distinguir mayúsculas. `tipo` guarda el código de `LocationType` (`SUCURSAL`, `OFICINA`, `EDIFICIO`, `PISO`, `AREA`, `INSTALACION`, `OTRA`) o NULL; la lista vive en la aplicación, no en la base de datos. |
@@ -737,7 +769,7 @@ Módulo `src/workdesk/catalogs/` (blueprint `catalogs`, prefijo `/admin`), exclu
 - **Auditoría:** cuatro acciones genéricas (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO`, `CATALOGO_DESACTIVADO`) con `entidad_tipo` `categoria`, `prioridad`, `ubicacion` o `motivo_espera`, el nombre del registro en `detalle`, y los valores anterior y nuevo solo de los campos que cambiaron. Sin cambios, no se audita. Las acciones de activar y desactivar admiten un motivo opcional.
 - **Formularios** (`catalogs/forms.py`): `CategoryForm`, `PriorityForm` y `LocationForm`; `OptionalIntegerField` (número opcional con mensajes en español) para el orden; el tipo de ubicación se valida sin `SelectField`, como el rol en los formularios de usuarios. La confirmación reutiliza `ReasonForm` de `users/forms.py`.
 - **Hub y navegación:** las tarjetas Categorías, Prioridades y Ubicaciones del hub enlazan con sus listados, y "Administración" queda activa en las pantallas del módulo (prefijo `catalogs.` en `navigation.py`).
-- Las pantallas de **Estados y transiciones** (UI-021) quedan para `v0.4.0`.
+- Los estados y sus transiciones tienen su propia pantalla (ver "Administración de estados y transiciones").
 
 ---
 
@@ -760,9 +792,9 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 
 ## Historial (`historial_ticket`)
 
-Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO`, `TICKET_REABIERTO`, `RELACION_AGREGADA` y `RELACION_ELIMINADA`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO`, `TICKET_REABIERTO`, `RELACION_AGREGADA` y `RELACION_ELIMINADA`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Lo rellena `change_state` al poner un ticket en espera.
 
-**Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, sin migración.
+**Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, y escribir su descriptor en `tickets/history.py` (un test comprueba que no falte ninguno), sin migración.
 
 **Visibilidad por evento.** Cada fila lleva `visibilidad` (`PUBLICO` o `INTERNO`, NOT NULL, por defecto `PUBLICO`, con CHECK `ck_historial_ticket_visibilidad`). El servicio la fija al registrar el evento: `record_ticket_event(..., visibility=)` y, si se omite, el valor de `DEFAULT_EVENT_VISIBILITY`, que obliga a decidir la visibilidad de cada evento nuevo (un test comprueba que el mapa cubre todo el vocabulario). `INTERNO` significa que solo lo ve el personal.
 - **El filtro lo aplica la consulta, nunca la plantilla:** `visible_history_condition(user)` (`tickets/service.py`) devuelve la condición SQL (personal: todo; Solicitante: solo `PUBLICO`; anónimo, inactivo o sin rol: nada) y `list_ticket_history(ticket, viewer)` la usa. `viewer` es obligatorio a propósito. Cualquier conteo futuro debe salir de una consulta que use la misma condición. Como `visible_tickets_condition`, no comprueba el acceso al ticket: antes hay que aplicar `can_view_ticket`.
@@ -772,14 +804,14 @@ Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar even
 ## Servicio (`tickets/service.py`)
 
 - `create_ticket(...)`: crea el ticket en estado `NUEVO` y registra `TICKET_CREADO`. Exige título y descripción, que el actor esté activo, que categoría, prioridad y ubicación existan y estén activas, y que los solicitantes sean usuarios activos con rol Solicitante (sin duplicados). Lanza `TicketRuleError` sin dejar nada pendiente. **No hace commit.**
-- `record_ticket_event(...)`: añade un evento al historial en la sesión actual, sin commit; lo reutilizarán la edición y el ciclo de vida.
+- `record_ticket_event(...)`: añade un evento al historial en la sesión actual, sin commit; lo usan la edición y todo el ciclo de vida.
 - Quién puede crear tickets a nombre de otras personas lo decide la capa de rutas, no el servicio.
 - La descripción admite hasta 2000 caracteres (`MAX_DESCRIPTION_LENGTH`, en `models/ticket.py`) y el título hasta 200; los comprueba el servicio y también el formulario.
 - Consultas para las pantallas: `get_ticket_by_public_id` (carga de una vez estado, prioridad, categoría, ubicación, creador y solicitantes, sin una consulta por cada uno; no comprueba permisos), `list_ticket_history`, `list_requester_candidates` (usuarios activos con rol Solicitante, por apellido y nombre) y `categories_for_selection` (categorías activas con `Sin clasificar` siempre al final).
 
 ## Creación y detalle de tickets (entrega 4 de `v0.3.0`)
 
-Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `routes.py`, `forms.py` y `service.py`. Reglas completas en `docs/06` (RN-153).
+Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `routes/` (un módulo por área; ver "Revisión final de la fase"), `forms.py` y `service.py`. Reglas completas en `docs/06` (RN-153).
 
 **Políticas** (`security/authorization.py`, usadas por las rutas; las plantillas no autorizan nada):
 
@@ -789,7 +821,7 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 
 **Creación** (`GET, POST /tickets/new`, opción "Crear ticket" del menú, para todos los roles):
 
-- Formulario con tres secciones numeradas (docs/11, UI-004): título y descripción (con contador de caracteres); categoría, prioridad y ubicación; y, solo para el personal, los solicitantes. Los adjuntos no existen todavía.
+- Formulario con tres secciones numeradas (docs/11, UI-004): título y descripción (con contador de caracteres); categoría, prioridad y ubicación; y, solo para el personal, los solicitantes. Los adjuntos se suben desde el detalle del ticket: el formulario de creación no los incluye.
 - Las opciones salen de la base de datos y solo se ofrecen valores **activos**. La categoría es obligatoria, empieza sin elegir y `Sin clasificar` va siempre al final. La prioridad viene preseleccionada en `Media` si está activa, pero solo al abrir el formulario: un envío sin prioridad se rechaza.
 - **Solicitantes:** si crea un Solicitante, es siempre su propio solicitante y cualquier valor enviado se ignora (un envío manipulado no puede registrar a otras personas). El personal marca 0..N en una lista de casillas con buscador (mejora progresiva); los ids se validan contra los usuarios activos con rol Solicitante. Un ticket sin solicitantes es válido.
 - `TicketForm` valida con las opciones recibidas como atributos, sin `SelectField` (igual que el rol en `users/forms.py`). Los saltos de línea de la descripción se normalizan a uno solo para que el límite coincida con el contador. `IntegerListField` recoge las casillas.
@@ -806,7 +838,7 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 
 ## Listado de tickets (entrega 5 de `v0.3.0`)
 
-`GET /tickets` (`tickets/routes.py`, `list_tickets_page`), para los cuatro roles. Las reglas están en `tickets/service.py` y en `docs/06` (RN-154); la ruta solo lee y valida los parámetros de la URL.
+`GET /tickets` (`tickets/routes/listing.py`, `list_tickets_page`), para los cuatro roles. Las reglas están en `tickets/service.py` y en `docs/06` (RN-154); la ruta solo lee y valida los parámetros de la URL.
 
 - **Visibilidad en SQL:** `visible_tickets_condition(user)` devuelve la condición de la consulta (personal: todo; Solicitante: creados por él o con él como solicitante vigente, mediante `EXISTS`; cualquier otro caso: nada). Es el mismo criterio que la política `can_view_ticket`, y un test comprueba que ambos coinciden para todos los roles y casos (creador, solicitante vigente, retirado, ajeno, inactivo). Si se cambia uno hay que cambiar el otro.
 - **`list_tickets(user, filters, tab=, sort=, page=)`:** pagina en PostgreSQL (20 por página). Estado y prioridad se cargan con el mismo JOIN del filtro (`contains_eager`), la categoría con `joinedload` y los solicitantes con `selectinload`: la página, el total y los solicitantes son tres consultas fijas, sin una por fila (hay un test que lo comprueba).
@@ -821,7 +853,7 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
-Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py`; las rutas (`tickets/routes.py`) solo orquestan.
+Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py`; las rutas (`tickets/routes/editing.py`) solo orquestan.
 
 **Políticas** (`security/authorization.py`): `can_edit_ticket(user)` y `can_change_priority(user)`, hoy iguales (Técnico, Supervisor y Administrador) pero separadas porque el diseño las nombra aparte. Que el ticket esté cerrado no es una política de rol sino una regla del ticket y la aplica el servicio.
 
@@ -844,7 +876,7 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 
 ## Bloqueo temporal de edición (entrega 11 de `v0.4.0`)
 
-Reglas completas en `docs/06` (RN-163), `docs/09` (28.2) y `docs/10` (secciones 71 a 77). El servicio está en `tickets/locking.py`; las rutas (`tickets/routes.py`) solo orquestan. **Incluye una migración** (`create_ticket_edit_locks_table`). Es una mejora de la experiencia: la barrera de integridad sigue siendo `tickets.version`.
+Reglas completas en `docs/06` (RN-163), `docs/09` (28.2) y `docs/10` (secciones 71 a 77). El servicio está en `tickets/locking.py`; las rutas (`tickets/routes/editing.py`) solo orquestan. **Incluye una migración** (`create_ticket_edit_locks_table`). Es una mejora de la experiencia: la barrera de integridad sigue siendo `tickets.version`.
 
 **Modelo** (`models/edit_lock.py`, `TicketEditLock`, tabla `bloqueos_edicion_tickets`): `ticket_id`, `usuario_id`, `fecha_inicio` (la pone la base de datos), `fecha_expiracion` y `fecha_liberacion`. `CHECK` de expiración posterior al inicio y de liberación no anterior al inicio; **índice único parcial** `(ticket_id) WHERE fecha_liberacion IS NULL` (nunca dos bloqueos no liberados del mismo ticket) e índice por usuario. Las claves foráneas son `ON DELETE RESTRICT`. Un bloqueo está **vigente** si no se liberó y su expiración es futura.
 
@@ -865,7 +897,7 @@ Reglas completas en `docs/06` (RN-163), `docs/09` (28.2) y `docs/10` (secciones 
 
 ## Relaciones y duplicados (entrega 10 de `v0.4.0`)
 
-Reglas completas en `docs/06` (RN-162) y `docs/09` (19). El servicio está en `tickets/relations.py` y las rutas (`tickets/routes.py`) solo orquestan. **Incluye una migración** (`create_ticket_relations_tables`).
+Reglas completas en `docs/06` (RN-162) y `docs/09` (19). El servicio está en `tickets/relations.py` y las rutas (`tickets/routes/relations.py`) solo orquestan. **Incluye una migración** (`create_ticket_relations_tables`).
 
 **Modelos.** `TipoRelacionTicket` (`models/tipo_relacion.py`, tabla `tipos_relacion_ticket`, con `CatalogAuditMixin`; `codigo` único, `nombre`, `descripcion` y `es_simetrica`) y `RelationType` (`DUPLICADO` y `RELACIONADO`). `TicketRelation` (`models/ticket_relation.py`, tabla `tickets_relaciones`): `ticket_origen_id`, `ticket_destino_id`, `tipo_relacion_id`, `comentario`, `usuario_creacion_id`, `fecha_creacion` (la pone la base de datos), `activo`, `fecha_desactivacion` y `usuario_desactivacion_id`. En `DUPLICADO` el origen es el ticket duplicado y el destino el principal; en `RELACIONADO` el par se guarda con el id menor primero. Restricciones: origen distinto de destino, coherencia de la desactivación y un **índice único parcial sobre el par vigente** (`least(origen, destino)`, `greatest(origen, destino)` y el tipo, `WHERE activo`) que impide repetir una relación aunque se invierta. Las claves foráneas son `ON DELETE RESTRICT`. Esa migración se escribió con el índice funcional (Alembic lo genera bien) y `db check` queda limpio.
 
@@ -912,7 +944,7 @@ Reglas completas en `docs/06` (RN-161) y `docs/09` (16.1). Todas las acciones so
 
 **Historial.** Cada acción deja su evento propio, con los estados anterior y nuevo, en vez de `ESTADO_CAMBIADO` (que queda para las acciones operativas): `TICKET_RESUELTO` (`valor_nuevo` con `resolucion` y `ciclo`), `VALIDACION_ACEPTADA` y `VALIDACION_RECHAZADA` (con `contexto["validacion_id"]` y, en el rechazo, `motivo_rechazo`), `TICKET_CERRADO` (`valor_nuevo["motivo_cierre"]` y `contexto["motivo_cierre"]`) y `TICKET_REABIERTO` (`contexto["desde"]`). Confirmar deja `VALIDACION_ACEPTADA` y luego `TICKET_CERRADO`; rechazar, `VALIDACION_RECHAZADA` y luego `TICKET_REABIERTO`. Los cinco son **públicos**. El texto de un cierre directo o excepcional va en `contexto["motivo"]` (solo lo ve el personal); el motivo de un rechazo, en `contexto["motivo_rechazo"]` (lo ve quien ve el ticket). `describe_history_changes` muestra el cambio de estado, la resolución y el motivo de cierre.
 
-**Pantallas** (`GET, POST /tickets/<n>/status/<slug>`; 404 si no se ve el ticket, 403 si la política de la acción no lo permite, aviso si la acción ya no corresponde al estado; un ticket cerrado solo abre `reopen`). La pantalla (`state_change.html`) muestra, según la acción, el selector de motivo de cierre y el campo de texto (etiqueta, obligatoriedad y límite de `StateActionInfo`); `StateChangeForm` recibe esos datos y valida el límite y la obligatoriedad. La cabecera del detalle ofrece los botones de estado (principales o secundarios según `StateActionInfo.primary`); confirmar y rechazar no son botones de cabecera: el solicitante los ve en el aviso de `Resuelto` (UI-005A). El detalle añade la tarjeta **Resolución** y, en el resumen, **Resuelto** y **Cerrado** con su motivo. `_render_detail` separa `validation_actions` de `state_actions`.
+**Pantallas** (`GET, POST /tickets/<n>/status/<slug>`; 404 si no se ve el ticket, 403 si la política de la acción no lo permite, aviso si la acción ya no corresponde al estado; un ticket cerrado solo abre `reopen`). La pantalla (`state_change.html`) muestra, según la acción, el selector de motivo de cierre y el campo de texto (etiqueta, obligatoriedad y límite de `StateActionInfo`); `StateChangeForm` recibe esos datos y valida el límite y la obligatoriedad. La cabecera del detalle ofrece los botones de estado (principales o secundarios según `StateActionInfo.primary`); confirmar y rechazar no son botones de cabecera: el solicitante los ve en el aviso de `Resuelto` (UI-005A). El detalle añade la tarjeta **Resolución** y, en el resumen, **Fecha de resolución** y **Fecha de cierre** (esta con su motivo). `_render_detail` separa `validation_actions` de `state_actions`.
 
 **Configuración:** `REOPEN_WINDOW_DAYS` (30, variable de entorno validada al iniciar como los límites de sesión; pasará a la configuración administrable en `v0.7.0`).
 
@@ -945,7 +977,7 @@ Reglas completas en `docs/06` (RN-160), `docs/09` (18.1) y `docs/10` (secciones 
 
 ## Comentarios y notas internas (entrega 7 de `v0.4.0`)
 
-Reglas completas en `docs/06` (RN-159) y `docs/09` (17.1). Las reglas están en `tickets/comments.py`; las rutas (`tickets/routes.py`) solo orquestan. **Incluye una migración** (`create_comments_table`).
+Reglas completas en `docs/06` (RN-159) y `docs/09` (17.1). Las reglas están en `tickets/comments.py`; las rutas (`tickets/routes/comments.py`) solo orquestan. **Incluye una migración** (`create_comments_table`).
 
 **Modelo** (`models/comment.py`, `Comment`, tabla `comentarios`): una única entidad para los dos tipos (`CommentType`: `PUBLICO` e `INTERNO`, la nota interna). Campos: `ticket_id`, `autor_usuario_id`, `tipo`, `contenido` (TEXT; el límite de 5000 caracteres, `MAX_COMMENT_LENGTH`, lo comprueban el servicio y el formulario), `fecha_creacion`, `fecha_modificacion`, `usuario_modificacion_id`, `editado`, `activo`, `fecha_eliminacion` y `usuario_eliminacion_id` (la eliminación es lógica). Restricciones: tipo válido, contenido no vacío, coherencia de la eliminación (activo sin datos de eliminación; eliminado con fecha) y `editado` solo con fecha de modificación; claves foráneas `ON DELETE RESTRICT` e índice `(ticket_id, fecha_creacion)`. Las horas las pone la base de datos. `Comment.es_nota_interna` evita comparar cadenas en las plantillas.
 
@@ -978,7 +1010,7 @@ Reglas completas en `docs/06` (RN-159) y `docs/09` (17.1). Las reglas están en 
 
 ## Solicitantes del ticket (entrega 6 de `v0.4.0`)
 
-Reglas completas en `docs/06` (RN-158) y `docs/09` (14.1). Las reglas están en `tickets/requesters.py`; las rutas (`tickets/routes.py`) solo orquestan. **No hay migración:** las columnas de retiro de `tickets_solicitantes` ya existían.
+Reglas completas en `docs/06` (RN-158) y `docs/09` (14.1). Las reglas están en `tickets/requesters.py`; las rutas (`tickets/routes/requesters.py`) solo orquestan. **No hay migración:** las columnas de retiro de `tickets_solicitantes` ya existían.
 
 **Política** (`security/authorization.py`): `can_manage_requesters(user)` (Técnico, Supervisor y Administrador; es la misma regla que `can_choose_requesters` y un test comprueba que no se separen). El Solicitante no gestiona solicitantes ni en su propio ticket.
 
@@ -1006,7 +1038,7 @@ Reglas completas en `docs/06` (RN-158) y `docs/09` (14.1). Las reglas están en 
 
 ## Asignación (entrega 5 de `v0.4.0`)
 
-Reglas completas en `docs/06` (RN-157) y `docs/09` (15.1). Las reglas están en `tickets/assignment.py`; las rutas (`tickets/routes.py`) solo orquestan.
+Reglas completas en `docs/06` (RN-157) y `docs/09` (15.1). Las reglas están en `tickets/assignment.py`; las rutas (`tickets/routes/assignment.py`) solo orquestan.
 
 **Modelo** (`models/ticket_technician.py`, `TicketTechnician`, tabla `tickets_tecnicos`): relación N:M temporal entre tickets y técnicos con `fecha_asignacion`, `asignado_por_usuario_id`, `fecha_desasignacion`, `desasignado_por_usuario_id` y `motivo_desasignacion`. La asignación vigente es la que no tiene `fecha_desasignacion`, con índice único parcial (un técnico no figura dos veces como asignado vigente del mismo ticket; puede volver con una fila nueva), `CHECK` de fechas y los índices `(ticket_id, fecha_desasignacion)` y `(tecnico_id, fecha_desasignacion)`. Las horas las pone la base de datos (`now()`). `Ticket.tecnicos` y `Ticket.tecnicos_vigentes` las exponen y `tickets.grupo_id` (FK a `grupos`, con índice) guarda el grupo.
 
@@ -1061,7 +1093,7 @@ Módulo `src/workdesk/groups/` (blueprint `groups`, prefijo `/groups`): `routes.
 
 ## Estados y transiciones (entrega 3 de `v0.4.0`)
 
-Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en `tickets/lifecycle.py`; la ruta (`tickets/routes.py`) solo orquesta.
+Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en `tickets/lifecycle.py` (y el catálogo de acciones en `tickets/state_actions.py`); la ruta (`tickets/routes/states.py`) solo orquesta.
 
 **Tabla `transiciones_estados`** (`models/transicion_estado.py`, `TransicionEstado`): `estado_origen_id`, `estado_destino_id`, `accion`, `activa`, `descripcion`, `fecha_modificacion` y `usuario_modificacion_id`. Es único por (origen, destino, acción) y el origen no puede ser igual al destino. Una fila es una transición estructuralmente válida del flujo; `activa` permite al Administrador deshabilitarla (pantalla UI-021, entrega 12). No guarda permisos: quién ejecuta cada acción lo decide el código.
 
@@ -1085,6 +1117,38 @@ Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en 
 **Detalle:** la cabecera muestra un botón por cada acción disponible (como mucho una o dos) y el historial el evento "Estado cambiado" con `Estado: «a» → «b»` para todos los roles. **El motivo de espera y su texto los ve solo el personal** (`Motivo de espera: …` y `Motivo: …`), igual que el motivo de una prioridad; el evento es público.
 
 **Navegación:** las pantallas Editar, Cambiar prioridad y Cambiar estado marcan activa la opción "Tickets" (`TICKET_SCREENS` en `navigation.py`); "Crear ticket" sigue marcándose solo en su formulario.
+
+## Administración de estados y transiciones (entrega 12 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-164), `docs/09` (12.1 y 12.2) y `docs/11` (UI-021). El servicio está en `catalogs/flow.py` y las rutas en `catalogs/flow_routes.py` (mismo blueprint `catalogs`, prefijo `/admin`); las rutas solo orquestan. **No hay migración.** Todas son del Administrador (`admin_only`), y la tarjeta «Estados y transiciones» del hub enlaza con la pantalla.
+
+**Pantallas:** `GET /admin/states` (los estados y las transiciones en una sola pantalla), `GET, POST /admin/states/<id>/edit` y `GET, POST /admin/transitions/<id>/deactivate` y `/activate` (confirmación con motivo opcional, `ReasonForm`). Las plantillas están en `templates/catalogs/` (`states.html`, `state_form.html` y `transition_confirm.html`).
+
+**Estados:** solo se editan `nombre_visible` (hasta 50 caracteres) y `descripcion` (opcional, hasta 300); el código, el orden y el color no se editan. `update_state` bloquea las seis filas (`SELECT ... FOR UPDATE`) y rechaza un nombre repetido entre los seis, sin distinguir mayúsculas; devuelve `False` sin auditar si nada cambió. Renombrar no toca el historial (los eventos guardan el nombre de su momento). El macro `state_badge` muestra la descripción como ayuda (`title`) en toda la aplicación.
+
+**Transiciones:** se deshabilitan y habilitan una a una (`deactivate_transition` y `activate_transition`; habilitar siempre se puede). Hay dos protecciones:
+
+- las **esenciales** (`ESSENTIAL_REASONS` en `tickets/state_actions.py`: `ASIGNAR`, `DESASIGNACION`, `CONFIRMAR`, `RECHAZAR`, `CIERRE_EXCEPCIONAL`, `AUTO_CIERRE` y `REABRIR`; 8 de las 20 filas, cada una con su razón) no se pueden deshabilitar;
+- el **flujo completo** (`_Graph` y `_flow_problem`): ninguna deshabilitación puede dejar un estado inalcanzable desde `Nuevo` avanzando (las acciones de `RETURN_ACTIONS`, que devuelven un ticket atrás, no cuentan) ni sin camino hasta `Cerrado`. Casi no conoce acciones concretas y solo bloquea lo que empeora el grafo actual. Al deshabilitar se bloquean las filas de transiciones, para que dos Administradores no rompan el flujo entre los dos; habilitar bloquea la fila de la transición. En ambos casos, si otra persona ya hizo el mismo cambio, el segundo recibe «ya está habilitada» o «ya está deshabilitada» (`ALREADY_ENABLED` y `ALREADY_DISABLED`) y el cambio no se repite ni se audita dos veces.
+
+Los errores son `EssentialTransitionError` y `BrokenFlowError` (de `CatalogRuleError`), y la regla se comprueba también al abrir la confirmación.
+
+**Quién ejecuta cada acción** sale del catálogo: `StateActionInfo.roles` (y `roles_note` para el matiz «solo un solicitante del ticket») y, para las automáticas, `AUTOMATIC_ACTIONS`. La etiqueta de cada acción es `STATE_ACTION_LABELS` (`models/transicion_estado.py`). `tests/test_state_actions.py` comprueba que los roles declarados coinciden con las políticas, que todas las acciones del vocabulario están descritas y que los textos no escriben a mano ningún nombre de estado: usan el vigente (`StateActionInfo.describe`).
+
+**Auditoría:** `ESTADO_MODIFICADO` (`entidad_tipo` `estado`, el código en `detalle` y solo los campos cambiados), `TRANSICION_DESACTIVADA` y `TRANSICION_ACTIVADA` (`entidad_tipo` `transicion`, «Origen → Destino (Acción)» en `detalle`, `{"activa": ...}` en los valores y el motivo si se escribió).
+
+**Seed demo:** `seed-demo-tickets` ejecuta las acciones de estado de verdad: si una transición que necesita está deshabilitada, se detiene antes de cargar nada con un mensaje que dice dónde habilitarla.
+
+## Revisión final de la fase (entrega 12 de `v0.4.0`)
+
+La entrega 12 cerró la versión con una revisión de todo el código de la fase. Los cambios de estructura no alteraron ninguna ruta ni comportamiento previo (los tests existentes lo siguen verificando), salvo los dos textos que se indican más abajo. Lo que cambió y por qué:
+
+- **`tickets/state_actions.py` (nuevo):** el catálogo de acciones de estado (textos, roles, esenciales) salió de `tickets/lifecycle.py`, que ahora es solo el motor (`change_state`, `available_actions` y `apply_derived_transition`). La pantalla de administración lee el mismo catálogo, así que lo que muestra no puede separarse de lo que el código hace.
+- **`tickets/routes/` (paquete):** `tickets/routes.py` había llegado a casi 1850 líneas. Ahora hay un módulo por área (`listing`, `creation`, `detail`, `editing`, `states`, `assignment`, `requesters`, `comments`, `attachments` y `relations`) más `common.py` con lo que comparten. Todos registran sus rutas en el mismo blueprint, así que los endpoints y las URL no cambiaron (se comprobó comparando el mapa de rutas antes y después). `render_detail` se dividió en piezas pequeñas.
+- **`tickets/history.py` (nuevo):** `describe_history_changes` era una cadena de condiciones que crecía con cada evento. Ahora cada evento tiene una función registrada con `@describes(...)`, y `tests/test_ticket_history.py` exige que todo evento del vocabulario tenga la suya y que ninguna línea repita un motivo.
+- **Ayudantes unificados:** `cleaning.py` (`blank_to_none` y `strip_text`) sustituye a las copias de los servicios y formularios de catálogos, grupos, usuarios y tickets; `current_actor()` y `admin_only` viven en `security/` en lugar de repetirse en cada módulo de rutas; en los tests, `ticket_by_public_id` y `person` pasaron de ocho y tres archivos a `tests/ticket_helpers.py`.
+- **Textos sin nombres de estado escritos a mano:** como el Administrador puede renombrar los estados, el resumen del detalle usa «Fecha de resolución» y «Fecha de cierre», y las pantallas de cambio de estado y de duplicado usan el nombre vigente del estado de destino.
+- **Red de seguridad de autorización:** `tests/test_route_authorization.py` recorre el mapa de rutas, como `test_route_protection.py`, y comprueba la propiedad del ticket (404 al ajeno), el rol (403 en las rutas del personal y en las áreas de administración) y que lo que un Solicitante sí puede usar está declarado a propósito (`REQUESTER_ENDPOINTS`). Una ruta nueva queda cubierta sin tocar el test.
 
 ---
 
@@ -1315,6 +1379,10 @@ GET, POST  /admin/wait-reasons/new
 GET, POST  /admin/wait-reasons/<id>/edit
 GET, POST  /admin/wait-reasons/<id>/deactivate
 GET, POST  /admin/wait-reasons/<id>/activate
+GET        /admin/states
+GET, POST  /admin/states/<id>/edit
+GET, POST  /admin/transitions/<id>/deactivate
+GET, POST  /admin/transitions/<id>/activate
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -1361,7 +1429,7 @@ GET        /static/<path:filename>
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera; ver "Administración de catálogos") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
+`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera, ver "Administración de catálogos", y estados y transiciones, ver "Administración de estados y transiciones") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
@@ -1394,7 +1462,7 @@ Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATI
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones" y "Motivos de espera"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera" y "Estados y transiciones"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -1590,7 +1658,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 - carga 76 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
 - **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario`, `nota_interna` y `adjunto`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
-- necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
+- necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar, y lo mismo si hay transiciones deshabilitadas que la demostración recorre («Habilítalas en Administración → Estados y transiciones»), sin cargar nada. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
 - usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
 - **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
@@ -1640,6 +1708,21 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 12 de `v0.4.0` (estados y transiciones, y cierre de la versión):
+
+```text
+2201 tests passing
+```
+
+Los 160 tests nuevos cubren:
+
+- `tests/test_states_admin.py` (69): **estados** (los seis en el orden del flujo, cuántos tickets hay en cada uno, renombrar cambia solo lo visible y audita solo los campos que cambiaron, guardar sin cambios no audita, una descripción en blanco queda vacía, el nombre no puede repetirse sin distinguir mayúsculas pero un estado conserva el suyo con otra capitalización, los límites exactos, que el servicio no hace commit y **dos Administradores que renombran al mismo nombre a la vez dejan uno solo**); **transiciones** (agrupadas por origen en el orden del flujo, cuáles son esenciales y cuáles opcionales, quién ejecuta cada acción, deshabilitar y volver a habilitar, la razón de cada protección, que la única entrada a un estado y la última salida no se pueden deshabilitar, que llegar a un estado solo volviendo atrás no cuenta, que un flujo ya roto no bloquea cambios ajenos, **dos Administradores que a la vez rompen el flujo entre los dos**, **dos que cambian la misma transición a la vez y solo uno la cambia y la audita**, que una transición deshabilitada deja de ofrecerse a los tickets y el servidor la rechaza, y que listarlas no consulta por fila); y **pantallas** (solo el Administrador, 404 con ids desconocidos, el hub enlaza la pantalla, el formulario precargado y sus validaciones, que no acepta un código ni un orden, que un estado renombrado se ve en todas partes menos en el historial antiguo, que la descripción es la ayuda de la etiqueta, las confirmaciones con los nombres vigentes, las protegidas no se pueden deshabilitar ni por la pantalla y que «Administración» sigue marcada en el menú).
+- `tests/test_state_actions.py` (15): el catálogo de acciones es coherente: cada acción está descrita exactamente una vez, tiene un nombre neutro y un identificador de URL único, las esenciales y las que devuelven atrás pertenecen al vocabulario, los textos no escriben a mano ningún nombre de estado, una descripción se completa con el nombre del destino y **los roles declarados de cada acción coinciden con su política de autorización** (los cuatro roles).
+- `tests/test_route_authorization.py` (13): recorre el mapa de rutas real. Un Solicitante ajeno recibe 404 en cualquier ruta de un ticket, con cualquier método; un solicitante del ticket solo usa las rutas declaradas en `REQUESTER_ENDPOINTS` (el resto responde 403) y esas sí responden; las áreas de administración son del Administrador, y `/groups` del Administrador y el Supervisor. Tres pruebas comprueban que el propio recorrido detecta una ruta sin comprobar la propiedad, una del personal abierta a Solicitantes y una de administración sin comprobar el rol.
+- `tests/test_ticket_history.py` (61): todo evento del vocabulario tiene su descriptor, un evento desconocido no dice nada, qué cuenta cada uno de los 23 y que ninguna línea repite un motivo ni el texto de un comentario.
+- `tests/test_seed_demo_tickets.py` (+2): el comando se detiene antes de cargar nada si hay transiciones deshabilitadas que la demostración necesita, y renombrar los estados no la afecta. `tests/test_layout.py` actualiza la prueba del hub (la tarjeta «Estados y transiciones» ya está enlazada).
+- Ajustes sin cambiar lo que comprueban: `tests/test_ticket_state_transitions.py` y `tests/test_ticket_resolution.py` importan el catálogo desde `tickets/state_actions.py`; `tests/test_tickets_routes.py` apunta al módulo `routes.creation`; y ocho archivos de tests usan `ticket_by_public_id` (y tres, `person`) de `tests/ticket_helpers.py` en lugar de sus copias.
 
 Estado tras la entrega 11 de `v0.4.0` (bloqueo temporal de edición):
 
@@ -2308,7 +2391,7 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 # 30. Fases completadas y siguiente fase
 
-`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC` y `v0.3.0 — Núcleo de tickets` están completas. Este apartado resume lo que dejaron implementado; la siguiente fase es `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito").
+`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0 — Asignación, colaboración y ciclo de vida` están completas. Este apartado resume lo que dejaron implementado; la siguiente fase es `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito").
 
 ## Implementado hasta `v0.2.0`
 
@@ -2353,13 +2436,30 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 ## Añadido después de `v0.3.0`
 
-- comando opcional `seed-demo-tickets`: unos 40 tickets de demostración realistas, con fechas relativas, historial de ajustes del personal y datos separados de la lógica (ver "22. CLI").
+- comando opcional `seed-demo-tickets`: unos 40 tickets de demostración realistas, con fechas relativas, historial de ajustes del personal y datos separados de la lógica (ver "22. CLI"); creció con cada entrega de `v0.4.0` hasta los 76 tickets actuales.
+
+## Implementado en `v0.4.0`
+
+- historial con el vocabulario de eventos solo en la aplicación, visibilidad (pública o interna) por evento filtrada en la consulta y un descriptor por evento;
+- catálogo y administración de motivos de espera;
+- estados y transiciones: la tabla `transiciones_estados`, los cambios de estado operativos y el motor `change_state` con control de versión y bloqueo de la fila;
+- grupos, con membresías y supervisores responsables (`/groups`);
+- asignación de técnicos, grupo del ticket y escalamiento manual, con el estado derivado (`Nuevo` ↔ `Asignado`);
+- agregar y retirar solicitantes tras crear el ticket;
+- comentarios públicos y notas internas, con edición y eliminación con plazo;
+- archivos adjuntos: almacenamiento local, validación por extensión y contenido, y descarga autenticada;
+- resolución, validación del solicitante, cierre directo y excepcional y reapertura, con la regla «un ticket cerrado tiene fecha y motivo de cierre»;
+- relaciones entre tickets y duplicados;
+- bloqueo temporal de edición;
+- administración de estados y transiciones (nombre visible, descripción y transiciones opcionales, con protecciones para no romper el flujo);
+- políticas de autorización por acción (`can_change_state`, `can_assign_self`, `can_manage_assignments`, `can_manage_requesters`, `can_write_internal_note`, `can_resolve_ticket`, `can_close_directly`, `can_close_exceptionally`, `can_validate_resolution`, `can_reopen_ticket`, `can_manage_relations`, `can_access_groups`...) y su red de seguridad sobre todas las rutas;
+- migraciones: diez nuevas (de 7 a 17) y 23 eventos del historial.
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases posteriores (lo que `v0.3.0` dejó decidido para `v0.4.0` está en "Próximo hito"):
+Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.4.0` deja preparado o pendiente está en "Próximo hito"):
 
-- `v0.4.0`: la pantalla de Estados y transiciones (UI-021) y el cierre de la versión; el resto (estados, asignación, comentarios, notas internas, adjuntos, resolución, cierre y reapertura) ya existe;
+- `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
 - `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;

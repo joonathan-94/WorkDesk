@@ -20,7 +20,6 @@ from src.workdesk.models import (
     Comment,
     CommentType,
     HistoryVisibility,
-    Ticket,
     TicketEvent,
     TicketHistory,
     User,
@@ -40,10 +39,16 @@ from src.workdesk.tickets.comments import (
     list_comments,
     visible_comments_condition,
 )
-from src.workdesk.tickets.editing import describe_history_changes
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.service import TicketRuleError, list_ticket_history
 from src.workdesk.tickets.versioning import TicketClosedError
-from tests.ticket_helpers import login, make_ticket, plain_text, set_state
+from tests.ticket_helpers import (
+    login,
+    make_ticket,
+    plain_text,
+    set_state,
+    ticket_by_public_id,
+)
 
 PUBLIC = CommentType.PUBLICO
 NOTE = CommentType.INTERNO
@@ -70,12 +75,6 @@ def user(team, key) -> User:
     return db.session.get(User, team[key]["id"])
 
 
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
-    )
-
-
 def new_ticket(app, catalog, team):
     """Ticket que crea el Solicitante `req` (queda como su solicitante)."""
     return make_ticket(
@@ -88,7 +87,7 @@ def new_ticket(app, catalog, team):
 
 def add(public_id, team, who="req", text="Hola", kind=PUBLIC) -> Comment:
     comment = add_comment(
-        get_ticket(public_id),
+        ticket_by_public_id(public_id),
         actor=user(team, who),
         content=text,
         kind=kind,
@@ -191,7 +190,7 @@ def test_the_database_rejects_inconsistent_comments(app, catalog, team, values):
 
     with app.app_context():
         base = {
-            "ticket_id": get_ticket(public_id).id,
+            "ticket_id": ticket_by_public_id(public_id).id,
             "autor_usuario_id": team["req"]["id"],
             "tipo": "PUBLICO",
             "contenido": "Hola",
@@ -216,7 +215,7 @@ def test_a_public_comment_is_stored_and_recorded_as_a_public_event(
 
     with app.app_context():
         comment = add(public_id, team, "req", "No puedo enviar correos desde ayer.")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert comment.tipo == "PUBLICO"
         assert comment.contenido == "No puedo enviar correos desde ayer."
@@ -246,7 +245,7 @@ def test_an_internal_note_is_recorded_as_an_internal_event(app, catalog, team, w
     with app.app_context():
         comment = add(public_id, team, who, "El servidor de correo está saturado.", NOTE)
 
-        (entry,) = events(get_ticket(public_id).id, TicketEvent.COMENTARIO_AGREGADO)
+        (entry,) = events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_AGREGADO)
 
         assert comment.tipo == "INTERNO"
         assert comment.es_nota_interna is True
@@ -302,7 +301,7 @@ def test_an_inactive_actor_cannot_comment(app, catalog, team, make_user):
 
     with app.app_context(), pytest.raises(TicketRuleError, match="no está activo"):
         add_comment(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             actor=db.session.get(User, inactive["id"]),
             content="Hola",
             kind=PUBLIC,
@@ -313,11 +312,11 @@ def test_adding_a_comment_does_not_commit(app, catalog, team):
     public_id = new_ticket(app, catalog, team)
 
     with app.app_context():
-        add_comment(get_ticket(public_id), actor=user(team, "tec"), content="Hola", kind=PUBLIC)
+        add_comment(ticket_by_public_id(public_id), actor=user(team, "tec"), content="Hola", kind=PUBLIC)
         db.session.rollback()
 
         assert db.session.scalars(db.select(Comment)).all() == []
-        assert events(get_ticket(public_id).id, TicketEvent.COMENTARIO_AGREGADO) == []
+        assert events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_AGREGADO) == []
 
 
 # --- Servicio: editar -------------------------------------------------
@@ -332,7 +331,7 @@ def test_editing_changes_the_content_and_keeps_the_old_one_in_the_history(
 
     with app.app_context():
         comment = add(public_id, team, "req", "Texto viejo")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         changed = edit_comment(ticket, comment.id, actor=user(team, "sup"), content="Texto nuevo")
         db.session.commit()
@@ -347,7 +346,7 @@ def test_editing_changes_the_content_and_keeps_the_old_one_in_the_history(
         # El autor y el tipo no cambian.
         assert comment.autor_usuario_id == team["req"]["id"]
         assert comment.tipo == "PUBLICO"
-        assert get_ticket(public_id).version == 1
+        assert ticket_by_public_id(public_id).version == 1
 
         (entry,) = events(ticket.id, TicketEvent.COMENTARIO_EDITADO)
 
@@ -365,10 +364,10 @@ def test_editing_a_note_records_an_internal_event(app, catalog, team):
     with app.app_context():
         note = add(public_id, team, "tec", "Antes", NOTE)
 
-        edit_comment(get_ticket(public_id), note.id, actor=user(team, "tec"), content="Después")
+        edit_comment(ticket_by_public_id(public_id), note.id, actor=user(team, "tec"), content="Después")
         db.session.commit()
 
-        (entry,) = events(get_ticket(public_id).id, TicketEvent.COMENTARIO_EDITADO)
+        (entry,) = events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_EDITADO)
 
         assert entry.visibilidad == "INTERNO"
         assert entry.detalle == "Nota interna editada."
@@ -380,7 +379,7 @@ def test_editing_without_changes_does_nothing(app, catalog, team):
     with app.app_context():
         comment = add(public_id, team, "req", "Igual")
 
-        changed = edit_comment(get_ticket(public_id), comment.id, actor=user(team, "req"), content="  Igual  ")
+        changed = edit_comment(ticket_by_public_id(public_id), comment.id, actor=user(team, "req"), content="  Igual  ")
         db.session.commit()
 
         db.session.refresh(comment)
@@ -388,7 +387,7 @@ def test_editing_without_changes_does_nothing(app, catalog, team):
         assert changed is False
         assert comment.editado is False
         assert comment.fecha_modificacion is None
-        assert events(get_ticket(public_id).id, TicketEvent.COMENTARIO_EDITADO) == []
+        assert events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_EDITADO) == []
 
 
 def test_editing_rejects_empty_and_too_long_content(app, catalog, team):
@@ -399,7 +398,7 @@ def test_editing_rejects_empty_and_too_long_content(app, catalog, team):
 
         for content, message in (("  ", "Escribe"), ("x" * 5001, "5000 caracteres")):
             with pytest.raises(TicketRuleError, match=message):
-                edit_comment(get_ticket(public_id), comment.id, actor=user(team, "req"), content=content)
+                edit_comment(ticket_by_public_id(public_id), comment.id, actor=user(team, "req"), content=content)
 
             db.session.rollback()
 
@@ -421,18 +420,18 @@ def test_editing_or_deleting_an_unknown_foreign_or_deleted_comment_is_rejected(
         foreign = add(second, team, "req").id
         gone = add(first, team, "req", "Se va").id
 
-        delete_comment(get_ticket(first), gone, actor=user(team, "sup"))
+        delete_comment(ticket_by_public_id(first), gone, actor=user(team, "sup"))
         db.session.commit()
 
         # Inexistente, de otro ticket y ya eliminado.
         for comment_id in (999_999, foreign, gone):
             with pytest.raises(TicketRuleError, match="ya no existe"):
-                edit_comment(get_ticket(first), comment_id, actor=user(team, "sup"), content="Otro")
+                edit_comment(ticket_by_public_id(first), comment_id, actor=user(team, "sup"), content="Otro")
 
             db.session.rollback()
 
             with pytest.raises(TicketRuleError, match="ya no existe"):
-                delete_comment(get_ticket(first), comment_id, actor=user(team, "sup"))
+                delete_comment(ticket_by_public_id(first), comment_id, actor=user(team, "sup"))
 
             db.session.rollback()
 
@@ -449,12 +448,12 @@ def test_a_closed_ticket_cannot_have_its_comments_changed(app, catalog, team):
 
     with app.app_context():
         with pytest.raises(TicketClosedError, match="reabrir"):
-            edit_comment(get_ticket(public_id), comment_id, actor=user(team, "sup"), content="Otro")
+            edit_comment(ticket_by_public_id(public_id), comment_id, actor=user(team, "sup"), content="Otro")
 
         db.session.rollback()
 
         with pytest.raises(TicketClosedError, match="reabrir"):
-            delete_comment(get_ticket(public_id), comment_id, actor=user(team, "sup"))
+            delete_comment(ticket_by_public_id(public_id), comment_id, actor=user(team, "sup"))
 
 
 # --- Servicio: eliminar -----------------------------------------------
@@ -466,7 +465,7 @@ def test_deleting_is_logical_and_keeps_the_content_in_the_history(app, catalog, 
     with app.app_context():
         comment = add(public_id, team, "req", "Me equivoqué de ticket")
 
-        delete_comment(get_ticket(public_id), comment.id, actor=user(team, "sup"))
+        delete_comment(ticket_by_public_id(public_id), comment.id, actor=user(team, "sup"))
         db.session.commit()
 
         db.session.refresh(comment)
@@ -476,9 +475,9 @@ def test_deleting_is_logical_and_keeps_the_content_in_the_history(app, catalog, 
         assert comment.fecha_eliminacion is not None
         assert comment.usuario_eliminacion_id == team["sup"]["id"]
         assert comment.contenido == "Me equivoqué de ticket"
-        assert get_ticket(public_id).version == 1
+        assert ticket_by_public_id(public_id).version == 1
 
-        (entry,) = events(get_ticket(public_id).id, TicketEvent.COMENTARIO_ELIMINADO)
+        (entry,) = events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_ELIMINADO)
 
         assert entry.visibilidad == "PUBLICO"
         assert entry.detalle == "Comentario público eliminado."
@@ -490,10 +489,10 @@ def test_deleting_is_logical_and_keeps_the_content_in_the_history(app, catalog, 
 
         # Ya no se lista para nadie.
         for key in ("req", "tec", "sup", "admin"):
-            assert list_comments(get_ticket(public_id), user(team, key)) == []
+            assert list_comments(ticket_by_public_id(public_id), user(team, key)) == []
 
         with pytest.raises(TicketRuleError, match="ya no existe"):
-            delete_comment(get_ticket(public_id), comment.id, actor=user(team, "sup"))
+            delete_comment(ticket_by_public_id(public_id), comment.id, actor=user(team, "sup"))
 
 
 def test_deleting_a_note_records_an_internal_event(app, catalog, team):
@@ -502,10 +501,10 @@ def test_deleting_a_note_records_an_internal_event(app, catalog, team):
     with app.app_context():
         note = add(public_id, team, "tec", "Nota", NOTE)
 
-        delete_comment(get_ticket(public_id), note.id, actor=user(team, "tec"))
+        delete_comment(ticket_by_public_id(public_id), note.id, actor=user(team, "tec"))
         db.session.commit()
 
-        (entry,) = events(get_ticket(public_id).id, TicketEvent.COMENTARIO_ELIMINADO)
+        (entry,) = events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_ELIMINADO)
 
         assert entry.visibilidad == "INTERNO"
         assert entry.detalle == "Nota interna eliminada."
@@ -526,7 +525,7 @@ def test_comments_are_listed_in_order_and_the_requester_never_gets_the_notes(
         add(public_id, team, "tec", "Nota", NOTE)
         add(public_id, team, "sup", "Tres")
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         def texts(key):
             return [c.contenido for c in list_comments(ticket, user(team, key))]
@@ -546,12 +545,12 @@ def test_get_comment_hides_notes_from_the_requester_and_other_tickets(
     with app.app_context():
         public = add(public_id, team, "req").id
         note = add(public_id, team, "tec", "Nota", NOTE).id
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert get_comment(ticket, public, user(team, "req")).id == public
         assert get_comment(ticket, note, user(team, "tec")).id == note
         assert get_comment(ticket, note, user(team, "req")) is None
-        assert get_comment(get_ticket(other_ticket), public, user(team, "tec")) is None
+        assert get_comment(ticket_by_public_id(other_ticket), public, user(team, "tec")) is None
         assert get_comment(ticket, 999_999, user(team, "tec")) is None
 
 
@@ -612,7 +611,7 @@ def test_listing_comments_does_not_query_per_comment(app, catalog, team):
             statements.append(statement)
 
         viewer = user(team, "tec")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         # El rol del visor se necesita para el filtro: se carga antes de contar.
         assert viewer.rol.codigo == "TECNICO"
         statements.clear()
@@ -645,15 +644,15 @@ def test_the_requester_never_sees_the_note_events_nor_any_content_in_the_history
     with app.app_context():
         public = add(public_id, team, "req", "Texto viejo")
         note = add(public_id, team, "tec", "Secreto técnico", NOTE)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         edit_comment(ticket, public.id, actor=user(team, "req"), content="Texto nuevo")
         edit_comment(ticket, note.id, actor=user(team, "tec"), content="Otro secreto")
         delete_comment(ticket, note.id, actor=user(team, "tec"))
         db.session.commit()
 
-        requester_view = list_ticket_history(get_ticket(public_id), user(team, "req"))
-        staff_view = list_ticket_history(get_ticket(public_id), user(team, "tec"))
+        requester_view = list_ticket_history(ticket_by_public_id(public_id), user(team, "req"))
+        staff_view = list_ticket_history(ticket_by_public_id(public_id), user(team, "tec"))
 
         def kinds(entries):
             return [e.tipo_evento for e in entries if e.tipo_evento.startswith("COMENTARIO")]
@@ -669,7 +668,7 @@ def test_the_history_lines_describe_the_type_and_never_the_text(app, catalog, te
     with app.app_context():
         public = add(public_id, team, "req", "Texto privado del solicitante")
         note = add(public_id, team, "tec", "Texto de la nota", NOTE)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         edit_comment(ticket, public.id, actor=user(team, "req"), content="Cambiado")
         delete_comment(ticket, note.id, actor=user(team, "tec"))
@@ -733,7 +732,7 @@ def test_two_simultaneous_edits_are_applied_one_after_the_other(app, catalog, te
 
     def attempt(who, text):
         def task():
-            edit_comment(get_ticket(public_id), comment_id, actor=user(team, who), content=text)
+            edit_comment(ticket_by_public_id(public_id), comment_id, actor=user(team, who), content=text)
 
         return task
 
@@ -745,7 +744,7 @@ def test_two_simultaneous_edits_are_applied_one_after_the_other(app, catalog, te
     assert outcomes == ["ok", "ok"]
 
     with app.app_context():
-        first, second = events(get_ticket(public_id).id, TicketEvent.COMENTARIO_EDITADO)
+        first, second = events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_EDITADO)
 
         # El contenido anterior del segundo es el nuevo del primero: no se
         # pisaron a ciegas.
@@ -762,7 +761,7 @@ def test_two_simultaneous_deletions_delete_it_once(app, catalog, team):
 
     def attempt(who):
         def task():
-            delete_comment(get_ticket(public_id), comment_id, actor=user(team, who))
+            delete_comment(ticket_by_public_id(public_id), comment_id, actor=user(team, who))
 
         return task
 
@@ -771,7 +770,7 @@ def test_two_simultaneous_deletions_delete_it_once(app, catalog, team):
     assert sorted(outcomes) == ["Ese comentario ya no existe.", "ok"]
 
     with app.app_context():
-        assert len(events(get_ticket(public_id).id, TicketEvent.COMENTARIO_ELIMINADO)) == 1
+        assert len(events(ticket_by_public_id(public_id).id, TicketEvent.COMENTARIO_ELIMINADO)) == 1
 
 
 # --- Pantallas: publicar ----------------------------------------------
@@ -975,7 +974,7 @@ def test_comments_do_not_change_the_updated_date(client, app, catalog, team):
     client.post(f"/tickets/{public_id}/comments", data={"contenido": "Uno"})
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.fecha_modificacion is None
         assert ticket.version == 1
@@ -990,7 +989,7 @@ def test_the_requester_never_receives_the_note_in_any_form(client, app, catalog,
     with app.app_context():
         public = add(public_id, team, "req", "Sigue sin ir").id
         note = add(public_id, team, "tec", "Secreto: es el servidor X", NOTE).id
-        edit_comment(get_ticket(public_id), note, actor=user(team, "tec"), content="Secreto editado Y")
+        edit_comment(ticket_by_public_id(public_id), note, actor=user(team, "tec"), content="Secreto editado Y")
         db.session.commit()
 
     login(client, team["req"])
@@ -1064,7 +1063,7 @@ def test_editing_never_leaks_the_old_text_into_the_history(client, app, catalog,
 
     with app.app_context():
         comment_id = add(public_id, team, "req", "Dato sensible equivocado").id
-        edit_comment(get_ticket(public_id), comment_id, actor=user(team, "req"), content="Dato corregido")
+        edit_comment(ticket_by_public_id(public_id), comment_id, actor=user(team, "req"), content="Dato corregido")
         db.session.commit()
 
     for key in ("req", "tec"):
@@ -1436,7 +1435,7 @@ def test_deleting_an_already_deleted_comment_is_a_404(client, app, catalog, team
 
     with app.app_context():
         comment_id = add(public_id, team, "req").id
-        delete_comment(get_ticket(public_id), comment_id, actor=user(team, "sup"))
+        delete_comment(ticket_by_public_id(public_id), comment_id, actor=user(team, "sup"))
         db.session.commit()
 
     login(client, team["sup"])

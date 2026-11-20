@@ -3,16 +3,13 @@ from wtforms import Field, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 from ..catalogs.forms import OptionalIntegerField
+from ..cleaning import strip_text
 from ..models import CommentType
 from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from .editing import MAX_REASON_LENGTH
-from .lifecycle import MAX_WAIT_TEXT_LENGTH
 from .relations import MAX_RELATION_COMMENT_LENGTH
-
-
-def _strip(value):
-    return value.strip() if isinstance(value, str) else value
+from .state_actions import MAX_WAIT_TEXT_LENGTH
 
 
 def _normalize_text(value):
@@ -71,7 +68,7 @@ class _TicketFieldsForm(FlaskForm):
 
     titulo = StringField(
         "Título",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa un título."),
             Length(
@@ -290,7 +287,7 @@ class RelationForm(FlaskForm):
 
     ticket = StringField(
         "Número del ticket",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             DataRequired(message="Escribe el número del ticket."),
             Length(max=20, message="El número es demasiado largo."),

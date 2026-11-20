@@ -12,7 +12,6 @@ from src.workdesk.extensions import db
 from src.workdesk.groups.service import create_group, deactivate_group
 from src.workdesk.models import (
     Grupo,
-    Ticket,
     TicketEvent,
     TicketHistory,
     TicketTechnician,
@@ -27,13 +26,19 @@ from src.workdesk.tickets.assignment import (
     set_group,
     unassign_technician,
 )
-from src.workdesk.tickets.editing import describe_history_changes
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.service import TicketRuleError
 from src.workdesk.tickets.versioning import (
     TicketClosedError,
     TicketConflictError,
 )
-from tests.ticket_helpers import login, make_ticket, plain_text, set_state
+from tests.ticket_helpers import (
+    login,
+    make_ticket,
+    plain_text,
+    set_state,
+    ticket_by_public_id,
+)
 
 STAFF = ("TECNICO", "SUPERVISOR", "ADMINISTRADOR")
 
@@ -56,12 +61,6 @@ def team(make_user, catalog):
 
 def user(team, key) -> User:
     return db.session.get(User, team[key]["id"])
-
-
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
-    )
 
 
 def new_ticket(app, catalog, team, **kwargs):
@@ -91,7 +90,7 @@ def events(ticket_id, *types):
 
 
 def assign(public_id, team, tech="tec", actor="sup"):
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
     assignment = assign_technician(
         ticket,
         team[tech]["id"],
@@ -103,7 +102,7 @@ def assign(public_id, team, tech="tec", actor="sup"):
 
 
 def state_of(public_id) -> str:
-    return get_ticket(public_id).estado.codigo
+    return ticket_by_public_id(public_id).estado.codigo
 
 
 # --- Servicio: asignar ------------------------------------------------
@@ -118,7 +117,7 @@ def test_assigning_the_first_technician_moves_a_new_ticket_to_assigned(
 
     with app.app_context():
         assignment = assign(public_id, team)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert assignment.fecha_desasignacion is None
         assert assignment.asignado_por_usuario_id == team["sup"]["id"]
@@ -151,7 +150,7 @@ def test_assigning_more_technicians_does_not_change_state_or_version(
     with app.app_context():
         assign(public_id, team, "tec")
         assign(public_id, team, "tec2")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert len(ticket.tecnicos_vigentes) == 2
         assert ticket.estado.codigo == "ASIGNADO"
@@ -172,7 +171,7 @@ def test_assigning_in_other_states_does_not_change_state_or_version(
 
     with app.app_context():
         assign(public_id, team)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == code
         assert ticket.version == 1
@@ -193,7 +192,7 @@ def test_a_disabled_assign_transition_leaves_the_state_alone(app, catalog, team)
         assign(public_id, team)
 
         assert state_of(public_id) == "NUEVO"
-        assert get_ticket(public_id).version == 1
+        assert ticket_by_public_id(public_id).version == 1
 
 
 def test_a_technician_can_assign_themselves(app, catalog, team):
@@ -211,7 +210,7 @@ def test_only_active_technicians_can_be_assigned(app, catalog, team, who):
 
     with app.app_context(), pytest.raises(TicketRuleError, match="técnico activo"):
         assign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             team[who]["id"],
             actor=user(team, "sup"),
         )
@@ -230,7 +229,7 @@ def test_an_inactive_or_unknown_technician_cannot_be_assigned(
         for user_id in (inactive["id"], 99999):
             with pytest.raises(TicketRuleError, match="técnico activo"):
                 assign_technician(
-                    get_ticket(public_id),
+                    ticket_by_public_id(public_id),
                     user_id,
                     actor=user(team, "sup"),
                 )
@@ -244,14 +243,14 @@ def test_a_technician_cannot_be_assigned_twice(app, catalog, team):
 
         with pytest.raises(TicketRuleError, match="ya está asignado"):
             assign_technician(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 team["tec"]["id"],
                 actor=user(team, "sup"),
             )
 
         db.session.rollback()
 
-        assert len(get_ticket(public_id).tecnicos_vigentes) == 1
+        assert len(ticket_by_public_id(public_id).tecnicos_vigentes) == 1
 
 
 def test_a_closed_ticket_cannot_be_assigned(app, catalog, team):
@@ -260,7 +259,7 @@ def test_a_closed_ticket_cannot_be_assigned(app, catalog, team):
 
     with app.app_context(), pytest.raises(TicketClosedError, match="reabrir"):
         assign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             team["tec"]["id"],
             actor=user(team, "sup"),
         )
@@ -272,7 +271,7 @@ def test_an_inactive_actor_cannot_assign(app, catalog, team, make_user):
 
     with app.app_context(), pytest.raises(TicketRuleError, match="no está activo"):
         assign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             team["tec"]["id"],
             actor=db.session.get(User, inactive["id"]),
         )
@@ -283,14 +282,14 @@ def test_assigning_does_not_commit(app, catalog, team):
 
     with app.app_context():
         assign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             team["tec"]["id"],
             actor=user(team, "sup"),
         )
         db.session.rollback()
 
         assert state_of(public_id) == "NUEVO"
-        assert get_ticket(public_id).tecnicos_vigentes == []
+        assert ticket_by_public_id(public_id).tecnicos_vigentes == []
 
 
 def test_assignable_technicians_exclude_the_ones_already_assigned(
@@ -307,7 +306,7 @@ def test_assignable_technicians_exclude_the_ones_already_assigned(
 
         assert [
             u.username
-            for u in list_assignable_technicians(get_ticket(public_id))
+            for u in list_assignable_technicians(ticket_by_public_id(public_id))
         ] == ["tec2"]
 
 
@@ -320,7 +319,7 @@ def test_unassigning_closes_the_assignment_and_keeps_it(app, catalog, team):
     with app.app_context():
         assignment = assign(public_id, team)
         assign(public_id, team, "tec2")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         unassign_technician(
             ticket,
@@ -334,7 +333,7 @@ def test_unassigning_closes_the_assignment_and_keeps_it(app, catalog, team):
         assert assignment.fecha_desasignacion is not None
         assert assignment.desasignado_por_usuario_id == team["sup"]["id"]
         assert assignment.motivo_desasignacion == "Cambio de turno"
-        assert [a.tecnico_id for a in get_ticket(public_id).tecnicos_vigentes] == [
+        assert [a.tecnico_id for a in ticket_by_public_id(public_id).tecnicos_vigentes] == [
             team["tec2"]["id"]
         ]
 
@@ -359,12 +358,12 @@ def test_removing_the_last_technician_of_an_assigned_ticket_returns_it_to_new(
 
     with app.app_context():
         assignment = assign(public_id, team)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         unassign_technician(ticket, assignment.id, actor=user(team, "sup"))
         db.session.commit()
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         back = events(ticket.id, TicketEvent.ESTADO_CAMBIADO)[-1]
 
         assert ticket.estado.codigo == "NUEVO"
@@ -385,14 +384,14 @@ def test_removing_the_last_technician_in_progress_keeps_the_state(
         assignment = assign(public_id, team)
 
         unassign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             assignment.id,
             actor=user(team, "sup"),
         )
         db.session.commit()
 
         assert state_of(public_id) == "EN_PROGRESO"
-        assert get_ticket(public_id).version == 1
+        assert ticket_by_public_id(public_id).version == 1
 
 
 def test_a_disabled_unassign_transition_leaves_the_state_alone(
@@ -412,7 +411,7 @@ def test_a_disabled_unassign_transition_leaves_the_state_alone(
         db.session.commit()
 
         unassign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             assignment.id,
             actor=user(team, "sup"),
         )
@@ -431,7 +430,7 @@ def test_a_removed_technician_can_be_assigned_again_as_a_new_row(
     with app.app_context():
         first = assign(public_id, team)
         unassign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             first.id,
             actor=user(team, "sup"),
         )
@@ -443,7 +442,7 @@ def test_a_removed_technician_can_be_assigned_again_as_a_new_row(
             db.session.scalar(db.select(db.func.count(TicketTechnician.id)))
             == 2
         )
-        assert len(get_ticket(public_id).tecnicos_vigentes) == 1
+        assert len(ticket_by_public_id(public_id).tecnicos_vigentes) == 1
 
 
 def test_unassign_rejects_unknown_foreign_or_already_removed_assignments(
@@ -461,17 +460,17 @@ def test_unassign_rejects_unknown_foreign_or_already_removed_assignments(
         for assignment_id in (99999, other.id):
             with pytest.raises(TicketRuleError, match="ya no está asignado"):
                 unassign_technician(
-                    get_ticket(first),
+                    ticket_by_public_id(first),
                     assignment_id,
                     actor=user(team, "sup"),
                 )
 
-        unassign_technician(get_ticket(first), mine.id, actor=user(team, "sup"))
+        unassign_technician(ticket_by_public_id(first), mine.id, actor=user(team, "sup"))
         db.session.commit()
 
         with pytest.raises(TicketRuleError, match="ya no está asignado"):
             unassign_technician(
-                get_ticket(first),
+                ticket_by_public_id(first),
                 mine.id,
                 actor=user(team, "sup"),
             )
@@ -485,7 +484,7 @@ def test_unassign_rejects_a_long_reason_and_closed_tickets(app, catalog, team):
 
         with pytest.raises(TicketRuleError, match="500"):
             unassign_technician(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 assignment.id,
                 actor=user(team, "sup"),
                 reason="x" * 501,
@@ -496,7 +495,7 @@ def test_unassign_rejects_a_long_reason_and_closed_tickets(app, catalog, team):
 
         with pytest.raises(TicketClosedError):
             unassign_technician(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 assignment.id,
                 actor=user(team, "sup"),
             )
@@ -514,7 +513,7 @@ def test_set_group_changes_it_bumps_the_version_and_records_an_internal_event(
 
     with app.app_context():
         group = new_group(team)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         changed = set_group(
             ticket,
@@ -523,7 +522,7 @@ def test_set_group_changes_it_bumps_the_version_and_records_an_internal_event(
             expected_version=ticket.version,
         )
         db.session.commit()
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert changed is True
         assert ticket.grupo_id == group.id
@@ -549,24 +548,24 @@ def test_set_group_can_clear_it_and_the_same_group_is_a_no_op(
     with app.app_context():
         group = new_group(team)
         sup = user(team, "sup")
-        set_group(get_ticket(public_id), group.id, actor=sup, expected_version=1)
+        set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=1)
         db.session.commit()
 
         assert (
-            set_group(get_ticket(public_id), group.id, actor=sup, expected_version=2)
+            set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=2)
             is False
         )
-        assert get_ticket(public_id).version == 2
+        assert ticket_by_public_id(public_id).version == 2
 
         assert (
-            set_group(get_ticket(public_id), None, actor=sup, expected_version=2)
+            set_group(ticket_by_public_id(public_id), None, actor=sup, expected_version=2)
             is True
         )
         db.session.commit()
 
-        assert get_ticket(public_id).grupo_id is None
+        assert ticket_by_public_id(public_id).grupo_id is None
         assert (
-            set_group(get_ticket(public_id), None, actor=sup, expected_version=3)
+            set_group(ticket_by_public_id(public_id), None, actor=sup, expected_version=3)
             is False
         )
 
@@ -582,7 +581,7 @@ def test_set_group_rejects_inactive_unknown_groups_and_keeps_the_current_one(
         group = new_group(team)
         other = new_group(team, "Soporte Usuarios")
         sup = user(team, "sup")
-        set_group(get_ticket(public_id), group.id, actor=sup, expected_version=1)
+        set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=1)
         db.session.commit()
 
         deactivate_group(other, actor=user(team, "admin"))
@@ -592,7 +591,7 @@ def test_set_group_rejects_inactive_unknown_groups_and_keeps_the_current_one(
         for group_id in (other.id, 99999):
             with pytest.raises(TicketRuleError, match="no está disponible"):
                 set_group(
-                    get_ticket(public_id),
+                    ticket_by_public_id(public_id),
                     group_id,
                     actor=sup,
                     expected_version=2,
@@ -602,7 +601,7 @@ def test_set_group_rejects_inactive_unknown_groups_and_keeps_the_current_one(
 
         # El grupo actual, aunque esté desactivado, se puede conservar.
         assert (
-            set_group(get_ticket(public_id), group.id, actor=sup, expected_version=2)
+            set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=2)
             is False
         )
 
@@ -615,15 +614,15 @@ def test_set_group_detects_a_stale_version_and_closed_tickets(app, catalog, team
         sup = user(team, "sup")
 
         with pytest.raises(TicketConflictError):
-            set_group(get_ticket(public_id), group.id, actor=sup, expected_version=7)
+            set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=7)
 
         db.session.rollback()
-        assert get_ticket(public_id).grupo_id is None
+        assert ticket_by_public_id(public_id).grupo_id is None
 
         set_state(app, public_id, "CERRADO")
 
         with pytest.raises(TicketClosedError):
-            set_group(get_ticket(public_id), group.id, actor=sup, expected_version=1)
+            set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=1)
 
 
 def test_groups_offered_include_the_current_inactive_one(app, catalog, team):
@@ -633,12 +632,12 @@ def test_groups_offered_include_the_current_inactive_one(app, catalog, team):
         group = new_group(team, "Viejo")
         new_group(team, "Activo")
         sup = user(team, "sup")
-        set_group(get_ticket(public_id), group.id, actor=sup, expected_version=1)
+        set_group(ticket_by_public_id(public_id), group.id, actor=sup, expected_version=1)
         db.session.commit()
         deactivate_group(group, actor=user(team, "admin"))
         db.session.commit()
 
-        names = [g.nombre for g in list_groups_for_ticket(get_ticket(public_id))]
+        names = [g.nombre for g in list_groups_for_ticket(ticket_by_public_id(public_id))]
 
         assert names == ["Activo", "Viejo"]
 
@@ -647,7 +646,7 @@ def test_groups_offered_include_the_current_inactive_one(app, catalog, team):
 
 
 def escalate(public_id, team, *, group=None, tech=None, reason="Necesita otro nivel", version=None):
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
     escalate_ticket(
         ticket,
         actor=user(team, "sup"),
@@ -665,7 +664,7 @@ def test_escalating_to_a_group_records_one_internal_event(app, catalog, team):
     with app.app_context():
         group = new_group(team)
         escalate(public_id, team, group=group)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.grupo_id == group.id
         assert ticket.version == 2
@@ -690,11 +689,11 @@ def test_escalating_to_a_technician_replaces_the_current_ones(app, catalog, team
 
     with app.app_context():
         first = assign(public_id, team, "tec")
-        before = get_ticket(public_id).version
+        before = ticket_by_public_id(public_id).version
 
         escalate(public_id, team, tech="tec2")
         db.session.refresh(first)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert [a.tecnico_id for a in ticket.tecnicos_vigentes] == [
             team["tec2"]["id"]
@@ -721,7 +720,7 @@ def test_escalating_to_a_technician_moves_a_new_ticket_to_assigned(
         escalate(public_id, team, tech="tec")
 
         assert state_of(public_id) == "ASIGNADO"
-        assert len(events(get_ticket(public_id).id, TicketEvent.ESTADO_CAMBIADO)) == 1
+        assert len(events(ticket_by_public_id(public_id).id, TicketEvent.ESTADO_CAMBIADO)) == 1
 
 
 def test_escalating_to_a_group_and_a_technician_at_once(app, catalog, team):
@@ -732,7 +731,7 @@ def test_escalating_to_a_group_and_a_technician_at_once(app, catalog, team):
         assign(public_id, team, "tec")
 
         escalate(public_id, team, group=group, tech="tec2")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         event = events(ticket.id, TicketEvent.TICKET_ESCALADO)[-1]
 
         assert ticket.grupo_id == group.id
@@ -753,7 +752,7 @@ def test_escalation_needs_a_real_change_and_a_reason(app, catalog, team):
         sup = user(team, "sup")
 
         def attempt(**kwargs):
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
             values = {
                 "actor": sup,
                 "expected_version": ticket.version,
@@ -780,7 +779,7 @@ def test_escalation_needs_a_real_change_and_a_reason(app, catalog, team):
 
         db.session.rollback()
 
-        assert events(get_ticket(public_id).id, TicketEvent.TICKET_ESCALADO) == []
+        assert events(ticket_by_public_id(public_id).id, TicketEvent.TICKET_ESCALADO) == []
 
 
 def test_escalation_rejects_bad_groups_and_technicians(app, catalog, team):
@@ -798,7 +797,7 @@ def test_escalation_rejects_bad_groups_and_technicians(app, catalog, team):
             ({"technician_id": team["sup"]["id"]}, "técnico activo"),
             ({"technician_id": 99999}, "técnico activo"),
         ):
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
 
             with pytest.raises(TicketRuleError, match=message):
                 escalate_ticket(
@@ -869,7 +868,7 @@ def test_two_simultaneous_self_assignments_of_the_same_technician(
     public_id = new_ticket(app, catalog, team)
 
     def attempt():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         assign_technician(ticket, team["tec"]["id"], actor=user(team, "tec"))
 
     outcomes = _run_in_threads(app, [attempt, attempt])
@@ -877,7 +876,7 @@ def test_two_simultaneous_self_assignments_of_the_same_technician(
     assert sorted(outcomes) == ["Ese técnico ya está asignado al ticket.", "ok"]
 
     with app.app_context():
-        assert len(get_ticket(public_id).tecnicos_vigentes) == 1
+        assert len(ticket_by_public_id(public_id).tecnicos_vigentes) == 1
 
 
 def test_two_technicians_assigning_to_a_new_ticket_move_it_to_assigned_once(
@@ -889,7 +888,7 @@ def test_two_technicians_assigning_to_a_new_ticket_move_it_to_assigned_once(
 
     def attempt(key):
         def task():
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
             assign_technician(ticket, team[key]["id"], actor=user(team, key))
 
         return task
@@ -899,7 +898,7 @@ def test_two_technicians_assigning_to_a_new_ticket_move_it_to_assigned_once(
     assert outcomes == ["ok", "ok"]
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert len(ticket.tecnicos_vigentes) == 2
         assert ticket.estado.codigo == "ASIGNADO"
@@ -1041,7 +1040,7 @@ def test_only_technicians_can_self_assign(client, app, catalog, team, key, slug)
     assert client.post(f"/tickets/{public_id}/{slug}").status_code == 403
 
     with app.app_context():
-        assert get_ticket(public_id).tecnicos_vigentes == []
+        assert ticket_by_public_id(public_id).tecnicos_vigentes == []
 
 
 def test_a_technician_removes_only_their_own_assignment(client, app, catalog, team):
@@ -1062,7 +1061,7 @@ def test_a_technician_removes_only_their_own_assignment(client, app, catalog, te
 
     with app.app_context():
         assert [
-            a.tecnico_id for a in get_ticket(public_id).tecnicos_vigentes
+            a.tecnico_id for a in ticket_by_public_id(public_id).tecnicos_vigentes
         ] == [team["tec2"]["id"]]
 
 
@@ -1146,7 +1145,7 @@ def test_a_supervisor_or_administrator_assigns_and_removes_technicians(
     assert "Quitar" in content
 
     with app.app_context():
-        assignment_id = get_ticket(public_id).tecnicos_vigentes[0].id
+        assignment_id = ticket_by_public_id(public_id).tecnicos_vigentes[0].id
         assert state_of(public_id) == "ASIGNADO"
 
     removed = client.post(
@@ -1174,7 +1173,7 @@ def test_the_management_screens_reject_invalid_technicians(client, app, catalog,
         )
 
     with app.app_context():
-        assert get_ticket(public_id).tecnicos_vigentes == []
+        assert ticket_by_public_id(public_id).tecnicos_vigentes == []
 
 
 def test_removing_an_unknown_assignment_reports_it(client, app, catalog, team):
@@ -1232,7 +1231,7 @@ def test_the_group_of_a_ticket_is_set_and_cleared_from_the_screen(
     assert "El grupo del ticket se actualizó." in plain_text(cleared)
 
     with app.app_context():
-        assert get_ticket(public_id).grupo_id is None
+        assert ticket_by_public_id(public_id).grupo_id is None
 
 
 def test_group_change_validations_and_conflict(client, app, catalog, team):
@@ -1261,7 +1260,7 @@ def test_group_change_validations_and_conflict(client, app, catalog, team):
     assert "Otra persona modificó este ticket" in plain_text(stale)
 
     with app.app_context():
-        assert get_ticket(public_id).grupo_id is None
+        assert ticket_by_public_id(public_id).grupo_id is None
 
 
 def test_the_management_screens_redirect_for_a_closed_ticket(
@@ -1386,7 +1385,7 @@ def test_a_supervisor_escalates_from_the_screen(client, app, catalog, team):
     assert "Motivo: Requiere conocimientos de redes" in content
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.grupo_id == group_id
         assert [a.tecnico_id for a in ticket.tecnicos_vigentes] == [team["tec2"]["id"]]
@@ -1426,8 +1425,8 @@ def test_escalation_form_validations(client, app, catalog, team):
     assert "Máximo 500 caracteres." in plain_text(long_reason)
 
     with app.app_context():
-        assert get_ticket(public_id).grupo_id is None
-        assert events(get_ticket(public_id).id, TicketEvent.TICKET_ESCALADO) == []
+        assert ticket_by_public_id(public_id).grupo_id is None
+        assert events(ticket_by_public_id(public_id).id, TicketEvent.TICKET_ESCALADO) == []
 
 
 def test_the_escalation_form_keeps_what_was_typed(client, app, catalog, team):
@@ -1458,7 +1457,7 @@ def test_a_stale_escalation_reports_the_conflict(client, app, catalog, team):
     assert "Otra persona modificó este ticket" in plain_text(response)
 
     with app.app_context():
-        assert get_ticket(public_id).grupo_id is None
+        assert ticket_by_public_id(public_id).grupo_id is None
 
 
 def test_the_history_lines_describe_assignment_events(app, catalog, team):
@@ -1467,7 +1466,7 @@ def test_the_history_lines_describe_assignment_events(app, catalog, team):
     with app.app_context():
         group = new_group(team)
         assignment = assign(public_id, team, "tec")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         set_group(
             ticket,
             group.id,
@@ -1475,7 +1474,7 @@ def test_the_history_lines_describe_assignment_events(app, catalog, team):
             expected_version=ticket.version,
         )
         unassign_technician(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             assignment.id,
             actor=user(team, "sup"),
         )

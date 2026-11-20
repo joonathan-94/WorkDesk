@@ -1,0 +1,77 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, state_badge %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% set heading = 'Deshabilitar transición' if deactivating else 'Habilitar transición' %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("Estados y transiciones", url_for('catalogs.states_page')),
+        (heading, None),
+    ]) }}
+
+    {{ page_header(heading, description) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('catalogs.transition_deactivate' if deactivating else 'catalogs.transition_activate', transition_id=transition.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <p class="mb-3">
+                {{ state_badge(transition.estado_origen) }}
+                <i
+                    class="bi bi-arrow-right mx-1"
+                    aria-hidden="true"
+                ></i>
+                <span class="visually-hidden">hacia</span>
+                {{ state_badge(transition.estado_destino) }}
+                <span class="ms-2 fw-semibold">{{ transition.accion_nombre }}</span>
+            </p>
+
+            {# El efecto se explica con los nombres actuales de los estados. #}
+            {% if deactivating %}
+                <div class="alert alert-warning">
+                    La acción «{{ transition.accion_nombre }}» dejará de
+                    ofrecerse a los tickets que estén en
+                    «{{ transition.estado_origen.nombre_visible }}». Los tickets
+                    no cambian de estado y podrás volver a habilitarla.
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    La acción «{{ transition.accion_nombre }}» volverá a
+                    ofrecerse a los tickets que estén en
+                    «{{ transition.estado_origen.nombre_visible }}».
+                </div>
+            {% endif %}
+
+            {{ textarea_field(
+                form.motivo,
+                hint="Opcional. Queda registrado en la auditoría.",
+                maxlength=500,
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn {% if deactivating %}btn-danger{% else %}btn-primary{% endif %}"
+                    type="submit"
+                >
+                    {{ heading }}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('catalogs.states_page') }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from ..audit import AuditAction, record_admin_event
+from ..cleaning import blank_to_none
 from ..extensions import db
 from ..models import Grupo, GrupoSupervisor, Role, User, UsuarioGrupo
 from ..security import RoleCode, can_manage_groups, has_any_role
@@ -133,7 +134,7 @@ def create_group(
     existe (sin distinguir mayúsculas). Audita `GRUPO_CREADO`."""
     values = {
         "nombre": _clean_name(nombre),
-        "descripcion": _blank_to_none(descripcion),
+        "descripcion": blank_to_none(descripcion),
     }
     _ensure_name_available(values["nombre"])
 
@@ -170,7 +171,7 @@ def update_group(
     de los campos que cambiaron."""
     new_values = {
         "nombre": _clean_name(nombre),
-        "descripcion": _blank_to_none(descripcion),
+        "descripcion": blank_to_none(descripcion),
     }
     changed = {
         field: value
@@ -466,7 +467,7 @@ def _audit(action, group: Grupo, actor, **kwargs) -> None:
         entity_type=ENTITY_TYPE,
         entity_id=group.id,
         detail=group.nombre,
-        reason=_blank_to_none(kwargs.pop("reason", None)),
+        reason=blank_to_none(kwargs.pop("reason", None)),
         **kwargs,
     )
 
@@ -480,7 +481,7 @@ def _close_link(link, actor: User, reason: str | None) -> None:
     # nunca queda antes del inicio aunque los relojes difieran.
     link.fecha_fin = func.now()
     link.retirado_por_usuario_id = actor.id
-    link.motivo_retiro = _blank_to_none(reason)
+    link.motivo_retiro = blank_to_none(reason)
 
 
 def _current_links(model, column, user: User) -> list:
@@ -552,12 +553,3 @@ def _ensure_name_available(nombre: str, *, exclude_id=None) -> None:
 
     if db.session.scalar(statement.limit(1)) is not None:
         raise DuplicateGroupNameError(_DUPLICATE_MESSAGE)
-
-
-def _blank_to_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-
-    value = value.strip()
-
-    return value or None

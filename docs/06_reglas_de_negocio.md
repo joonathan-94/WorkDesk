@@ -1357,7 +1357,7 @@ Solo el Administrador administra las categorías, las prioridades, las ubicacion
 * **Ubicaciones:** el Administrador crea y edita nombre, descripción y tipo. El tipo es opcional y se elige de una lista controlada por la aplicación: Sucursal, Oficina, Edificio, Piso, Área, Instalación u Otra.
 * **Motivos de espera:** el Administrador crea y edita nombre, descripción y orden, y decide si el motivo permite añadir un texto libre (la opción genérica "Otro motivo"). Como el motivo de espera es opcional (RN-49), ninguno está protegido: pueden desactivarse todos sin impedir que un ticket pase a `En espera`. Un motivo desactivado deja de poder elegirse al poner tickets en espera, pero los eventos del historial que ya lo registran lo conservan.
 * **Datos iniciales:** los seeds cargan solo lo estructural (los seis estados, las cuatro prioridades, la categoría `Sin clasificar`, los motivos de cierre y los motivos de espera). Las demás categorías y las ubicaciones las define cada organización desde la interfaz.
-* Los **estados** no se administran desde esta pantalla: sus códigos son estructurales y la configuración de sus atributos visibles y de sus transiciones se implementa junto con el flujo de estados.
+* Los **estados** y sus transiciones no se administran con estas pantallas, sino con la suya (RN-164): sus códigos son estructurales, así que no se crean ni se eliminan, y solo se editan su nombre visible y su descripción y se habilitan o deshabilitan las transiciones opcionales.
 
 ---
 
@@ -1697,6 +1697,33 @@ Aplica y precisa RN-114 a RN-117 en la implementación de `v0.4.0` (entrega 11),
 **Configuración.** `EDIT_LOCK_TTL_SECONDS` y `EDIT_LOCK_HEARTBEAT_SECONDS` son variables de entorno, validadas al iniciar (enteros mayores que cero y el latido menor que la duración, para que no expire entre dos renovaciones). Pasarán a la configuración administrable en `v0.7.0`.
 
 **Fuera de esta entrega:** la liberación manual de un bloqueo por el Supervisor o el Administrador (el bloqueo expira solo, como mucho a los 120 s) y la actualización en tiempo real de quién edita (`docs/12`, sección 32).
+
+---
+
+## RN-164 — Administración de estados y transiciones
+
+Aplica y precisa RN-35, RN-43 y RF-118 en la implementación de `v0.4.0` (entrega 12). Es la pantalla **Estados y transiciones** (`/admin/states`, UI-021) del área de administración: solo la usa el Administrador, la autorización se comprueba en backend como en el resto de `/admin` y cada cambio queda en la auditoría administrativa (RN-123).
+
+**Estados.** Los seis son estructurales: no se crean, no se eliminan y su **código no cambia**, porque es el que usa el código de la aplicación. Lo que el Administrador edita de cada uno es el **nombre visible** (hasta 50 caracteres) y la **descripción** (opcional, hasta 300), que se muestra como ayuda al pasar el cursor por la etiqueta del estado. La pantalla indica además cuántos tickets hay en cada estado.
+
+* **Nombre único** entre los seis, sin distinguir mayúsculas. Se comprueba con las seis filas bloqueadas (`SELECT ... FOR UPDATE`): dos Administradores que renombran a la vez no pueden dejar dos estados con el mismo nombre.
+* **Renombrar es solo visual.** Se aplica de inmediato y a todos los tickets, y no toca el historial: cada evento conserva el nombre que el estado tenía cuando ocurrió. Los textos de las acciones (avisos y confirmaciones) no escriben a mano el nombre de ningún estado, usan el vigente, y un test lo comprueba.
+* **Color y orden** (también nombrados en RF-118) quedan fuera de esta entrega. El color forma parte del Design System y se revisa junto con el pulido visual (`v0.9.0`); el orden es el del flujo.
+
+**Transiciones.** El Administrador puede **deshabilitar y volver a habilitar** una transición ya definida; nunca crea otras (RN-35). La pantalla las agrupa por estado de origen y muestra el destino, la acción y **quién la ejecuta**. Los roles salen del propio catálogo de acciones (`tickets/state_actions.py`), no de una tabla de permisos paralela que habría que mantener sincronizada, y un test comprueba que lo que la pantalla dice coincide con lo que las políticas permiten. Deshabilitar y habilitar piden una confirmación con motivo opcional. Una transición deshabilitada deja de ofrecerse y el servidor rechaza la acción desde ese estado (RN-156); los tickets que ya están en un estado no se tocan.
+
+Dos protecciones evitan que la configuración deje el flujo incoherente (RF-118):
+
+1. **Transiciones esenciales.** No pueden deshabilitarse las de la asignación (`ASIGNAR` y `DESASIGNACION`, RN-37), la validación del solicitante (`CONFIRMAR` y `RECHAZAR`, RN-53 a RN-55), el cierre excepcional (RF-054), el cierre automático (`AUTO_CIERRE`, RN-58) y la reapertura (`REABRIR`, RN-66 y RN-69). Son 8 de las 20 transiciones del seed; la pantalla muestra un candado con la razón. Las otras 12 (iniciar, poner en espera, reactivar, resolver y el cierre directo) no son esenciales, aunque la segunda protección puede impedir deshabilitar alguna: por ejemplo, la única que lleva a `En espera`.
+2. **Flujo completo.** Ninguna deshabilitación puede dejar un estado **inalcanzable desde `Nuevo` avanzando** por el flujo ni impedir que desde cualquier estado se **llegue a `Cerrado`**. Las acciones que devuelven un ticket atrás (rechazar, reabrir y desasignar) no cuentan para avanzar: si se deshabilitaran las dos formas de iniciar el trabajo, un ticket solo llegaría a `En progreso` resolviéndolo y reabriéndolo, y eso no es un flujo. Es una comprobación sobre el grafo de transiciones activas (`catalogs/flow.py`) que casi no conoce acciones concretas, así que sigue valiendo si se añaden estados o acciones, y solo bloquea lo que *empeora* el flujo actual. Al deshabilitar se bloquean las filas de transiciones: dos Administradores que deshabilitan a la vez dos transiciones inofensivas por separado, pero que juntas romperían el flujo, no pueden saltarse la regla (el segundo espera y ve el resultado del primero). Lo mismo ocurre si dos Administradores cambian la misma transición a la vez: el segundo ve que ya está hecha y no repite el cambio ni su registro en la auditoría.
+
+Habilitar una transición siempre se puede.
+
+**Auditoría.** `ESTADO_MODIFICADO` (solo los campos que cambiaron, con su valor anterior y nuevo; sin cambios no se registra nada), `TRANSICION_DESACTIVADA` y `TRANSICION_ACTIVADA` (con «Origen → Destino (Acción)» y el motivo, si se escribió).
+
+**Datos de demostración.** `seed-demo-tickets` ejecuta las acciones de estado de verdad. Si el Administrador dejó deshabilitada una transición que la demostración necesita, el comando se detiene antes de cargar nada y dice cuál habilitar, en lugar de fallar a la mitad.
+
+**Fuera de esta entrega:** el color y el orden de los estados, que se evalúan con el pulido visual (`v0.9.0`).
 
 ---
 

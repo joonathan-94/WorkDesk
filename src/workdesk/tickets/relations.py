@@ -46,13 +46,14 @@ from ..models import (
     TipoRelacionTicket,
     User,
 )
-from .lifecycle import DUPLICATE_CLOSE_REASON, change_state
+from .lifecycle import change_state
 from .service import (
     CLOSED_STATE_CODE,
     TicketRuleError,
     get_ticket_by_public_id,
     record_ticket_event,
 )
+from .state_actions import DUPLICATE_CLOSE_REASON
 from .versioning import begin_ticket_operation, lock_ticket
 
 # Contexto opcional de una relación.

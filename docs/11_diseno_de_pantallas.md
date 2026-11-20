@@ -2406,7 +2406,7 @@ La obligatoriedad del campo depende de configuración.
 - El nombre no puede repetirse (sin distinguir mayúsculas); si dos edificios tienen un "Piso 2", se nombran, por ejemplo, "Edificio A - Piso 2".
 - La obligatoriedad de la ubicación al crear un ticket (RF-019) depende de la tabla de configuración y se implementa más adelante: hoy la ubicación es opcional.
 
-**Motivos de espera (`v0.4.0`):** pantalla complementaria sin código UI propio en este documento. Ruta `/admin/wait-reasons`, con la misma estructura que las categorías: tabla (nombre, descripción, texto libre, orden y estado), filtro por estado y acciones por fila. El formulario pide nombre (obligatorio), descripción y orden (opcionales) y la casilla "Permite añadir un texto libre" para la opción genérica "Otro motivo". Ningún motivo está protegido: el motivo de espera es opcional (RN-49). El selector que ofrece estos motivos al poner un ticket en espera llega con los cambios de estado.
+**Motivos de espera (`v0.4.0`):** pantalla complementaria sin código UI propio en este documento. Ruta `/admin/wait-reasons`, con la misma estructura que las categorías: tabla (nombre, descripción, texto libre, orden y estado), filtro por estado y acciones por fila. El formulario pide nombre (obligatorio), descripción y orden (opcionales) y la casilla "Permite añadir un texto libre" para la opción genérica "Otro motivo". Ningún motivo está protegido: el motivo de espera es opcional (RN-49). Estos motivos se ofrecen al poner un ticket en espera (`v0.4.0`, entrega 3).
 
 ---
 
@@ -2426,6 +2426,16 @@ Cerrado
 Debe permitir consultar/configurar transiciones autorizadas cuando corresponda.
 
 No agregar `Reabierto` como séptimo estado.
+
+**Implementación (`v0.4.0`, entrega 12)** — reglas en `docs/06` (RN-164), exclusiva del Administrador:
+
+- Ruta `/admin/states`, enlazada desde la tarjeta «Estados y transiciones» del hub, con dos tarjetas: **Estados** y **Transiciones**. «Administración» sigue marcada en el menú.
+- **Estados:** tabla con el orden, la etiqueta del estado (con su código interno debajo), la descripción, cuántos tickets hay en él y el botón «Editar». Los seis aparecen siempre, sin botón de alta ni de baja. La etiqueta usa el mismo componente que el resto de la aplicación y la descripción se ve como ayuda al pasar el cursor.
+- **Editar estado** (`/admin/states/<id>/edit`): solo el nombre visible (obligatorio, hasta 50 caracteres) y la descripción (opcional, hasta 300, con contador). Avisa de que el código no cambia y de que el historial conserva el nombre que el estado tenía en su momento. El color y el orden no se editan en esta entrega y la pantalla lo dice.
+- **Transiciones:** un bloque por estado de origen, en el orden del flujo, con una fila por transición: estado de destino, acción (con su nombre neutro, por ejemplo «Confirmar la solución»), **quién la ejecuta** (los roles salen del catálogo de acciones; las automáticas explican cuándo ocurren) y si está habilitada o no, más quién y cuándo la modificó por última vez si se cambió.
+- **Acciones por fila:** «Deshabilitar» (rojo, porque deja de ofrecer una acción) o «Habilitar». Las transiciones que no pueden deshabilitarse muestran la etiqueta **Protegida** con un candado; la razón va como ayuda al pasar el cursor y también en texto para lectores de pantalla. Los casos son dos: las esenciales para el flujo y las que dejarían algún estado sin entrada o sin salida.
+- **Confirmación** (`/admin/transitions/<id>/deactivate` y `/activate`): pantalla propia, no un modal, que explica el efecto con los nombres actuales de los estados («La acción … dejará de ofrecerse a los tickets que estén en …») y pide un motivo opcional que queda en la auditoría. Si una regla lo impide, se avisa y se vuelve a la lista; la regla se comprueba también al abrir la confirmación, para no ofrecer algo que no se puede hacer.
+- Los textos de la pantalla no escriben a mano ningún nombre de estado: siempre usan el vigente.
 
 ---
 

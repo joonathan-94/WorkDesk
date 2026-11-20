@@ -1,10 +1,9 @@
 from flask import abort, flash, redirect, render_template, request, url_for
-from flask_login import current_user
 
 from ..extensions import db
 from ..models import Categoria, MotivoEspera, Prioridad, Ubicacion
 from ..models.ubicacion import LOCATION_TYPE_LABELS, LocationType
-from ..security import RoleCode, roles_required
+from ..security import admin_only, current_actor
 from ..users.forms import ReasonForm
 from . import bp
 from .forms import CategoryForm, LocationForm, PriorityForm, WaitReasonForm
@@ -36,10 +35,6 @@ from .service import (
     update_wait_reason,
 )
 
-# Todas las rutas de este módulo son exclusivas del Administrador. La
-# autorización se comprueba aquí, en backend; ocultar enlaces no la sustituye.
-admin_only = roles_required(RoleCode.ADMINISTRADOR)
-
 LOCATION_TYPE_CHOICES = [
     (location_type.value, LOCATION_TYPE_LABELS[location_type])
     for location_type in LocationType
@@ -64,7 +59,7 @@ def category_new():
 
     def save():
         category = create_category(
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
             orden=form.orden.data,
@@ -87,7 +82,7 @@ def category_edit(item_id: int):
     def save():
         changed = update_category(
             category,
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
             orden=form.orden.data,
@@ -131,7 +126,7 @@ def priority_edit(item_id: int):
     def save():
         changed = update_priority(
             priority,
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
         )
@@ -171,7 +166,7 @@ def location_new():
 
     def save():
         location = create_location(
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
             tipo=form.tipo.data,
@@ -191,7 +186,7 @@ def location_edit(item_id: int):
     def save():
         changed = update_location(
             location,
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
             tipo=form.tipo.data,
@@ -232,7 +227,7 @@ def wait_reason_new():
 
     def save():
         reason = create_wait_reason(
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
             orden=form.orden.data,
@@ -253,7 +248,7 @@ def wait_reason_edit(item_id: int):
     def save():
         changed = update_wait_reason(
             reason,
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             descripcion=form.descripcion.data,
             orden=form.orden.data,
@@ -354,7 +349,7 @@ def _status_page(screen: CatalogScreen, model, item_id: int, *, deactivate):
         operation = deactivate_item if deactivate else activate_item
 
         try:
-            operation(item, actor=_actor(), reason=form.motivo.data)
+            operation(item, actor=current_actor(), reason=form.motivo.data)
             db.session.commit()
         except CatalogRuleError as error:
             return _blocked(screen, str(error))
@@ -399,7 +394,3 @@ def _get_or_404(model, item_id: int):
         abort(404)
 
     return item
-
-
-def _actor():
-    return current_user._get_current_object()

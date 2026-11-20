@@ -16,19 +16,17 @@ from src.workdesk.models import (
     HistoryVisibility,
     RelationType,
     StateAction,
-    Ticket,
     TicketEvent,
     TicketHistory,
     TicketRelation,
     TipoRelacionTicket,
-    User,
 )
 from src.workdesk.models.ticket_history import (
     DEFAULT_EVENT_VISIBILITY,
     TICKET_EVENT_LABELS,
 )
 from src.workdesk.security import can_manage_relations
-from src.workdesk.tickets.editing import describe_history_changes
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.lifecycle import StateTransitionError, change_state
 from src.workdesk.tickets.relations import (
     KIND_DUPLICATE_OF,
@@ -47,7 +45,15 @@ from src.workdesk.tickets.versioning import (
     TicketClosedError,
     TicketConflictError,
 )
-from tests.ticket_helpers import login, make_ticket, plain_text, set_state, text
+from tests.ticket_helpers import (
+    login,
+    make_ticket,
+    person,
+    plain_text,
+    set_state,
+    text,
+    ticket_by_public_id,
+)
 
 Action = StateAction
 
@@ -55,19 +61,9 @@ Action = StateAction
 # --- Auxiliares -------------------------------------------------------------
 
 
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
-    )
-
-
-def person(user_id) -> User:
-    return db.session.get(User, user_id)
-
-
 def add(public_id, other, user_id, **kwargs):
     relation = add_relation(
-        get_ticket(public_id), other, actor=person(user_id), **kwargs
+        ticket_by_public_id(public_id), other, actor=person(user_id), **kwargs
     )
     db.session.commit()
 
@@ -75,7 +71,7 @@ def add(public_id, other, user_id, **kwargs):
 
 
 def duplicate(public_id, principal, user_id, *, version=None, **kwargs):
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
     relation = mark_duplicate(
         ticket,
         principal,
@@ -89,7 +85,7 @@ def duplicate(public_id, principal, user_id, *, version=None, **kwargs):
 
 
 def remove(public_id, relation_id, user_id):
-    remove_relation(get_ticket(public_id), relation_id, actor=person(user_id))
+    remove_relation(ticket_by_public_id(public_id), relation_id, actor=person(user_id))
     db.session.commit()
 
 
@@ -109,7 +105,7 @@ def type_of(code) -> TipoRelacionTicket:
 
 
 def relation_events(public_id) -> list[TicketHistory]:
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
 
     return list(
         db.session.scalars(
@@ -129,7 +125,7 @@ def relation_events(public_id) -> list[TicketHistory]:
 
 
 def event_names(public_id) -> list[str]:
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
 
     return [
         e.tipo_evento
@@ -232,7 +228,7 @@ def _row(a, b, code, user_id, **values):
 
 def test_the_database_rejects_a_ticket_related_to_itself(app, tech, pair):
     with app.app_context():
-        a = get_ticket(pair[0])
+        a = ticket_by_public_id(pair[0])
         db.session.add(_row(a, a, "RELACIONADO", tech["id"]))
 
         with pytest.raises(IntegrityError):
@@ -241,7 +237,7 @@ def test_the_database_rejects_a_ticket_related_to_itself(app, tech, pair):
 
 def test_the_database_rejects_a_repeated_pair_even_inverted(app, tech, pair):
     with app.app_context():
-        a, b = get_ticket(pair[0]), get_ticket(pair[1])
+        a, b = ticket_by_public_id(pair[0]), ticket_by_public_id(pair[1])
         db.session.add(_row(a, b, "RELACIONADO", tech["id"]))
         db.session.commit()
 
@@ -259,7 +255,7 @@ def test_the_database_rejects_a_repeated_pair_even_inverted(app, tech, pair):
 
 def test_different_types_can_link_the_same_pair(app, tech, pair):
     with app.app_context():
-        a, b = get_ticket(pair[0]), get_ticket(pair[1])
+        a, b = ticket_by_public_id(pair[0]), ticket_by_public_id(pair[1])
         db.session.add_all(
             [
                 _row(a, b, "RELACIONADO", tech["id"]),
@@ -273,7 +269,7 @@ def test_different_types_can_link_the_same_pair(app, tech, pair):
 
 def test_a_deactivated_relation_allows_a_new_one(app, tech, pair):
     with app.app_context():
-        a, b = get_ticket(pair[0]), get_ticket(pair[1])
+        a, b = ticket_by_public_id(pair[0]), ticket_by_public_id(pair[1])
         first = _row(a, b, "RELACIONADO", tech["id"])
         db.session.add(first)
         db.session.commit()
@@ -299,7 +295,7 @@ def test_a_deactivated_relation_allows_a_new_one(app, tech, pair):
 )
 def test_the_database_checks_the_deactivation_is_coherent(app, tech, pair, values):
     with app.app_context():
-        a, b = get_ticket(pair[0]), get_ticket(pair[1])
+        a, b = ticket_by_public_id(pair[0]), ticket_by_public_id(pair[1])
         db.session.add(_row(a, b, "RELACIONADO", tech["id"], **values))
 
         with pytest.raises(IntegrityError):
@@ -336,7 +332,7 @@ def test_relating_stores_the_pair_normalized_whichever_side_acts(
     with app.app_context():
         # Desde el ticket de id mayor.
         relation = add(b, a, tech["id"], comment="  Mismo cliente.  ")
-        low, high = sorted((get_ticket(a).id, get_ticket(b).id))
+        low, high = sorted((ticket_by_public_id(a).id, ticket_by_public_id(b).id))
 
         assert (relation.ticket_origen_id, relation.ticket_destino_id) == (low, high)
         assert relation.tipo.codigo == "RELACIONADO"
@@ -374,11 +370,11 @@ def test_relating_does_not_touch_the_versions(app, tech, pair):
     a, b = pair
 
     with app.app_context():
-        before = (get_ticket(a).version, get_ticket(b).version)
+        before = (ticket_by_public_id(a).version, ticket_by_public_id(b).version)
         add(a, b, tech["id"])
 
-        assert (get_ticket(a).version, get_ticket(b).version) == before
-        assert get_ticket(a).fecha_modificacion is None
+        assert (ticket_by_public_id(a).version, ticket_by_public_id(b).version) == before
+        assert ticket_by_public_id(a).fecha_modificacion is None
 
 
 def test_both_tickets_list_the_relation(app, tech, pair):
@@ -387,8 +383,8 @@ def test_both_tickets_list_the_relation(app, tech, pair):
     with app.app_context():
         add(a, b, tech["id"])
 
-        (from_a,) = list_relations(get_ticket(a))
-        (from_b,) = list_relations(get_ticket(b))
+        (from_a,) = list_relations(ticket_by_public_id(a))
+        (from_b,) = list_relations(ticket_by_public_id(b))
 
         assert (from_a.kind, from_a.other.public_id) == (KIND_RELATED, b)
         assert (from_b.kind, from_b.other.public_id) == (KIND_RELATED, a)
@@ -462,7 +458,7 @@ def test_a_closed_ticket_cannot_acquire_relations_but_can_be_the_other_side(
         # El otro ticket puede estar cerrado.
         add(a, b, tech["id"])
 
-        assert get_ticket(b).estado.codigo == "CERRADO"
+        assert ticket_by_public_id(b).estado.codigo == "CERRADO"
 
         # Pero no se actúa desde un ticket cerrado.
         with pytest.raises(TicketClosedError):
@@ -480,7 +476,7 @@ def test_the_service_does_not_commit(app, tech, pair):
     a, b = pair
 
     with app.app_context():
-        add_relation(get_ticket(a), b, actor=person(tech["id"]))
+        add_relation(ticket_by_public_id(a), b, actor=person(tech["id"]))
         db.session.rollback()
 
         assert all_relations() == []
@@ -507,8 +503,8 @@ def test_removing_a_relation_deactivates_it_and_keeps_it_as_history(
         assert stored.activo is False
         assert stored.fecha_desactivacion is not None
         assert stored.usuario_desactivacion_id == supervisor["id"]
-        assert list_relations(get_ticket(a)) == []
-        assert list_relations(get_ticket(b)) == []
+        assert list_relations(ticket_by_public_id(a)) == []
+        assert list_relations(ticket_by_public_id(b)) == []
 
         removal = relation_events(a)[-1]
 
@@ -593,7 +589,7 @@ def test_two_people_removing_the_same_relation_at_once_remove_it_once(
 
     def attempt(public_id, user_id):
         with app.app_context():
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
             actor = person(user_id)
             barrier.wait(timeout=10)
 
@@ -637,12 +633,12 @@ def test_marking_a_duplicate_links_it_and_closes_it(app, tech, pair):
 
     with app.app_context():
         relation = duplicate(dup, principal, tech["id"], comment="Mismo problema.")
-        ticket = get_ticket(dup)
+        ticket = ticket_by_public_id(dup)
 
         assert relation.tipo.codigo == "DUPLICADO"
         # Del duplicado al principal.
         assert relation.ticket_origen_id == ticket.id
-        assert relation.ticket_destino_id == get_ticket(principal).id
+        assert relation.ticket_destino_id == ticket_by_public_id(principal).id
         assert relation.comentario == "Mismo problema."
 
         # Cerrado como cualquier otro cierre: fecha, motivo y quién.
@@ -659,13 +655,13 @@ def test_marking_a_duplicate_leaves_the_principal_untouched(app, tech, pair):
 
     with app.app_context():
         before = (
-            get_ticket(principal).version,
-            get_ticket(principal).estado.codigo,
+            ticket_by_public_id(principal).version,
+            ticket_by_public_id(principal).estado.codigo,
             event_names(principal),
         )
         duplicate(dup, principal, tech["id"])
 
-        after = get_ticket(principal)
+        after = ticket_by_public_id(principal)
 
         assert (after.version, after.estado.codigo, event_names(principal)) == before
         assert after.fecha_modificacion is None
@@ -687,7 +683,7 @@ def test_marking_a_duplicate_records_the_relation_then_the_closing(
         added = relation_events(dup)[0]
         closing = db.session.scalar(
             db.select(TicketHistory).where(
-                TicketHistory.ticket_id == get_ticket(dup).id,
+                TicketHistory.ticket_id == ticket_by_public_id(dup).id,
                 TicketHistory.tipo_evento == "TICKET_CERRADO",
             )
         )
@@ -720,7 +716,7 @@ def test_a_duplicate_can_be_closed_from_every_open_state(
     with app.app_context():
         duplicate(dup, principal, tech["id"])
 
-        assert get_ticket(dup).estado.codigo == "CERRADO"
+        assert ticket_by_public_id(dup).estado.codigo == "CERRADO"
 
 
 def test_a_resolved_ticket_cannot_be_marked_as_duplicate(app, tech, pair):
@@ -734,7 +730,7 @@ def test_a_resolved_ticket_cannot_be_marked_as_duplicate(app, tech, pair):
         db.session.rollback()
 
         assert all_relations() == []
-        assert get_ticket(dup).estado.codigo == "RESUELTO"
+        assert ticket_by_public_id(dup).estado.codigo == "RESUELTO"
 
 
 def test_a_closed_ticket_cannot_be_marked_as_duplicate(app, tech, pair):
@@ -752,8 +748,8 @@ def test_the_principal_may_be_in_any_state_including_closed(app, tech, pair):
     with app.app_context():
         duplicate(dup, principal, tech["id"])
 
-        assert get_ticket(principal).estado.codigo == "CERRADO"
-        assert get_ticket(dup).estado.codigo == "CERRADO"
+        assert ticket_by_public_id(principal).estado.codigo == "CERRADO"
+        assert ticket_by_public_id(dup).estado.codigo == "CERRADO"
 
 
 def test_a_ticket_cannot_be_its_own_duplicate_nor_of_a_missing_one(
@@ -808,7 +804,7 @@ def test_a_ticket_marked_as_duplicate_cannot_be_marked_again(app, tech, trio):
     with app.app_context():
         duplicate(a, b, tech["id"])
 
-        ticket = get_ticket(a)
+        ticket = ticket_by_public_id(a)
         change_state(
             ticket,
             actor=person(tech["id"]),
@@ -827,16 +823,16 @@ def test_the_duplicate_relation_is_listed_from_both_sides(app, tech, pair):
     with app.app_context():
         duplicate(dup, principal, tech["id"])
 
-        (from_dup,) = list_relations(get_ticket(dup))
-        (from_principal,) = list_relations(get_ticket(principal))
+        (from_dup,) = list_relations(ticket_by_public_id(dup))
+        (from_principal,) = list_relations(ticket_by_public_id(principal))
 
         assert (from_dup.kind, from_dup.other.public_id) == (KIND_DUPLICATE_OF, principal)
         assert (from_principal.kind, from_principal.other.public_id) == (
             KIND_PRINCIPAL_OF,
             dup,
         )
-        assert duplicate_of(get_ticket(dup)).id == from_dup.relation.id
-        assert duplicate_of(get_ticket(principal)) is None
+        assert duplicate_of(ticket_by_public_id(dup)).id == from_dup.relation.id
+        assert duplicate_of(ticket_by_public_id(principal)) is None
 
 
 def test_the_principal_can_have_several_duplicates(app, tech, trio):
@@ -846,7 +842,7 @@ def test_the_principal_can_have_several_duplicates(app, tech, trio):
         duplicate(a, c, tech["id"])
         duplicate(b, c, tech["id"])
 
-        views = list_relations(get_ticket(c))
+        views = list_relations(ticket_by_public_id(c))
 
         assert [v.kind for v in views] == [KIND_PRINCIPAL_OF, KIND_PRINCIPAL_OF]
         assert {v.other.public_id for v in views} == {a, b}
@@ -856,15 +852,15 @@ def test_marking_a_duplicate_transfers_nothing(app, tech, requester, pair):
     dup, principal = pair
 
     with app.app_context():
-        before = [r.solicitante_id for r in get_ticket(principal).solicitantes_vigentes]
+        before = [r.solicitante_id for r in ticket_by_public_id(principal).solicitantes_vigentes]
         duplicate(dup, principal, tech["id"])
 
         assert [
-            r.solicitante_id for r in get_ticket(principal).solicitantes_vigentes
+            r.solicitante_id for r in ticket_by_public_id(principal).solicitantes_vigentes
         ] == before == []
         # El duplicado conserva a su solicitante.
         assert [
-            r.solicitante_id for r in get_ticket(dup).solicitantes_vigentes
+            r.solicitante_id for r in ticket_by_public_id(dup).solicitantes_vigentes
         ] == [requester["id"]]
 
 
@@ -878,7 +874,7 @@ def test_marking_a_duplicate_with_a_stale_version_is_a_conflict(app, tech, pair)
         db.session.rollback()
 
         assert all_relations() == []
-        assert get_ticket(dup).estado.codigo == "NUEVO"
+        assert ticket_by_public_id(dup).estado.codigo == "NUEVO"
 
 
 def test_an_inactive_actor_cannot_mark_a_duplicate(app, make_user, pair):
@@ -893,7 +889,7 @@ def test_a_failed_duplicate_leaves_nothing_behind(app, tech, pair):
     set_state(app, dup, "RESUELTO")
 
     with app.app_context():
-        ticket = get_ticket(dup)
+        ticket = ticket_by_public_id(dup)
 
         with pytest.raises(StateTransitionError):
             mark_duplicate(
@@ -924,7 +920,7 @@ def test_two_people_marking_opposite_duplicates_at_once_create_no_cycle(
 
     def attempt(duplicate_id, principal_id, user_id):
         with app.app_context():
-            ticket = get_ticket(duplicate_id)
+            ticket = ticket_by_public_id(duplicate_id)
             actor = person(user_id)
             barrier.wait(timeout=10)
 
@@ -970,7 +966,7 @@ def test_a_duplicate_relation_cannot_be_removed_while_it_stays_closed(
 
     with app.app_context():
         relation = duplicate(dup, principal, tech["id"])
-        (view,) = list_relations(get_ticket(principal))
+        (view,) = list_relations(ticket_by_public_id(principal))
 
         assert view.removable is False
 
@@ -984,7 +980,7 @@ def test_a_reopened_duplicate_can_have_its_relation_removed(app, tech, pair):
 
     with app.app_context():
         relation = duplicate(dup, principal, tech["id"])
-        ticket = get_ticket(dup)
+        ticket = ticket_by_public_id(dup)
         change_state(
             ticket,
             actor=person(tech["id"]),
@@ -994,14 +990,14 @@ def test_a_reopened_duplicate_can_have_its_relation_removed(app, tech, pair):
         db.session.commit()
 
         # Reabierto: ya no es el rastro de un cierre.
-        assert all(v.removable for v in list_relations(get_ticket(dup)))
+        assert all(v.removable for v in list_relations(ticket_by_public_id(dup)))
 
         remove(dup, relation.id, tech["id"])
 
-        assert list_relations(get_ticket(dup)) == []
+        assert list_relations(ticket_by_public_id(dup)) == []
         assert relation_events(dup)[-1].tipo_evento == "RELACION_ELIMINADA"
         # Reabrir conserva el cierre anterior en el historial, no la relación.
-        assert duplicate_of(get_ticket(dup)) is None
+        assert duplicate_of(ticket_by_public_id(dup)) is None
 
 
 def test_reopening_a_duplicate_keeps_the_relation_until_removed(app, tech, pair):
@@ -1009,7 +1005,7 @@ def test_reopening_a_duplicate_keeps_the_relation_until_removed(app, tech, pair)
 
     with app.app_context():
         duplicate(dup, principal, tech["id"])
-        ticket = get_ticket(dup)
+        ticket = ticket_by_public_id(dup)
         change_state(
             ticket,
             actor=person(tech["id"]),
@@ -1018,7 +1014,7 @@ def test_reopening_a_duplicate_keeps_the_relation_until_removed(app, tech, pair)
         )
         db.session.commit()
 
-        ticket = get_ticket(dup)
+        ticket = ticket_by_public_id(dup)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert ticket.motivo_cierre_id is None
@@ -1038,11 +1034,11 @@ def test_the_requester_never_receives_the_relation_events(
 
     with app.app_context():
         add(dup, principal, tech["id"])
-        history = list_ticket_history(get_ticket(dup), person(requester["id"]))
+        history = list_ticket_history(ticket_by_public_id(dup), person(requester["id"]))
 
         assert "RELACION_AGREGADA" not in [h.tipo_evento for h in history]
 
-        staff = list_ticket_history(get_ticket(dup), person(tech["id"]))
+        staff = list_ticket_history(ticket_by_public_id(dup), person(tech["id"]))
 
         assert "RELACION_AGREGADA" in [h.tipo_evento for h in staff]
 
@@ -1075,12 +1071,12 @@ def base(public_id):
 
 def version_of(app, public_id):
     with app.app_context():
-        return get_ticket(public_id).version
+        return ticket_by_public_id(public_id).version
 
 
 def state_of(app, public_id):
     with app.app_context():
-        return get_ticket(public_id).estado.codigo
+        return ticket_by_public_id(public_id).estado.codigo
 
 
 def relation_count(app):
@@ -1329,7 +1325,7 @@ def test_marking_a_duplicate_through_the_screen(client, app, tech, pair):
     assert "Duplicado de" in page and "Ticket B" in page
 
     with app.app_context():
-        assert get_ticket(a).motivo_cierre.codigo == "DUPLICADO"
+        assert ticket_by_public_id(a).motivo_cierre.codigo == "DUPLICADO"
 
 
 def test_the_principal_shows_its_duplicate(client, app, tech, pair):
@@ -1476,7 +1472,7 @@ def test_relations_are_loaded_without_a_query_per_row(app, tech, trio):
         add(a, b, tech["id"])
         add(a, c, tech["id"])
 
-        ticket = get_ticket(a)
+        ticket = ticket_by_public_id(a)
         statements = []
 
         def count(conn, cursor, statement, *args):

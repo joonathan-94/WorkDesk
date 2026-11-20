@@ -22,7 +22,8 @@ from src.workdesk.models.ticket_history import (
     TICKET_EVENT_LABELS,
 )
 from src.workdesk.security import can_view_ticket
-from src.workdesk.tickets.editing import describe_history_changes, update_ticket
+from src.workdesk.tickets.editing import update_ticket
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.requesters import (
     add_requester,
     list_addable_requesters,
@@ -36,7 +37,13 @@ from src.workdesk.tickets.service import (
     list_tickets,
 )
 from src.workdesk.tickets.versioning import TicketClosedError
-from tests.ticket_helpers import login, make_ticket, plain_text, set_state
+from tests.ticket_helpers import (
+    login,
+    make_ticket,
+    plain_text,
+    set_state,
+    ticket_by_public_id,
+)
 
 STAFF = ("tec", "sup", "admin")
 
@@ -59,12 +66,6 @@ def team(make_user, catalog):
 
 def user(team, key) -> User:
     return db.session.get(User, team[key]["id"])
-
-
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
-    )
 
 
 def staff_ticket(app, catalog, team, requesters=("req",), **kwargs):
@@ -105,21 +106,21 @@ def events(ticket_id, *types):
 
 def current_ids(public_id) -> list[int]:
     """Ids de los usuarios que son solicitantes vigentes del ticket."""
-    return [r.solicitante_id for r in get_ticket(public_id).solicitantes_vigentes]
+    return [r.solicitante_id for r in ticket_by_public_id(public_id).solicitantes_vigentes]
 
 
 def link_of(public_id, team, who) -> TicketRequester:
     """Participación vigente de la persona en el ticket."""
     return next(
         r
-        for r in get_ticket(public_id).solicitantes_vigentes
+        for r in ticket_by_public_id(public_id).solicitantes_vigentes
         if r.solicitante_id == team[who]["id"]
     )
 
 
 def add(public_id, team, who="other", actor="sup") -> TicketRequester:
     link = add_requester(
-        get_ticket(public_id),
+        ticket_by_public_id(public_id),
         team[who]["id"],
         actor=user(team, actor),
     )
@@ -130,7 +131,7 @@ def add(public_id, team, who="other", actor="sup") -> TicketRequester:
 
 def remove(public_id, participation_id, team, actor="sup", reason=None):
     remove_requester(
-        get_ticket(public_id),
+        ticket_by_public_id(public_id),
         participation_id,
         actor=user(team, actor),
         reason=reason,
@@ -162,7 +163,7 @@ def test_adding_a_requester_associates_them_and_records_an_internal_event(
 
     with app.app_context():
         link = add(public_id, team)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert link.fecha_retiro is None
         assert link.asociado_por_usuario_id == team["sup"]["id"]
@@ -217,7 +218,7 @@ def test_only_users_with_the_requester_role_can_be_added(
 
     with app.app_context():
         assert current_ids(public_id) == [team["req"]["id"]]
-        assert events(get_ticket(public_id).id, TicketEvent.SOLICITANTE_AGREGADO) == []
+        assert events(ticket_by_public_id(public_id).id, TicketEvent.SOLICITANTE_AGREGADO) == []
 
 
 def test_an_inactive_or_unknown_user_cannot_be_added(app, catalog, team, make_user):
@@ -227,7 +228,7 @@ def test_an_inactive_or_unknown_user_cannot_be_added(app, catalog, team, make_us
     for requester_id in (inactive["id"], 999_999):
         with app.app_context(), pytest.raises(TicketRuleError, match="rol Solicitante"):
             add_requester(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 requester_id,
                 actor=user(team, "sup"),
             )
@@ -250,7 +251,7 @@ def test_a_requester_cannot_be_added_twice(app, catalog, team):
             db.session.rollback()
 
         assert current_ids(public_id) == [team["req"]["id"], team["other"]["id"]]
-        assert len(events(get_ticket(public_id).id, TicketEvent.SOLICITANTE_AGREGADO)) == 1
+        assert len(events(ticket_by_public_id(public_id).id, TicketEvent.SOLICITANTE_AGREGADO)) == 1
 
 
 def test_a_closed_ticket_cannot_have_its_requesters_changed(app, catalog, team):
@@ -281,7 +282,7 @@ def test_an_inactive_actor_cannot_change_requesters(app, catalog, team, make_use
 
     with app.app_context():
         actor = db.session.get(User, inactive["id"])
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         link_id = link_of(public_id, team, "req").id
 
         with pytest.raises(TicketRuleError, match="no está activo"):
@@ -297,14 +298,14 @@ def test_changing_requesters_does_not_commit(app, catalog, team):
     with app.app_context():
         link_id = link_of(public_id, team, "req").id
 
-        add_requester(get_ticket(public_id), team["other"]["id"], actor=user(team, "sup"))
-        remove_requester(get_ticket(public_id), link_id, actor=user(team, "sup"))
+        add_requester(ticket_by_public_id(public_id), team["other"]["id"], actor=user(team, "sup"))
+        remove_requester(ticket_by_public_id(public_id), link_id, actor=user(team, "sup"))
         db.session.rollback()
 
         assert current_ids(public_id) == [team["req"]["id"]]
         assert (
             events(
-                get_ticket(public_id).id,
+                ticket_by_public_id(public_id).id,
                 TicketEvent.SOLICITANTE_AGREGADO,
                 TicketEvent.SOLICITANTE_RETIRADO,
             )
@@ -323,8 +324,8 @@ def test_adding_and_removing_in_one_transaction_respects_the_dates_constraint(
 
     with app.app_context():
         actor = user(team, "sup")
-        link = add_requester(get_ticket(public_id), team["other"]["id"], actor=actor)
-        remove_requester(get_ticket(public_id), link.id, actor=actor)
+        link = add_requester(ticket_by_public_id(public_id), team["other"]["id"], actor=actor)
+        remove_requester(ticket_by_public_id(public_id), link.id, actor=actor)
         db.session.commit()
 
         row = db.session.get(TicketRequester, link.id)
@@ -338,10 +339,10 @@ def test_changing_requesters_does_not_conflict_with_an_open_edit(app, catalog, t
     public_id = staff_ticket(app, catalog, team)
 
     with app.app_context():
-        opened_with = get_ticket(public_id).version
+        opened_with = ticket_by_public_id(public_id).version
 
         add(public_id, team, "other")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         changed = update_ticket(
             ticket,
@@ -366,7 +367,7 @@ def test_addable_requesters_exclude_current_ones_and_other_roles(
     public_id = staff_ticket(app, catalog, team)
 
     def addable():
-        return [u.username for u in list_addable_requesters(get_ticket(public_id))]
+        return [u.username for u in list_addable_requesters(ticket_by_public_id(public_id))]
 
     with app.app_context():
         # Por apellido y nombre; el personal y los inactivos no aparecen.
@@ -392,7 +393,7 @@ def test_removing_closes_the_participation_and_keeps_it(app, catalog, team):
 
         remove(public_id, link_id, team, reason="  Ya no depende de esta persona  ")
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         row = db.session.get(TicketRequester, link_id)
 
         assert row.fecha_retiro is not None
@@ -426,7 +427,7 @@ def test_removing_without_a_reason_records_none(app, catalog, team):
 
         remove(public_id, link_id, team, reason="   ")
 
-        (event,) = events(get_ticket(public_id).id, TicketEvent.SOLICITANTE_RETIRADO)
+        (event,) = events(ticket_by_public_id(public_id).id, TicketEvent.SOLICITANTE_RETIRADO)
 
         assert event.contexto == {"participacion_id": link_id}
 
@@ -437,7 +438,7 @@ def test_a_ticket_can_be_left_without_requesters(app, catalog, team):
     with app.app_context():
         remove(public_id, link_of(public_id, team, "req").id, team)
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.solicitantes_vigentes == []
         assert ticket.estado.codigo == "NUEVO"
@@ -451,7 +452,7 @@ def test_a_removed_requester_can_be_added_again_as_a_new_row(app, catalog, team)
 
         remove(public_id, first, team)
         again = add(public_id, team, "req")
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert again.id != first
         assert [r.id for r in ticket.solicitantes_vigentes] == [again.id]
@@ -542,7 +543,7 @@ def test_two_simultaneous_additions_of_the_same_requester(app, catalog, team):
     def attempt(actor):
         def task():
             add_requester(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 team["other"]["id"],
                 actor=user(team, actor),
             )
@@ -555,7 +556,7 @@ def test_two_simultaneous_additions_of_the_same_requester(app, catalog, team):
 
     with app.app_context():
         assert current_ids(public_id).count(team["other"]["id"]) == 1
-        assert len(events(get_ticket(public_id).id, TicketEvent.SOLICITANTE_AGREGADO)) == 1
+        assert len(events(ticket_by_public_id(public_id).id, TicketEvent.SOLICITANTE_AGREGADO)) == 1
 
 
 def test_two_simultaneous_removals_of_the_same_participation(app, catalog, team):
@@ -567,7 +568,7 @@ def test_two_simultaneous_removals_of_the_same_participation(app, catalog, team)
     def attempt(actor):
         def task():
             remove_requester(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 link_id,
                 actor=user(team, actor),
             )
@@ -580,7 +581,7 @@ def test_two_simultaneous_removals_of_the_same_participation(app, catalog, team)
 
     with app.app_context():
         assert current_ids(public_id) == []
-        assert len(events(get_ticket(public_id).id, TicketEvent.SOLICITANTE_RETIRADO)) == 1
+        assert len(events(ticket_by_public_id(public_id).id, TicketEvent.SOLICITANTE_RETIRADO)) == 1
 
 
 # --- Quién ve el ticket -----------------------------------------------
@@ -737,7 +738,7 @@ def test_a_requester_never_sees_the_requester_events_or_other_requesters(
 
     # El filtro lo aplica la consulta, no la plantilla.
     with app.app_context():
-        shown = list_ticket_history(get_ticket(public_id), user(team, "req"))
+        shown = list_ticket_history(ticket_by_public_id(public_id), user(team, "req"))
 
         assert {e.tipo_evento for e in shown} == {"TICKET_CREADO"}
 
@@ -772,7 +773,7 @@ def test_the_history_lines_describe_requester_events(app, catalog, team):
         lines = {
             e.tipo_evento: describe_history_changes(e)
             for e in events(
-                get_ticket(public_id).id,
+                ticket_by_public_id(public_id).id,
                 TicketEvent.SOLICITANTE_AGREGADO,
                 TicketEvent.SOLICITANTE_RETIRADO,
             )
