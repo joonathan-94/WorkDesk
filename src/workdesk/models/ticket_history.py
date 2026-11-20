@@ -47,6 +47,11 @@ class TicketEvent(StrEnum):
     COMENTARIO_ELIMINADO = "COMENTARIO_ELIMINADO"
     ARCHIVO_ADJUNTADO = "ARCHIVO_ADJUNTADO"
     ARCHIVO_ELIMINADO = "ARCHIVO_ELIMINADO"
+    TICKET_RESUELTO = "TICKET_RESUELTO"
+    VALIDACION_ACEPTADA = "VALIDACION_ACEPTADA"
+    VALIDACION_RECHAZADA = "VALIDACION_RECHAZADA"
+    TICKET_CERRADO = "TICKET_CERRADO"
+    TICKET_REABIERTO = "TICKET_REABIERTO"
 
 
 class HistoryVisibility(StrEnum):
@@ -96,6 +101,15 @@ DEFAULT_EVENT_VISIBILITY = {
     # una nota interna, así que quien lo registra la indica siempre.
     TicketEvent.ARCHIVO_ADJUNTADO: HistoryVisibility.INTERNO,
     TicketEvent.ARCHIVO_ELIMINADO: HistoryVisibility.INTERNO,
+    # Resolución, validación, cierre y reapertura son el hilo que el
+    # Solicitante necesita ver. Los textos de apoyo (motivo de un cierre
+    # directo o excepcional) viajan en `contexto["motivo"]`, que solo ve el
+    # personal; el motivo de un rechazo es del propio Solicitante y se muestra.
+    TicketEvent.TICKET_RESUELTO: HistoryVisibility.PUBLICO,
+    TicketEvent.VALIDACION_ACEPTADA: HistoryVisibility.PUBLICO,
+    TicketEvent.VALIDACION_RECHAZADA: HistoryVisibility.PUBLICO,
+    TicketEvent.TICKET_CERRADO: HistoryVisibility.PUBLICO,
+    TicketEvent.TICKET_REABIERTO: HistoryVisibility.PUBLICO,
 }
 
 
@@ -116,6 +130,11 @@ TICKET_EVENT_LABELS = {
     TicketEvent.COMENTARIO_ELIMINADO: "Comentario eliminado",
     TicketEvent.ARCHIVO_ADJUNTADO: "Archivo adjuntado",
     TicketEvent.ARCHIVO_ELIMINADO: "Archivo eliminado",
+    TicketEvent.TICKET_RESUELTO: "Ticket resuelto",
+    TicketEvent.VALIDACION_ACEPTADA: "Solución confirmada",
+    TicketEvent.VALIDACION_RECHAZADA: "Solución rechazada",
+    TicketEvent.TICKET_CERRADO: "Ticket cerrado",
+    TicketEvent.TICKET_REABIERTO: "Ticket reabierto",
 }
 
 

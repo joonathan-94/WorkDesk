@@ -21,3 +21,5 @@ from .transicion_estado import StateAction as StateAction
 from .transicion_estado import TransicionEstado as TransicionEstado
 from .ubicacion import Ubicacion as Ubicacion
 from .user import User as User
+from .validation import Validation as Validation
+from .validation import ValidationType as ValidationType

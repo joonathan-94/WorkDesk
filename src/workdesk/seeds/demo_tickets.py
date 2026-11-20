@@ -63,6 +63,7 @@ from ..models import (
     CommentType,
     Estado,
     Grupo,
+    MotivoCierre,
     MotivoEspera,
     Prioridad,
     StateAction,
@@ -74,6 +75,7 @@ from ..models import (
     TransicionEstado,
     Ubicacion,
     User,
+    Validation,
 )
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.comment import MAX_COMMENT_LENGTH
@@ -84,7 +86,12 @@ from ..tickets.comments import add_comment
 from ..tickets.editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..tickets.lifecycle import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS, change_state
 from ..tickets.requesters import add_requester, remove_requester
-from ..tickets.service import INITIAL_STATE_CODE, TicketRuleError, create_ticket
+from ..tickets.service import (
+    CLOSED_STATE_CODE,
+    INITIAL_STATE_CODE,
+    TicketRuleError,
+    create_ticket,
+)
 from ..tickets.storage import ALLOWED_TYPES
 from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
 from .demo import DEMO_GROUPS, DEMO_USERS
@@ -285,12 +292,27 @@ _STAFF_ONLY_FIELDS = (
 )
 
 
-def _is_requester_comment(adjustment, roles) -> bool:
-    """Un paso que es únicamente el comentario público de un Solicitante."""
+# Acciones de estado que ejecuta un Solicitante: responder a la resolución.
+_REQUESTER_ACTIONS = (StateAction.CONFIRMAR.value, StateAction.RECHAZAR.value)
+
+
+def _is_requester_step(adjustment, roles) -> bool:
+    """Un paso de un Solicitante: su comentario público y/o su respuesta a la
+    resolución (confirmar o rechazar). No puede cambiar nada más."""
+    if roles.get(adjustment.actor) != SOLICITANTE:
+        return False
+
+    others_empty = all(
+        getattr(adjustment, name) is None
+        for name in _STAFF_ONLY_FIELDS
+        if name != "estado"
+    )
+    answers = adjustment.estado in _REQUESTER_ACTIONS
+
     return (
-        roles.get(adjustment.actor) == SOLICITANTE
-        and adjustment.comentario is not None
-        and all(getattr(adjustment, name) is None for name in _STAFF_ONLY_FIELDS)
+        others_empty
+        and (adjustment.estado is None or answers)
+        and (adjustment.comentario is not None or answers)
     )
 
 
@@ -298,11 +320,29 @@ def _check_adjustment(problems, label, adjustment, roles) -> None:
     # Un Solicitante solo aparece comentando en su ticket (que sea el creador o
     # un solicitante lo comprueba `_check_requester_steps`); todo lo demás lo
     # hace el personal.
-    if roles.get(adjustment.actor) not in STAFF_ROLES and not _is_requester_comment(
+    if roles.get(adjustment.actor) not in STAFF_ROLES and not _is_requester_step(
         adjustment, roles
     ):
         problems.append(
             f"{label}: «{adjustment.actor}» no es personal (Técnico o Supervisor) demo."
+        )
+
+    # Confirmar o rechazar la solución es del solicitante; el personal no
+    # responde por él.
+    if adjustment.estado in _REQUESTER_ACTIONS and (
+        roles.get(adjustment.actor) != SOLICITANTE
+    ):
+        problems.append(
+            f"{label}: «{adjustment.estado}» la ejecuta un Solicitante demo, no "
+            "el personal."
+        )
+
+    # Solo un Supervisor cierra de forma excepcional.
+    if adjustment.estado == StateAction.CIERRE_EXCEPCIONAL.value and (
+        roles.get(adjustment.actor) != SUPERVISOR
+    ):
+        problems.append(
+            f"{label}: el cierre excepcional lo ejecuta un Supervisor demo."
         )
 
     if adjustment.despues_horas < 1:
@@ -443,16 +483,21 @@ def _check_requester_steps(problems, label, ticket, roles) -> None:
             else:
                 current.add(added)
 
-        # Un Solicitante solo comenta en un ticket suyo.
-        if (
-            _is_requester_comment(adjustment, roles)
-            and adjustment.actor not in current
-            and adjustment.actor != ticket.creado_por
-        ):
-            problems.append(
-                f"{where}: «{adjustment.actor}» no es solicitante ni creó el "
-                "ticket, así que no puede comentarlo."
-            )
+        # Un Solicitante solo comenta en un ticket suyo (el creador también,
+        # aunque se le retire como solicitante) y solo un solicitante vigente
+        # responde a la resolución.
+        if _is_requester_step(adjustment, roles):
+            if adjustment.estado in _REQUESTER_ACTIONS:
+                if adjustment.actor not in current:
+                    problems.append(
+                        f"{where}: «{adjustment.actor}» no es solicitante en ese "
+                        "momento, así que no puede responder a la resolución."
+                    )
+            elif adjustment.actor not in current and adjustment.actor != ticket.creado_por:
+                problems.append(
+                    f"{where}: «{adjustment.actor}» no es solicitante ni creó el "
+                    "ticket, así que no puede comentarlo."
+                )
 
 
 # Transiciones tal como las carga `seed-catalogs`:
@@ -467,7 +512,7 @@ _WAIT_REASON_CODES = {row["codigo"]: row for row in INITIAL_WAIT_REASONS}
 def _check_state_steps(problems, label, ticket) -> None:
     """Comprueba que los cambios de estado de un ticket se pueden ejecutar en
     ese orden, empezando en Nuevo: cada acción debe ser válida desde el estado
-    en que va el ticket."""
+    en que va el ticket, y un ticket cerrado solo admite reabrirlo."""
     current = INITIAL_STATE_CODE
     implemented = {action.value for action in STATE_ACTIONS}
 
@@ -478,14 +523,37 @@ def _check_state_steps(problems, label, ticket) -> None:
             current = "ASIGNADO"
 
         action = adjustment.estado
-        has_reason_data = (
-            adjustment.motivo_espera is not None or adjustment.texto is not None
-        )
+
+        # Un ticket cerrado no se modifica: el único paso posible es reabrirlo,
+        # y va solo (el cambio de estado se ejecuta al final del paso).
+        if current == CLOSED_STATE_CODE:
+            only_reopening = (
+                action == StateAction.REABRIR.value
+                and adjustment.comentario is None
+                and all(
+                    getattr(adjustment, name) is None
+                    for name in _STAFF_ONLY_FIELDS
+                    if name != "estado"
+                )
+            )
+
+            if not only_reopening:
+                problems.append(
+                    f"{where}: el ticket está cerrado; el único paso posible es "
+                    "REABRIR, solo."
+                )
+
+                continue
 
         if action is None:
-            if has_reason_data:
+            if (
+                adjustment.motivo_espera is not None
+                or adjustment.motivo_cierre is not None
+                or adjustment.texto is not None
+            ):
                 problems.append(
-                    f"{where}: motivo_espera y texto solo van con una acción de estado."
+                    f"{where}: motivo_espera, motivo_cierre y texto solo van con una "
+                    "acción de estado."
                 )
 
             continue
@@ -508,14 +576,18 @@ def _check_state_steps(problems, label, ticket) -> None:
             continue
 
         current = destination
+        rule = STATE_ACTIONS[StateAction(action)]
 
         if action != StateAction.PONER_EN_ESPERA.value:
-            if has_reason_data:
-                problems.append(
-                    f"{where}: solo PONER_EN_ESPERA admite motivo_espera y texto."
-                )
+            if adjustment.motivo_espera is not None:
+                problems.append(f"{where}: solo PONER_EN_ESPERA admite motivo_espera.")
+
+            _check_close_data(problems, where, adjustment, rule)
 
             continue
+
+        if adjustment.motivo_cierre is not None:
+            problems.append(f"{where}: solo CIERRE_DIRECTO admite motivo_cierre.")
 
         reason = _WAIT_REASON_CODES.get(adjustment.motivo_espera)
 
@@ -531,6 +603,34 @@ def _check_state_steps(problems, label, ticket) -> None:
                 problems.append(
                     f"{where}: el texto exige un motivo que admita texto libre (OTRO)."
                 )
+
+
+def _check_close_data(problems, where, adjustment, rule) -> None:
+    """`motivo_cierre` y `texto` de las acciones que no son la espera: el
+    motivo de cierre solo lo elige el cierre directo y el texto depende de la
+    acción (la solución, el motivo de un rechazo o de un cierre...)."""
+    if adjustment.motivo_cierre is not None:
+        if not rule.close_reasons:
+            problems.append(f"{where}: solo CIERRE_DIRECTO admite motivo_cierre.")
+        elif adjustment.motivo_cierre not in rule.close_reasons:
+            problems.append(
+                f"{where}: motivo de cierre «{adjustment.motivo_cierre}» no elegible "
+                f"(usa {', '.join(rule.close_reasons)})."
+            )
+
+    text = adjustment.texto
+
+    if rule.text_label is None:
+        if text is not None:
+            problems.append(f"{where}: «{rule.action.value}» no admite texto.")
+
+        return
+
+    if rule.text_required and not (text or "").strip():
+        problems.append(f"{where}: «{rule.action.value}» exige un texto.")
+
+    if text is not None:
+        _check_text(problems, where, "texto", text, rule.text_max)
 
 
 # --- Carga ----------------------------------------------------------------
@@ -1093,18 +1193,45 @@ def _apply_adjustment(ticket: Ticket, adjustment, catalogs: _Catalogs) -> None:
         )
 
     if adjustment.estado is not None:
-        reason = catalogs.wait_reason(adjustment.motivo_espera)
+        action = StateAction(adjustment.estado)
 
-        change_state(
-            ticket,
-            actor=actor,
-            action=StateAction(adjustment.estado),
-            expected_version=ticket.version,
-            wait_reason_id=None if reason is None else reason.id,
-            # El texto libre exige un motivo que lo admita: sin motivo
-            # (porque faltaba en el catálogo) no se guarda.
-            text=None if reason is None else adjustment.texto,
-        )
+        if action is StateAction.PONER_EN_ESPERA:
+            reason = catalogs.wait_reason(adjustment.motivo_espera)
+
+            change_state(
+                ticket,
+                actor=actor,
+                action=action,
+                expected_version=ticket.version,
+                wait_reason_id=None if reason is None else reason.id,
+                # El texto libre exige un motivo que lo admita: sin motivo
+                # (porque faltaba en el catálogo) no se guarda.
+                text=None if reason is None else adjustment.texto,
+            )
+        else:
+            # Resolver, cerrar, confirmar, rechazar y reabrir: el texto es la
+            # explicación de la solución, el motivo de un rechazo o de un
+            # cierre, según la acción. Un motivo de cierre inexistente o
+            # desactivado se ignora y el servicio usa el de por defecto.
+            close_reason_id = (
+                None
+                if adjustment.motivo_cierre is None
+                else db.session.scalar(
+                    db.select(MotivoCierre.id).where(
+                        MotivoCierre.codigo == adjustment.motivo_cierre,
+                        MotivoCierre.activo.is_(True),
+                    )
+                )
+            )
+
+            change_state(
+                ticket,
+                actor=actor,
+                action=action,
+                expected_version=ticket.version,
+                close_reason_id=close_reason_id,
+                text=adjustment.texto,
+            )
 
 
 def _event_ids_after(ticket_id: int, after_id: int) -> list[int]:
@@ -1129,11 +1256,43 @@ def _write_new_dates(
     requesters = TicketRequester.__table__
     history = TicketHistory.__table__
 
-    db.session.execute(
-        update(tickets)
-        .where(tickets.c.id == ticket.id)
-        .values(fecha_creacion=times[0], fecha_modificacion=modified_at)
-    )
+    # La resolución, el cierre y las respuestas del solicitante son las de sus
+    # eventos (el servicio les puso la hora real de la carga). Solo cuentan si
+    # el ticket sigue resuelto o cerrado: una reapertura ya las limpió.
+    event_rows = db.session.execute(
+        db.select(history.c.id, history.c.tipo_evento, history.c.contexto).where(
+            history.c.id.in_([event_id for _, ids in steps for event_id in ids])
+        ).order_by(history.c.id)
+    ).all()
+    event_step = {event_id: step for step, ids in steps for event_id in ids}
+    resolved_at = closed_at = None
+
+    for row in event_rows:
+        moment = times[event_step[row.id]]
+
+        if row.tipo_evento == TicketEvent.TICKET_RESUELTO.value:
+            resolved_at = moment
+        elif row.tipo_evento == TicketEvent.TICKET_CERRADO.value:
+            closed_at = moment
+
+        validation_id = (row.contexto or {}).get("validacion_id")
+
+        if validation_id is not None:
+            db.session.execute(
+                update(Validation.__table__)
+                .where(Validation.__table__.c.id == validation_id)
+                .values(fecha_validacion=moment)
+            )
+
+    dates = {"fecha_creacion": times[0], "fecha_modificacion": modified_at}
+
+    if ticket.fecha_resolucion is not None and resolved_at is not None:
+        dates["fecha_resolucion"] = resolved_at
+
+    if ticket.fecha_cierre is not None and closed_at is not None:
+        dates["fecha_cierre"] = closed_at
+
+    db.session.execute(update(tickets).where(tickets.c.id == ticket.id).values(**dates))
 
     # Los solicitantes de la creación se asocian cuando nace el ticket; los
     # que se agregan o retiran después, en el momento de su evento (más
@@ -1284,10 +1443,23 @@ def _refresh(
     def clamp(moment: datetime) -> datetime:
         return min(max(moment, new_created), limit)
 
+    # La resolución y el cierre vigentes siguen al último evento de ese tipo (el
+    # del seed o uno hecho a mano); la fecha de cada validación, a su evento.
+    # Una reapertura ya limpió las fechas del ticket: no se vuelven a poner.
+    ticket_dates = {"fecha_creacion": new_created, "fecha_modificacion": new_modified}
+
+    for column, event_type in (
+        ("fecha_resolucion", TicketEvent.TICKET_RESUELTO.value),
+        ("fecha_cierre", TicketEvent.TICKET_CERRADO.value),
+    ):
+        stored = getattr(ticket, column)
+        followed = [e for e in events if e.tipo_evento == event_type]
+
+        if stored is not None and followed:
+            ticket_dates[column] = new_time[followed[-1].id]
+
     db.session.execute(
-        update(tickets)
-        .where(tickets.c.id == ticket.id)
-        .values(fecha_creacion=new_created, fecha_modificacion=new_modified)
+        update(tickets).where(tickets.c.id == ticket.id).values(**ticket_dates)
     )
 
     for event in events:
@@ -1296,6 +1468,15 @@ def _refresh(
             .where(history.c.id == event.id)
             .values(fecha_hora=new_time[event.id])
         )
+
+        validation_id = (event.contexto or {}).get("validacion_id")
+
+        if validation_id is not None:
+            db.session.execute(
+                update(Validation.__table__)
+                .where(Validation.__table__.c.id == validation_id)
+                .values(fecha_validacion=new_time[event.id])
+            )
 
     # Las asignaciones siguen a sus eventos. Una sola actualización por fila,
     # para que la desasignación nunca preceda a la asignación.

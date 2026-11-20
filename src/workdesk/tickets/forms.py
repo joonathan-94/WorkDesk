@@ -212,34 +212,51 @@ class PriorityChangeForm(FlaskForm):
 
 
 class StateChangeForm(FlaskForm):
-    """Cambio de estado operativo de un ticket.
+    """Cambio de estado de un ticket.
 
-    Lleva la versión con la que se abrió la pantalla. El motivo de espera y su
-    texto solo se piden al poner un ticket en espera y son opcionales; el
-    servicio decide si la acción los admite.
+    Lleva la versión con la que se abrió la pantalla. Según la acción se pide
+    además un motivo de espera (poner en espera), un motivo de cierre (cierre
+    directo) y un texto (la solución, el motivo de un rechazo o de un cierre
+    excepcional...). Lo que cada acción admite lo declara `StateActionInfo`
+    y lo vuelve a comprobar el servicio: aquí solo se valida la forma.
     """
 
     version = OptionalIntegerField("Versión")
     motivo_espera = OptionalIntegerField("Motivo de espera")
+    motivo_cierre = OptionalIntegerField("Motivo de cierre")
 
     texto = TextAreaField(
         "Explicación",
         filters=[_normalize_text],
-        validators=[
-            Length(
-                max=MAX_WAIT_TEXT_LENGTH,
-                message=f"Máximo {MAX_WAIT_TEXT_LENGTH} caracteres.",
-            ),
-        ],
     )
 
-    def __init__(self, *args, wait_reason_choices=(), **kwargs):
+    def __init__(
+        self,
+        *args,
+        wait_reason_choices=(),
+        close_reason_choices=(),
+        text_max=MAX_WAIT_TEXT_LENGTH,
+        text_required=False,
+        text_required_message="Escribe una explicación.",
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.wait_reason_choices = list(wait_reason_choices)
+        self.close_reason_choices = list(close_reason_choices)
+        self.text_max = text_max
+        self.text_required = text_required
+        self.text_required_message = text_required_message
 
     def validate_version(self, field):
         _require_version(field)
+
+    def validate_texto(self, field):
+        if self.text_required and not (field.data or "").strip():
+            raise ValidationError(self.text_required_message)
+
+        if field.data and len(field.data) > self.text_max:
+            raise ValidationError(f"Máximo {self.text_max} caracteres.")
 
     def validate_motivo_espera(self, field):
         # Opcional: solo se comprueba si se eligió algo.
@@ -249,6 +266,16 @@ class StateChangeForm(FlaskForm):
         _require_choice(
             field,
             self.wait_reason_choices,
+            "Selecciona un motivo de la lista.",
+        )
+
+    def validate_motivo_cierre(self, field):
+        if field.process_errors or field.data is None:
+            return
+
+        _require_choice(
+            field,
+            self.close_reason_choices,
             "Selecciona un motivo de la lista.",
         )
 

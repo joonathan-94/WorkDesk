@@ -35,6 +35,7 @@ def create_app(
     _validate_required_config(app)
     _validate_session_limits(app)
     _validate_comment_edit_window(app)
+    _validate_reopen_window(app)
     _configure_uploads(app)
     _validate_password_policy(app)
     configure_logging(app)
@@ -127,6 +128,14 @@ def _validate_comment_edit_window(app: Flask) -> None:
     if app.config["COMMENT_EDIT_WINDOW_MINUTES"] <= 0:
         raise RuntimeError(
             "COMMENT_EDIT_WINDOW_MINUTES debe ser un entero mayor que cero."
+        )
+
+
+def _validate_reopen_window(app: Flask) -> None:
+    # Con 0 o menos ningún solicitante podría reabrir su ticket.
+    if app.config["REOPEN_WINDOW_DAYS"] <= 0:
+        raise RuntimeError(
+            "REOPEN_WINDOW_DAYS debe ser un entero mayor que cero."
         )
 
 

@@ -1088,6 +1088,8 @@ UNIQUE (ticket_id, solicitante_id, ciclo_resolucion)
 - No se crea una entidad `resoluciones` separada en el MVP; el ciclo, los campos actuales de `tickets` y `historial_ticket` permiten distinguir las resoluciones sucesivas.
 - El cambio de estado derivado también queda en `historial_ticket`.
 
+**Implementación (`v0.4.0`, entrega 9, RN-161).** La tabla `validaciones` se crea con el esquema de esta sección y estas restricciones: `ciclo_resolucion >= 1`, `tipo_validacion IN ('ACEPTADA', 'RECHAZADA')`, un rechazo siempre con `motivo_rechazo` no vacío (`length(btrim(motivo_rechazo)) > 0`), `UNIQUE (ticket_id, solicitante_id, ciclo_resolucion)` e índice por `(ticket_id, ciclo_resolucion)`. Las claves foráneas son `ON DELETE RESTRICT` y `fecha_validacion` la pone la base de datos. El ciclo en curso es el número de eventos `TICKET_RESUELTO` del ticket (no hay tabla de resoluciones). `comentario_adicional` guarda el comentario opcional de una confirmación. Cada respuesta deja `VALIDACION_ACEPTADA` o `VALIDACION_RECHAZADA` con `contexto["validacion_id"]`. En `tickets`, confirmar o cerrar fija `fecha_cierre`, `motivo_cierre_id` y `cerrado_por_usuario_id` en una sola operación, y rechazar o reabrir limpia `resolucion`, `fecha_resolucion` y esos tres campos (más `cerrado_automaticamente`). Que un ticket `CERRADO` tenga fecha y motivo de cierre lo aplica el servicio (`tickets/lifecycle.py`), porque depende del código del estado.
+
 # 17. Comentarios y notas internas
 
 ## 17.1 `comentarios`

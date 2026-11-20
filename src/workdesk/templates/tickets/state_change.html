@@ -51,6 +51,58 @@
 
             <p class="text-secondary">{{ info.description }}</p>
 
+            {# Motivo del cierre directo: se elige entre los que ofrece la
+               acción; si no se elige ninguno, el servicio usa «Cierre
+               directo». #}
+            {% if info.close_reasons %}
+                <div class="mb-3">
+                    <label
+                        class="form-label"
+                        for="{{ form.motivo_cierre.id }}"
+                    >
+                        Motivo del cierre
+                    </label>
+
+                    <select
+                        class="form-select{% if form.motivo_cierre.errors %} is-invalid{% endif %}"
+                        id="{{ form.motivo_cierre.id }}"
+                        name="{{ form.motivo_cierre.name }}"
+                        {% if form.motivo_cierre.errors %}
+                            aria-invalid="true"
+                            aria-describedby="{{ form.motivo_cierre.id }}-error"
+                        {% endif %}
+                    >
+                        {% for reason in close_reasons %}
+                            <option
+                                value="{{ reason.id }}"
+                                {% if reason.id == form.motivo_cierre.data %}selected{% endif %}
+                            >
+                                {{ reason.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="form-text">
+                        Una cancelación es un cierre con ese motivo: WorkDesk
+                        no tiene un estado «Cancelado».
+                    </div>
+
+                    {{ field_errors(form.motivo_cierre) }}
+                </div>
+            {% endif %}
+
+            {% if info.text_label %}
+                {{ textarea_field(
+                    form.texto,
+                    label=info.text_label,
+                    maxlength=max_text,
+                    rows=4 if max_text > 500 else 3,
+                    counter=True,
+                    required=info.text_required,
+                    hint=info.text_hint,
+                ) }}
+            {% endif %}
+
             {% if info.allows_wait_reason %}
                 <div class="mb-3">
                     <label

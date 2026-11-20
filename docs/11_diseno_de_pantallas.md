@@ -1890,6 +1890,7 @@ Resumen simplificado:
 - **Eliminar** abre una confirmación aparte. En un ticket cerrado la tarjeta dice «Un ticket cerrado no admite archivos nuevos.» (se pueden seguir descargando).
 - **Historial:** `Archivo adjuntado` y `Archivo eliminado` con el nombre; los de un archivo de nota interna solo los ve el personal.
 - Las pestañas Actividad / Archivos / Historial del diseño siguen pendientes (hoy son tarjetas apiladas).
+- **Resolución y cierre (`v0.4.0`, entrega 9).** La cabecera muestra los botones de estado que el usuario puede ejecutar ahora (principales: Iniciar, Poner en espera, Reactivar y Resolver; secundarios: Cerrar ticket, Cierre excepcional y Reabrir ticket). Cada uno abre su pantalla de confirmación. Una tarjeta **Resolución** muestra la explicación de la solución y el resumen indica **Resuelto** y **Cerrado** (con su motivo).
 
 ---
 
@@ -1921,6 +1922,8 @@ Rechazo:
 - solicita comentario;
 - reabre el ticket;
 - `Reabierto` no se convierte en estado estructural.
+
+**Implementación (`v0.4.0`, entrega 9).** El aviso aparece solo para un solicitante vigente del ticket mientras está Resuelto, con la explicación de la solución a la vista, y reemplaza a los botones de cabecera para esas dos acciones. **Sí, está resuelto** abre una confirmación (comentario opcional) que cierra el ticket; **No, necesito más ayuda** abre una pantalla que exige explicar por qué y devuelve el ticket a En progreso. El motivo del rechazo se ve en el historial para el solicitante y para el personal. Un ticket cerrado ofrece **Reabrir ticket** al solicitante dentro del plazo y al personal siempre.
 
 ---
 

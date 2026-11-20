@@ -21,6 +21,7 @@ from src.workdesk.models import (
     TicketTechnician,
     Ubicacion,
     User,
+    Validation,
 )
 from src.workdesk.models.ticket_history import TicketHistoryImmutableError
 from src.workdesk.seeds import (
@@ -119,6 +120,20 @@ def history_of(ticket):
     )
 
 
+def validations_of(ticket):
+    return list(
+        db.session.scalars(
+            db.select(Validation)
+            .where(Validation.ticket_id == ticket.id)
+            .order_by(Validation.id)
+        )
+    )
+
+
+def lifecycle_of(ticket):
+    return [e for e in history_of(ticket) if e.tipo_evento in LIFECYCLE_EVENTS]
+
+
 def requesters_of(ticket):
     return list(
         db.session.scalars(
@@ -135,7 +150,24 @@ ACTION_DESTINATION = {
     "INICIAR": "EN_PROGRESO",
     "PONER_EN_ESPERA": "EN_ESPERA",
     "REACTIVAR": "EN_PROGRESO",
+    "RESOLVER": "RESUELTO",
+    "CIERRE_DIRECTO": "CERRADO",
+    "CONFIRMAR": "CERRADO",
+    "RECHAZAR": "EN_PROGRESO",
+    "CIERRE_EXCEPCIONAL": "CERRADO",
+    "REABRIR": "EN_PROGRESO",
 }
+
+# Eventos que dejan la resolución, el cierre y la reapertura (y los cambios de
+# estado operativos).
+LIFECYCLE_EVENTS = (
+    "ESTADO_CAMBIADO",
+    "TICKET_RESUELTO",
+    "VALIDACION_ACEPTADA",
+    "VALIDACION_RECHAZADA",
+    "TICKET_CERRADO",
+    "TICKET_REABIERTO",
+)
 
 
 def final_state(demo) -> str:
@@ -267,6 +299,9 @@ def date_snapshot():
                 (f.fecha_subida, f.fecha_eliminacion)
                 for f in attachments_of(ticket)
             ],
+            ticket.fecha_resolucion,
+            ticket.fecha_cierre,
+            [v.fecha_validacion for v in validations_of(ticket)],
         )
 
     return snapshot
@@ -306,6 +341,20 @@ def content_snapshot():
             [
                 (f.nombre_original, f.hash, f.comentario_id, f.activo)
                 for f in attachments_of(ticket)
+            ],
+            ticket.resolucion,
+            ticket.motivo_cierre_id,
+            ticket.cerrado_por_usuario_id,
+            ticket.cerrado_automaticamente,
+            [
+                (
+                    v.solicitante_id,
+                    v.ciclo_resolucion,
+                    v.tipo_validacion,
+                    v.motivo_rechazo,
+                    v.comentario_adicional,
+                )
+                for v in validations_of(ticket)
             ],
         )
 
@@ -462,7 +511,7 @@ def test_validation_rejects_requesters_on_a_ticket_created_by_a_requester():
          "categoría desconocida"),
         (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="INVENTADA"),
          "no existe o todavía no está implementada"),
-        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="RESOLVER"),
+        (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="AUTO_CIERRE"),
          "no existe o todavía no está implementada"),
         (DemoAdjustment(actor="diego.soto", despues_horas=1, estado="REACTIVAR"),
          "no es válida desde el estado NUEVO"),
@@ -529,7 +578,7 @@ def test_validation_accepts_a_full_operational_cycle():
     validate_demo_tickets((replace(DEMO_TICKETS[0], ajustes=steps),))
 
 
-def test_demo_data_includes_every_state_reachable_today_and_every_wait_reason():
+def test_demo_data_includes_every_state_and_every_wait_reason():
     finals = {final_state(demo) for demo in DEMO_TICKETS}
     reasons = {
         step.motivo_espera
@@ -544,7 +593,14 @@ def test_demo_data_includes_every_state_reachable_today_and_every_wait_reason():
         == ["INICIAR", "PONER_EN_ESPERA", "REACTIVAR"]
     ]
 
-    assert finals == {"NUEVO", "ASIGNADO", "EN_PROGRESO", "EN_ESPERA"}
+    assert finals == {
+        "NUEVO",
+        "ASIGNADO",
+        "EN_PROGRESO",
+        "EN_ESPERA",
+        "RESUELTO",
+        "CERRADO",
+    }
     assert reasons == {
         "INFORMACION_PENDIENTE",
         "ESPERA_TERCERO",
@@ -2336,3 +2392,380 @@ def test_a_hand_made_file_deletion_follows_the_refresh(app, seeded):
         assert item.fecha_eliminacion == removal.fecha_hora
         assert item.fecha_eliminacion >= item.fecha_subida
         assert max(e.fecha_hora for e in events) <= later - timedelta(minutes=1)
+
+
+# --- Resolución, cierre y reapertura -------------------------------------------
+
+
+def _step(actor, **values):
+    return DemoAdjustment(actor=actor, despues_horas=1, **values)
+
+
+def _resolution_ticket(*steps):
+    """Un ticket de una Solicitante (Javiera) con estos pasos, para validar."""
+    return replace(
+        DEMO_TICKETS[0],
+        creado_por="javiera.torres",
+        solicitantes=(),
+        ajustes=steps,
+    )
+
+
+RESOLVE = _step("diego.soto", estado="RESOLVER")
+CLOSE = _step("diego.soto", estado="CIERRE_DIRECTO")
+
+
+@pytest.mark.parametrize(
+    ("steps", "message"),
+    [
+        # Quién ejecuta cada acción.
+        ((RESOLVE, _step("diego.soto", estado="CONFIRMAR")),
+         "la ejecuta un Solicitante demo"),
+        ((RESOLVE, _step("diego.soto", estado="RECHAZAR", texto="No sirvió.")),
+         "la ejecuta un Solicitante demo"),
+        ((RESOLVE, _step("diego.soto", estado="CIERRE_EXCEPCIONAL", texto="x")),
+         "lo ejecuta un Supervisor demo"),
+        ((RESOLVE, _step("paula.contreras", estado="CONFIRMAR")),
+         "no es solicitante en ese momento"),
+        # Textos obligatorios y límites.
+        ((RESOLVE, _step("javiera.torres", estado="RECHAZAR")), "exige un texto"),
+        ((RESOLVE, _step("camila.rojas", estado="CIERRE_EXCEPCIONAL")),
+         "exige un texto"),
+        ((_step("diego.soto", estado="RESOLVER", texto="x" * 2001),), "supera"),
+        ((_step("diego.soto", estado="INICIAR", texto="Algo."),), "no admite texto"),
+        # Motivo de cierre: solo el cierre directo, y solo los que ofrece.
+        ((_step("diego.soto", estado="INICIAR", motivo_cierre="CANCELACION"),),
+         "solo CIERRE_DIRECTO admite motivo_cierre"),
+        ((_step("diego.soto", estado="CIERRE_DIRECTO", motivo_cierre="DUPLICADO"),),
+         "no elegible"),
+        ((_step("diego.soto", titulo="Otro", motivo_cierre="CANCELACION"),),
+         "solo van con una acción de estado"),
+        # Transiciones que no existen.
+        ((_step("javiera.torres", estado="CONFIRMAR"),),
+         "no es válida desde el estado NUEVO"),
+        ((RESOLVE, RESOLVE), "no es válida desde el estado RESUELTO"),
+        # Un ticket cerrado solo admite reabrirlo, y solo.
+        ((CLOSE, _step("diego.soto", comentario="Hola.")),
+         "el ticket está cerrado"),
+        ((CLOSE, _step("diego.soto", estado="REABRIR", comentario="Hola.")),
+         "el ticket está cerrado"),
+        ((CLOSE, _step("diego.soto", estado="INICIAR")), "el ticket está cerrado"),
+    ],
+)
+def test_validation_rejects_inconsistent_resolution_steps(steps, message):
+    with pytest.raises(DemoTicketsError, match=message):
+        validate_demo_tickets((_resolution_ticket(*steps),))
+
+
+def test_validation_accepts_a_full_resolution_cycle():
+    steps = (
+        _step("diego.soto", estado="INICIAR"),
+        RESOLVE,
+        _step("javiera.torres", estado="RECHAZAR", texto="Sigue igual.",
+              comentario="Probé de nuevo y nada."),
+        _step("diego.soto", estado="RESOLVER", texto="Ahora sí."),
+        _step("javiera.torres", estado="CONFIRMAR"),
+        _step("diego.soto", estado="REABRIR"),
+        _step("javiera.torres", comentario="Volvió a fallar."),
+    )
+
+    validate_demo_tickets((_resolution_ticket(*steps),))
+
+
+def test_demo_data_covers_every_way_to_resolve_close_and_reopen():
+    actions = [
+        step.estado for demo in DEMO_TICKETS for step in demo.ajustes if step.estado
+    ]
+
+    for action in (
+        "RESOLVER",
+        "CIERRE_DIRECTO",
+        "CONFIRMAR",
+        "RECHAZAR",
+        "CIERRE_EXCEPCIONAL",
+        "REABRIR",
+    ):
+        assert action in actions, action
+
+    assert any(
+        step.motivo_cierre == "CANCELACION"
+        for demo in DEMO_TICKETS
+        for step in demo.ajustes
+    )
+    # Un ticket rechazado y resuelto de nuevo (dos ciclos), uno cerrado sin
+    # solicitante y uno que se cerró y se reabrió.
+    assert by_key_actions("escritorio-remoto-rechazado").count("RESOLVER") == 2
+    assert not by_demo("aire-sala-servidores-mensual").solicitantes
+    assert by_key_actions("impresora-contratos-rayas")[-1] == "REABRIR"
+
+
+def by_demo(key):
+    return next(demo for demo in DEMO_TICKETS if demo.clave == key)
+
+
+def by_key_actions(key):
+    return [step.estado for step in by_demo(key).ajustes if step.estado]
+
+
+def test_a_ticket_resolved_and_waiting_for_validation(app, seeded):
+    with app.app_context():
+        ticket = by_clave("lector-huella-no-reconoce")
+        resolved, = [e for e in lifecycle_of(ticket) if e.tipo_evento == "TICKET_RESUELTO"]
+
+        assert ticket.estado.codigo == "RESUELTO"
+        assert ticket.resolucion.startswith("Limpié el lector")
+        assert ticket.fecha_resolucion == resolved.fecha_hora
+        assert ticket.fecha_cierre is None
+        assert ticket.motivo_cierre_id is None
+        assert validations_of(ticket) == []
+        assert resolved.contexto["demo_clave"] == "lector-huella-no-reconoce"
+        assert resolved.contexto["ciclo"] == 1
+        assert ticket.fecha_modificacion == resolved.fecha_hora
+
+
+def test_a_ticket_closed_by_its_requester(app, seeded):
+    with app.app_context():
+        ticket = by_clave("cargador-notebook-bodega")
+        events = lifecycle_of(ticket)
+        (validation,) = validations_of(ticket)
+
+        assert [e.tipo_evento for e in events if e.tipo_evento != "ESTADO_CAMBIADO"] == [
+            "TICKET_RESUELTO",
+            "VALIDACION_ACEPTADA",
+            "TICKET_CERRADO",
+        ]
+        assert ticket.estado.codigo == "CERRADO"
+        assert ticket.motivo_cierre.codigo == "RESOLUCION_VALIDADA"
+        assert ticket.cerrado_por_usuario_id == user("ignacio.molina").id
+        assert ticket.cerrado_automaticamente is False
+        assert validation.tipo_validacion == "ACEPTADA"
+        assert validation.comentario_adicional == "Listo, ya carga. Gracias!"
+
+        # La fecha de cierre y la de la validación son las de sus eventos.
+        closed = next(e for e in events if e.tipo_evento == "TICKET_CERRADO")
+        accepted = next(e for e in events if e.tipo_evento == "VALIDACION_ACEPTADA")
+
+        assert ticket.fecha_cierre == closed.fecha_hora
+        assert validation.fecha_validacion == accepted.fecha_hora
+        assert ticket.fecha_resolucion <= ticket.fecha_cierre
+
+
+def test_a_rejected_ticket_is_resolved_again_in_a_second_cycle(app, seeded):
+    with app.app_context():
+        ticket = by_clave("escritorio-remoto-rechazado")
+        (rejection,) = validations_of(ticket)
+        events = lifecycle_of(ticket)
+        resolutions = [e for e in events if e.tipo_evento == "TICKET_RESUELTO"]
+
+        assert rejection.tipo_validacion == "RECHAZADA"
+        assert rejection.ciclo_resolucion == 1
+        assert rejection.motivo_rechazo.startswith("Sigo sin poder entrar")
+        assert [e.contexto["ciclo"] for e in resolutions] == [1, 2]
+        assert ticket.estado.codigo == "RESUELTO"
+        assert ticket.resolucion.startswith("Restablecí la clave")
+        assert ticket.fecha_resolucion == resolutions[-1].fecha_hora
+        # La primera explicación sigue en el historial.
+        assert resolutions[0].valor_nuevo["resolucion"].startswith("Habilité tu usuario")
+        assert validations_of(ticket)[0].fecha_validacion == next(
+            e.fecha_hora for e in events if e.tipo_evento == "VALIDACION_RECHAZADA"
+        )
+
+
+def test_a_direct_close_without_requesters_and_a_cancellation(app, seeded):
+    with app.app_context():
+        maintenance = by_clave("aire-sala-servidores-mensual")
+        cancelled = by_clave("segundo-monitor-cancelado")
+
+        assert maintenance.estado.codigo == "CERRADO"
+        assert maintenance.motivo_cierre.codigo == "CIERRE_DIRECTO"
+        assert maintenance.cerrado_por_usuario_id == user("diego.soto").id
+        assert requesters_of(maintenance) == []
+        assert validations_of(maintenance) == []
+
+        assert cancelled.estado.codigo == "CERRADO"
+        assert cancelled.motivo_cierre.codigo == "CANCELACION"
+        (closing,) = [e for e in lifecycle_of(cancelled) if e.tipo_evento == "TICKET_CERRADO"]
+
+        assert closing.contexto["motivo"] == "Cancelado a pedido de la solicitante."
+        assert closing.contexto["accion"] == "CIERRE_DIRECTO"
+        assert cancelled.fecha_cierre == closing.fecha_hora
+        # El comentario del paso precede al cierre.
+        assert [c.contenido[:15] for c in comments_of(cancelled)] == ["Constanza, anul"]
+
+
+def test_an_exceptional_close_by_a_supervisor(app, seeded):
+    with app.app_context():
+        ticket = by_clave("antivirus-notebooks-bodega")
+
+        assert ticket.estado.codigo == "CERRADO"
+        assert ticket.motivo_cierre.codigo == "CIERRE_EXCEPCIONAL"
+        assert ticket.cerrado_por_usuario_id == user("camila.rojas").id
+        assert validations_of(ticket) == []
+        assert ticket.fecha_resolucion < ticket.fecha_cierre
+
+
+def test_a_reopened_ticket_has_no_closure_but_keeps_its_history(app, seeded):
+    with app.app_context():
+        ticket = by_clave("impresora-contratos-rayas")
+        events = [e.tipo_evento for e in lifecycle_of(ticket)]
+
+        assert ticket.estado.codigo == "EN_PROGRESO"
+        assert ticket.resolucion is None
+        assert ticket.fecha_resolucion is None
+        assert ticket.fecha_cierre is None
+        assert ticket.motivo_cierre_id is None
+        assert ticket.cerrado_por_usuario_id is None
+        assert events[-3:] == ["VALIDACION_ACEPTADA", "TICKET_CERRADO", "TICKET_REABIERTO"]
+        # El técnico anterior se conserva y la validación también.
+        assert [a.tecnico.username for a in assignments_of(ticket)] == ["felipe.araya"]
+        assert [v.tipo_validacion for v in validations_of(ticket)] == ["ACEPTADA"]
+        assert comments_of(ticket)[-1].autor.username == "paula.contreras"
+
+
+def test_resolution_steps_leave_the_same_history_as_the_application(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            events = [e for e in lifecycle_of(ticket) if e.tipo_evento != "ESTADO_CAMBIADO"]
+
+            if not any(step.estado in ACTION_DESTINATION and step.estado not in (
+                "INICIAR", "PONER_EN_ESPERA", "REACTIVAR"
+            ) for step in demo.ajustes):
+                continue
+
+            # Cada evento lleva la marca de su ticket y de su paso y los pasos
+            # van en orden.
+            assert all(e.contexto["demo_clave"] == demo.clave for e in events)
+            assert [e.contexto["demo_paso"] for e in events] == sorted(
+                e.contexto["demo_paso"] for e in events
+            )
+            # Un cierre nunca deja un ticket cerrado sin fecha ni motivo.
+            if ticket.estado.codigo == "CERRADO":
+                assert ticket.fecha_cierre is not None
+                assert ticket.motivo_cierre_id is not None
+
+
+def test_closure_dates_are_in_order_and_never_in_the_future(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+
+            for moment in (ticket.fecha_resolucion, ticket.fecha_cierre):
+                if moment is not None:
+                    assert ticket.fecha_creacion <= moment <= NOW
+                    assert_inside_the_default_calendar(moment)
+
+            if ticket.fecha_resolucion and ticket.fecha_cierre:
+                assert ticket.fecha_resolucion <= ticket.fecha_cierre
+
+            for validation in validations_of(ticket):
+                assert ticket.fecha_creacion <= validation.fecha_validacion <= NOW
+
+
+def test_the_requester_is_asked_to_validate_a_resolved_ticket(app, seeded):
+    client = log_in(app, "paula.contreras")
+
+    with app.app_context():
+        public_id = by_clave("lector-huella-no-reconoce").public_id
+
+    plain = page_text(client, public_id)
+
+    assert "¿Tu solicitud quedó resuelta?" in plain
+    assert "Limpié el lector" in plain
+    assert f"/tickets/{public_id}/status/confirm" in client.get(
+        f"/tickets/{public_id}"
+    ).get_data(as_text=True)
+
+
+def test_staff_and_other_requesters_do_not_get_the_validation_prompt(app, seeded):
+    with app.app_context():
+        public_id = by_clave("lector-huella-no-reconoce").public_id
+
+    assert "¿Tu solicitud quedó resuelta?" not in page_text(
+        log_in(app, "felipe.araya"), public_id
+    )
+    # Otra persona sin relación con el ticket ni siquiera lo ve.
+    assert log_in(app, "ignacio.molina").get(f"/tickets/{public_id}").status_code == 404
+
+
+def test_what_each_role_sees_of_a_closed_and_rejected_ticket(app, seeded):
+    with app.app_context():
+        rejected = by_clave("escritorio-remoto-rechazado").public_id
+        cancelled = by_clave("segundo-monitor-cancelado").public_id
+
+    requester = page_text(log_in(app, "sebastian.vargas"), rejected)
+    staff = page_text(log_in(app, "valentina.pizarro"), rejected)
+
+    # El motivo del rechazo es del solicitante: lo ven los dos. La nota interna
+    # del equipo, solo el personal.
+    assert "Motivo del rechazo: Sigo sin poder entrar" in requester
+    assert "Motivo del rechazo: Sigo sin poder entrar" in staff
+    assert "La clave del servidor expiró" not in requester
+    assert "La clave del servidor expiró" in staff
+
+    # La nota con la que se cerró la cancelación es del personal.
+    closed_requester = page_text(log_in(app, "constanza.herrera"), cancelled)
+    closed_staff = page_text(log_in(app, "felipe.araya"), cancelled)
+
+    assert "Cancelación" in closed_requester
+    assert "Motivo: Cancelado a pedido de la solicitante." not in closed_requester
+    assert "Motivo: Cancelado a pedido de la solicitante." in closed_staff
+
+
+def test_a_hand_made_closure_follows_the_refresh(app, seeded):
+    """Un cierre hecho a mano sobre un ticket demo sigue su evento al refrescar
+    y nunca queda antes de la resolución ni en el futuro."""
+    from src.workdesk.models import StateAction
+    from src.workdesk.tickets.lifecycle import change_state
+
+    with app.app_context():
+        ticket = by_clave("lector-huella-no-reconoce")
+        change_state(
+            ticket,
+            actor=user("camila.rojas"),
+            action=StateAction.CIERRE_EXCEPCIONAL,
+            expected_version=ticket.version,
+            text="Sin respuesta de la solicitante.",
+        )
+        db.session.commit()
+
+        closing = history_of(ticket)[-1]
+        set_event_time(closing, NOW - timedelta(hours=1))
+        db.session.execute(
+            update(Ticket.__table__)
+            .where(Ticket.__table__.c.id == ticket.id)
+            .values(fecha_cierre=NOW - timedelta(hours=1))
+        )
+        db.session.commit()
+
+        later = NOW + timedelta(days=5)
+        seed_demo_tickets(now=later)
+        db.session.refresh(ticket)
+        closing = history_of(ticket)[-1]
+
+        assert closing.tipo_evento == "TICKET_CERRADO"
+        assert ticket.fecha_cierre == closing.fecha_hora
+        assert ticket.fecha_resolucion <= ticket.fecha_cierre <= later
+
+
+def test_a_hand_made_reopening_keeps_the_ticket_without_closure_dates(app, seeded):
+    from src.workdesk.models import StateAction
+    from src.workdesk.tickets.lifecycle import change_state
+
+    with app.app_context():
+        ticket = by_clave("cargador-notebook-bodega")
+        change_state(
+            ticket,
+            actor=user("diego.soto"),
+            action=StateAction.REABRIR,
+            expected_version=ticket.version,
+        )
+        db.session.commit()
+
+        seed_demo_tickets(now=NOW + timedelta(days=5))
+        db.session.refresh(ticket)
+
+        assert ticket.estado.codigo == "EN_PROGRESO"
+        assert ticket.fecha_cierre is None
+        assert ticket.fecha_resolucion is None
+        assert ticket.motivo_cierre_id is None
