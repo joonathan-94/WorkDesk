@@ -52,6 +52,8 @@ class TicketEvent(StrEnum):
     VALIDACION_RECHAZADA = "VALIDACION_RECHAZADA"
     TICKET_CERRADO = "TICKET_CERRADO"
     TICKET_REABIERTO = "TICKET_REABIERTO"
+    RELACION_AGREGADA = "RELACION_AGREGADA"
+    RELACION_ELIMINADA = "RELACION_ELIMINADA"
 
 
 class HistoryVisibility(StrEnum):
@@ -110,6 +112,11 @@ DEFAULT_EVENT_VISIBILITY = {
     TicketEvent.VALIDACION_RECHAZADA: HistoryVisibility.PUBLICO,
     TicketEvent.TICKET_CERRADO: HistoryVisibility.PUBLICO,
     TicketEvent.TICKET_REABIERTO: HistoryVisibility.PUBLICO,
+    # Las relaciones entre tickets son del personal: el Solicitante no las ve
+    # (docs/06, RN-162). El cierre de un duplicado sí es el evento público
+    # TICKET_CERRADO, con el motivo «Duplicado».
+    TicketEvent.RELACION_AGREGADA: HistoryVisibility.INTERNO,
+    TicketEvent.RELACION_ELIMINADA: HistoryVisibility.INTERNO,
 }
 
 
@@ -135,6 +142,8 @@ TICKET_EVENT_LABELS = {
     TicketEvent.VALIDACION_RECHAZADA: "Solución rechazada",
     TicketEvent.TICKET_CERRADO: "Ticket cerrado",
     TicketEvent.TICKET_REABIERTO: "Ticket reabierto",
+    TicketEvent.RELACION_AGREGADA: "Relación agregada",
+    TicketEvent.RELACION_ELIMINADA: "Relación eliminada",
 }
 
 

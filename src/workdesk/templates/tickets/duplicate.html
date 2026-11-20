@@ -1,0 +1,99 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, state_badge %}
+{% from "_form_macros.html" import text_field, textarea_field %}
+
+{% block title %}Marcar como duplicado: ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Relaciones', url_for('tickets.relations_page', public_id=ticket.public_id)),
+        ('Marcar como duplicado', None),
+    ]) }}
+
+    {{ page_header('Marcar como duplicado', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.mark_ticket_duplicate', public_id=ticket.public_id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# Versión con la que se abrió la pantalla: este paso cierra el
+               ticket, así que se detecta si otra persona lo modificó. #}
+            <input
+                type="hidden"
+                name="{{ form.version.name }}"
+                value="{{ form.version.data if form.version.data is not none else '' }}"
+            >
+
+            {% if form.version.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.version.errors[0] }}
+                </div>
+            {% endif %}
+
+            <p class="mb-2">
+                {{ state_badge(ticket.estado) }}
+                <i
+                    class="bi bi-arrow-right mx-1"
+                    aria-hidden="true"
+                ></i>
+                <span class="visually-hidden">pasa a</span>
+                <span class="badge badge-soft badge-soft-neutral">Cerrado</span>
+            </p>
+
+            <div class="alert alert-warning">
+                El ticket #{{ ticket.public_id }} se cerrará con el motivo
+                «Duplicado» y quedará vinculado con el ticket principal. No se
+                transfieren comentarios, archivos ni solicitantes al principal:
+                cada ticket conserva su historial. Para deshacerlo, el ticket se
+                puede reabrir.
+            </div>
+
+            {{ text_field(
+                form.ticket,
+                required=True,
+                autofocus=True,
+                hint="Número del ticket principal (el que ya existía), por ejemplo 12 o #12. Puede estar en cualquier estado.",
+            ) }}
+
+            {{ textarea_field(
+                form.comentario,
+                maxlength=max_comment,
+                rows=3,
+                counter=True,
+                hint="Opcional. Queda en la relación, solo visible para el personal.",
+            ) }}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.relations_page', public_id=ticket.public_id) }}"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Marcar como duplicado y cerrar
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

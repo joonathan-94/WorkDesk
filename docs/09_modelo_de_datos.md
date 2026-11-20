@@ -1257,6 +1257,8 @@ Marcar un ticket como duplicado:
 3. No transfiere automáticamente comentarios, adjuntos, solicitantes ni otra información al principal.
 4. Conserva ambos historiales separados.
 
+**Implementación (`v0.4.0`, entrega 10, RN-162).** `tipos_relacion_ticket` y `tickets_relaciones` se crean con el esquema de esta sección. Restricciones de `tickets_relaciones`: `ticket_origen_id <> ticket_destino_id`, coherencia de la desactivación (activa sin datos de desactivación; inactiva con `fecha_desactivacion`), claves foráneas `ON DELETE RESTRICT` e índices por origen y destino. La unicidad del par vigente se resuelve en la base con un índice único parcial sobre el par **sin orden** y el tipo (`least(ticket_origen_id, ticket_destino_id)`, `greatest(ticket_origen_id, ticket_destino_id)`, `tipo_relacion_id`, `WHERE activo`): impide A-B y B-A del mismo tipo sin necesidad de normalizar en una restricción `CHECK` (que no conocería el tipo). Además, para `RELACIONADO` el servicio guarda el par con el id menor en `ticket_origen_id`. `tipos_relacion_ticket` usa las columnas del mixin de catálogos y lo carga `seed-catalogs` (`DUPLICADO`, no simétrica; `RELACIONADO`, simétrica). Cada relación registra `RELACION_AGREGADA` o `RELACION_ELIMINADA` (internos) solo en el ticket desde el que se actúa, con `contexto["relacion_id"]`. El servicio añade reglas que la base no expresa: un duplicado apunta a un principal que no es a su vez un duplicado, y un ticket que es principal de otros no puede pasar a ser duplicado (sin cadenas ni ciclos).
+
 ---
 
 # 20. SLA

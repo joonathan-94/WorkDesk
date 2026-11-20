@@ -1891,6 +1891,7 @@ Resumen simplificado:
 - **Historial:** `Archivo adjuntado` y `Archivo eliminado` con el nombre; los de un archivo de nota interna solo los ve el personal.
 - Las pestañas Actividad / Archivos / Historial del diseño siguen pendientes (hoy son tarjetas apiladas).
 - **Resolución y cierre (`v0.4.0`, entrega 9).** La cabecera muestra los botones de estado que el usuario puede ejecutar ahora (principales: Iniciar, Poner en espera, Reactivar y Resolver; secundarios: Cerrar ticket, Cierre excepcional y Reabrir ticket). Cada uno abre su pantalla de confirmación. Una tarjeta **Resolución** muestra la explicación de la solución y el resumen indica **Resuelto** y **Cerrado** (con su motivo).
+- **Relaciones (`v0.4.0`, entrega 10).** Solo el personal ve una tarjeta **Relaciones (n)** con los tickets relacionados, sus duplicados o aquel del que el ticket es duplicado (con número enlazado, título y estado) y el enlace **Gestionar**, que abre la pantalla de relaciones: la lista con **Quitar**, el formulario para relacionar con otro ticket por su número y el acceso a **Marcar como duplicado**, una pantalla de confirmación que explica que el ticket se cerrará con el motivo «Duplicado». El Solicitante no ve ni la tarjeta ni las pantallas; solo ve que su ticket se cerró como duplicado. La pestaña Relaciones del diseño sigue pendiente (hoy es una tarjeta).
 
 ---
 

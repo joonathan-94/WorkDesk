@@ -149,6 +149,14 @@ class DemoAdjustment:
     comentario público); `REABRIR` devuelve un ticket Resuelto o Cerrado a En
     progreso y, si el ticket está cerrado, es el único paso posible y va solo.
 
+    Relaciones (solo el personal): `relacionar` es la clave de otro ticket de la
+    lista que aparece **antes** y se le relaciona (`RELACIONADO`); `duplicado_de`
+    es la clave del ticket principal (también anterior y más antiguo) y marca este
+    ticket como su duplicado: lo cierra con el motivo «Duplicado» por el camino del
+    cierre directo, así que no puede ir con `estado`, el ticket debe poder cerrarse
+    directamente y el principal no puede ser a su vez un duplicado. Tras cerrarlo,
+    un ticket solo admite reabrirlo.
+
     En un mismo paso el orden es: datos, prioridad, grupo, asignación,
     solicitantes (primero se retira y después se agrega), comentario público,
     nota interna, adjunto y, al final, el cambio de estado.
@@ -173,6 +181,8 @@ class DemoAdjustment:
     nota_interna: str | None = None
     adjunto: tuple[str, str] | None = None
     motivo_cierre: str | None = None
+    relacionar: str | None = None
+    duplicado_de: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1954,6 +1964,110 @@ DEMO_TICKETS = (
                 comentario=(
                     "Hoy volvió a imprimir con rayas, no sé si es el mismo "
                     "problema."
+                ),
+            ),
+        ),
+    ),
+    # --- Tickets con duplicados y relaciones ----------------------------------
+    # Dos tickets que repiten uno que ya existía (el principal, `wifi-bodega`):
+    # el personal los marca como duplicados y se cierran con el motivo
+    # «Duplicado». Quien los pidió ve el cierre; las relaciones, solo el personal.
+    DemoTicket(
+        clave="wifi-bodega-otra-vez",
+        titulo="otra vez sin wifi en la bodega",
+        descripcion=(
+            "otra vez se cayo el wifi de la bodega y no funcionan las pistolas. "
+            "ya van varios dias asi, necesitamos que alguien lo arregle"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="ignacio.molina",
+        ubicacion=MARCOLETA,
+        hace_dias=3,
+        hora="10:25",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                comentario=(
+                    "Ignacio, esto ya lo estamos viendo en otro ticket: el "
+                    "proveedor visita la bodega el jueves. Lo unimos con ese."
+                ),
+                duplicado_de="wifi-bodega",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="internet-bodega-sigue-mal",
+        titulo="sigue sin funcionar el internet de la bodega",
+        descripcion=(
+            "el internet de la bodega sigue con problemas, se corta cada rato. "
+            "avisen cuando lo arreglen porfa"
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="ignacio.molina",
+        ubicacion=MARCOLETA,
+        hace_dias=1,
+        hora="09:50",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                nota_interna="Mismo problema que el ticket del wifi de la bodega.",
+                duplicado_de="wifi-bodega",
+            ),
+        ),
+    ),
+    # Tickets relacionados (sin ser duplicados): siguen abiertos y se enlazan
+    # entre sí; el enlace lo ve el personal.
+    DemoTicket(
+        clave="impresora-notebook-nuevo",
+        titulo="no puedo imprimir desde mi notebook nuevo",
+        descripcion=(
+            "con el notebook nuevo no logro imprimir en la impresora de "
+            "proyectos, me aparece que no hay drivers"
+        ),
+        categoria="Impresoras",
+        prioridad="MEDIA",
+        creado_por="andres.silva",
+        hace_dias=1,
+        hora="10:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=1,
+                asignar="francisca.munoz",
+                estado="INICIAR",
+                relacionar="impresora-proyectos-a-nombre-de",
+                nota_interna=(
+                    "Puede ser lo mismo que el error de conexión de la "
+                    "impresora de proyectos: reviso los dos juntos."
+                ),
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="wifi-reuniones-sigue-cayendo",
+        titulo="el wifi de la sala de reuniones sigue cayéndose",
+        descripcion=(
+            "en la sala de reuniones el wifi se cae cuando hay mas de cinco "
+            "personas conectadas. pasa en cada reunion con clientes"
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="sebastian.vargas",
+        ubicacion=MATTA,
+        hace_dias=2,
+        hora="16:10",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                relacionar="cobertura-wifi-reuniones",
+                comentario=(
+                    "Sebastián, lo estamos revisando junto con la cobertura "
+                    "de la sala: parece ser lo mismo."
                 ),
             ),
         ),

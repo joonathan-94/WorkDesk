@@ -1,0 +1,181 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, state_badge %}
+{% from "_form_macros.html" import text_field, textarea_field %}
+
+{% block title %}Relaciones del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ('Relaciones', None),
+    ]) }}
+
+    {{ page_header('Relaciones', '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <section
+                class="card h-100"
+                aria-labelledby="relations-title"
+            >
+                <div class="card-body">
+                    <h2
+                        class="h6 mb-3"
+                        id="relations-title"
+                    >
+                        Relaciones vigentes
+                    </h2>
+
+                    {% if views %}
+                        <ul class="list-group list-group-flush mb-3">
+                            {% for view in views %}
+                                <li class="list-group-item d-flex justify-content-between align-items-start gap-3 px-0">
+                                    <div class="text-break">
+                                        <span class="small text-secondary d-block">
+                                            {% if view.kind == KIND_DUPLICATE_OF %}
+                                                Este ticket es duplicado de
+                                            {% elif view.kind == KIND_PRINCIPAL_OF %}
+                                                Duplicado de este ticket
+                                            {% else %}
+                                                Relacionado con
+                                            {% endif %}
+                                        </span>
+
+                                        <a href="{{ url_for('tickets.detail', public_id=view.other.public_id) }}">
+                                            #{{ view.other.public_id }}
+                                        </a>
+                                        {{ view.other.titulo }}
+                                        {{ state_badge(view.other.estado) }}
+
+                                        <span class="small text-secondary d-block">
+                                            {{ view.relation.creada_por.nombre }}
+                                            {{ view.relation.creada_por.apellido }}
+                                            ·
+                                            {{ view.relation.fecha_creacion|local_datetime }}
+                                        </span>
+
+                                        {% if view.relation.comentario %}
+                                            <span class="small d-block">
+                                                {{ view.relation.comentario }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    {# La relación de un duplicado cerrado es el
+                                       rastro del cierre: no se quita (se reabre
+                                       el ticket). #}
+                                    {% if view.removable and not is_closed %}
+                                        <a
+                                            class="btn btn-sm btn-outline-danger flex-shrink-0"
+                                            href="{{ url_for('tickets.remove_ticket_relation', public_id=ticket.public_id, relation_id=view.relation.id) }}"
+                                        >
+                                            Quitar
+                                        </a>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-secondary">
+                            Este ticket no está relacionado con otros.
+                        </p>
+                    {% endif %}
+
+                    <p class="small text-secondary mb-0">
+                        Las relaciones las ve solo el personal. Relacionar
+                        tickets no transfiere comentarios, archivos ni
+                        solicitantes: cada ticket conserva su historial.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            {% if is_closed %}
+                <div class="alert alert-secondary">
+                    Un ticket cerrado no se puede modificar: primero debe
+                    reabrirse. Sus relaciones siguen visibles.
+                </div>
+            {% else %}
+                <section
+                    class="card mb-4"
+                    aria-labelledby="add-relation-title"
+                >
+                    <div class="card-body">
+                        <h2
+                            class="h6 mb-3"
+                            id="add-relation-title"
+                        >
+                            Relacionar con otro ticket
+                        </h2>
+
+                        <form
+                            method="post"
+                            action="{{ url_for('tickets.add_ticket_relation', public_id=ticket.public_id) }}"
+                            novalidate
+                        >
+                            {{ form.csrf_token }}
+
+                            {{ text_field(
+                                form.ticket,
+                                required=True,
+                                hint="Por ejemplo 12 o #12. Puede estar en cualquier estado.",
+                            ) }}
+
+                            {{ textarea_field(
+                                form.comentario,
+                                maxlength=max_comment,
+                                rows=2,
+                                hint="Opcional. Por qué se relacionan.",
+                            ) }}
+
+                            <button
+                                class="btn btn-primary"
+                                type="submit"
+                            >
+                                Relacionar
+                            </button>
+                        </form>
+                    </div>
+                </section>
+
+                <section
+                    class="card"
+                    aria-labelledby="duplicate-title"
+                >
+                    <div class="card-body">
+                        <h2
+                            class="h6 mb-2"
+                            id="duplicate-title"
+                        >
+                            ¿Es un duplicado?
+                        </h2>
+
+                        <p class="small text-secondary">
+                            Si este ticket repite otro ya registrado, márcalo
+                            como duplicado: se vincula con el ticket principal y
+                            se cierra con el motivo «Duplicado».
+                        </p>
+
+                        <a
+                            class="btn btn-outline-secondary"
+                            href="{{ url_for('tickets.mark_ticket_duplicate', public_id=ticket.public_id) }}"
+                        >
+                            Marcar como duplicado
+                        </a>
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="mt-4">
+        <a
+            class="btn btn-outline-secondary"
+            href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+        >
+            Volver al ticket
+        </a>
+    </p>
+{% endblock %}

@@ -17,6 +17,7 @@ from ..models import (
     MotivoEspera,
     Prioridad,
     StateAction,
+    TipoRelacionTicket,
     TransicionEstado,
 )
 from ..models.categoria import FALLBACK_CATEGORY_CODE
@@ -182,6 +183,23 @@ INITIAL_WAIT_REASONS = (
     },
 )
 
+# Tipos de relación entre tickets (docs/09, 19.1). `DUPLICADO` va del ticket
+# duplicado al principal; `RELACIONADO` no tiene dirección.
+INITIAL_RELATION_TYPES = (
+    {
+        "codigo": "DUPLICADO",
+        "nombre": "Duplicado",
+        "descripcion": "El ticket repite otro ya registrado (el principal).",
+        "es_simetrica": False,
+    },
+    {
+        "codigo": "RELACIONADO",
+        "nombre": "Relacionado",
+        "descripcion": "Los tickets tratan temas conectados.",
+        "es_simetrica": True,
+    },
+)
+
 # Transiciones estructuralmente válidas del flujo (docs/08, sección 34; docs/09,
 # 12.2): (origen, destino, acción, descripción). Quién ejecuta cada acción lo
 # decide el código de autorización, no esta tabla.
@@ -282,7 +300,7 @@ def _seed_transitions() -> int:
 
 def seed_catalogs() -> dict[str, int]:
     """Carga estados, sus transiciones, prioridades, categoría de respaldo,
-    motivos de cierre y motivos de espera.
+    motivos de cierre, motivos de espera y tipos de relación entre tickets.
 
     Devuelve cuántos registros creó de cada catálogo. Confirma una sola vez
     al final: o se cargan todos o ninguno.
@@ -294,6 +312,7 @@ def seed_catalogs() -> dict[str, int]:
         "categorias": _seed_by_code(Categoria, INITIAL_CATEGORIES),
         "motivos_cierre": _seed_by_code(MotivoCierre, INITIAL_CLOSE_REASONS),
         "motivos_espera": _seed_by_code(MotivoEspera, INITIAL_WAIT_REASONS),
+        "tipos_relacion": _seed_by_code(TipoRelacionTicket, INITIAL_RELATION_TYPES),
     }
 
     db.session.commit()

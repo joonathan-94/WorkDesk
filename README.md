@@ -558,12 +558,12 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | --- | --- | --- |
 | 1 | `db upgrade` | Crea las tablas en PostgreSQL. |
 | 2 | `seed-roles` | Carga los cuatro roles del sistema. |
-| 3 | `seed-catalogs` | Carga estados y sus transiciones, prioridades, la categoría de respaldo, los motivos de cierre y los motivos de espera. |
+| 3 | `seed-catalogs` | Carga estados y sus transiciones, prioridades, la categoría de respaldo, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. |
 | 4 | `create-admin` | Crea tu cuenta de Administrador. |
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
-| 8 | `seed-demo-tickets` (opcional) | Carga 72 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
+| 8 | `seed-demo-tickets` (opcional) | Carga 76 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
 | 9 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
@@ -587,6 +587,7 @@ Las migraciones actuales crean estas tablas:
 - `comentarios`: los comentarios públicos y las notas internas de los tickets.
 - `archivos`: los metadatos de los archivos adjuntos (el contenido va a `instance/uploads`, no a la base de datos).
 - `validaciones`: la respuesta de cada solicitante a la resolución de un ticket (confirmada o rechazada), por ciclo de resolución.
+- `tipos_relacion_ticket` y `tickets_relaciones`: los tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`) y las relaciones vigentes o quitadas.
 
 Para comprobar que se aplicaron:
 
@@ -772,7 +773,7 @@ Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo
 
 ### Tener tickets con los que probar
 
-Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 72 tickets de demostración:
+Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 76 tickets de demostración:
 
 ```bash
 python -m flask --app src.workdesk seed-demo-tickets
@@ -793,16 +794,17 @@ python -m flask --app src.workdesk seed-demo-tickets
 - Otros cinco, al final de todo, tienen una conversación: respuestas del personal, comentarios del propio Solicitante y notas internas (un ticket con dos notas del equipo y un solo comentario público, para ver lo poco que ve el Solicitante). El Solicitante ve la conversación pública; las notas internas, solo el personal.
 - Dos más, también al final, con archivos adjuntos reales (de texto: un registro de errores de un Solicitante, un diagnóstico del equipo y una lista `.csv` del ticket), guardados en `instance/uploads`. Así se puede probar la descarga y comprobar que los archivos de una nota interna no los ve el Solicitante.
 - Siete más, al final de todo, recorren la resolución y el cierre: uno **Resuelto** esperando que la solicitante lo confirme (ella ve el aviso «¿Tu solicitud quedó resuelta?»), uno que la solicitante **confirmó** y se cerró con el motivo «Resolución validada», uno que la solicitante **rechazó** («Sigo sin poder entrar...») y que el técnico resolvió por segunda vez, un **cierre directo** sin solicitante (una mantención rutinaria), una **cancelación** (cierre directo con ese motivo), uno **Resuelto sin solicitante** que cerró un Supervisor con un **cierre excepcional** y uno que se cerró y el personal **reabrió** porque el problema volvió. Así la pestaña **Cerrados** tiene tickets y se puede probar cada camino.
+- Cuatro más, al final de todo, con **duplicados y relaciones**: dos tickets de la bodega que repiten el del wifi (el personal los marca como duplicados y se cierran con el motivo «Duplicado», dejando al ticket del wifi como principal de ambos) y dos tickets que el personal relaciona con otros sin ser duplicados (una impresora y el wifi de la sala de reuniones). Solo el personal ve las relaciones.
 - Fechas repartidas hasta unas nueve semanas atrás, **relativas al día en que lo ejecutes** y medidas en **tiempo laboral**: «hace 3 días» son tres días laborales antes de hoy, cada ticket se crea dentro de la jornada y los pasos posteriores del personal avanzan en horas laborales (el reloj salta noches, fines de semana y feriados). Por defecto la jornada es de lunes a viernes de 09:00 a 18:00 y se cambia en `DEMO_CALENDAR`, en el mismo archivo de datos (cuando exista la pantalla del calendario laboral, con el SLA en `v0.5.0`, el comando usará el que guarde el Administrador y, si no hay ninguno, este). Nada queda fuera de ese calendario ni en el futuro, y si lo ejecutas un fin de semana, cuenta desde el último día laboral. Así los filtros por fecha y «Recién actualizados» se ven vivos en cualquier demostración.
 
 **Cómo se comporta**
 
-- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 72.`
+- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 76.`
 - Un ticket demo se reconoce aunque después le cambien el título. Si lo editaste a mano mientras probabas, esa edición se desplaza junto con el ticket para que el historial siga en orden y nada quede en el futuro. El contenido (título, descripción, categoría, prioridad...) no se sobrescribe, y los tickets que creaste a mano no se tocan nunca.
 - No crea categorías ni ubicaciones. Si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación, y te avisa con un mensaje `Aviso:`.
 - Si falta `seed-demo` o `seed-catalogs`, se detiene con un mensaje que dice qué ejecutar primero y no carga nada. Si algo falla a mitad de la carga, se revierte todo.
 - Se niega a ejecutarse con `APP_ENV=production`.
-- Los tickets que no avanzaron en el flujo quedan en `Nuevo`. Los de la resolución y el cierre quedan Resueltos o Cerrados, así que la pestaña **Cerrados** tiene contenido. El comando necesita que `seed-catalogs` haya cargado las transiciones entre estados: si cargaste los catálogos antes de esta versión, ejecútalo de nuevo (no duplica nada).
+- Los tickets que no avanzaron en el flujo quedan en `Nuevo`. Los de la resolución y el cierre quedan Resueltos o Cerrados, así que la pestaña **Cerrados** tiene contenido. El comando necesita que `seed-catalogs` haya cargado las transiciones entre estados y los tipos de relación: si cargaste los catálogos antes de esta versión, ejecútalo de nuevo (no duplica nada).
 
 **Cómo mejorarlo.** Los textos están separados de la lógica: para cambiar un título, una prioridad o la antigüedad de un ticket, o para añadir más, se edita la lista de [`src/workdesk/seeds/demo_tickets_data.py`](src/workdesk/seeds/demo_tickets_data.py) sin tocar el código que los carga. En el mismo archivo, `DEMO_CALENDAR` define los días laborales, la jornada y los feriados con los que se fechan los tickets (las horas de creación deben caer dentro de la jornada). Al volver a ejecutar el comando, los tickets ya cargados solo refrescan sus fechas: un cambio de texto, categoría o prioridad en la lista se ve en los tickets **nuevos** (los que tengan otra `clave`), pero no en los ya cargados. Para ver esos cambios en tickets existentes, recrea la base de desarrollo y vuelve a cargar los datos. Una vez cargado un ticket, no cambies su `clave`: es lo que lo identifica.
 
@@ -856,12 +858,13 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 9. **Comentar:** en la tarjeta **Actividad** de un ticket tuyo escribe un comentario y pulsa **Publicar**: aparece con tu nombre, tu rol y la hora. No hay selector de tipo: un Solicitante escribe siempre comentarios públicos. Mientras pasen menos de 30 minutos (`COMMENT_EDIT_WINDOW_MINUTES`) ves **Editar** y **Eliminar** en los tuyos; después, ya no. Abre `intranet-credenciales` (`sebastian.vargas` es su creador): ves la conversación con soporte, pero ni rastro de las notas internas del equipo.
 10. **Adjuntar:** en tu ticket puedes subir archivos (tarjeta **Archivos**) o adjuntarlos a un comentario (**Adjuntar archivos (opcional)**). Ves y descargas los tuyos y los del equipo en comentarios públicos, pero no los de una nota interna.
 11. **Validar una solución:** abre `el lector de huella de la entrada no me reconoce` (es de `paula.contreras`, está Resuelto). Arriba aparece **«¿Tu solicitud quedó resuelta?»** y, en la tarjeta **Resolución**, lo que escribió el técnico. Pulsa **No, necesito más ayuda**: te pide explicar qué falta (sin texto no avanza); al enviar, el ticket vuelve a **En progreso** y el historial muestra tu motivo. Como técnico, vuelve a resolverlo; entra otra vez como `paula.contreras` y pulsa **Sí, está resuelto**: el ticket queda **Cerrado**, el resumen indica la fecha y el motivo «Resolución validada», y aparece **Reabrir ticket** (lo tienes disponible durante `REOPEN_WINDOW_DAYS` días desde el cierre; después, `/tickets/N/status/reopen` responde **Acceso denegado**). Tampoco puedes resolver ni cerrar tickets: `/tickets/N/status/resolve` y `/tickets/N/status/close` responden 403.
+12. **Relaciones:** abre `otra vez sin wifi en la bodega` (`ignacio.molina`): está Cerrado con el motivo «Duplicado», pero no ves de qué ticket es duplicado ni hay tarjeta de **Relaciones**. `/tickets/N/relations` y `/tickets/N/duplicate` responden **Acceso denegado** (403): las relaciones las gestiona el personal.
 
 ### 3. Como Técnico
 
 Entra, por ejemplo, como `diego.soto`.
 
-1. **Tickets** muestra todos los tickets (con los datos de demostración, los 72), incluidos los que crearon otras personas.
+1. **Tickets** muestra todos los tickets (con los datos de demostración, los 76), incluidos los que crearon otras personas.
 2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
 3. **Cambiar el estado:** abre un ticket `Nuevo` y pulsa **Iniciar trabajo**: una pantalla de confirmación muestra `Nuevo → En progreso`; al confirmar, el ticket queda **En progreso** y el historial registra `Estado: «Nuevo» → «En progreso»`. Ahora el botón es **Poner en espera**: elige un motivo (por ejemplo `Otro motivo`, que permite escribir una explicación) y confirma. En el historial, tú ves `Motivo de espera: ...`; el Solicitante ve solo el cambio de estado. Pulsa **Reactivar** para volver a En progreso.
 4. Prueba el aviso de conflicto: abre un ticket en dos pestañas (A y B) y pulsa **Iniciar trabajo** en ambas. Confirma en A; al confirmar en B aparece `Otra persona modificó este ticket mientras decidías...`.
@@ -870,7 +873,8 @@ Entra, por ejemplo, como `diego.soto`.
 7. **Comentarios y notas internas:** en la tarjeta **Actividad** escribe un comentario público y luego una **nota interna** (el selector **Tipo** solo lo ve el personal). La nota aparece con fondo morado, `NOTA INTERNA` y «Solo visible para soporte». Edita el comentario que acabas de escribir (**Editar** guarda el texto anterior en el historial, que no lo muestra) y elimínalo (**Eliminar** pide confirmación y lo oculta para todos). Ni editar ni eliminar cambian «Actualizado». Abre `switch-bodega-puertos`: tiene dos notas del equipo y un comentario público; entra después como `ignacio.molina` y comprueba que solo ve el comentario y que `Actividad` cuenta uno, no tres.
 8. **Archivos adjuntos:** en la tarjeta **Archivos** pulsa **Elegir archivos**, selecciona uno o varios (por ejemplo un `.pdf` o `.png` pequeño) y pulsa **Subir**: aparecen con su tamaño, quién y cuándo; el nombre es un enlace que lo **descarga** (siempre como descarga, nunca se abre en el navegador). Prueba un `.exe` o un archivo con la extensión cambiada a mano (un `.txt` renombrado a `.png`): se rechaza con un aviso y no se guarda nada. Escribe una **nota interna** y adjúntale un archivo: lo ve el personal, pero para el Solicitante no existe ni su descarga (404). Elimina un archivo con **Eliminar**: deja de verse y de descargarse, pero se conserva en `instance/uploads`. Abre `error-sistema-contable-log` para ver archivos de ejemplo (de un Solicitante y del equipo).
 9. **Resolver, cerrar y reabrir:** abre un ticket en curso. Además de los botones de estado ves **Resolver** y **Cerrar ticket**. **Resolver** pide una explicación de la solución (opcional): el ticket queda **Resuelto** y espera al solicitante; tú no puedes confirmar por él (`/tickets/N/status/confirm` responde **Acceso denegado**). **Cerrar ticket** lo cierra sin pasar por Resuelto y deja elegir el motivo: **Cierre directo** o **Cancelación** (no hay un estado «Cancelado»). En un ticket cerrado, el resumen muestra cuándo y por qué se cerró y solo queda **Reabrir ticket**, que lo devuelve a **En progreso** conservando a los técnicos. Abre `impresora-contratos-rayas` (`la impresora de contratos imprime con rayas`): se cerró, se reabrió y el historial cuenta cada paso. Un Técnico no ve **Cierre excepcional**: `/tickets/N/status/close-exceptional` responde 403.
-10. No ve **Administración**; `/admin` responde **Acceso denegado**.
+10. **Relaciones y duplicados:** abre `el wifi de la bodega se cae todo el dia`: la tarjeta **Relaciones (2)** muestra sus dos duplicados («Su duplicado»). Abre uno (`otra vez sin wifi en la bodega`): está Cerrado con el motivo «Duplicado» y la tarjeta dice «Duplicado de». Para probarlo tú, abre un ticket en curso, pulsa **Gestionar** en **Relaciones** y relaciónalo con otro por su número (`12` o `#12`): aparece en los dos tickets, y puedes **Quitar** la relación (pide confirmación). Con **Marcar como duplicado** escribes el número del ticket principal: el ticket se cierra con el motivo «Duplicado» y queda vinculado. No se puede relacionar un ticket consigo mismo ni repetir una relación (tampoco al revés), ni marcar como duplicado de otro que ya es un duplicado; un ticket Resuelto no se cierra así. La relación de un duplicado cerrado no se quita: si lo reabres, sí.
+11. No ve **Administración**; `/admin` responde **Acceso denegado**.
 
 ### 4. Como Supervisor
 
@@ -891,7 +895,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 ### Lo que todavía no verás
 
 - No hay cierre automático de un ticket Resuelto que nadie valida: llega con el planificador (`v0.5.0`). Mientras tanto, un ticket Resuelto sin solicitante lo cierra un Supervisor con el cierre excepcional.
-- Tampoco hay relaciones ni duplicados entre tickets ni el aviso de quién está editando: llegan en las siguientes entregas de la `v0.4.0`.
+- Todavía no hay el aviso de quién está editando un ticket (llega en una entrega posterior de la `v0.4.0`) ni la advertencia de posibles duplicados al crear un ticket.
 - El dashboard es una pantalla temporal.
 
 ---
