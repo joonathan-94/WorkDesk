@@ -36,8 +36,9 @@ class AuditAction(StrEnum):
     PASSWORD_RESTABLECIDA = "PASSWORD_RESTABLECIDA"
     PASSWORD_CAMBIADA = "PASSWORD_CAMBIADA"
 
-    # Catálogos de tickets (categorías, prioridades y ubicaciones). El tipo
-    # concreto va en `entidad_tipo`: "categoria", "prioridad" o "ubicacion".
+    # Catálogos de tickets (categorías, prioridades, ubicaciones y motivos de
+    # espera). El tipo concreto va en `entidad_tipo`: "categoria", "prioridad",
+    # "ubicacion" o "motivo_espera".
     CATALOGO_CREADO = "CATALOGO_CREADO"
     CATALOGO_MODIFICADO = "CATALOGO_MODIFICADO"
     CATALOGO_ACTIVADO = "CATALOGO_ACTIVADO"
@@ -53,6 +54,13 @@ class AuditAction(StrEnum):
     GRUPO_MIEMBRO_RETIRADO = "GRUPO_MIEMBRO_RETIRADO"
     GRUPO_SUPERVISOR_DESIGNADO = "GRUPO_SUPERVISOR_DESIGNADO"
     GRUPO_SUPERVISOR_RETIRADO = "GRUPO_SUPERVISOR_RETIRADO"
+
+    # Estados y transiciones del flujo de tickets. Los estados no se crean ni se
+    # eliminan (`entidad_tipo` "estado"; `entidad_id`, el estado) y las
+    # transiciones solo se habilitan o deshabilitan (`entidad_tipo` "transicion").
+    ESTADO_MODIFICADO = "ESTADO_MODIFICADO"
+    TRANSICION_ACTIVADA = "TRANSICION_ACTIVADA"
+    TRANSICION_DESACTIVADA = "TRANSICION_DESACTIVADA"
 
 
 def record_admin_event(

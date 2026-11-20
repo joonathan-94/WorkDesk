@@ -45,6 +45,26 @@ class StateAction(StrEnum):
     REABRIR = "REABRIR"
 
 
+# Nombre de cada acción para las pantallas de administración. Es neutro (el
+# de la acción, no el del botón que ve quien la ejecuta: «Confirmar la
+# solución», no «Sí, está resuelto») y, como el resto del vocabulario, vive
+# solo en la aplicación.
+STATE_ACTION_LABELS = {
+    StateAction.ASIGNAR: "Asignar técnico",
+    StateAction.DESASIGNACION: "Quitar al último técnico",
+    StateAction.INICIAR: "Iniciar trabajo",
+    StateAction.PONER_EN_ESPERA: "Poner en espera",
+    StateAction.REACTIVAR: "Reactivar",
+    StateAction.RESOLVER: "Resolver",
+    StateAction.CIERRE_DIRECTO: "Cierre directo",
+    StateAction.CONFIRMAR: "Confirmar la solución",
+    StateAction.RECHAZAR: "Rechazar la solución",
+    StateAction.AUTO_CIERRE: "Cierre automático",
+    StateAction.CIERRE_EXCEPCIONAL: "Cierre excepcional",
+    StateAction.REABRIR: "Reabrir",
+}
+
+
 class TransicionEstado(db.Model):
     """Transición habilitada entre dos de los seis estados (docs/09, 12.2).
 
@@ -117,6 +137,15 @@ class TransicionEstado(db.Model):
 
     estado_origen = relationship("Estado", foreign_keys=[estado_origen_id])
     estado_destino = relationship("Estado", foreign_keys=[estado_destino_id])
+    modificada_por = relationship("User", foreign_keys=[usuario_modificacion_id])
+
+    @property
+    def accion_nombre(self) -> str:
+        """Nombre visible de la acción; devuelve el código si es desconocido."""
+        try:
+            return STATE_ACTION_LABELS[StateAction(self.accion)]
+        except ValueError:
+            return self.accion
 
     def mark_modified(self, actor) -> None:
         """Registra quién y cuándo modificó la transición por última vez."""

@@ -2,6 +2,7 @@ from .authorization import CLOSED_STATE as CLOSED_STATE
 from .authorization import RESOLVED_STATE as RESOLVED_STATE
 from .authorization import STAFF_ROLES as STAFF_ROLES
 from .authorization import RoleCode as RoleCode
+from .authorization import admin_only as admin_only
 from .authorization import can_access_groups as can_access_groups
 from .authorization import can_assign_self as can_assign_self
 from .authorization import can_attach_files as can_attach_files
@@ -34,6 +35,7 @@ from .authorization import (
 )
 from .authorization import can_view_ticket as can_view_ticket
 from .authorization import can_write_internal_note as can_write_internal_note
+from .authorization import current_actor as current_actor
 from .authorization import has_any_role as has_any_role
 from .authorization import is_current_requester as is_current_requester
 from .authorization import is_responsible_supervisor as is_responsible_supervisor

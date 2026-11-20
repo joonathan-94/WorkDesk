@@ -7,10 +7,7 @@ from ..catalogs.forms import (
     MAX_NAME_LENGTH,
     OptionalIntegerField,
 )
-
-
-def _strip(value):
-    return value.strip() if isinstance(value, str) else value
+from ..cleaning import strip_text
 
 
 class GroupForm(FlaskForm):
@@ -19,7 +16,7 @@ class GroupForm(FlaskForm):
 
     nombre = StringField(
         "Nombre",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa el nombre."),
             Length(
@@ -31,7 +28,7 @@ class GroupForm(FlaskForm):
 
     descripcion = TextAreaField(
         "Descripción",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(

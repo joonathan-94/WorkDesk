@@ -8,6 +8,8 @@ from wtforms.validators import (
     ValidationError,
 )
 
+from ..cleaning import strip_text
+
 PASSWORD_MODE_GENERATE = "generate"
 PASSWORD_MODE_MANUAL = "manual"
 
@@ -26,10 +28,6 @@ USERNAME_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
 
-def _strip(value):
-    return value.strip() if isinstance(value, str) else value
-
-
 def _normalize(value):
     return value.strip().lower() if isinstance(value, str) else value
 
@@ -43,7 +41,7 @@ class ContactForm(FlaskForm):
 
     telefono = StringField(
         "Teléfono",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(max=30, message="Máximo 30 caracteres."),
@@ -52,7 +50,7 @@ class ContactForm(FlaskForm):
 
     cargo = StringField(
         "Cargo",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(max=100, message="Máximo 100 caracteres."),
@@ -61,7 +59,7 @@ class ContactForm(FlaskForm):
 
     departamento_area = StringField(
         "Departamento o área",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(max=100, message="Máximo 100 caracteres."),
@@ -78,7 +76,7 @@ class ProfileForm(ContactForm):
 
     nombre = StringField(
         "Nombre",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa el nombre."),
             Length(max=100, message="Máximo 100 caracteres."),
@@ -87,7 +85,7 @@ class ProfileForm(ContactForm):
 
     apellido = StringField(
         "Apellido",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa el apellido."),
             Length(max=100, message="Máximo 100 caracteres."),
@@ -199,7 +197,7 @@ class ChangeRoleForm(_RoleChoicesMixin, FlaskForm):
 
     motivo = StringField(
         "Motivo",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(
@@ -215,7 +213,7 @@ class ReasonForm(FlaskForm):
 
     motivo = StringField(
         "Motivo",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(

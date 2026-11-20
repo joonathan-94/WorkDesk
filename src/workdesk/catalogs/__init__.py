@@ -4,4 +4,5 @@ from flask import Blueprint
 # pantallas del área de administración (docs/11, UI-014).
 bp = Blueprint("catalogs", __name__, url_prefix="/admin")
 
+from . import flow_routes as flow_routes
 from . import routes as routes

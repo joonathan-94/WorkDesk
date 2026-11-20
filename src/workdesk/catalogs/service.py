@@ -11,6 +11,7 @@ confirman o se revierten juntos, y el commit lo realiza quien llama.
 from sqlalchemy.exc import IntegrityError
 
 from ..audit import AuditAction, record_admin_event
+from ..cleaning import blank_to_none
 from ..extensions import db
 from ..models import Categoria, MotivoEspera, Prioridad, Ubicacion, User
 from ..models.categoria import FALLBACK_CATEGORY_CODE
@@ -112,7 +113,7 @@ def create_category(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
             "orden": orden,
         },
     )
@@ -132,7 +133,7 @@ def update_category(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
             "orden": orden,
         },
     )
@@ -156,7 +157,7 @@ def update_priority(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
         },
     )
 
@@ -176,7 +177,7 @@ def create_location(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
             "tipo": _normalize_location_type(tipo),
         },
     )
@@ -195,7 +196,7 @@ def update_location(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
             "tipo": _normalize_location_type(tipo),
         },
     )
@@ -219,7 +220,7 @@ def create_wait_reason(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
             "orden": orden,
             "permite_texto_otro": bool(permite_texto_otro),
         },
@@ -241,7 +242,7 @@ def update_wait_reason(
         actor,
         {
             "nombre": _clean_name(nombre),
-            "descripcion": _blank_to_none(descripcion),
+            "descripcion": blank_to_none(descripcion),
             "orden": orden,
             "permite_texto_otro": bool(permite_texto_otro),
         },
@@ -310,7 +311,7 @@ def deactivate_item(item, *, actor: User, reason: str | None = None) -> None:
         detail=item.nombre,
         old_value={"activo": True},
         new_value={"activo": False},
-        reason=_blank_to_none(reason),
+        reason=blank_to_none(reason),
     )
 
 
@@ -342,7 +343,7 @@ def activate_item(item, *, actor: User, reason: str | None = None) -> None:
         detail=item.nombre,
         old_value={"activo": False},
         new_value={"activo": True},
-        reason=_blank_to_none(reason),
+        reason=blank_to_none(reason),
     )
 
 
@@ -445,7 +446,7 @@ def _ensure_name_available(model, nombre: str, *, exclude_id=None) -> None:
 
 
 def _normalize_location_type(tipo: str | None) -> str | None:
-    tipo = _blank_to_none(tipo)
+    tipo = blank_to_none(tipo)
 
     if tipo is not None and tipo not in {t.value for t in LocationType}:
         raise CatalogRuleError("Selecciona un tipo de ubicación válido.")
@@ -462,12 +463,3 @@ def _list(model, status: str, *order_by) -> list:
         statement = statement.where(model.activo.is_(False))
 
     return list(db.session.scalars(statement))
-
-
-def _blank_to_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-
-    value = value.strip()
-
-    return value or None

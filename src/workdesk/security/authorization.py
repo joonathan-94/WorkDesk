@@ -15,6 +15,16 @@ class RoleCode(StrEnum):
     ADMINISTRADOR = "ADMINISTRADOR"
 
 
+def current_actor():
+    """El usuario autenticado como objeto real, no como el proxy de
+    Flask-Login.
+
+    Es lo que se pasa a los servicios como `actor`: se guarda en la sesión de
+    SQLAlchemy y se compara por identidad, cosa que el proxy no permite.
+    """
+    return current_user._get_current_object()
+
+
 def has_any_role(user, *role_codes: RoleCode) -> bool:
     """Indica si el usuario está autenticado, activo y tiene uno de los roles.
 
@@ -413,3 +423,8 @@ def roles_required(*role_codes: RoleCode):
         return wrapped_view
 
     return decorator
+
+
+# Exclusivo del Administrador. Es el decorador que usan todas las pantallas de
+# administración; como cualquier autorización, se comprueba en backend.
+admin_only = roles_required(RoleCode.ADMINISTRADOR)

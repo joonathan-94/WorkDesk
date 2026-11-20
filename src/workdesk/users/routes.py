@@ -13,9 +13,9 @@ from flask_login import current_user
 from ..extensions import db
 from ..security import (
     PasswordPolicyError,
-    RoleCode,
+    admin_only,
+    current_actor,
     generate_temporary_password,
-    roles_required,
 )
 from . import bp
 from .forms import (
@@ -42,11 +42,6 @@ from .service import (
     reset_user_password,
     update_profile,
 )
-
-# Todas las rutas de este módulo son exclusivas del Administrador. La
-# autorización se comprueba aquí, en backend; ocultar enlaces no la sustituye.
-admin_only = roles_required(RoleCode.ADMINISTRADOR)
-
 
 # --- Listado ----------------------------------------------------------
 
@@ -117,7 +112,7 @@ def _create_from_form(form: CreateUserForm):
 
     try:
         user = create_user(
-            actor=_actor(),
+            actor=current_actor(),
             nombre=form.nombre.data,
             apellido=form.apellido.data,
             username=form.username.data,
@@ -190,7 +185,7 @@ def edit_user(user_id: int):
         try:
             changed = update_profile(
                 user,
-                actor=_actor(),
+                actor=current_actor(),
                 nombre=form.nombre.data,
                 apellido=form.apellido.data,
                 email=form.email.data,
@@ -234,7 +229,7 @@ def change_user_role(user_id: int):
             change_role(
                 user,
                 form.rol.data,
-                actor=_actor(),
+                actor=current_actor(),
                 reason=form.motivo.data,
             )
             db.session.commit()
@@ -292,7 +287,7 @@ def _confirm_status_change(user_id, *, mode, operation, success_message):
         name = f"{user.nombre} {user.apellido}"
 
         try:
-            operation(user, actor=_actor(), reason=form.motivo.data)
+            operation(user, actor=current_actor(), reason=form.motivo.data)
             db.session.commit()
         except UserRuleError as error:
             return _blocked(user_id, str(error))
@@ -333,7 +328,7 @@ def reset_password_page(user_id: int):
             reset_user_password(
                 user,
                 temporary_password,
-                actor=_actor(),
+                actor=current_actor(),
             )
             db.session.commit()
         except PasswordPolicyError as error:
@@ -362,9 +357,6 @@ def reset_password_page(user_id: int):
 
 # --- Utilidades -------------------------------------------------------
 
-
-def _actor():
-    return current_user._get_current_object()
 
 
 def _get_or_404(user_id: int):

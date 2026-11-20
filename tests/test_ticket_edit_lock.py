@@ -16,37 +16,35 @@ from sqlalchemy.exc import IntegrityError
 
 from src.workdesk import create_app
 from src.workdesk.extensions import db
-from src.workdesk.models import Ticket, TicketEditLock, User
+from src.workdesk.models import TicketEditLock
 from src.workdesk.tickets.locking import (
     acquire_edit_lock,
     current_edit_lock,
     release_edit_lock,
 )
 from src.workdesk.tickets.service import TicketRuleError
-from tests.ticket_helpers import login, make_ticket, plain_text, set_state, text
+from tests.ticket_helpers import (
+    login,
+    make_ticket,
+    person,
+    plain_text,
+    set_state,
+    text,
+    ticket_by_public_id,
+)
 
 # --- Auxiliares -------------------------------------------------------------
 
 
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
-    )
-
-
-def person(user_id) -> User:
-    return db.session.get(User, user_id)
-
-
 def acquire(public_id, user_id):
-    status = acquire_edit_lock(get_ticket(public_id), person(user_id))
+    status = acquire_edit_lock(ticket_by_public_id(public_id), person(user_id))
     db.session.commit()
 
     return status
 
 
 def release(public_id, user_id) -> bool:
-    released = release_edit_lock(get_ticket(public_id), person(user_id))
+    released = release_edit_lock(ticket_by_public_id(public_id), person(user_id))
     db.session.commit()
 
     return released
@@ -56,7 +54,7 @@ def locks_of(public_id) -> list[TicketEditLock]:
     return list(
         db.session.scalars(
             db.select(TicketEditLock)
-            .where(TicketEditLock.ticket_id == get_ticket(public_id).id)
+            .where(TicketEditLock.ticket_id == ticket_by_public_id(public_id).id)
             .order_by(TicketEditLock.id)
         )
     )
@@ -70,7 +68,7 @@ def expire(public_id, *, minutes=10):
     """Deja el bloqueo no liberado del ticket como expirado: mueve su inicio y
     su expiración al pasado (la base exige que la expiración sea posterior al
     inicio)."""
-    with_ticket = get_ticket(public_id).id
+    with_ticket = ticket_by_public_id(public_id).id
     db.session.execute(
         update(TicketEditLock.__table__)
         .where(
@@ -166,7 +164,7 @@ def test_the_database_allows_one_unreleased_lock_per_ticket(
 ):
     with app.app_context():
         now = db.session.scalar(db.select(db.func.clock_timestamp()))
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         db.session.add(
             _lock_row(ticket, alice["id"], start=now, end=now + timedelta(minutes=2))
@@ -189,7 +187,7 @@ def test_released_locks_do_not_count_against_the_unique_index(
 ):
     with app.app_context():
         now = db.session.scalar(db.select(db.func.clock_timestamp()))
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         end = now + timedelta(minutes=2)
 
         db.session.add_all(
@@ -223,7 +221,7 @@ def test_the_database_checks_the_lock_times(
         now = db.session.scalar(db.select(db.func.clock_timestamp()))
         db.session.add(
             _lock_row(
-                get_ticket(ticket_id),
+                ticket_by_public_id(ticket_id),
                 alice["id"],
                 start=now,
                 end=now + timedelta(seconds=end_offset),
@@ -310,7 +308,7 @@ def test_an_expired_own_lock_that_nobody_took_is_renewed(app, alice, ticket_id):
 
         assert status.mine is True
         assert len(locks_of(ticket_id)) == 1
-        assert current_edit_lock(get_ticket(ticket_id)) is not None
+        assert current_edit_lock(ticket_by_public_id(ticket_id)) is not None
 
 
 def test_a_lock_is_per_ticket(app, alice, bruno, ticket_id, other_ticket):
@@ -334,7 +332,7 @@ def test_an_inactive_user_cannot_acquire(app, make_user, ticket_id):
 
 def test_the_service_does_not_commit(app, alice, ticket_id):
     with app.app_context():
-        acquire_edit_lock(get_ticket(ticket_id), person(alice["id"]))
+        acquire_edit_lock(ticket_by_public_id(ticket_id), person(alice["id"]))
         db.session.rollback()
 
         assert locks_of(ticket_id) == []
@@ -352,7 +350,7 @@ def test_releasing_frees_the_ticket_for_someone_else(app, alice, bruno, ticket_i
         (lock,) = locks_of(ticket_id)
 
         assert lock.fecha_liberacion is not None
-        assert current_edit_lock(get_ticket(ticket_id)) is None
+        assert current_edit_lock(ticket_by_public_id(ticket_id)) is None
         assert acquire(ticket_id, bruno["id"]).mine is True
 
 
@@ -375,23 +373,23 @@ def test_releasing_without_a_lock_is_not_an_error(app, alice, ticket_id):
 
 def test_the_current_lock_is_only_the_valid_one(app, alice, ticket_id):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert current_edit_lock(ticket) is None
 
         acquire(ticket_id, alice["id"])
 
-        assert current_edit_lock(get_ticket(ticket_id)).usuario.nombre == "Alicia"
+        assert current_edit_lock(ticket_by_public_id(ticket_id)).usuario.nombre == "Alicia"
 
         expire(ticket_id)
 
         # Expirado: ya no es vigente, aunque nadie lo haya liberado.
-        assert current_edit_lock(get_ticket(ticket_id)) is None
+        assert current_edit_lock(ticket_by_public_id(ticket_id)) is None
 
         acquire(ticket_id, alice["id"])
         release(ticket_id, alice["id"])
 
-        assert current_edit_lock(get_ticket(ticket_id)) is None
+        assert current_edit_lock(ticket_by_public_id(ticket_id)) is None
 
 
 def test_consulting_the_lock_changes_nothing(app, alice, ticket_id):
@@ -400,7 +398,7 @@ def test_consulting_the_lock_changes_nothing(app, alice, ticket_id):
         expire(ticket_id)
         before = [(lock.id, lock.fecha_liberacion) for lock in locks_of(ticket_id)]
 
-        current_edit_lock(get_ticket(ticket_id))
+        current_edit_lock(ticket_by_public_id(ticket_id))
         db.session.commit()
 
         assert [
@@ -424,7 +422,7 @@ def test_two_people_acquiring_at_once_get_one_lock(
 
     def attempt(user_id):
         with app.app_context():
-            ticket = get_ticket(ticket_id)
+            ticket = ticket_by_public_id(ticket_id)
             actor = person(user_id)
             barrier.wait(timeout=10)
 
@@ -471,7 +469,7 @@ def test_two_people_taking_over_an_expired_lock_get_one_lock(
 
     def attempt(user_id):
         with app.app_context():
-            ticket = get_ticket(ticket_id)
+            ticket = ticket_by_public_id(ticket_id)
             actor = person(user_id)
             barrier.wait(timeout=10)
 
@@ -537,7 +535,7 @@ def priority_form(catalog, version=1, **values):
 
 def title_of(app, public_id):
     with app.app_context():
-        return get_ticket(public_id).titulo
+        return ticket_by_public_id(public_id).titulo
 
 
 def lock_state(app, public_id):
@@ -624,7 +622,7 @@ def test_saving_while_someone_else_edits_changes_nothing(
     assert title_of(app, ticket_id) == "Problema con el correo"
 
     with app.app_context():
-        assert get_ticket(ticket_id).version == 1
+        assert ticket_by_public_id(ticket_id).version == 1
 
 
 def test_saving_releases_the_lock_for_everyone(
@@ -751,7 +749,7 @@ def test_the_priority_screen_shares_the_same_lock(
     assert "No se guardó nada" in text(attempt)
 
     with app.app_context():
-        assert get_ticket(ticket_id).prioridad_id == catalog["medium"]
+        assert ticket_by_public_id(ticket_id).prioridad_id == catalog["medium"]
 
 
 def test_changing_the_priority_locks_and_then_releases(
@@ -770,7 +768,7 @@ def test_changing_the_priority_locks_and_then_releases(
     client.post(priority_url(ticket_id), data=priority_form(catalog))
 
     with app.app_context():
-        assert get_ticket(ticket_id).prioridad_id == catalog["high"]
+        assert ticket_by_public_id(ticket_id).prioridad_id == catalog["high"]
 
     assert lock_state(app, ticket_id)[0] is None
 

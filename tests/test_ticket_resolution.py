@@ -19,7 +19,6 @@ from src.workdesk.models import (
     HistoryVisibility,
     MotivoCierre,
     StateAction,
-    Ticket,
     TicketEvent,
     TicketHistory,
     User,
@@ -39,9 +38,8 @@ from src.workdesk.security import (
     can_validate_resolution,
 )
 from src.workdesk.tickets.assignment import assign_technician
-from src.workdesk.tickets.editing import describe_history_changes
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.lifecycle import (
-    MAX_RESOLUTION_LENGTH,
     StateTransitionError,
     available_actions,
     change_state,
@@ -51,6 +49,7 @@ from src.workdesk.tickets.service import (
     TicketRuleError,
     list_ticket_history,
 )
+from src.workdesk.tickets.state_actions import MAX_RESOLUTION_LENGTH
 from src.workdesk.tickets.versioning import (
     TicketClosedError,
     TicketConflictError,
@@ -62,6 +61,7 @@ from tests.ticket_helpers import (
     retire,
     set_state,
     text,
+    ticket_by_public_id,
 )
 
 Action = StateAction
@@ -78,15 +78,9 @@ LIFECYCLE_EVENTS = {
 # --- Auxiliares -------------------------------------------------------------
 
 
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
-    )
-
-
 def act(public_id, user_id, action, *, version=None, **kwargs):
     """Ejecuta `change_state` y confirma. Devuelve el estado nuevo."""
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
 
     new_state = change_state(
         ticket,
@@ -101,7 +95,7 @@ def act(public_id, user_id, action, *, version=None, **kwargs):
 
 
 def lifecycle_events(public_id) -> list[TicketHistory]:
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
 
     return [
         event
@@ -119,7 +113,7 @@ def event_names(public_id) -> list[str]:
 
 
 def validations(public_id) -> list[Validation]:
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
 
     return list(
         db.session.scalars(
@@ -288,7 +282,7 @@ def test_only_a_current_requester_validates_the_resolution(
     with app.app_context():
         def can(person, public_id):
             return can_validate_resolution(
-                db.session.get(User, person["id"]), get_ticket(public_id)
+                db.session.get(User, person["id"]), ticket_by_public_id(public_id)
             )
 
         assert can(requester, ticket_id)
@@ -313,7 +307,7 @@ def test_reopening_policy_for_staff_and_requesters(
     set_state(app, ticket_id, "CERRADO")
 
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         closed_at = ticket.fecha_cierre
         within = closed_at + timedelta(days=30)
         after = closed_at + timedelta(days=30, seconds=1)
@@ -345,7 +339,7 @@ def test_a_requester_cannot_reopen_a_resolved_ticket(
     with app.app_context():
         assert not can_reopen_ticket(
             db.session.get(User, requester["id"]),
-            get_ticket(resolved),
+            ticket_by_public_id(resolved),
         )
 
 
@@ -357,7 +351,7 @@ def test_the_reopen_window_comes_from_the_configuration(
     set_state(app, ticket_id, "CERRADO")
 
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         user = db.session.get(User, requester["id"])
         later = ticket.fecha_cierre + timedelta(days=40)
 
@@ -375,7 +369,7 @@ def test_a_retired_requester_cannot_reopen(app, tech, requester, ticket_id):
     with app.app_context():
         assert not can_reopen_ticket(
             db.session.get(User, requester["id"]),
-            get_ticket(ticket_id),
+            ticket_by_public_id(ticket_id),
         )
 
 
@@ -412,7 +406,7 @@ def test_the_database_rejects_invalid_validations(
 ):
     with app.app_context():
         db.session.add(
-            _validation(get_ticket(ticket_id), requester["id"], **values)
+            _validation(ticket_by_public_id(ticket_id), requester["id"], **values)
         )
 
         with pytest.raises(IntegrityError):
@@ -425,7 +419,7 @@ def test_a_requester_validates_once_per_cycle_but_again_in_the_next(
     ticket_id,
 ):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         db.session.add(_validation(ticket, requester["id"]))
         db.session.commit()
 
@@ -454,7 +448,7 @@ def test_a_ticket_can_be_resolved_from_every_open_state(
         new_state = act(
             ticket_id, tech["id"], Action.RESOLVER, text="Quedó funcionando."
         )
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert new_state.codigo == RESOLVED_STATE
         assert ticket.estado.codigo == RESOLVED_STATE
@@ -470,7 +464,7 @@ def test_resolving_records_one_public_event_with_the_cycle(
 ):
     with app.app_context():
         act(ticket_id, tech["id"], Action.RESOLVER, text="Listo.")
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         (event,) = lifecycle_events(ticket_id)
 
         assert ticket.version == 2
@@ -489,19 +483,19 @@ def test_the_resolution_text_is_optional(app, tech, ticket_id):
     with app.app_context():
         act(ticket_id, tech["id"], Action.RESOLVER)
 
-        assert get_ticket(ticket_id).resolucion is None
+        assert ticket_by_public_id(ticket_id).resolucion is None
 
 
 def test_a_resolution_of_exactly_the_limit_is_accepted(app, tech, ticket_id):
     with app.app_context():
         act(ticket_id, tech["id"], Action.RESOLVER, text="x" * MAX_RESOLUTION_LENGTH)
 
-        assert len(get_ticket(ticket_id).resolucion) == MAX_RESOLUTION_LENGTH
+        assert len(ticket_by_public_id(ticket_id).resolucion) == MAX_RESOLUTION_LENGTH
 
 
 def test_a_resolution_over_the_limit_is_rejected(app, tech, ticket_id):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(TicketRuleError, match="2000"):
             change_state(
@@ -514,12 +508,12 @@ def test_a_resolution_over_the_limit_is_rejected(app, tech, ticket_id):
 
         db.session.rollback()
 
-        assert get_ticket(ticket_id).estado.codigo == "NUEVO"
+        assert ticket_by_public_id(ticket_id).estado.codigo == "NUEVO"
 
 
 def test_a_resolved_ticket_cannot_be_resolved_again(app, tech, resolved):
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         with pytest.raises(StateTransitionError):
             change_state(
@@ -539,19 +533,19 @@ def test_resolving_does_not_touch_the_technicians(
     other = make_user("TECNICO", username="otro_tecnico")
 
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         assign_technician(ticket, other["id"], actor=db.session.get(User, tech["id"]))
         db.session.commit()
         act(ticket_id, tech["id"], Action.RESOLVER)
 
         assert [
-            a.tecnico_id for a in get_ticket(ticket_id).tecnicos_vigentes
+            a.tecnico_id for a in ticket_by_public_id(ticket_id).tecnicos_vigentes
         ] == [other["id"]]
 
 
 def test_resolving_with_a_stale_version_is_a_conflict(app, tech, ticket_id):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(TicketConflictError):
             change_state(
@@ -576,7 +570,7 @@ def test_a_direct_close_works_from_every_open_state(
 
     with app.app_context():
         new_state = act(ticket_id, tech["id"], Action.CIERRE_DIRECTO)
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert new_state.codigo == CLOSED_STATE
         assert ticket.fecha_cierre is not None
@@ -626,7 +620,7 @@ def test_a_cancellation_is_a_direct_close_with_that_reason(
             close_reason_id=close_reason("CANCELACION").id,
         )
 
-        assert get_ticket(ticket_id).motivo_cierre.codigo == "CANCELACION"
+        assert ticket_by_public_id(ticket_id).motivo_cierre.codigo == "CANCELACION"
 
 
 @pytest.mark.parametrize(
@@ -647,7 +641,7 @@ def test_a_direct_close_cannot_use_a_reason_of_another_path(
     code,
 ):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(TicketRuleError, match="no está disponible"):
             change_state(
@@ -667,7 +661,7 @@ def test_a_direct_close_rejects_inactive_or_unknown_reasons(
     with app.app_context():
         close_reason("CANCELACION").activo = False
         db.session.commit()
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         for reason_id in (close_reason("CANCELACION").id, 999999):
             with pytest.raises(TicketRuleError, match="no está disponible"):
@@ -688,7 +682,7 @@ def test_a_direct_close_needs_its_default_reason_to_be_active(
     with app.app_context():
         close_reason("CIERRE_DIRECTO").activo = False
         db.session.commit()
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(TicketRuleError, match="Administrador"):
             change_state(
@@ -701,7 +695,7 @@ def test_a_direct_close_needs_its_default_reason_to_be_active(
 
 def test_a_direct_close_is_not_available_from_resolved(app, tech, resolved):
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         with pytest.raises(StateTransitionError):
             change_state(
@@ -723,7 +717,7 @@ def test_actions_that_do_not_close_reject_a_close_reason(
     action,
 ):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(TicketRuleError):
             change_state(
@@ -745,7 +739,7 @@ def test_confirming_closes_the_ticket_with_the_validated_reason(
 ):
     with app.app_context():
         new_state = act(resolved, requester["id"], Action.CONFIRMAR)
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         assert new_state.codigo == CLOSED_STATE
         assert ticket.motivo_cierre.codigo == "RESOLUCION_VALIDADA"
@@ -804,10 +798,10 @@ def test_any_one_requester_is_enough_to_close(
         act(public_id, tech["id"], Action.RESOLVER)
         act(public_id, other_requester["id"], Action.CONFIRMAR)
 
-        assert get_ticket(public_id).estado.codigo == CLOSED_STATE
+        assert ticket_by_public_id(public_id).estado.codigo == CLOSED_STATE
 
         # El otro solicitante ya no puede responder: el ticket está cerrado.
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(TicketClosedError):
             change_state(
@@ -827,7 +821,7 @@ def test_only_a_current_requester_can_confirm(
     resolved,
 ):
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         for person in (tech, other_requester):
             with pytest.raises(StateTransitionError, match="No puedes"):
@@ -844,7 +838,7 @@ def test_only_a_current_requester_can_confirm(
     retire(app, resolved, requester["id"])
 
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         with pytest.raises(StateTransitionError, match="No puedes"):
             change_state(
@@ -857,7 +851,7 @@ def test_only_a_current_requester_can_confirm(
 
 def test_confirming_needs_a_resolved_ticket(app, requester, ticket_id):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(StateTransitionError, match="no está disponible"):
             change_state(
@@ -880,7 +874,7 @@ def test_confirming_still_works_if_the_validated_reason_is_deactivated(
         db.session.commit()
         act(resolved, requester["id"], Action.CONFIRMAR)
 
-        assert get_ticket(resolved).estado.codigo == CLOSED_STATE
+        assert ticket_by_public_id(resolved).estado.codigo == CLOSED_STATE
 
 
 def test_two_requesters_confirming_at_once_close_the_ticket_once(
@@ -899,14 +893,14 @@ def test_two_requesters_confirming_at_once_close_the_ticket_once(
 
     with app.app_context():
         act(public_id, tech["id"], Action.RESOLVER)
-        version = get_ticket(public_id).version
+        version = ticket_by_public_id(public_id).version
 
     barrier = threading.Barrier(2)
     outcomes = []
 
     def attempt(user_id):
         with app.app_context():
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
             user = db.session.get(User, user_id)
             barrier.wait(timeout=10)
 
@@ -958,7 +952,7 @@ def test_rejecting_reopens_the_work_and_clears_the_resolution(
             Action.RECHAZAR,
             text="Sigue sin imprimir.",
         )
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         assert new_state.codigo == "EN_PROGRESO"
         assert ticket.resolucion is None
@@ -993,7 +987,7 @@ def test_rejecting_records_the_reason_and_both_events(
 
 def test_a_rejection_needs_an_explanation(app, requester, resolved):
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         for empty in (None, "", "   "):
             with pytest.raises(TicketRuleError, match="por qué"):
@@ -1005,7 +999,7 @@ def test_a_rejection_needs_an_explanation(app, requester, resolved):
                     text=empty,
                 )
 
-        assert get_ticket(resolved).estado.codigo == RESOLVED_STATE
+        assert ticket_by_public_id(resolved).estado.codigo == RESOLVED_STATE
         assert validations(resolved) == []
 
 
@@ -1019,14 +1013,14 @@ def test_rejecting_keeps_the_technicians(
     other = make_user("TECNICO", username="otro_tecnico")
 
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         assign_technician(ticket, other["id"], actor=db.session.get(User, tech["id"]))
         db.session.commit()
         act(ticket_id, tech["id"], Action.RESOLVER)
         act(ticket_id, requester["id"], Action.RECHAZAR, text="No funciona.")
 
         assert [
-            a.tecnico_id for a in get_ticket(ticket_id).tecnicos_vigentes
+            a.tecnico_id for a in ticket_by_public_id(ticket_id).tecnicos_vigentes
         ] == [other["id"]]
 
 
@@ -1048,7 +1042,7 @@ def test_each_resolution_opens_a_new_cycle(app, tech, requester, resolved):
         assert [e.valor_nuevo["ciclo"] for e in resolutions] == [1, 2]
         # La primera explicación sobrevive en el historial.
         assert resolutions[0].valor_nuevo["resolucion"] == "Se reinició el equipo."
-        assert get_ticket(resolved).resolucion == "Ahora sí."
+        assert ticket_by_public_id(resolved).resolucion == "Ahora sí."
 
 
 # --- Cierre excepcional ----------------------------------------------------------
@@ -1066,7 +1060,7 @@ def test_a_supervisor_can_close_a_resolved_ticket_exceptionally(
             Action.CIERRE_EXCEPCIONAL,
             text="El solicitante no responde.",
         )
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
         event = lifecycle_events(resolved)[-1]
 
         assert new_state.codigo == CLOSED_STATE
@@ -1086,7 +1080,7 @@ def test_a_supervisor_can_close_a_resolved_ticket_exceptionally(
 
 def test_an_exceptional_close_needs_a_reason(app, supervisor, resolved):
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         with pytest.raises(TicketRuleError, match="excepcional"):
             change_state(
@@ -1100,7 +1094,7 @@ def test_an_exceptional_close_needs_a_reason(app, supervisor, resolved):
 
 def test_a_technician_cannot_close_exceptionally(app, tech, resolved):
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         with pytest.raises(StateTransitionError, match="No puedes"):
             change_state(
@@ -1118,7 +1112,7 @@ def test_an_exceptional_close_is_only_for_resolved_tickets(
     ticket_id,
 ):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(StateTransitionError, match="no está disponible"):
             change_state(
@@ -1142,7 +1136,7 @@ def test_a_resolved_ticket_without_requesters_is_closed_exceptionally(
 
     with app.app_context():
         act(public_id, tech["id"], Action.RESOLVER)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert {
             o.info.action
@@ -1173,10 +1167,10 @@ def test_staff_reopening_a_closed_ticket_clears_the_closure(
     _close_by_confirmation(app, resolved, requester)
 
     with app.app_context():
-        assert get_ticket(resolved).fecha_cierre is not None
+        assert ticket_by_public_id(resolved).fecha_cierre is not None
 
         new_state = act(resolved, tech["id"], Action.REABRIR)
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         assert new_state.codigo == "EN_PROGRESO"
         assert ticket.resolucion is None
@@ -1223,13 +1217,13 @@ def test_reopening_keeps_the_previous_technicians(
     other = make_user("TECNICO", username="otro_tecnico")
 
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         assign_technician(ticket, other["id"], actor=db.session.get(User, tech["id"]))
         db.session.commit()
         act(ticket_id, tech["id"], Action.CIERRE_DIRECTO)
         act(ticket_id, tech["id"], Action.REABRIR)
 
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert [a.tecnico_id for a in ticket.tecnicos_vigentes] == [other["id"]]
@@ -1238,7 +1232,7 @@ def test_reopening_keeps_the_previous_technicians(
 def test_staff_can_reopen_a_resolved_ticket(app, tech, resolved):
     with app.app_context():
         act(resolved, tech["id"], Action.REABRIR)
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert ticket.resolucion is None
@@ -1258,17 +1252,17 @@ def test_a_requester_reopens_a_closed_ticket_within_the_window(
     with app.app_context():
         act(resolved, requester["id"], Action.REABRIR)
 
-        assert get_ticket(resolved).estado.codigo == "EN_PROGRESO"
+        assert ticket_by_public_id(resolved).estado.codigo == "EN_PROGRESO"
 
 
 def test_a_requester_cannot_reopen_after_the_window(app, requester, resolved):
     _close_by_confirmation(app, resolved, requester)
 
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
         ticket.fecha_cierre = datetime.now(UTC) - timedelta(days=31)
         db.session.commit()
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
 
         with pytest.raises(StateTransitionError, match="No puedes"):
             change_state(
@@ -1283,18 +1277,18 @@ def test_staff_can_reopen_after_the_window(app, tech, requester, resolved):
     _close_by_confirmation(app, resolved, requester)
 
     with app.app_context():
-        ticket = get_ticket(resolved)
+        ticket = ticket_by_public_id(resolved)
         ticket.fecha_cierre = datetime.now(UTC) - timedelta(days=400)
         db.session.commit()
 
         act(resolved, tech["id"], Action.REABRIR)
 
-        assert get_ticket(resolved).estado.codigo == "EN_PROGRESO"
+        assert ticket_by_public_id(resolved).estado.codigo == "EN_PROGRESO"
 
 
 def test_an_open_ticket_cannot_be_reopened(app, tech, ticket_id):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(StateTransitionError, match="no está disponible"):
             change_state(
@@ -1312,7 +1306,7 @@ def test_a_closed_ticket_still_rejects_everything_but_reopening(
 ):
     with app.app_context():
         act(ticket_id, tech["id"], Action.CIERRE_DIRECTO)
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         for action in (Action.INICIAR, Action.RESOLVER, Action.CIERRE_DIRECTO):
             with pytest.raises(TicketClosedError):
@@ -1332,19 +1326,19 @@ def test_a_reopened_ticket_can_be_resolved_and_closed_again(
 ):
     with app.app_context():
         act(ticket_id, tech["id"], Action.CIERRE_DIRECTO)
-        first_close = get_ticket(ticket_id).fecha_cierre
+        first_close = ticket_by_public_id(ticket_id).fecha_cierre
 
         act(ticket_id, tech["id"], Action.REABRIR)
         act(ticket_id, tech["id"], Action.RESOLVER, text="Segunda vez.")
 
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert ticket.estado.codigo == RESOLVED_STATE
         assert ticket.fecha_cierre is None
         assert_consistent_closure(ticket)
 
         act(ticket_id, requester["id"], Action.CONFIRMAR)
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert ticket.estado.codigo == CLOSED_STATE
         assert ticket.motivo_cierre.codigo == "RESOLUCION_VALIDADA"
@@ -1383,7 +1377,7 @@ def test_every_closing_path_leaves_the_ticket_consistent(
 
         with app.app_context():
             close(public_id)
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
 
             assert ticket.estado.codigo == CLOSED_STATE, name
             assert ticket.fecha_cierre is not None, name
@@ -1392,14 +1386,14 @@ def test_every_closing_path_leaves_the_ticket_consistent(
 
             act(public_id, tech["id"], Action.REABRIR)
 
-            assert_consistent_closure(get_ticket(public_id))
+            assert_consistent_closure(ticket_by_public_id(public_id))
 
 
 def test_an_inactive_actor_cannot_resolve_or_close(app, make_user, ticket_id):
     inactive = make_user("TECNICO", username="inactivo", activo=False)
 
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         with pytest.raises(TicketRuleError, match="no está activo"):
             change_state(
@@ -1412,7 +1406,7 @@ def test_an_inactive_actor_cannot_resolve_or_close(app, make_user, ticket_id):
 
 def test_the_service_does_not_commit(app, tech, ticket_id):
     with app.app_context():
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
         change_state(
             ticket,
             actor=db.session.get(User, tech["id"]),
@@ -1421,7 +1415,7 @@ def test_the_service_does_not_commit(app, tech, ticket_id):
         )
         db.session.rollback()
 
-        ticket = get_ticket(ticket_id)
+        ticket = ticket_by_public_id(ticket_id)
 
         assert ticket.estado.codigo == "NUEVO"
         assert_consistent_closure(ticket)
@@ -1441,7 +1435,7 @@ def test_the_requester_receives_every_lifecycle_event(
         act(resolved, tech["id"], Action.CIERRE_DIRECTO)
 
         history = list_ticket_history(
-            get_ticket(resolved), db.session.get(User, requester["id"])
+            ticket_by_public_id(resolved), db.session.get(User, requester["id"])
         )
         names = [h.tipo_evento for h in history]
 
@@ -1490,12 +1484,12 @@ def url(public_id, slug):
 
 def version_of(app, public_id) -> int:
     with app.app_context():
-        return get_ticket(public_id).version
+        return ticket_by_public_id(public_id).version
 
 
 def state_of(app, public_id) -> str:
     with app.app_context():
-        return get_ticket(public_id).estado.codigo
+        return ticket_by_public_id(public_id).estado.codigo
 
 
 def test_the_technician_sees_resolve_and_close_buttons(
@@ -1595,7 +1589,7 @@ def test_closing_directly_through_the_screen(client, app, tech, ticket_id):
     assert "Cerrado" in page and "Cancelación" in page
 
     with app.app_context():
-        assert get_ticket(ticket_id).motivo_cierre.codigo == "CANCELACION"
+        assert ticket_by_public_id(ticket_id).motivo_cierre.codigo == "CANCELACION"
 
 
 def test_the_direct_close_defaults_to_its_standard_reason(
@@ -1611,7 +1605,7 @@ def test_the_direct_close_defaults_to_its_standard_reason(
     )
 
     with app.app_context():
-        assert get_ticket(ticket_id).motivo_cierre.codigo == "CIERRE_DIRECTO"
+        assert ticket_by_public_id(ticket_id).motivo_cierre.codigo == "CIERRE_DIRECTO"
 
 
 def test_a_close_reason_from_another_path_is_rejected_in_the_screen(
@@ -1914,7 +1908,7 @@ def test_a_requester_cannot_reopen_after_the_window_in_the_interface(
     _close_by_confirmation(app, resolved, requester)
 
     with app.app_context():
-        get_ticket(resolved).fecha_cierre = datetime.now(UTC) - timedelta(days=45)
+        ticket_by_public_id(resolved).fecha_cierre = datetime.now(UTC) - timedelta(days=45)
         db.session.commit()
 
     login(client, requester)

@@ -102,7 +102,7 @@ LOCATIONS = CatalogScreen(
 WAIT_REASONS = CatalogScreen(
     title="Motivos de espera",
     description=(
-        "Motivos opcionales con los que un ticket puede pasar a En espera."
+        "Motivos opcionales con los que se puede poner un ticket en espera."
     ),
     singular="motivo de espera",
     columns=("nombre", "descripcion", "texto_libre", "orden", "estado"),

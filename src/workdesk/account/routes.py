@@ -17,7 +17,7 @@ from ..auth.security import (
     reset_login_failures,
 )
 from ..extensions import db
-from ..security import PasswordPolicyError
+from ..security import PasswordPolicyError, current_actor
 from ..users.forms import ContactForm
 from . import bp
 from .forms import ChangePasswordForm
@@ -28,7 +28,7 @@ from .service import update_own_contact
 @login_required
 def index():
     """Mi cuenta: datos del usuario y edición de su información de contacto."""
-    user = current_user._get_current_object()
+    user = current_actor()
 
     # En GET rellena el formulario con los datos actuales; en POST manda
     # lo enviado.
@@ -82,7 +82,7 @@ def _handle_password_change(form: ChangePasswordForm):
     Devuelve una respuesta (redirección) si el flujo termina, o `None`
     para volver a mostrar el formulario con los errores añadidos.
     """
-    user = current_user._get_current_object()
+    user = current_actor()
     now = datetime.now(UTC)
 
     # La contraseña actual se puede adivinar desde este formulario con una

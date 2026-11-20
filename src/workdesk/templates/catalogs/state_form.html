@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field, textarea_field %}
+
+{% block title %}Editar estado{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("Estados y transiciones", url_for('catalogs.states_page')),
+        ("Editar estado", None),
+    ]) }}
+
+    {{ page_header("Editar estado", state.codigo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('catalogs.state_edit', state_id=state.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <p class="small text-secondary">
+                El código <span class="font-monospace">{{ state.codigo }}</span>
+                es el que usa la aplicación y no cambia. Aquí solo se cambia
+                cómo se muestra el estado.
+            </p>
+
+            {{ text_field(
+                form.nombre_visible,
+                required=True,
+                autofocus=True,
+                maxlength=max_name,
+                hint="Se ve en todas las pantallas. No puede repetirse entre los estados.",
+            ) }}
+
+            {{ textarea_field(
+                form.descripcion,
+                maxlength=max_description,
+                rows=3,
+                counter=True,
+                hint="Opcional. Aparece como ayuda al pasar el cursor sobre el estado.",
+            ) }}
+
+            <div class="alert alert-info small">
+                El historial de cada ticket conserva el nombre que tenía el
+                estado cuando ocurrió cada cambio: renombrarlo no reescribe el
+                pasado.
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Guardar cambios
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('catalogs.states_page') }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

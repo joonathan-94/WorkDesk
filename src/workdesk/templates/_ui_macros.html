@@ -66,7 +66,11 @@
         'CERRADO': 'neutral',
     } %}
 
-    <span class="badge badge-soft badge-soft-{{ styles.get(estado.codigo, 'neutral') }}">
+    {# La descripción del estado (configurable) es su ayuda contextual. #}
+    <span
+        class="badge badge-soft badge-soft-{{ styles.get(estado.codigo, 'neutral') }}"
+        {% if estado.descripcion %}title="{{ estado.descripcion }}"{% endif %}
+    >
         {{ estado.nombre_visible }}
     </span>
 {% endmacro %}

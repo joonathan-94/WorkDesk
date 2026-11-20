@@ -14,7 +14,6 @@ from src.workdesk.models import (
     Estado,
     MotivoEspera,
     StateAction,
-    Ticket,
     TicketEvent,
     TicketHistory,
     TransicionEstado,
@@ -23,13 +22,12 @@ from src.workdesk.models import (
 from src.workdesk.seeds import seed_catalogs
 from src.workdesk.seeds.catalogs import INITIAL_TRANSITIONS
 from src.workdesk.tickets.lifecycle import (
-    ACTION_BY_SLUG,
-    STATE_ACTIONS,
     StateTransitionError,
     available_actions,
     change_state,
 )
 from src.workdesk.tickets.service import TicketRuleError
+from src.workdesk.tickets.state_actions import ACTION_BY_SLUG, STATE_ACTIONS
 from src.workdesk.tickets.versioning import (
     TicketClosedError,
     TicketConflictError,
@@ -40,6 +38,7 @@ from tests.ticket_helpers import (
     plain_text,
     set_state,
     text,
+    ticket_by_public_id,
 )
 
 STAFF_ROLES = ("TECNICO", "SUPERVISOR", "ADMINISTRADOR")
@@ -53,12 +52,6 @@ def state(code) -> Estado:
 def reason(code) -> MotivoEspera:
     return db.session.scalar(
         db.select(MotivoEspera).where(MotivoEspera.codigo == code)
-    )
-
-
-def get_ticket(public_id) -> Ticket:
-    return db.session.scalar(
-        db.select(Ticket).where(Ticket.public_id == public_id)
     )
 
 
@@ -77,7 +70,7 @@ def state_events(ticket_id) -> list[TicketHistory]:
 
 def run(public_id, user_id, action, *, version=None, **kwargs):
     """Ejecuta `change_state` y confirma. Devuelve el estado nuevo."""
-    ticket = get_ticket(public_id)
+    ticket = ticket_by_public_id(public_id)
 
     new_state = change_state(
         ticket,
@@ -276,7 +269,7 @@ def test_available_actions_depend_on_the_current_state(
 
     with app.app_context():
         options = available_actions(
-            get_ticket(public_id),
+            ticket_by_public_id(public_id),
             db.session.get(User, staff["id"]),
         )
 
@@ -294,7 +287,7 @@ def test_available_actions_include_the_destination_state(
         options = {
             o.info.action: o
             for o in available_actions(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 db.session.get(User, staff["id"]),
             )
         }
@@ -315,7 +308,7 @@ def test_the_requester_has_no_available_actions(
     with app.app_context():
         assert (
             available_actions(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 db.session.get(User, requester["id"]),
             )
             == []
@@ -338,7 +331,7 @@ def test_a_disabled_transition_is_not_offered(app, catalog, staff):
         offered = {
             o.info.action
             for o in available_actions(
-                get_ticket(public_id),
+                ticket_by_public_id(public_id),
                 db.session.get(User, staff["id"]),
             )
         }
@@ -380,7 +373,7 @@ def test_start_moves_the_ticket_to_in_progress_and_records_the_event(
 
     with app.app_context():
         new_state = run(public_id, staff["id"], Action.INICIAR)
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert new_state.codigo == "EN_PROGRESO"
         assert ticket.estado.codigo == "EN_PROGRESO"
@@ -425,7 +418,7 @@ def test_the_full_operational_cycle_raises_the_version_each_time(
         run(public_id, staff["id"], Action.PONER_EN_ESPERA)
         run(public_id, staff["id"], Action.REACTIVAR)
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert ticket.version == 4
@@ -446,7 +439,7 @@ def test_hold_without_a_reason_is_valid(app, catalog, staff):
     with app.app_context():
         run(public_id, staff["id"], Action.PONER_EN_ESPERA)
 
-        (event,) = state_events(get_ticket(public_id).id)
+        (event,) = state_events(ticket_by_public_id(public_id).id)
 
         assert event.motivo_espera_id is None
         assert event.contexto == {"accion": "PONER_EN_ESPERA"}
@@ -470,7 +463,7 @@ def test_hold_with_a_catalog_reason_keeps_it_in_the_history(
             wait_reason_id=third_party.id,
         )
 
-        (event,) = state_events(get_ticket(public_id).id)
+        (event,) = state_events(ticket_by_public_id(public_id).id)
 
         assert event.motivo_espera_id == third_party.id
         assert "motivo" not in event.contexto
@@ -489,7 +482,7 @@ def test_hold_with_free_text_on_a_reason_that_allows_it(app, catalog, staff):
             text="  Esperando la visita del proveedor  ",
         )
 
-        (event,) = state_events(get_ticket(public_id).id)
+        (event,) = state_events(ticket_by_public_id(public_id).id)
 
         assert event.contexto == {
             "accion": "PONER_EN_ESPERA",
@@ -517,7 +510,7 @@ def test_free_text_rules_when_putting_a_ticket_on_hold(
     set_state(app, public_id, "EN_PROGRESO")
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         reason_id = None if reason_code is None else reason(reason_code).id
 
         with pytest.raises(TicketRuleError, match=message):
@@ -532,7 +525,7 @@ def test_free_text_rules_when_putting_a_ticket_on_hold(
 
         db.session.rollback()
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert ticket.version == 1
@@ -549,7 +542,7 @@ def test_an_inactive_or_unknown_wait_reason_is_rejected(app, catalog, staff):
         db.session.commit()
 
         for reason_id in (inactive.id, 99999):
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
 
             with pytest.raises(TicketRuleError, match="no está disponible"):
                 change_state(
@@ -578,7 +571,7 @@ def test_actions_other_than_hold_do_not_accept_a_wait_reason(
     set_state(app, public_id, code)
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         for extra in ({"wait_reason_id": reason("OTRO").id}, {"text": "x"}):
             with pytest.raises(TicketRuleError, match="no admite"):
@@ -617,7 +610,7 @@ def test_an_action_not_valid_from_the_current_state_is_rejected(
     set_state(app, public_id, code)
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(StateTransitionError):
             change_state(
@@ -629,7 +622,7 @@ def test_an_action_not_valid_from_the_current_state_is_rejected(
 
         db.session.rollback()
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == code
         assert ticket.version == 1
@@ -653,7 +646,7 @@ def test_actions_without_an_implementation_yet_are_rejected(
     public_id = make_ticket(app, catalog, staff["id"])
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(StateTransitionError, match="todavía no"):
             change_state(
@@ -668,7 +661,7 @@ def test_an_unknown_action_is_rejected(app, catalog, staff):
     public_id = make_ticket(app, catalog, staff["id"])
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(ValueError):
             change_state(
@@ -691,7 +684,7 @@ def test_a_disabled_transition_is_rejected(app, catalog, staff):
         ).activa = False
         db.session.commit()
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(StateTransitionError):
             change_state(
@@ -707,7 +700,7 @@ def test_a_closed_ticket_cannot_change_state(app, catalog, staff):
     set_state(app, public_id, "CERRADO")
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(TicketClosedError, match="reabrir"):
             change_state(
@@ -728,12 +721,12 @@ def test_a_stale_version_is_a_conflict_and_changes_nothing(
     public_id = make_ticket(app, catalog, staff["id"])
 
     with app.app_context():
-        stale = get_ticket(public_id).version
+        stale = ticket_by_public_id(public_id).version
 
         # Otra persona cambia el estado primero.
         run(public_id, other["id"], Action.INICIAR)
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(TicketConflictError):
             change_state(
@@ -745,7 +738,7 @@ def test_a_stale_version_is_a_conflict_and_changes_nothing(
 
         db.session.rollback()
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert ticket.version == 2
@@ -764,7 +757,7 @@ def test_the_second_person_with_a_fresh_version_gets_a_transition_error(
     with app.app_context():
         run(public_id, staff["id"], Action.INICIAR)
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         # Misma acción, versión actual: ya no es válida desde En progreso.
         with pytest.raises(StateTransitionError):
@@ -797,7 +790,7 @@ def test_two_simultaneous_changes_produce_a_single_transition(
 
     def attempt(user_id):
         with app.app_context():
-            ticket = get_ticket(public_id)
+            ticket = ticket_by_public_id(public_id)
             user = db.session.get(User, user_id)
             barrier.wait(timeout=10)
 
@@ -830,7 +823,7 @@ def test_two_simultaneous_changes_produce_a_single_transition(
     assert sorted(outcomes) == ["TicketConflictError", "ok"]
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == "EN_PROGRESO"
         assert ticket.version == 2
@@ -842,7 +835,7 @@ def test_an_inactive_actor_cannot_change_the_state(app, make_user, catalog, staf
     public_id = make_ticket(app, catalog, staff["id"])
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         with pytest.raises(TicketRuleError, match="no está activo"):
             change_state(
@@ -857,7 +850,7 @@ def test_change_state_does_not_commit(app, catalog, staff):
     public_id = make_ticket(app, catalog, staff["id"])
 
     with app.app_context():
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
         change_state(
             ticket,
             actor=db.session.get(User, staff["id"]),
@@ -866,7 +859,7 @@ def test_change_state_does_not_commit(app, catalog, staff):
         )
         db.session.rollback()
 
-        ticket = get_ticket(public_id)
+        ticket = ticket_by_public_id(public_id)
 
         assert ticket.estado.codigo == "NUEVO"
         assert ticket.version == 1
@@ -882,12 +875,12 @@ def start_url(public_id, slug="start"):
 
 def current_version(app, public_id) -> int:
     with app.app_context():
-        return get_ticket(public_id).version
+        return ticket_by_public_id(public_id).version
 
 
 def current_state(app, public_id) -> str:
     with app.app_context():
-        return get_ticket(public_id).estado.codigo
+        return ticket_by_public_id(public_id).estado.codigo
 
 
 @pytest.mark.parametrize("role_code", STAFF_ROLES)
@@ -1144,7 +1137,7 @@ def test_a_stale_form_reports_the_conflict_and_changes_nothing(
     assert current_version(app, public_id) == 2
 
     with app.app_context():
-        assert len(state_events(get_ticket(public_id).id)) == 1
+        assert len(state_events(ticket_by_public_id(public_id).id)) == 1
 
 
 def test_a_missing_or_invalid_version_is_rejected(client, app, catalog, staff):

@@ -12,7 +12,7 @@ from src.workdesk.models import (
     TicketRequester,
     Ubicacion,
 )
-from src.workdesk.tickets import routes as ticket_routes
+from src.workdesk.tickets.routes import creation as ticket_routes
 from src.workdesk.tickets.service import TicketRuleError
 from tests.ticket_helpers import login, make_ticket, text
 

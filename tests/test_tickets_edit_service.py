@@ -12,9 +12,9 @@ from src.workdesk.models import (
 )
 from src.workdesk.tickets.editing import (
     change_priority,
-    describe_history_changes,
     update_ticket,
 )
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.service import TicketRuleError
 from src.workdesk.tickets.versioning import (
     TicketClosedError,

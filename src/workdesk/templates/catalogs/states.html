@@ -1,0 +1,226 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, state_badge %}
+
+{% block title %}Estados y transiciones{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("Estados y transiciones", None),
+    ]) }}
+
+    {{ page_header(
+        "Estados y transiciones",
+        "Los seis estados del flujo y las transiciones entre ellos son estructurales: aquí puedes renombrar los estados y habilitar o deshabilitar las transiciones opcionales."
+    ) }}
+
+    {# --- Estados --------------------------------------------------------- #}
+    <section
+        class="card mb-4"
+        aria-labelledby="states-title"
+    >
+        <div class="card-body pb-2">
+            <h2
+                class="h6 mb-1"
+                id="states-title"
+            >
+                Estados
+            </h2>
+
+            <p class="small text-secondary mb-3">
+                Cambia el nombre visible y la descripción (que aparece como
+                ayuda al pasar el cursor sobre el estado). El código interno
+                no cambia. El color y el orden son parte del diseño del flujo
+                y no se editan. Los cambios de nombre se ven en toda la
+                aplicación; el historial de cada ticket conserva el nombre que
+                tenía el estado cuando ocurrió cada cambio.
+            </p>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Orden</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Descripción</th>
+                        <th
+                            class="text-end"
+                            scope="col"
+                        >
+                            Tickets
+                        </th>
+                        <th scope="col">
+                            <span class="visually-hidden">Acciones</span>
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for state in states %}
+                        <tr>
+                            <td>{{ state.orden }}</td>
+                            <td>
+                                {{ state_badge(state) }}
+                                <span class="small text-secondary font-monospace d-block">
+                                    {{ state.codigo }}
+                                </span>
+                            </td>
+                            <td class="text-secondary">
+                                {{ state.descripcion or '—' }}
+                            </td>
+                            <td class="text-end">
+                                {{ ticket_counts.get(state.id, 0) }}
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a
+                                    class="btn btn-sm btn-outline-secondary"
+                                    href="{{ url_for('catalogs.state_edit', state_id=state.id) }}"
+                                >
+                                    Editar
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {# --- Transiciones ---------------------------------------------------- #}
+    <section
+        class="card"
+        aria-labelledby="transitions-title"
+    >
+        <div class="card-body pb-2">
+            <h2
+                class="h6 mb-1"
+                id="transitions-title"
+            >
+                Transiciones
+            </h2>
+
+            <p class="small text-secondary mb-2">
+                Son las que WorkDesk define como válidas: no se crean otras.
+                Deshabilitar una hace que esa acción deje de ofrecerse desde
+                ese estado, de inmediato y para todos los tickets; los
+                tickets no cambian de estado.
+            </p>
+
+            <p class="small text-secondary mb-3">
+                <span class="badge badge-soft badge-soft-neutral">Protegida</span>
+                marca las transiciones que no se pueden deshabilitar: las
+                esenciales para el flujo (como la confirmación del solicitante)
+                y las que dejarían algún estado sin salida o sin entrada.
+                Habilitar siempre se puede.
+            </p>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Hacia</th>
+                        <th scope="col">Acción</th>
+                        <th scope="col">Quién la ejecuta</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">
+                            <span class="visually-hidden">Acciones</span>
+                        </th>
+                    </tr>
+                </thead>
+
+                {# Un bloque por estado de origen, en el orden del flujo. #}
+                {% for group in groups %}
+                    <tbody>
+                        <tr class="table-light">
+                            <th
+                                class="small text-secondary fw-semibold"
+                                colspan="5"
+                                scope="colgroup"
+                            >
+                                Desde {{ state_badge(group.origin) }}
+                            </th>
+                        </tr>
+
+                        {% for row in group.rows %}
+                            {% set transition = row.transition %}
+
+                            <tr>
+                                <td>
+                                    <i
+                                        class="bi bi-arrow-right text-secondary me-1"
+                                        aria-hidden="true"
+                                    ></i>
+                                    {{ state_badge(transition.estado_destino) }}
+                                </td>
+
+                                <td>
+                                    <span class="fw-semibold">{{ transition.accion_nombre }}</span>
+
+                                    {% if transition.descripcion %}
+                                        <span class="small text-secondary d-block">
+                                            {{ transition.descripcion }}
+                                        </span>
+                                    {% endif %}
+
+                                    {% if transition.fecha_modificacion and transition.modificada_por %}
+                                        <span class="small text-secondary d-block">
+                                            Modificada por
+                                            {{ transition.modificada_por.nombre }}
+                                            {{ transition.modificada_por.apellido }}
+                                            el {{ transition.fecha_modificacion|local_datetime }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="small">{{ row.performed_by }}</td>
+
+                                <td>
+                                    {% if transition.activa %}
+                                        <span class="badge badge-soft badge-soft-success">Habilitada</span>
+                                    {% else %}
+                                        <span class="badge badge-soft badge-soft-warning">Deshabilitada</span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="text-end text-nowrap">
+                                    {% if not transition.activa %}
+                                        <a
+                                            class="btn btn-sm btn-outline-primary"
+                                            href="{{ url_for('catalogs.transition_activate', transition_id=transition.id) }}"
+                                        >
+                                            Habilitar
+                                        </a>
+                                    {% elif row.blocker %}
+                                        {# La razón va visible para quien usa lector de
+                                           pantalla y como ayuda al pasar el cursor. #}
+                                        <span
+                                            class="badge badge-soft badge-soft-neutral"
+                                            title="{{ row.blocker }}"
+                                        >
+                                            <i
+                                                class="bi bi-lock me-1"
+                                                aria-hidden="true"
+                                            ></i>
+                                            Protegida
+                                            <span class="visually-hidden">:
+                                                {{ row.blocker }}</span>
+                                        </span>
+                                    {% else %}
+                                        <a
+                                            class="btn btn-sm btn-outline-danger"
+                                            href="{{ url_for('catalogs.transition_deactivate', transition_id=transition.id) }}"
+                                        >
+                                            Deshabilitar
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                {% endfor %}
+            </table>
+        </div>
+    </section>
+{% endblock %}

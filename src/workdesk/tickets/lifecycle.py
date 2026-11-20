@@ -3,7 +3,8 @@
 Una transición solo es válida si existe como fila activa en
 `transiciones_estados` para el estado actual del ticket. Quién puede
 ejecutar cada acción lo decide la política de autorización de la acción
-(`StateActionInfo.policy`): la tabla no guarda permisos.
+(`StateActionInfo.policy`, en `tickets/state_actions.py`): la tabla no guarda
+permisos.
 
 Todas las acciones de estado pasan por `change_state`:
 
@@ -29,7 +30,6 @@ Nada de aquí hace commit: el cambio y sus eventos de historial se confirman o
 se revierten juntos, y el commit lo realiza quien llama.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import func
@@ -48,15 +48,17 @@ from ..models import (
     Validation,
     ValidationType,
 )
-from ..security import (
-    can_change_state,
-    can_close_directly,
-    can_close_exceptionally,
-    can_reopen_ticket,
-    can_resolve_ticket,
-    can_validate_resolution,
-)
 from .service import CLOSED_STATE_CODE, TicketRuleError, record_ticket_event
+from .state_actions import (
+    CLOSING_ACTIONS,
+    DIRECT_CLOSE_DEFAULT_REASON,
+    EXCEPTIONAL_CLOSE_REASON,
+    MAX_WAIT_TEXT_LENGTH,
+    REOPENING_ACTIONS,
+    STATE_ACTIONS,
+    VALIDATED_CLOSE_REASON,
+    StateActionInfo,
+)
 from .versioning import (
     TicketClosedError,
     TicketConflictError,
@@ -64,222 +66,10 @@ from .versioning import (
     lock_ticket,
 )
 
-# Texto libre que acompaña a un motivo de espera que lo admite, a un cierre o
-# a una validación.
-MAX_WAIT_TEXT_LENGTH = 500
-MAX_STATE_TEXT_LENGTH = 500
-
-# La explicación de la solución que escribe quien resuelve. Como la descripción
-# del ticket, admite hasta 2000 caracteres.
-MAX_RESOLUTION_LENGTH = 2000
-
-# Motivos de cierre que fija el propio flujo (el usuario no los elige). Son
-# estructurales: aunque un Administrador los desactive en el catálogo, el
-# flujo sigue funcionando.
-VALIDATED_CLOSE_REASON = "RESOLUCION_VALIDADA"
-EXCEPTIONAL_CLOSE_REASON = "CIERRE_EXCEPCIONAL"
-
-# Motivos que el personal elige al cerrar directamente. `DUPLICADO` lo fija el
-# flujo de duplicados; `INACTIVIDAD`, el cierre automático.
-DIRECT_CLOSE_DEFAULT_REASON = "CIERRE_DIRECTO"
-DIRECT_CLOSE_REASONS = (DIRECT_CLOSE_DEFAULT_REASON, "CANCELACION")
-
-# Lo fija el flujo de duplicados (`tickets/relations.py`), que cierra el ticket
-# duplicado con el mismo mecanismo del cierre directo.
-DUPLICATE_CLOSE_REASON = "DUPLICADO"
-
 
 class StateTransitionError(TicketRuleError):
     """La acción no es válida desde el estado actual del ticket."""
 
-
-def _by_role(policy: Callable) -> Callable:
-    """Adapta una política que solo mira el rol a la firma
-    `(usuario, ticket)` que usan todas las acciones de estado."""
-    return lambda user, ticket: policy(user)
-
-
-@dataclass(frozen=True)
-class StateActionInfo:
-    """Cómo se presenta y se autoriza una acción de estado.
-
-    Es información de presentación (textos, icono, ruta) más la política que
-    decide quién la ejecuta. Las reglas de la transición están en la tabla y
-    en `change_state`.
-    """
-
-    action: StateAction
-    # Fragmento de la URL: /tickets/<n>/status/<slug>.
-    slug: str
-    label: str
-    icon: str
-    # Explicación que se muestra en la pantalla de confirmación.
-    description: str
-    success_message: str
-    # `(usuario, ticket) -> bool`: quién puede ejecutarla.
-    policy: Callable
-    allows_wait_reason: bool = False
-    # Códigos de motivo de cierre que se ofrecen al elegir (solo el cierre
-    # directo). Vacío: la acción no pide motivo de cierre.
-    close_reasons: tuple[str, ...] = ()
-    # Campo de texto de la pantalla. `None`: la acción no lo pide.
-    text_label: str | None = None
-    text_hint: str = ""
-    text_required: bool = False
-    text_max: int = MAX_STATE_TEXT_LENGTH
-    text_required_message: str = "Escribe una explicación."
-    # Estilo del botón en la cabecera del detalle (principal o secundario).
-    primary: bool = True
-
-
-STATE_ACTIONS = {
-    StateAction.INICIAR: StateActionInfo(
-        action=StateAction.INICIAR,
-        slug="start",
-        label="Iniciar trabajo",
-        icon="play-circle",
-        description="El ticket pasará a En progreso.",
-        success_message="El ticket #{number} pasó a «{state}».",
-        policy=_by_role(can_change_state),
-    ),
-    StateAction.PONER_EN_ESPERA: StateActionInfo(
-        action=StateAction.PONER_EN_ESPERA,
-        slug="hold",
-        label="Poner en espera",
-        icon="pause-circle",
-        description=(
-            "Usa la espera cuando no se puede avanzar por una causa concreta "
-            "(un dato pendiente, un tercero, una aprobación). El motivo es "
-            "opcional."
-        ),
-        success_message="El ticket #{number} pasó a «{state}».",
-        policy=_by_role(can_change_state),
-        allows_wait_reason=True,
-    ),
-    StateAction.REACTIVAR: StateActionInfo(
-        action=StateAction.REACTIVAR,
-        slug="resume",
-        label="Reactivar",
-        icon="arrow-repeat",
-        description="El ticket volverá a En progreso.",
-        success_message="El ticket #{number} pasó a «{state}».",
-        policy=_by_role(can_change_state),
-    ),
-    StateAction.RESOLVER: StateActionInfo(
-        action=StateAction.RESOLVER,
-        slug="resolve",
-        label="Resolver",
-        icon="check-circle",
-        description=(
-            "El ticket pasará a Resuelto y quedará pendiente de que el "
-            "solicitante confirme la solución. Si no responde, el cierre "
-            "automático llega en una versión posterior."
-        ),
-        success_message="El ticket #{number} quedó «{state}», pendiente de validación.",
-        policy=_by_role(can_resolve_ticket),
-        text_label="Explicación de la solución",
-        text_hint=(
-            "Opcional. La ve el solicitante, que la revisa antes de "
-            "confirmar."
-        ),
-        text_max=MAX_RESOLUTION_LENGTH,
-    ),
-    StateAction.CIERRE_DIRECTO: StateActionInfo(
-        action=StateAction.CIERRE_DIRECTO,
-        slug="close",
-        label="Cerrar ticket",
-        icon="x-circle",
-        description=(
-            "Cierra el ticket sin pasar por Resuelto: no se pide la "
-            "validación del solicitante. Úsalo para mantenciones, tareas "
-            "rutinarias o casos validados por otro medio."
-        ),
-        success_message="El ticket #{number} quedó «{state}».",
-        policy=_by_role(can_close_directly),
-        close_reasons=DIRECT_CLOSE_REASONS,
-        text_label="Explicación del cierre",
-        text_hint="Opcional. Queda en el historial y solo la ve el personal.",
-        primary=False,
-    ),
-    StateAction.CONFIRMAR: StateActionInfo(
-        action=StateAction.CONFIRMAR,
-        slug="confirm",
-        label="Sí, está resuelto",
-        icon="hand-thumbs-up",
-        description=(
-            "Al confirmar, el ticket se cierra. La confirmación de uno de "
-            "los solicitantes basta para cerrarlo."
-        ),
-        success_message="Gracias. El ticket #{number} quedó «{state}».",
-        policy=can_validate_resolution,
-        text_label="Comentario (opcional)",
-        text_hint="Si quieres, cuéntanos cómo quedó.",
-    ),
-    StateAction.RECHAZAR: StateActionInfo(
-        action=StateAction.RECHAZAR,
-        slug="reject",
-        label="No, necesito más ayuda",
-        icon="hand-thumbs-down",
-        description=(
-            "El ticket volverá a En progreso y el equipo lo retomará. "
-            "Cuéntanos qué falta para que podamos ayudarte."
-        ),
-        success_message=(
-            "Enviamos tu respuesta. El ticket #{number} volvió a «{state}»."
-        ),
-        policy=can_validate_resolution,
-        text_label="¿Qué falta por resolver?",
-        text_hint="Lo ve el equipo de soporte.",
-        text_required=True,
-        text_required_message="Cuéntanos por qué no quedó resuelto.",
-    ),
-    StateAction.CIERRE_EXCEPCIONAL: StateActionInfo(
-        action=StateAction.CIERRE_EXCEPCIONAL,
-        slug="close-exceptional",
-        label="Cierre excepcional",
-        icon="shield-check",
-        description=(
-            "Cierra un ticket Resuelto sin esperar la validación del "
-            "solicitante, por ejemplo cuando no responde o no tiene "
-            "solicitante. Queda identificado como excepcional en el "
-            "historial."
-        ),
-        success_message="El ticket #{number} quedó «{state}» (cierre excepcional).",
-        policy=_by_role(can_close_exceptionally),
-        text_label="Motivo del cierre excepcional",
-        text_hint="Obligatorio. Queda en el historial y solo lo ve el personal.",
-        text_required=True,
-        text_required_message="Explica por qué se cierra de forma excepcional.",
-        primary=False,
-    ),
-    StateAction.REABRIR: StateActionInfo(
-        action=StateAction.REABRIR,
-        slug="reopen",
-        label="Reabrir ticket",
-        icon="arrow-counterclockwise",
-        description=(
-            "El ticket volverá a En progreso, conservando a los técnicos que "
-            "participaron. Después puedes agregar un comentario público para "
-            "explicar qué falta."
-        ),
-        success_message="El ticket #{number} se reabrió y está «{state}».",
-        policy=can_reopen_ticket,
-        primary=False,
-    ),
-}
-
-ACTION_BY_SLUG = {info.slug: info for info in STATE_ACTIONS.values()}
-
-# Acciones que cierran el ticket. Toda entrada a `CERRADO` es una de ellas.
-CLOSING_ACTIONS = (
-    StateAction.CIERRE_DIRECTO,
-    StateAction.CONFIRMAR,
-    StateAction.CIERRE_EXCEPCIONAL,
-)
-
-# Acciones con las que el ticket sale de `Resuelto` o `Cerrado` hacia el
-# trabajo: la resolución y el cierre vigentes dejan de serlo.
-REOPENING_ACTIONS = (StateAction.RECHAZAR, StateAction.REABRIR)
 
 # Lo que se limpia al reabrir. Los hechos anteriores no se pierden: el
 # historial conserva la resolución, el cierre y quién los hizo.

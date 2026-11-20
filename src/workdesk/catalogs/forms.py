@@ -7,15 +7,16 @@ from wtforms.validators import (
     ValidationError,
 )
 
+from ..cleaning import strip_text
 from ..models.ubicacion import LocationType
 
 MAX_NAME_LENGTH = 100
 MAX_DESCRIPTION_LENGTH = 500
 MAX_ORDER = 9999
 
-
-def _strip(value):
-    return value.strip() if isinstance(value, str) else value
+# Los estados tienen nombres cortos: se ven en insignias y filtros.
+MAX_STATE_NAME_LENGTH = 50
+MAX_STATE_DESCRIPTION_LENGTH = 300
 
 
 class OptionalIntegerField(IntegerField):
@@ -52,7 +53,7 @@ class _NamedItemForm(FlaskForm):
 
     nombre = StringField(
         "Nombre",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa el nombre."),
             Length(
@@ -64,7 +65,7 @@ class _NamedItemForm(FlaskForm):
 
     descripcion = TextAreaField(
         "Descripción",
-        filters=[_strip],
+        filters=[strip_text],
         validators=[
             Optional(),
             Length(
@@ -102,6 +103,39 @@ class WaitReasonForm(_OrderedItemForm):
     permite_texto_otro = BooleanField("Permite añadir un texto libre")
 
 
+class StateForm(FlaskForm):
+    """Nombre visible y descripción de un estado del flujo.
+
+    El código, el orden y el color de los estados no se editan (docs/06,
+    RN-164). Las reglas de negocio (nombre repetido) las aplica
+    `catalogs.flow`; aquí solo se valida la forma de los datos.
+    """
+
+    nombre_visible = StringField(
+        "Nombre visible",
+        filters=[strip_text],
+        validators=[
+            DataRequired(message="Ingresa el nombre."),
+            Length(
+                max=MAX_STATE_NAME_LENGTH,
+                message=f"Máximo {MAX_STATE_NAME_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+    descripcion = TextAreaField(
+        "Descripción",
+        filters=[strip_text],
+        validators=[
+            Optional(),
+            Length(
+                max=MAX_STATE_DESCRIPTION_LENGTH,
+                message=f"Máximo {MAX_STATE_DESCRIPTION_LENGTH} caracteres.",
+            ),
+        ],
+    )
+
+
 class PriorityForm(_NamedItemForm):
     """Solo nombre y descripción: el nivel y el color de las prioridades
     son fijos (docs/11, UI-019)."""
@@ -113,7 +147,7 @@ class LocationForm(_NamedItemForm):
     # usuarios: la plantilla dibuja el selector.
     tipo = StringField(
         "Tipo",
-        filters=[_strip],
+        filters=[strip_text],
     )
 
     def validate_tipo(self, field):

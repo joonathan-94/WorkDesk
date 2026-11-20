@@ -49,7 +49,7 @@
                 {{ state_badge(destination) }}
             </p>
 
-            <p class="text-secondary">{{ info.description }}</p>
+            <p class="text-secondary">{{ info.describe(destination.nombre_visible) }}</p>
 
             {# Motivo del cierre directo: se elige entre los que ofrece la
                acción; si no se elige ninguno, el servicio usa «Cierre
