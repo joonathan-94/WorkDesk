@@ -256,7 +256,7 @@ El usuario intenta acceder al sistema.
 
 **RF relacionados:** RF-001, RF-003, RF-004.
 
-**RN relacionadas:** RN-83, RN-87.
+**RN relacionadas:** RN-102, RN-111, RN-147.
 
 **Alcance:** MVP.
 
@@ -355,7 +355,7 @@ El Administrador también puede:
 
 **RF relacionados:** RF-005, RF-006, RF-007.
 
-**RN relacionadas:** RN-05, RN-83, RN-84, RN-85, RN-86, RN-87.
+**RN relacionadas:** RN-05, RN-102 a RN-104, RN-111, RN-118, RN-147 a RN-149.
 
 **Alcance:** MVP.
 
@@ -381,7 +381,7 @@ El Administrador también puede:
 
 **RF relacionados:** RF-008, RF-009, RF-117.
 
-**RN relacionadas:** RN-04, RN-05, RN-85, RN-86.
+**RN relacionadas:** RN-04, RN-05, RN-121, RN-146.
 
 **Alcance:** MVP.
 
@@ -404,7 +404,7 @@ El Administrador también puede:
 
 **RF relacionados:** RF-020, RF-021, RF-114.
 
-**RN relacionadas:** RN-04, RN-05, RN-15, RN-16, RN-85.
+**RN relacionadas:** RN-04, RN-05, RN-16, RN-17, RN-121, RN-152.
 
 **Alcance:** MVP.
 
@@ -425,7 +425,7 @@ El Administrador también puede:
 
 **RF relacionados:** RF-018, RF-019, RF-116.
 
-**RN relacionadas:** RN-13, RN-14.
+**RN relacionadas:** RN-15, RN-121, RN-152.
 
 **Alcance:** MVP.
 
@@ -485,7 +485,7 @@ El Administrador también puede:
 
 **RF relacionados:** RF-012 a RF-022.
 
-**RN relacionadas:** RN-06 a RN-17.
+**RN relacionadas:** RN-07 a RN-18, RN-153.
 
 **Alcance:** MVP.
 
@@ -509,7 +509,7 @@ El Administrador también puede:
 
 **RF relacionados:** RF-017, RF-022, RF-042 y los correspondientes a cada operación específica.
 
-**RN relacionadas:** RN-01, RN-02, RN-64, RN-79, RN-80, RN-81, RN-82.
+**RN relacionadas:** RN-01, RN-02, RN-98 a RN-101, RN-153.
 
 **Alcance:** MVP.
 
@@ -542,7 +542,7 @@ La eliminación de un solicitante no elimina la identidad del creador original n
 
 **RF relacionados:** RF-013, RF-014, RF-015, RF-016.
 
-**RN relacionadas:** RN-08, RN-09, RN-10, RN-11, RN-83.
+**RN relacionadas:** RN-09 a RN-13, RN-158.
 
 **Alcance:** MVP.
 
@@ -575,7 +575,7 @@ La eliminación de un solicitante no elimina la identidad del creador original n
 
 **RF relacionados:** RF-023 a RF-027.
 
-**RN relacionadas:** RN-18 a RN-23.
+**RN relacionadas:** RN-19 a RN-23, RN-155.
 
 **Alcance:** MVP.
 
@@ -613,7 +613,7 @@ La eliminación de un solicitante no elimina la identidad del creador original n
 
 **RF relacionados:** RF-028 a RF-032.
 
-**RN relacionadas:** RN-24 a RN-26, RN-30.
+**RN relacionadas:** RN-24 a RN-26, RN-157.
 
 **Alcance:** MVP.
 
@@ -689,7 +689,7 @@ Esta operación puede utilizarse ante:
 
 **RF relacionados:** RF-034, RF-035.
 
-**RN relacionadas:** RN-30, RN-83, RN-84.
+**RN relacionadas:** RN-30, RN-104, RN-137 a RN-139.
 
 **Alcance:** MVP.
 
@@ -726,7 +726,7 @@ Esta operación puede utilizarse ante:
 
 **RF relacionados:** RF-039, RF-040.
 
-**RN relacionadas:** RN-88, RN-89.
+**RN relacionadas:** RN-31 a RN-33, RN-157.
 
 **Alcance:** MVP.
 
@@ -770,7 +770,7 @@ La reapertura no constituye un estado independiente.
 
 **RF relacionados:** RF-041, RF-042.
 
-**RN relacionadas:** RN-31 a RN-42.
+**RN relacionadas:** RN-34 a RN-47, RN-156.
 
 **Alcance:** MVP.
 
@@ -804,7 +804,7 @@ La reapertura no constituye un estado independiente.
 
 **RF relacionados:** RF-043, RF-044, RF-045, RF-080.
 
-**RN relacionadas:** RN-35, RN-43 a RN-46.
+**RN relacionadas:** RN-39, RN-43, RN-48 a RN-51, RN-156.
 
 **Alcance:** MVP.
 
@@ -837,7 +837,7 @@ La reapertura no constituye un estado independiente.
 
 **RF relacionados:** RF-046, RF-047, RF-048, RF-052, RF-053.
 
-**RN relacionadas:** RN-47, RN-48, RN-49, RN-50, RN-51.
+**RN relacionadas:** RN-40, RN-52, RN-53, RN-56, RN-161.
 
 **Alcance:** MVP.
 
@@ -878,7 +878,7 @@ El cierre directo:
 
 **RF relacionados:** RF-049, RF-054.
 
-**RN relacionadas:** RN-48, RN-52.
+**RN relacionadas:** RN-60 a RN-65, RN-161.
 
 **Alcance:** MVP.
 
@@ -912,7 +912,7 @@ Si existen múltiples solicitantes, **la confirmación positiva de uno de ellos 
 
 **RF relacionados:** RF-050.
 
-**RN relacionadas:** RN-49.
+**RN relacionadas:** RN-54, RN-57, RN-161.
 
 **Alcance:** MVP.
 
@@ -946,7 +946,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-052, RF-053.
 
-**RN relacionadas:** RN-50, RN-51.
+**RN relacionadas:** RN-58, RN-59.
 
 **Alcance:** MVP.
 
@@ -972,7 +972,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-051, RF-055 a RF-059.
 
-**RN relacionadas:** RN-38, RN-49, RN-53 a RN-58.
+**RN relacionadas:** RN-45, RN-55, RN-67, RN-71, RN-72, RN-161.
 
 **Alcance:** MVP.
 
@@ -997,7 +997,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-055 a RF-060.
 
-**RN relacionadas:** RN-53 a RN-58.
+**RN relacionadas:** RN-46, RN-66 a RN-73, RN-161.
 
 **Alcance:** MVP.
 
@@ -1029,7 +1029,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-061 a RF-065.
 
-**RN relacionadas:** RN-59 a RN-61.
+**RN relacionadas:** RN-74 a RN-77, RN-162.
 
 **Alcance:** MVP.
 
@@ -1055,7 +1055,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-066, RF-067.
 
-**RN relacionadas:** RN-62, RN-64, RN-65.
+**RN relacionadas:** RN-78, RN-80, RN-159.
 
 **Alcance:** MVP.
 
@@ -1078,7 +1078,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-069, RF-070, RF-071.
 
-**RN relacionadas:** RN-63, RN-64, RN-65.
+**RN relacionadas:** RN-79, RN-80, RN-159.
 
 **Alcance:** MVP.
 
@@ -1100,7 +1100,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-057, RF-068.
 
-**RN relacionadas:** RN-53, RN-57, RN-62.
+**RN relacionadas:** RN-67, RN-78, RN-159.
 
 **Alcance:** MVP.
 
@@ -1138,7 +1138,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-072 a RF-075.
 
-**RN relacionadas:** RN-66 a RN-69.
+**RN relacionadas:** RN-81 a RN-84, RN-160.
 
 **Alcance:** MVP.
 
@@ -1159,7 +1159,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-076.
 
-**RN relacionadas:** RN-64, RN-66, RN-67.
+**RN relacionadas:** RN-81, RN-82, RN-160.
 
 **Alcance:** MVP.
 
@@ -1196,7 +1196,7 @@ Cuando el ticket no posee solicitantes:
 
 **RF relacionados:** RF-077 a RF-082.
 
-**RN relacionadas:** RN-70 a RN-75.
+**RN relacionadas:** RN-85 a RN-91.
 
 **Alcance:** MVP.
 
@@ -1224,7 +1224,7 @@ El Técnico puede consultar el SLA, pero no puede modificarlo, reiniciarlo ni al
 
 **RF relacionados:** RF-083.
 
-**RN relacionadas:** RN-74.
+**RN relacionadas:** RN-92.
 
 **Alcance:** MVP.
 
@@ -1264,7 +1264,7 @@ El Técnico puede consultar el SLA, pero no puede modificarlo, reiniciarlo ni al
 
 **RF relacionados:** RF-084 a RF-087.
 
-**RN relacionadas:** RN-76 a RN-78.
+**RN relacionadas:** RN-93 a RN-97.
 
 **Alcance:** MVP.
 
@@ -1306,7 +1306,7 @@ El Técnico puede consultar el SLA, pero no puede modificarlo, reiniciarlo ni al
 
 **RF relacionados:** RF-088 a RF-092.
 
-**RN relacionadas:** RN-07, RN-79, RN-80, RN-81, RN-82.
+**RN relacionadas:** RN-07, RN-08, RN-98 a RN-101, RN-154.
 
 **Alcance:** MVP.
 
@@ -1370,7 +1370,7 @@ Puede mostrar:
 
 **RF relacionados:** RF-093 a RF-097.
 
-**RN relacionadas:** RN-27, RN-81, RN-82.
+**RN relacionadas:** RN-27, RN-98 a RN-101.
 
 **Alcance:** MVP.
 
@@ -1473,7 +1473,7 @@ El historial no puede modificarse desde la interfaz.
 
 **RF relacionados:** RF-106, RF-107.
 
-**RN relacionadas:** RN-01, RN-02, RN-92.
+**RN relacionadas:** RN-01, RN-02, RN-141.
 
 **Alcance:** MVP.
 
@@ -1497,7 +1497,7 @@ El historial no puede modificarse desde la interfaz.
 
 **RF relacionados:** RF-108, RF-109.
 
-**RN relacionadas:** RN-87.
+**RN relacionadas:** RN-03, RN-118, RN-119.
 
 **Alcance:** MVP.
 
@@ -1616,7 +1616,7 @@ La personalización de estados deberá limitarse a atributos permitidos y a tran
 
 **RF relacionados:** RF-113 a RF-123.
 
-**RN relacionadas:** RN-04, RN-05, RN-85, RN-86.
+**RN relacionadas:** RN-04, RN-05, RN-35, RN-120 a RN-123, RN-152, RN-164.
 
 **RNF relacionados:** RNF-081, RNF-082, RNF-083.
 
@@ -1650,7 +1650,7 @@ La personalización de estados deberá limitarse a atributos permitidos y a tran
 
 **RF relacionados:** RF-053, RF-056, RF-060, RF-120.
 
-**RN relacionadas:** RN-50, RN-53 a RN-58.
+**RN relacionadas:** RN-58, RN-59, RN-66 a RN-73.
 
 **Alcance:** MVP.
 
@@ -1812,6 +1812,8 @@ Puede contemplar:
 El bloqueo visual de edición no sustituye los mecanismos backend de integridad y concurrencia.
 
 **RF relacionados:** RF-042 y los requisitos funcionales que impliquen edición de tickets.
+
+**RN relacionadas:** RN-114 a RN-117, RN-155, RN-163.
 
 **RNF relacionados:** RNF-026, RNF-027, RNF-028, RNF-029.
 
@@ -2030,28 +2032,38 @@ La reapertura conserva inicialmente los técnicos participantes y registra la op
 
 Los casos de uso deberán considerar las reglas de negocio definidas en `06_reglas_de_negocio.md`, especialmente:
 
-| Área                    | Reglas relevantes |
-| ----------------------- | ----------------- |
-| Identificación          | RN-06 a RN-07     |
-| Creación                | RN-08 a RN-12     |
-| Clasificación           | RN-13 a RN-17     |
-| Prioridades             | RN-18 a RN-23     |
-| Carga                   | RN-24 a RN-30     |
-| Estados                 | RN-31 a RN-42     |
-| En espera               | RN-43 a RN-46     |
-| Resolución y cierre     | RN-47 a RN-52     |
-| Reapertura              | RN-53 a RN-58     |
-| Duplicados              | RN-59 a RN-61     |
-| Comentarios             | RN-62 a RN-65     |
-| Archivos                | RN-66 a RN-69     |
-| SLA                     | RN-70 a RN-75     |
-| Notificaciones          | RN-76 a RN-78     |
-| Visibilidad             | RN-79 a RN-82     |
-| Usuarios desactivados   | RN-83 a RN-84     |
-| Configuración histórica | RN-85 a RN-87     |
-| Operación del MVP       | RN-88 a RN-90     |
-| Evolución futura        | RN-91             |
-| Principio fundamental   | RN-92             |
+| Área                       | Reglas relevantes            |
+| -------------------------- | ---------------------------- |
+| Principios generales       | RN-01 a RN-06                |
+| Identificación             | RN-07 a RN-08                |
+| Creación                   | RN-09 a RN-13                |
+| Clasificación              | RN-14 a RN-18                |
+| Prioridades                | RN-19 a RN-23                |
+| Carga                      | RN-24 a RN-30                |
+| Escalamiento               | RN-31 a RN-33                |
+| Estados                    | RN-34 a RN-42                |
+| Transiciones               | RN-43 a RN-47                |
+| En espera                  | RN-48 a RN-51                |
+| Resolución                 | RN-52 a RN-56                |
+| Cierre                     | RN-57 a RN-65                |
+| Reapertura                 | RN-66 a RN-73                |
+| Duplicados                 | RN-74 a RN-77                |
+| Comentarios                | RN-78 a RN-80                |
+| Archivos                   | RN-81 a RN-84                |
+| SLA                        | RN-85 a RN-92                |
+| Notificaciones             | RN-93 a RN-97                |
+| Visibilidad                | RN-98 a RN-101, RN-146       |
+| Usuarios desactivados      | RN-102 a RN-104              |
+| Retención                  | RN-105 a RN-110              |
+| Seguridad                  | RN-111 a RN-113, RN-147 a RN-149 |
+| Concurrencia               | RN-114 a RN-117              |
+| Auditoría y configuración  | RN-118 a RN-126              |
+| Respaldos                  | RN-127 a RN-129              |
+| Automatización             | RN-130 a RN-132              |
+| Experiencia                | RN-133 a RN-136              |
+| Situaciones operativas     | RN-137 a RN-139              |
+| Principios fundamentales   | RN-140 a RN-145              |
+| Implementación del MVP     | RN-146 a RN-164              |
 
 ---
 

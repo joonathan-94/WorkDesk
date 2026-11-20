@@ -764,6 +764,60 @@ WorkDesk/
 
 Esta estructura no contradice la arquitectura por capas. Las capas de aplicación, dominio y persistencia se materializarán explícitamente cuando la complejidad funcional lo justifique.
 
+### Estructura tras `v0.4.0`
+
+Cada fase añadió paquetes siguiendo el mismo patrón: rutas finas que orquestan, formularios y un servicio con las reglas, sin capas vacías. El resultado es una estructura plana de paquetes por área funcional:
+
+```text
+src/workdesk/
+├── account/        Mi cuenta y cambio de contraseña propio
+├── admin/          hub de administración
+├── audit/          auditoría administrativa (record_admin_event)
+├── auth/           login, sesiones y credenciales
+├── catalogs/       categorías, prioridades, ubicaciones, motivos de espera,
+│                   y los estados y sus transiciones (flow.py)
+├── groups/         grupos, membresías y supervisores responsables
+├── main/           inicio y dashboard temporal
+├── models/         modelos SQLAlchemy (uno por entidad)
+├── security/       políticas de autorización y de contraseñas
+├── seeds/          datos iniciales y de demostración
+├── system/         health check
+├── tickets/        núcleo de tickets (ver abajo)
+├── users/          administración de usuarios
+├── cleaning.py     limpieza de textos compartida por servicios y formularios
+├── formatting.py   fechas en hora local
+├── navigation.py   navegación por rol
+└── search.py       búsqueda (comodines escapados)
+```
+
+`tickets/` es el módulo más grande, así que lo que ocurre dentro de él es lo que más se ha pensado:
+
+```text
+tickets/
+├── routes/            una por área: listing, creation, detail, editing,
+│                      states, assignment, requesters, comments, attachments,
+│                      relations (+ common con lo que comparten)
+├── service.py         creación, consultas y visibilidad del historial
+├── editing.py         edición de datos y prioridad
+├── versioning.py      control de versión, bloqueo de la fila y errores comunes
+├── state_actions.py   catálogo de acciones de estado (textos, roles, esenciales)
+├── lifecycle.py       motor de estados: change_state y las acciones disponibles
+├── assignment.py      técnicos, grupo y escalamiento
+├── requesters.py      solicitantes tras crear el ticket
+├── comments.py        comentarios públicos y notas internas
+├── attachments.py     metadatos y reglas de los adjuntos
+├── storage.py         archivos en disco (sin base de datos)
+├── relations.py       relaciones y duplicados
+├── locking.py         bloqueo temporal de edición
+├── history.py         qué cuenta cada evento del historial
+└── forms.py           formularios Flask-WTF
+```
+
+Dos decisiones se tomaron al cerrar la fase, cuando el tamaño lo justificó, y no antes:
+
+- **`tickets/routes.py` pasó a ser un paquete** al acercarse a las 1850 líneas. Cada módulo registra sus rutas en el mismo blueprint y los nombres de los endpoints son los de siempre (`tickets.detail`, `tickets.edit_ticket`...), así que ninguna URL ni ningún `url_for` cambió. Se comprobó comparando el mapa de rutas antes y después.
+- **El catálogo de acciones de estado salió del motor.** `state_actions.py` declara qué hace cada acción (textos, quién la ejecuta, si es esencial) y `lifecycle.py` solo aplica los cambios. La pantalla de administración de estados lee el mismo catálogo, así que lo que muestra no puede separarse de lo que el código hace; un test lo comprueba.
+
 ## 28.2. Evolución objetivo
 
 La estructura se conservará y evolucionará aproximadamente hacia:

@@ -47,6 +47,27 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 ## Estado del proyecto
 
+### `v0.4.0 — Asignación, colaboración y ciclo de vida`
+
+La cuarta versión de WorkDesk está implementada y validada. Con ella un ticket deja de ser algo que solo se registra y se edita: **se trabaja en equipo** y recorre su ciclo completo, desde que se crea hasta que se cierra (y, si hace falta, se reabre). Se construyó en 12 entregas pequeñas, cada una con su rama, tests y Pull Request:
+
+- **Historial con visibilidad por evento:** cada evento del historial es público o interno, y es la consulta (no la plantilla) la que decide qué ve cada rol. El vocabulario de eventos vive en la aplicación, así que añadir uno no requiere una migración.
+- **Motivos de espera:** catálogo administrable, con la opción genérica «Otro motivo» que admite un texto libre.
+- **Estados y transiciones:** iniciar el trabajo, poner en espera y reactivar, con una tabla de transiciones que valida cada cambio y bloquea la fila del ticket para que dos personas que actúan a la vez no apliquen dos transiciones.
+- **Grupos:** el Administrador los crea y el Supervisor gestiona los técnicos de los grupos de los que es responsable (los demás responden 404). Cambiar el rol de una persona o desactivarla cierra sus membresías.
+- **Asignación:** un Técnico se asigna a sí mismo; el Supervisor y el Administrador asignan, reasignan, fijan el grupo y **escalan** un ticket con un motivo. Asignar al primer técnico pasa el ticket a `Asignado`.
+- **Solicitantes del ticket:** el personal agrega o retira solicitantes después de crearlo. Quien se retira deja de ver el ticket, salvo que lo haya creado.
+- **Comentarios y notas internas:** el Solicitante y el personal conversan en comentarios públicos; el personal escribe además notas internas que el Solicitante no ve por ninguna vía. El autor edita y elimina dentro de un plazo.
+- **Archivos adjuntos:** se guardan en disco, fuera de `static/`, con validación por extensión y por contenido, SHA-256 y descarga autenticada. El adjunto de una nota interna hereda su visibilidad.
+- **Resolución, validación, cierre y reapertura:** el personal resuelve y el solicitante confirma o rechaza la solución; también hay cierre directo, cierre excepcional del Supervisor y reapertura (con plazo para el solicitante). Un ticket cerrado siempre tiene fecha y motivo de cierre.
+- **Relaciones y duplicados:** el personal relaciona tickets y marca un ticket como duplicado de otro (lo cierra con el motivo «Duplicado»).
+- **Bloqueo temporal de edición:** mientras alguien edita un ticket, los demás lo ven en solo lectura y saben quién lo edita; el bloqueo se renueva solo y expira si el navegador se cierra. La versión del ticket sigue siendo la barrera final.
+- **Estados y transiciones en la administración, y cierre de la versión:** el Administrador renombra los estados y habilita o deshabilita las transiciones opcionales sin poder romper el flujo. Además, una revisión de toda la fase reorganizó el código que había crecido y añadió un recorrido automático de la autorización de todas las rutas.
+
+El seed de demostración (`seed-demo-tickets`) creció con cada entrega: hoy carga **76 tickets** que recorren todos esos caminos. Si vienes de `v0.3.0`, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+
+Al cerrar la versión, la suite contaba con **2201 tests automatizados**.
+
 ### `v0.3.0 — Núcleo de tickets`
 
 La tercera versión de WorkDesk está implementada y validada. Es la fase central del MVP: ya se pueden **crear, consultar, buscar y editar tickets**, y cada rol ve únicamente lo que le corresponde. Se construyó en entregas pequeñas, cada una con su rama, tests y Pull Request:
@@ -58,8 +79,6 @@ La tercera versión de WorkDesk está implementada y validada. Es la fase centra
 - **Listado de tickets:** "Tickets" (personal) y "Mis tickets" (Solicitante) muestran solo lo que cada rol puede ver, con pestañas Todos, Abiertos y Cerrados, buscador (número, título, contenido y, para el personal, solicitante), filtros, orden y paginación. La barra superior también busca tickets.
 - **Edición de tickets:** el personal puede editar el título, la descripción, la categoría y la ubicación de un ticket, y cambiar su prioridad indicando un motivo. Cada cambio queda en el historial con lo que había antes y lo que hay ahora, y si dos personas editan a la vez, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
 - **Cierre de la versión:** revisión final, tests que recorren todas las rutas de la aplicación para comprobar que ninguna queda sin autenticación ni sin protección CSRF, y la guía de primera configuración con un recorrido de prueba y una solución de problemas.
-
-Un ticket ya se puede **resolver, cerrar y reabrir** (con la validación del solicitante). Los cambios de estado operativos (iniciar el trabajo, poner en espera y reactivar), la asignación de técnicos con el escalamiento, la gestión de los solicitantes de un ticket, los comentarios públicos y notas internas, los archivos adjuntos y la resolución, el cierre y la reapertura ya existen: ver [Como Técnico](#3-como-técnico), [Como Supervisor](#4-como-supervisor) y [Como Solicitante](#2-como-solicitante).
 
 Al cerrar la versión, la suite contaba con **967 tests automatizados**.
 
@@ -115,7 +134,7 @@ La suite de fundación cuenta actualmente con **20 tests automatizados**.
 
 ### Próximo hito
 
-La siguiente versión es `v0.4.0 — Asignación, colaboración y ciclo de vida`: asignación de técnicos, cambios de estado, comentarios públicos y notas internas, adjuntos, resolución y cierre. El detalle de cada fase está en [`docs/12_roadmap.md`](docs/12_roadmap.md).
+La siguiente versión es `v0.5.0 — SLA y notificaciones internas`: objetivos de SLA por prioridad calculados en tiempo laboral (con un calendario laboral que configura el Administrador), pausa mientras un ticket está en espera, cierre automático de los tickets resueltos que nadie valida y notificaciones internas. El detalle de cada fase está en [`docs/12_roadmap.md`](docs/12_roadmap.md).
 
 ---
 
@@ -252,6 +271,7 @@ WorkDesk/
 │       ├── audit/
 │       ├── auth/
 │       ├── catalogs/
+│       ├── groups/
 │       ├── main/
 │       ├── models/
 │       ├── security/
@@ -283,21 +303,24 @@ WorkDesk/
 │       │   ├── auth/
 │       │   ├── catalogs/
 │       │   ├── errors/
+│       │   ├── groups/
 │       │   ├── layouts/
 │       │   ├── main/
 │       │   ├── tickets/
 │       │   └── users/
 │       ├── tickets/
+│       │   └── routes/
 │       ├── users/
 │       ├── __init__.py
+│       ├── cleaning.py
 │       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
-│       ├── formatting.py
-│       ├── search.py
 │       ├── extensions.py
+│       ├── formatting.py
 │       ├── logging_config.py
-│       └── navigation.py
+│       ├── navigation.py
+│       └── search.py
 │
 ├── tests/
 │   ├── conftest.py
@@ -312,16 +335,31 @@ WorkDesk/
 │   ├── test_catalogs_service.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
+│   ├── test_formatting.py
+│   ├── test_groups.py
 │   ├── test_layout.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
+│   ├── test_route_authorization.py
 │   ├── test_route_protection.py
 │   ├── test_seed_demo.py
+│   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
-│   ├── test_formatting.py
+│   ├── test_state_actions.py
+│   ├── test_states_admin.py
 │   ├── test_system.py
+│   ├── test_ticket_assignment.py
+│   ├── test_ticket_attachments.py
+│   ├── test_ticket_comments.py
+│   ├── test_ticket_edit_lock.py
+│   ├── test_ticket_history.py
+│   ├── test_ticket_history_visibility.py
 │   ├── test_ticket_model.py
 │   ├── test_ticket_policies.py
+│   ├── test_ticket_relations.py
+│   ├── test_ticket_requesters.py
+│   ├── test_ticket_resolution.py
+│   ├── test_ticket_state_transitions.py
 │   ├── test_tickets_edit_routes.py
 │   ├── test_tickets_edit_service.py
 │   ├── test_tickets_list_routes.py
@@ -332,6 +370,7 @@ WorkDesk/
 │   ├── test_users_manage_service.py
 │   ├── test_users_routes.py
 │   ├── test_users_service.py
+│   ├── test_wait_reasons.py
 │   └── ticket_helpers.py
 │
 ├── .env.example
@@ -346,6 +385,8 @@ WorkDesk/
 ```
 
 `instance/`, los archivos `.env`, entornos virtuales, logs y caches de herramientas permanecen fuera del control de versiones.
+
+Cada área funcional es un paquete con sus rutas, formularios y servicio. `tickets/` es el más grande y por eso tiene su propia organización (rutas por área, el catálogo de acciones de estado separado del motor y un descriptor por evento del historial); está explicada en [`docs/10_arquitectura.md`](docs/10_arquitectura.md), sección 28.
 
 ---
 
@@ -681,6 +722,27 @@ Crea un equipo de soporte ficticio de 12 personas (2 supervisores, 4 técnicos y
 
 ---
 
+## Actualizar una instalación existente
+
+Si ya tenías WorkDesk funcionando con una versión anterior (por ejemplo, `v0.3.0`) y traes los cambios nuevos con `git pull`, estos son los pasos, con el entorno virtual activado y desde la carpeta del proyecto. **No hace falta recrear la base de datos:** tus datos se conservan.
+
+| Paso | Comando | Para qué sirve |
+| --- | --- | --- |
+| 1 | `python -m pip install -r requirements-dev.txt` | Instala las dependencias si cambiaron (si no cambiaron, no hace nada). |
+| 2 | `python -m flask --app src.workdesk db upgrade` | Aplica las migraciones nuevas. |
+| 3 | `python -m flask --app src.workdesk seed-catalogs` | Carga lo estructural que las versiones nuevas necesitan: las transiciones entre estados, los motivos de espera y los tipos de relación entre tickets. No duplica nada ni pisa lo que hayas renombrado o desactivado. |
+| 4 | `python -m flask --app src.workdesk run --debug` | Reinicia WorkDesk. |
+
+Para comprobarlo, `db current` debe terminar en `(head)` y `db check` no debe encontrar cambios pendientes.
+
+Al pasar de `v0.3.0` a `v0.4.0` conviene saber que:
+
+- Las variables de entorno nuevas (`UPLOAD_MAX_BYTES`, `UPLOAD_MAX_FILES_PER_TICKET`, `UPLOADS_DIR`, `COMMENT_EDIT_WINDOW_MINUTES`, `REOPEN_WINDOW_DAYS`, `EDIT_LOCK_TTL_SECONDS` y `EDIT_LOCK_HEARTBEAT_SECONDS`) tienen valor por defecto, así que no hace falta tocar tu `.env`. Están descritas en la [tabla de variables](#todas-las-variables).
+- Los eventos que ya tenía el historial se conservan y siguen siendo visibles para el Solicitante, como antes.
+- Los datos de demostración no modifican lo que ya cargaste. Para ver los grupos de ejemplo, ejecuta `seed-demo` de nuevo (no duplica a nadie). `seed-demo-tickets` crea solo los tickets que falten, y los que ya tenías conservan su contenido: para verlos con las historias nuevas hay que recrear la base de desarrollo, como se explica en el [recorrido de prueba](#tener-tickets-con-los-que-probar).
+
+---
+
 ## Ejecutar WorkDesk
 
 Con el entorno virtual activado y desde la raíz del proyecto:
@@ -713,6 +775,7 @@ Los tickets necesitan una categoría y, opcionalmente, una ubicación. WorkDesk 
 3. **Ubicaciones** → **Nueva ubicación**. Indica el nombre y, si quieres, el tipo (Sucursal, Oficina, Edificio, Piso, Área, Instalación u Otra). Por ejemplo, `Casa matriz` (Sucursal) o `Edificio A - Piso 2` (Piso).
 4. **Prioridades** (opcional): puedes cambiar el nombre y la descripción de las cuatro prioridades, o desactivar alguna. Su nivel y su color son fijos, y siempre debe quedar al menos una activa.
 5. **Motivos de espera** (opcional): `seed-catalogs` ya carga cinco. Puedes renombrarlos, crear otros (con la casilla "Permite añadir un texto libre" para los genéricos) o desactivarlos. Se ofrecen al poner un ticket en espera.
+6. **Estados y transiciones** (opcional): renombra los estados si tu equipo usa otras palabras y deshabilita las transiciones que no uses (por ejemplo, el cierre directo). Los seis estados y sus transiciones son estructurales: no se crean ni se eliminan, y hay transiciones protegidas que no se pueden deshabilitar.
 
 Reglas que conviene conocer:
 
@@ -770,9 +833,36 @@ Cosas que conviene saber:
 
 ---
 
+## El ciclo de vida de un ticket
+
+Un ticket nace `Nuevo` y recorre estos estados. Cada cambio es una acción con su propia pantalla de confirmación y queda en el historial. Los nombres son los de fábrica: el Administrador puede renombrar los estados.
+
+| Acción | Quién | Desde → hacia |
+| --- | --- | --- |
+| Asignar al primer técnico | Supervisor, Administrador; un Técnico se asigna a sí mismo | `Nuevo` → `Asignado` (automático) |
+| Quitar al último técnico | los mismos | `Asignado` → `Nuevo` (automático) |
+| Iniciar trabajo | Personal | `Nuevo` o `Asignado` → `En progreso` |
+| Poner en espera | Personal | `En progreso` → `En espera` (con un motivo opcional) |
+| Reactivar | Personal | `En espera` → `En progreso` |
+| Resolver | Personal | `Nuevo`, `Asignado`, `En progreso` o `En espera` → `Resuelto` |
+| Cierre directo | Personal | Esos cuatro → `Cerrado` (motivo «Cierre directo» o «Cancelación») |
+| Confirmar la solución | Un solicitante del ticket | `Resuelto` → `Cerrado` |
+| Rechazar la solución | Un solicitante del ticket (debe explicar qué falta) | `Resuelto` → `En progreso` |
+| Cierre excepcional | Supervisor, Administrador (con un motivo) | `Resuelto` → `Cerrado` |
+| Reabrir | Personal; un solicitante, solo un ticket cerrado y dentro del plazo | `Resuelto` o `Cerrado` → `En progreso` |
+
+Dos ideas que atraviesan todo el flujo:
+
+- **Un ticket cerrado siempre tiene fecha y motivo de cierre**, y es de solo lectura salvo para reabrirlo. Cancelar y marcar un duplicado no son estados: son un cierre con ese motivo.
+- **Lo que el Solicitante no debe ver, no le llega por ninguna vía.** Las notas internas, el grupo, el escalamiento, las relaciones y los cambios de solicitantes quedan fuera de su historial; lo decide la consulta, no la plantilla.
+
+Si dos personas actúan sobre el mismo ticket a la vez, la segunda recibe un aviso en lugar de pisar a la primera.
+
+---
+
 ## Recorrido de prueba
 
-Una lista de comprobación de unos 15 minutos para ver con tus propios ojos todo lo que hace `v0.3.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
+Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos todo lo que hace `v0.4.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
 
 ### Tener tickets con los que probar
 
@@ -836,8 +926,8 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 
 1. Inicia sesión. La barra lateral muestra **Dashboard**, **Tickets**, **Crear ticket**, **Administración** y **Mi cuenta**.
 2. **Crear ticket:** envía el formulario incompleto (por ejemplo, solo con el título). Cada campo obligatorio que falta muestra su error y el formulario conserva lo que ya habías escrito. Luego créalo bien, marcando dos solicitantes (el buscador filtra la lista). Debes ver el aviso `Ticket #N creado correctamente.` y el detalle con estado `Nuevo`, el creador y los solicitantes.
-3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 65`, `Abiertos 65` y `Cerrados 0` (más los que hayas creado tú) y dos páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
-4. **Buscar:** escribe `impresora`: con los tickets de demostración aparecen diez, porque la palabra está en títulos y en descripciones. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
+3. **Tickets:** comprueba las pestañas **Todos**, **Abiertos** y **Cerrados** con sus contadores. Con los tickets de demostración verás `Todos 76`, `Abiertos 70` y `Cerrados 6` (más los que hayas creado tú) y cuatro páginas de 20; al cambiar de página se conserva lo que hayas filtrado.
+4. **Buscar:** escribe `impresora`: con los tickets de demostración aparecen doce, porque la palabra está en títulos y en descripciones. Escribe `#7` y aparece solo el ticket 7. El buscador de la barra superior hace lo mismo.
 5. **Filtrar y ordenar:** filtra por estado y por prioridad, abre **Más filtros** (categoría, ubicación y fechas) y combínalos con la búsqueda. **Limpiar filtros** los quita. Cambia **Ordenar por** a `Mayor prioridad primero`.
 6. **Editar:** abre un ticket y pulsa **Editar**. Cambia el título y guarda: aparece `Ticket #N actualizado.` y el historial muestra `Título: «antes» → «después»`. Vuelve a guardar sin tocar nada: `No había cambios que guardar.`
 7. **Cambiar prioridad:** pulsa **Cambiar prioridad**. Sin motivo, el formulario lo rechaza. Con un motivo, el historial muestra el cambio y `Motivo: ...`.
@@ -845,6 +935,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 9. **Una historia con varias manos:** busca `bodega sin red` y abre ese ticket. Empezó como «se cayo el sistema», que una persona de la bodega clasificó como `Sin clasificar` con prioridad `Crítica`. En el historial verás cómo una técnica lo reclasificó a `Redes`, bajó la prioridad a `Alta` explicando el motivo (que tú, como personal, ves) y otro técnico corrigió el título. Es lo que ocurre en un soporte real: lo que se pide no siempre es el problema.
 10. **Catálogos:** en **Administración → Categorías**, desactiva una categoría que ya usan tickets. Esos tickets la conservan, pero ya no aparece en **Crear ticket**. Reactívala cuando quieras.
 11. **Grupos:** en **Administración → Grupos** ves los tres grupos de demostración (si ejecutaste `seed-demo`). Crea uno nuevo, ábrelo y designa a un supervisor responsable y agrega técnicos con los selectores de cada tarjeta. Prueba **Editar**, **Desactivar** (un grupo desactivado no admite cambios de técnicos ni de responsables) y **Reactivar**.
+12. **Estados y transiciones:** en **Administración → Estados y transiciones** ves los seis estados con cuántos tickets hay en cada uno. Pulsa **Editar** en `En progreso`, cámbiale el nombre a `En curso` y guarda: el nuevo nombre aparece en el listado, el detalle y los botones, pero el historial de los tickets que ya pasaron por ahí conserva el que tenía entonces. Prueba a ponerle a otro estado un nombre que ya existe: lo rechaza. Más abajo están las transiciones, agrupadas por estado de origen, con quién ejecuta cada una. Algunas llevan la etiqueta **Protegida** (pasa el cursor para ver por qué): por ejemplo, confirmar la solución no se puede deshabilitar. Deshabilita **Iniciar trabajo** desde `Nuevo`: pide confirmación y, desde ahora, ese botón no se ofrece a los tickets `Nuevo`. Fíjate en el mismo botón desde `Asignado`: ahora aparece como **Protegida**, porque deshabilitarlo también dejaría `En progreso` sin camino de entrada desde `Nuevo`. Vuelve a habilitar la primera con **Habilitar**. Cada cambio queda registrado en la auditoría administrativa (la pantalla para consultarla llega más adelante).
 
 ### 2. Como Solicitante
 
@@ -901,6 +992,9 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - No hay cierre automático de un ticket Resuelto que nadie valida: llega con el planificador (`v0.5.0`). Mientras tanto, un ticket Resuelto sin solicitante lo cierra un Supervisor con el cierre excepcional.
 - Todavía no hay la advertencia de posibles duplicados al crear un ticket.
 - El aviso de quién edita no se actualiza solo: aparece al abrir o recargar la pantalla (la actualización en tiempo real es posterior al MVP).
+- La pantalla de Estados y transiciones cambia el nombre, la descripción y las transiciones; el color y el orden de los estados no se editan todavía (llegan con el pulido visual, `v0.9.0`).
+- El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
+- Los límites (plazo para editar comentarios, plazo de reapertura, tamaño y cantidad de archivos, tiempos del bloqueo de edición) se cambian en el `.env`, no desde la interfaz: pasan a la configuración administrable en `v0.7.0`.
 - El dashboard es una pantalla temporal.
 
 ---
@@ -922,8 +1016,9 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `create-admin`: "No existe el rol ADMINISTRADOR. Ejecuta primero el comando seed-roles." | Se saltó el paso 2 de la preparación. | Ejecuta `seed-roles` y vuelve a intentarlo. |
 | `seed-demo-tickets`: "Faltan usuarios de demostración... Ejecuta primero seed-demo." | Todavía no cargaste el equipo de demostración. | Ejecuta `seed-demo` y vuelve a intentarlo. No se cargó ningún ticket. |
 | `seed-demo-tickets`: "Faltan los catálogos iniciales. Ejecuta primero seed-catalogs." o "Faltan las transiciones de estado..." | Se saltó el paso 3 de la preparación, o los catálogos se cargaron antes de que existieran las transiciones entre estados. | Ejecuta `seed-catalogs` (no duplica nada) y vuelve a intentarlo. |
+| `seed-demo-tickets`: "Hay transiciones deshabilitadas que la demostración necesita..." | Un Administrador deshabilitó una transición que los tickets de demostración recorren. | Habilítala en **Administración → Estados y transiciones** y vuelve a intentarlo. No se cargó ningún ticket. |
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
-| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 65" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
+| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 76" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -976,6 +1071,10 @@ GET POST  /admin/wait-reasons/new
 GET POST  /admin/wait-reasons/<id>/edit
 GET POST  /admin/wait-reasons/<id>/deactivate
 GET POST  /admin/wait-reasons/<id>/activate
+GET       /admin/states
+GET POST  /admin/states/<id>/edit
+GET POST  /admin/transitions/<id>/deactivate
+GET POST  /admin/transitions/<id>/activate
 GET       /groups
 GET POST  /groups/new
 GET       /groups/<id>
@@ -1008,12 +1107,18 @@ GET POST  /tickets/<public_id>/comments/<comment_id>/delete
 POST      /tickets/<public_id>/attachments
 GET       /tickets/<public_id>/attachments/<attachment_id>/download
 GET POST  /tickets/<public_id>/attachments/<attachment_id>/delete
+GET       /tickets/<public_id>/relations
+POST      /tickets/<public_id>/relations/add
+GET POST  /tickets/<public_id>/relations/<relation_id>/remove
+GET POST  /tickets/<public_id>/duplicate
+POST      /tickets/<public_id>/lock/renew
+POST      /tickets/<public_id>/lock/release
 GET       /health
 ```
 
-`/dashboard`, `/tickets`, `/tickets/new`, `/tickets/<public_id>` y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de categorías, prioridades y ubicaciones) y todas las rutas `/users` requieren el rol Administrador.
+`/dashboard`, `/tickets` (y todas sus rutas) y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de catálogos y de estados y transiciones) y todas las rutas `/users` requieren el rol Administrador; `/groups`, el rol Administrador o Supervisor.
 
-El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen. Las rutas de edición, de prioridad y de solicitantes son solo del personal: quien ve el ticket pero no puede usarlas recibe un **403**. En los comentarios, una nota interna que el usuario no puede ver responde **404** (como si no existiera) y editar o eliminar un comentario ajeno, o uno propio fuera del plazo, responde **403**.
+El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen. Las rutas de edición, de prioridad y de solicitantes son solo del personal: quien ve el ticket pero no puede usarlas recibe un **403**. En los comentarios, una nota interna que el usuario no puede ver responde **404** (como si no existiera) y editar o eliminar un comentario ajeno, o uno propio fuera del plazo, responde **403**. Un test recorre todo el mapa de rutas y comprueba estas reglas por rol, así que una ruta nueva queda cubierta sin tocarlo.
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 
@@ -1145,7 +1250,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-1034 tests
+2201 tests
 ```
 
 Los tests cubren principalmente:
@@ -1163,7 +1268,13 @@ Los tests cubren principalmente:
 - creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local;
 - listado de tickets: visibilidad por rol aplicada en la consulta (y comprobada contra la política de acceso), búsqueda, pestañas con contadores, filtros, orden, paginación, ausencia de consultas por fila y parámetros inválidos;
 - edición de tickets: permisos por rol (403 para quien ve pero no edita), cambios y su historial, valores de catálogo desactivados, tickets cerrados, motivo obligatorio de la prioridad, conflictos entre ediciones simultáneas y qué ve cada rol del historial;
-- seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión y que las rutas POST exigen token CSRF, con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o exenta de CSRF.
+- historial de los tickets: visibilidad por evento (el Solicitante nunca recibe un evento interno, y la condición SQL coincide con la política para todos los roles) y qué cuenta cada evento, sin repetir nunca un motivo;
+- grupos, asignación, solicitantes del ticket y bloqueo temporal de edición, incluidas las carreras entre dos personas (pruebas con dos hilos que comprueban que solo una operación prospera);
+- estados, transiciones y ciclo de vida: transiciones válidas e inválidas por estado y por rol, resolución, validación del solicitante, cierre directo y excepcional, reapertura y la regla «un ticket cerrado tiene fecha y motivo de cierre»;
+- comentarios, notas internas y adjuntos: el filtro por tipo en la consulta, los plazos de edición, los nombres de archivo hostiles, la extensión falsa, los límites de tamaño y la descarga autenticada;
+- relaciones y duplicados: el par simétrico, la ausencia de cadenas y ciclos y el cierre del duplicado;
+- administración de estados y transiciones: renombrar sin repetir nombres, las transiciones esenciales, que ninguna deshabilitación rompa el flujo (también entre dos Administradores a la vez) y que el catálogo de acciones y las políticas de autorización no se separen;
+- seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión, que las rutas POST exigen token CSRF y que cada ruta responde según quién la use (404 al ticket ajeno, 403 al rol sin permiso), con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o mal protegida.
 
 Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
 
@@ -1173,7 +1284,7 @@ Ejecutar:
 python -m pytest -q
 ```
 
-La suite completa tarda varios minutos (unos 6 en el equipo de desarrollo del proyecto), porque cada test parte de una base recién creada. No es un cuelgue.
+La suite completa tarda varios minutos (unos 24 en el equipo de desarrollo del proyecto), porque cada test parte de una base recién creada. No es un cuelgue.
 
 Ejecuta **una sola vez a la vez**: todas las ejecuciones comparten `workdesk_test` y cada test recrea las tablas, de modo que dos ejecuciones en paralelo se estorban y fallan de forma aleatoria.
 
@@ -1307,7 +1418,7 @@ El desarrollo se realiza mediante incrementos funcionales:
 v0.1.0  Fundación técnica
 v0.2.0  Usuarios, autenticación completa y RBAC
 v0.3.0  Núcleo de tickets
-v0.4.0  Colaboración y adjuntos
+v0.4.0  Asignación, colaboración y ciclo de vida
 v0.5.0  SLA y notificaciones
 v0.6.0  Dashboards y carga de trabajo
 v0.7.0  Administración y conocimiento

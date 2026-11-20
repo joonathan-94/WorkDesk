@@ -1164,6 +1164,8 @@ La configuración no podrá:
 
 Los seis estados base deben permanecer.
 
+**Implementación (`v0.4.0`, entrega 12, RN-164).** La pantalla de Estados y transiciones (UI-021) cubre de esta lista el nombre visible, la descripción y las transiciones permitidas; el color y el orden visual quedan para el pulido visual (`v0.9.0`). Las transiciones se habilitan y deshabilitan una a una, con dos protecciones: no se pueden deshabilitar las **esenciales** (la asignación, la validación del solicitante, el cierre excepcional, el cierre automático y la reapertura) ni las que dejarían algún estado inalcanzable desde `Nuevo` avanzando o sin camino hasta `Cerrado`. Lo configurado se aplica de inmediato a todos los tickets, porque el motor de estados lee la tabla en cada acción; los tickets que ya están en un estado no cambian.
+
 ---
 
 # 36. Flujo resumido de extremo a extremo
@@ -1347,6 +1349,8 @@ Mientras un usuario esté modificando un ticket:
 * Al liberarse el recurso, otro usuario podrá editarlo.
 
 El bloqueo visual de edición no reemplaza los mecanismos de integridad y concurrencia del backend.
+
+**Implementación (`v0.4.0`, entrega 11, RN-163).** El bloqueo cubre la edición de los datos del ticket y el cambio de su prioridad; los demás cambios son acciones puntuales que confían en la versión del ticket o son aditivos. Quien intenta editar un ticket reservado ve una pantalla de solo lectura que dice quién lo está editando. El bloqueo se renueva mientras la pantalla está abierta y, si el navegador se cierra, expira solo. La versión del ticket sigue siendo la barrera final contra las ediciones simultáneas.
 
 ---
 

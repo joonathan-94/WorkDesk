@@ -234,6 +234,7 @@ Es responsable de la administración general de la plataforma y posee las capaci
 * Crear, desactivar y configurar grupos, y designar a los supervisores responsables de cada grupo.
 * Gestionar información administrativa.
 * Gestionar configuraciones disponibles para el Administrador.
+* Configurar los estados del flujo (nombre visible y descripción) y habilitar o deshabilitar las transiciones opcionales, sin alterar su estructura.
 * Gestionar tickets cuando sea necesario.
 * Asignar y reasignar tickets.
 * Modificar prioridades.
@@ -270,6 +271,7 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Asignar técnicos                          |        ❌       |    ❌    |      ✅     |       ✅       |
 | Reasignar técnicos                        |        ❌       |    ❌    |      ✅     |       ✅       |
 | Asignar múltiples técnicos                |        ❌       |    ❌    |      ✅     |       ✅       |
+| Fijar el grupo de un ticket y escalarlo   |        ❌       |    ❌    |      ✅     |       ✅       |
 | Agregar y retirar solicitantes de un ticket |      ❌       |    ✅    |      ✅     |       ✅       |
 | Cambiar prioridad                         |        ❌       |    ✅    |      ✅     |       ✅       |
 | Cambiar estado                            | ⚠️ Según flujo |    ✅    |      ✅     |       ✅       |
@@ -279,8 +281,14 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Editar o eliminar un comentario propio (dentro del plazo) |  ✅  |    ✅    |      ✅     |       ✅       |
 | Editar o eliminar un comentario de otra persona |    ❌       |    ❌    |      ✅     |       ✅       |
 | Resolver ticket                           |        ❌       |    ✅    |      ✅     |       ✅       |
-| Solicitar/cambiar cierre como solicitante |        ✅       |    —    |      —     |       —       |
-| Reabrir ticket propio                     |        ✅       |    —    |      —     |       —       |
+| Cierre directo de un ticket               |        ❌       |    ✅    |      ✅     |       ✅       |
+| Cierre excepcional (ticket resuelto sin validación) |  ❌   |    ❌    |      ✅     |       ✅       |
+| Confirmar o rechazar la solución          |     ✅ (2)     |    ❌    |      ❌     |       ❌       |
+| Reabrir ticket                            |     ✅ (3)     |    ✅    |      ✅     |       ✅       |
+| Relacionar tickets y marcar duplicados    |        ❌       |    ✅    |      ✅     |       ✅       |
+| Adjuntar archivos                         |        ✅       |    ✅    |      ✅     |       ✅       |
+| Eliminar un archivo propio (dentro del plazo) |    ✅       |    ✅    |      ✅     |       ✅       |
+| Eliminar un archivo de otra persona       |        ❌       |    ❌    |      ✅     |       ✅       |
 | Gestionar usuarios                        |        ❌       |    ❌    |      ❌     |       ✅       |
 | Asignar roles                             |        ❌       |    ❌    |      ❌     |       ✅       |
 | Activar/desactivar usuarios               |        ❌       |    ❌    |      ❌     |       ✅       |
@@ -291,11 +299,16 @@ La siguiente matriz establece el modelo inicial de autorización para las princi
 | Designar supervisores responsables de grupo |      ❌       |    ❌    |      ❌     |       ✅       |
 | Gestionar membresías de grupos propios    |        ❌       |    ❌    |  ✅ (1)    |       ✅       |
 | Gestionar configuración administrativa    |        ❌       |    ❌    |      ❌     |       ✅       |
+| Administrar estados y transiciones        |        ❌       |    ❌    |      ❌     |       ✅       |
 | Consultar auditoría                       |        ❌       |    ❌    |      ❌     |       ✅       |
 
 > **Nota:** La matriz representa la autorización general. Las condiciones exactas bajo las cuales una acción puede ejecutarse serán especificadas posteriormente en los requisitos funcionales.
 >
 > **(1)** El Supervisor solo gestiona las membresías de técnicos y las asignaciones de los grupos en los que figura como supervisor responsable. Un grupo puede tener varios supervisores responsables.
+>
+> **(2)** Solo un solicitante vigente del ticket valida la solución mientras el ticket está resuelto. El personal no confirma ni rechaza en nombre del solicitante: si este no responde o no existe, el Supervisor o el Administrador cierra el ticket con el cierre excepcional.
+>
+> **(3)** El Solicitante reabre un ticket cerrado solo si es solicitante vigente y dentro del plazo de reapertura (`REOPEN_WINDOW_DAYS`); el personal puede reabrir sin plazo.
 
 ---
 
