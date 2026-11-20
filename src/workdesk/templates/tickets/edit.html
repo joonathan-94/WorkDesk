@@ -18,9 +18,16 @@
         method="post"
         action="{{ url_for('tickets.edit_ticket', public_id=ticket.public_id) }}"
         novalidate
+        data-edit-lock
+        data-lock-renew-url="{{ lock_renew_url }}"
+        data-lock-release-url="{{ lock_release_url }}"
+        data-lock-csrf="{{ csrf_token() }}"
+        data-lock-heartbeat="{{ lock_heartbeat }}"
     >
         <div class="card-body">
             {{ form.csrf_token }}
+
+            {% include "tickets/_edit_lock_notice.html" %}
 
             {# Versión con la que se abrió el formulario: permite detectar si
                otra persona modificó el ticket mientras se editaba. #}
@@ -100,5 +107,9 @@
 {% block scripts %}
     <script
         src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+
+    <script
+        src="{{ url_for('static', filename='js/tickets/edit-lock.js') }}"
     ></script>
 {% endblock %}

@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-relations
+feature/ticket-edit-lock
 ```
 
-Entrega 10 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): relaciones entre tickets y duplicados (relacionar, y marcar un ticket como duplicado de otro, lo que lo cierra con el motivo «Duplicado»), solo para el personal, con sus pantallas y el seed de demostración ampliado (ver "Relaciones y duplicados"). Incluye una migración.
+Entrega 11 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): bloqueo temporal de edición de los tickets (RN-115 a RN-117), con aviso de quién edita, renovación mientras la pantalla está abierta y expiración automática, junto al control de versión ya existente (ver "Bloqueo temporal de edición"). Incluye una migración. No cambia el seed de demostración: un bloqueo es transitorio.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 9 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30, la 8, adjuntos, el PR #31 y la 9, resolución y cierre, el PR #32): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 10 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30, la 8, adjuntos, el PR #31, la 9, resolución y cierre, el PR #32 y la 10, relaciones y duplicados, el PR #33): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -102,8 +102,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 7 | Comentarios públicos y notas internas | Integrada (PR #30) |
 | 8 | Adjuntos | Integrada (PR #31) |
 | 9 | Resolución, validación del solicitante, cierre y reapertura | Integrada (PR #32) |
-| 10 | Relaciones y duplicados | En curso |
-| 11 | Bloqueo temporal de edición | Pendiente |
+| 10 | Relaciones y duplicados | Integrada (PR #33) |
+| 11 | Bloqueo temporal de edición | En curso |
 | 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Pendiente |
 
 ## Identidad visual (integrada en `main`)
@@ -163,7 +163,7 @@ v0.4.0 — Asignación, colaboración y ciclo de vida
 
 Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técnicos, cambios de estado, comentarios públicos y notas internas, adjuntos, resolución, cierre y reapertura. Además, `v0.3.0` dejó decididas estas piezas, que le corresponden:
 
-- el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
+- el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente (entrega 11, hecha);
 - la pantalla de Estados y transiciones (UI-021), que sigue pendiente (entrega 12); la tabla de transiciones ya existe (entrega 3);
 - los eventos del historial (estado, asignación, comentarios, adjuntos, resolución, cierre y relaciones: ya existen todos). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
 - dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
@@ -388,6 +388,7 @@ WorkDesk/
 │   ├── test_ticket_assignment.py
 │   ├── test_ticket_attachments.py
 │   ├── test_ticket_comments.py
+│   ├── test_ticket_edit_lock.py
 │   ├── test_ticket_policies.py
 │   ├── test_ticket_relations.py
 │   ├── test_ticket_requesters.py
@@ -450,6 +451,8 @@ SESSION_IDLE_MINUTES
 SESSION_MAX_HOURS
 COMMENT_EDIT_WINDOW_MINUTES
 REOPEN_WINDOW_DAYS
+EDIT_LOCK_TTL_SECONDS
+EDIT_LOCK_HEARTBEAT_SECONDS
 UPLOAD_MAX_BYTES
 UPLOAD_MAX_FILES_PER_TICKET
 UPLOADS_DIR
@@ -471,6 +474,8 @@ SESSION_IDLE_MINUTES=30
 SESSION_MAX_HOURS=8
 COMMENT_EDIT_WINDOW_MINUTES=30
 REOPEN_WINDOW_DAYS=30
+EDIT_LOCK_TTL_SECONDS=120
+EDIT_LOCK_HEARTBEAT_SECONDS=45
 UPLOAD_MAX_BYTES=10485760
 UPLOAD_MAX_FILES_PER_TICKET=20
 LOG_LEVEL=DEBUG
@@ -513,7 +518,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente dieciséis migraciones:
+Existen actualmente diecisiete migraciones:
 
 ```text
 create_roles_table
@@ -532,6 +537,7 @@ create_comments_table
 create_attachments_table
 create_validations_table
 create_ticket_relations_tables
+create_ticket_edit_locks_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -835,6 +841,27 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 
 
 
+
+## Bloqueo temporal de edición (entrega 11 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-163), `docs/09` (28.2) y `docs/10` (secciones 71 a 77). El servicio está en `tickets/locking.py`; las rutas (`tickets/routes.py`) solo orquestan. **Incluye una migración** (`create_ticket_edit_locks_table`). Es una mejora de la experiencia: la barrera de integridad sigue siendo `tickets.version`.
+
+**Modelo** (`models/edit_lock.py`, `TicketEditLock`, tabla `bloqueos_edicion_tickets`): `ticket_id`, `usuario_id`, `fecha_inicio` (la pone la base de datos), `fecha_expiracion` y `fecha_liberacion`. `CHECK` de expiración posterior al inicio y de liberación no anterior al inicio; **índice único parcial** `(ticket_id) WHERE fecha_liberacion IS NULL` (nunca dos bloqueos no liberados del mismo ticket) e índice por usuario. Las claves foráneas son `ON DELETE RESTRICT`. Un bloqueo está **vigente** si no se liberó y su expiración es futura.
+
+**Servicio** (`tickets/locking.py`, sin commit):
+
+- `acquire_edit_lock(ticket, actor) -> EditLockStatus(lock, mine)`: bloquea la fila del ticket (`lock_ticket`) para serializar a quienes adquieren a la vez; si ya es del actor, renueva su expiración (también si había expirado pero nadie lo tomó); si lo tiene otra persona y está vigente, devuelve el suyo con `mine=False`; si el que había expiró, lo **libera de forma lógica** y crea el nuevo en la misma transacción. Es idempotente: **renovar y adquirir son la misma operación**.
+- `release_edit_lock(ticket, actor) -> bool`: libera el del actor; nunca toca el de otra persona; liberar sin tener bloqueo no es un error.
+- `current_edit_lock(ticket)`: el bloqueo vigente (de quien sea) con la persona cargada, sin modificar nada; sirve para el aviso del detalle.
+- Los tiempos salen de `clock_timestamp()` de la base de datos, no del reloj del servidor web.
+
+**Rutas.** `edit_ticket` y `change_ticket_priority` adquieren el bloqueo al empezar (`_hold_edit_lock`, que confirma en ese momento): si es de otra persona, responden con la pantalla de solo lectura `edit_locked.html` (200; un POST añade «No se guardó nada: otra persona está editando este ticket.» y no guarda); al guardar con éxito liberan el bloqueo en la misma transacción. Un error de validación o un conflicto de versión no lo liberan. Dos rutas JSON, solo POST y con CSRF (cabecera `X-CSRFToken` o campo `csrf_token`): `POST /tickets/<n>/lock/renew` (200 `{"ok": true}`; 409 con el mensaje «X está editando este ticket.», o si el ticket está cerrado) y `POST /tickets/<n>/lock/release` (`{"ok": true, "released": bool}`). Ambas: 404 si no se ve el ticket, 403 si no puede editarlo (el Solicitante).
+
+**Pantalla.** `edit.html` y `priority.html` llevan en el formulario `data-edit-lock` y las URL, el token y el latido; el parcial `_edit_lock_notice.html` explica que el ticket queda reservado y trae el aviso rojo (oculto) del bloqueo perdido. `static/js/tickets/edit-lock.js` (mejora progresiva, sin dependencias externas) renueva cada `data-lock-heartbeat` segundos, libera al salir con `sendBeacon` salvo que se esté enviando el formulario y, si el servidor responde 409, avisa y desactiva el botón de guardar. El detalle muestra «X está editando este ticket» solo al personal que podría editar y nunca a quien tiene el bloqueo.
+
+**Configuración:** `EDIT_LOCK_TTL_SECONDS` (120) y `EDIT_LOCK_HEARTBEAT_SECONDS` (45), variables de entorno validadas al iniciar (enteros mayores que cero y el latido menor que la duración); pasarán a la configuración administrable en `v0.7.0`.
+
+**Seed demo:** no cambia: un bloqueo es un estado transitorio y no tiene sentido sembrarlo.
 
 ## Relaciones y duplicados (entrega 10 de `v0.4.0`)
 
@@ -1324,6 +1351,8 @@ GET        /tickets/<public_id>/relations
 POST       /tickets/<public_id>/relations/add
 GET, POST  /tickets/<public_id>/relations/<relation_id>/remove
 GET, POST  /tickets/<public_id>/duplicate
+POST       /tickets/<public_id>/lock/renew
+POST       /tickets/<public_id>/lock/release
 GET        /health
 GET        /static/<path:filename>
 ```
@@ -1611,6 +1640,14 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 11 de `v0.4.0` (bloqueo temporal de edición):
+
+```text
+2041 tests passing
+```
+
+Los 59 tests nuevos (`tests/test_ticket_edit_lock.py`) cubren: **configuración** (120 s y 45 s por defecto; la aplicación no arranca con tiempos cero o negativos ni con un latido igual o mayor que la duración); **base de datos** (un solo bloqueo no liberado por ticket, los liberados no cuentan, y los `CHECK` de tiempos); **adquirir** (crea el bloqueo por el tiempo configurado, renovar es adquirir otra vez, otra persona no puede tomar uno vigente, uno expirado se libera de forma lógica y se reemplaza, el propio expirado que nadie tomó se renueva, un bloqueo por ticket, usuario inactivo, el servicio no hace commit); **liberar** (libera para otra persona, nunca toca el de otra, sin bloqueo no es error); **consultar** (solo cuenta el vigente y no modifica nada); **concurrencia con hilos** (dos personas que abren a la vez obtienen un único bloqueo, y dos que toman uno expirado también); y **pantallas** (abrir bloquea y trae lo que necesita el script, otra persona ve quién edita en una pantalla de solo lectura, guardar mientras otra edita no cambia nada, guardar libera, guardar tras expirar sin que nadie lo tome funciona y tras tomarlo otra persona se rechaza, un conflicto de versión o un error de validación no liberan, editar y cambiar la prioridad comparten el bloqueo, los demás cambios no se bloquean, un ticket cerrado y un Solicitante no bloquean, 404 sin acceso; los endpoints de renovar y liberar —JSON, 409 si es de otra persona o está cerrado, 403 al Solicitante, solo POST, nunca liberan el de otra persona—; el aviso del detalle solo para el personal que podría editar y que desaparece al expirar; y el script, servido y sin dependencias externas). `tests/test_route_protection.py` cubre las dos rutas nuevas sin cambios (sesión obligatoria y CSRF).
 
 Estado tras la entrega 10 de `v0.4.0` (relaciones y duplicados):
 
@@ -2322,7 +2359,7 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases posteriores (lo que `v0.3.0` dejó decidido para `v0.4.0` está en "Próximo hito"):
 
-- `v0.4.0`: el bloqueo temporal de edición (RN-115 a RN-117) y la pantalla de Estados y transiciones; el resto (estados, asignación, comentarios, notas internas, adjuntos, resolución, cierre y reapertura) ya existe;
+- `v0.4.0`: la pantalla de Estados y transiciones (UI-021) y el cierre de la versión; el resto (estados, asignación, comentarios, notas internas, adjuntos, resolución, cierre y reapertura) ya existe;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
 - `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;

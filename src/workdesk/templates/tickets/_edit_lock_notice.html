@@ -1,0 +1,19 @@
+{# Aviso de la pantalla de edición: el ticket queda reservado para quien la
+   tiene abierta. El aviso rojo (oculto) lo muestra el script si el bloqueo se
+   pierde. Sin JavaScript nada de esto se renueva: el bloqueo expira solo y la
+   versión del ticket sigue protegiendo el guardado. #}
+<p class="small text-secondary mb-3">
+    <i
+        class="bi bi-lock me-1"
+        aria-hidden="true"
+    ></i>
+    Mientras tengas esta pantalla abierta, nadie más puede editar este ticket.
+    Si te vas sin guardar, se libera solo tras unos {{ lock_ttl_minutes }}
+    {{ 'minuto' if lock_ttl_minutes == 1 else 'minutos' }}.
+</p>
+
+<div
+    class="alert alert-danger d-none"
+    role="alert"
+    data-edit-lock-notice
+></div>

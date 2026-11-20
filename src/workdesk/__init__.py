@@ -36,6 +36,7 @@ def create_app(
     _validate_session_limits(app)
     _validate_comment_edit_window(app)
     _validate_reopen_window(app)
+    _validate_edit_lock(app)
     _configure_uploads(app)
     _validate_password_policy(app)
     configure_logging(app)
@@ -136,6 +137,25 @@ def _validate_reopen_window(app: Flask) -> None:
     if app.config["REOPEN_WINDOW_DAYS"] <= 0:
         raise RuntimeError(
             "REOPEN_WINDOW_DAYS debe ser un entero mayor que cero."
+        )
+
+
+def _validate_edit_lock(app: Flask) -> None:
+    ttl = app.config["EDIT_LOCK_TTL_SECONDS"]
+    heartbeat = app.config["EDIT_LOCK_HEARTBEAT_SECONDS"]
+
+    if ttl <= 0 or heartbeat <= 0:
+        raise RuntimeError(
+            "EDIT_LOCK_TTL_SECONDS y EDIT_LOCK_HEARTBEAT_SECONDS deben ser "
+            "enteros mayores que cero."
+        )
+
+    # Con un latido igual o mayor que la duración, el bloqueo expiraría entre
+    # dos renovaciones aunque la persona siga editando.
+    if heartbeat >= ttl:
+        raise RuntimeError(
+            "EDIT_LOCK_HEARTBEAT_SECONDS debe ser menor que "
+            "EDIT_LOCK_TTL_SECONDS."
         )
 
 

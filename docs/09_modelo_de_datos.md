@@ -1898,6 +1898,8 @@ AND fecha_expiracion > ahora
 
 La estrategia transaccional exacta se cerrará en `10_arquitectura.md`.
 
+**Implementación (`v0.4.0`, entrega 11, RN-163).** `bloqueos_edicion_tickets` se crea con las columnas de esta sección (`fecha_inicio` la pone la base de datos) y estas restricciones: `fecha_expiracion > fecha_inicio`, `fecha_liberacion IS NULL OR fecha_liberacion >= fecha_inicio`, un **índice único parcial** `(ticket_id) WHERE fecha_liberacion IS NULL`, un índice por `usuario_id` y claves foráneas `ON DELETE RESTRICT`. La estrategia es la de esta sección: quien adquiere el bloqueo toma la fila del ticket (`SELECT ... FOR UPDATE`), libera de forma lógica el bloqueo expirado que estorba y crea el nuevo, todo en una transacción; los tiempos salen de `clock_timestamp()` de la base de datos. Los bloqueos expirados o liberados se conservan como registro; no se escribe nada en `historial_ticket` ni en la auditoría.
+
 # 29. Respaldos
 
 ## 29.1 `historial_backups`
