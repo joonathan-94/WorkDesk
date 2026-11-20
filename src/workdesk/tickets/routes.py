@@ -20,7 +20,7 @@ from ..catalogs.service import (
     list_wait_reasons,
 )
 from ..extensions import db
-from ..models import CommentType
+from ..models import CommentType, StateAction
 from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ..security import (
@@ -87,10 +87,10 @@ from .forms import (
 )
 from .lifecycle import (
     ACTION_BY_SLUG,
-    MAX_WAIT_TEXT_LENGTH,
     StateTransitionError,
     available_actions,
     change_state,
+    list_close_reasons,
 )
 from .requesters import add_requester, list_addable_requesters, remove_requester
 from .service import (
@@ -340,9 +340,24 @@ def _render_detail(ticket, comment_form):
                 if is_staff and entry.motivo_espera is not None
                 else None
             ),
+            # El motivo de un rechazo es del propio solicitante: lo ve quien
+            # ve el ticket (a diferencia del resto de motivos).
+            "rejection": (entry.contexto or {}).get("motivo_rechazo"),
         }
         for entry in list_ticket_history(ticket, _actor())
     ]
+
+    # Acciones de estado ofrecidas ahora (ya filtradas por transición activa y
+    # por política). Confirmar o rechazar la solución no son botones de la
+    # cabecera: se muestran en el aviso de «Resuelto» (docs/11, UI-005A).
+    # Cada ruta vuelve a comprobarlas.
+    actions = available_actions(ticket, current_user)
+    validation_order = (StateAction.RECHAZAR, StateAction.CONFIRMAR)
+    validation_actions = sorted(
+        (a for a in actions if a.info.action in validation_order),
+        key=lambda a: validation_order.index(a.info.action),
+    )
+    header_actions = [a for a in actions if a not in validation_actions]
 
     return render_template(
         "tickets/detail.html",
@@ -354,9 +369,8 @@ def _render_detail(ticket, comment_form):
         # comprueban la autorización por sí mismas.
         show_edit=can_edit_ticket(current_user) and not is_closed,
         show_priority=can_change_priority(current_user) and not is_closed,
-        # Cambios de estado ofrecidos ahora (ya filtrados por transición
-        # activa y por rol). Cada ruta vuelve a comprobarlos.
-        state_actions=available_actions(ticket, current_user),
+        state_actions=header_actions,
+        validation_actions=validation_actions,
         # Asignación: lo que se ofrece según el rol (cada ruta lo comprueba).
         can_self_assign=can_assign_self(current_user) and not is_closed,
         my_assignment=_my_assignment(ticket),
@@ -547,10 +561,11 @@ def change_ticket_state(public_id: str, action_slug: str):
     if info is None:
         abort(404)
 
-    if not info.policy(current_user):
+    if not info.policy(current_user, ticket):
         abort(403)
 
-    if _is_closed(ticket):
+    # Un ticket cerrado solo admite reabrirlo.
+    if _is_closed(ticket) and info.action is not StateAction.REABRIR:
         return _closed_redirect(ticket, _CLOSED_MODIFY_MESSAGE)
 
     # Se comprueba también en GET: una pantalla abierta antes de que otra
@@ -568,11 +583,16 @@ def change_ticket_state(public_id: str, action_slug: str):
 
         return redirect(url_for("tickets.detail", public_id=public_id))
 
-    wait_reasons = list_wait_reasons("activo")
+    wait_reasons = list_wait_reasons("activo") if info.allows_wait_reason else []
+    close_reasons = list_close_reasons(info)
     initial = {"version": ticket.version} if request.method == "GET" else {}
 
     form = StateChangeForm(
         wait_reason_choices=[(reason.id, reason.nombre) for reason in wait_reasons],
+        close_reason_choices=[(reason.id, reason.nombre) for reason in close_reasons],
+        text_max=info.text_max,
+        text_required=info.text_required,
+        text_required_message=info.text_required_message,
         **initial,
     )
 
@@ -584,6 +604,7 @@ def change_ticket_state(public_id: str, action_slug: str):
                 action=info.action,
                 expected_version=form.version.data,
                 wait_reason_id=form.motivo_espera.data,
+                close_reason_id=form.motivo_cierre.data,
                 text=form.texto.data,
             )
             db.session.commit()
@@ -631,7 +652,8 @@ def change_ticket_state(public_id: str, action_slug: str):
         info=info,
         destination=option.destination,
         wait_reasons=wait_reasons,
-        max_text=MAX_WAIT_TEXT_LENGTH,
+        close_reasons=close_reasons,
+        max_text=info.text_max,
     )
 
 

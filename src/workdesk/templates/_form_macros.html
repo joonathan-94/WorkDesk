@@ -146,13 +146,13 @@
 {# Con `counter=True` (y `maxlength`) muestra "n/máximo" bajo el campo. El
    número inicial lo pone el servidor; common/char-counter.js lo mantiene al
    escribir (mejora progresiva). #}
-{% macro textarea_field(field, hint=None, maxlength=None, rows=3, required=False, counter=False) %}
+{% macro textarea_field(field, hint=None, maxlength=None, rows=3, required=False, counter=False, label=None) %}
     <div class="mb-3">
         <label
             class="form-label"
             for="{{ field.id }}"
         >
-            {{ field.label.text }}
+            {{ label or field.label.text }}
             {% if required %}{{ required_mark() }}{% endif %}
         </label>
 

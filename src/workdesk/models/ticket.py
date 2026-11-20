@@ -221,6 +221,7 @@ class Ticket(db.Model):
     categoria = relationship("Categoria")
     prioridad = relationship("Prioridad")
     estado = relationship("Estado")
+    motivo_cierre = relationship("MotivoCierre")
     ubicacion = relationship("Ubicacion")
     grupo = relationship("Grupo")
     solicitantes = relationship(

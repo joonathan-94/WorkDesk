@@ -107,8 +107,9 @@ class DemoAdjustment:
     asignación, solicitantes o escribir un comentario o una nota. Cambiar la
     prioridad exige `motivo`.
 
-    `estado` es una acción de estado (`INICIAR`, `PONER_EN_ESPERA` o
-    `REACTIVAR`) que se ejecuta al final del paso, después de los demás
+    `estado` es una acción de estado (`INICIAR`, `PONER_EN_ESPERA`,
+    `REACTIVAR`, o las de resolución y cierre que se describen más abajo) que se
+    ejecuta al final del paso, después de los demás
     cambios, y debe ser válida desde el estado en que va el ticket (empieza
     en Nuevo). Solo `PONER_EN_ESPERA` admite `motivo_espera` (el código de un
     motivo del catálogo, por ejemplo `ESPERA_TERCERO`) y, si ese motivo lo
@@ -137,6 +138,17 @@ class DemoAdjustment:
     público del paso; si no hay, de la nota interna; y si tampoco, del ticket.
     Se guarda de verdad en el almacenamiento de adjuntos.
 
+    Resolución y cierre (también con `estado`): `RESOLVER` deja el ticket
+    pendiente de validación y su `texto` es la explicación de la solución
+    (opcional); `CIERRE_DIRECTO` lo cierra sin pasar por Resuelto (`texto`
+    opcional y `motivo_cierre` opcional: `CIERRE_DIRECTO`, por defecto, o
+    `CANCELACION`); `CIERRE_EXCEPCIONAL` lo ejecuta un Supervisor desde Resuelto
+    y su `texto` es obligatorio; `CONFIRMAR` (`texto` opcional) y `RECHAZAR`
+    (`texto` obligatorio) los ejecuta un Solicitante que sea solicitante del
+    ticket en ese momento y el paso no puede cambiar nada más (salvo su
+    comentario público); `REABRIR` devuelve un ticket Resuelto o Cerrado a En
+    progreso y, si el ticket está cerrado, es el único paso posible y va solo.
+
     En un mismo paso el orden es: datos, prioridad, grupo, asignación,
     solicitantes (primero se retira y después se agrega), comentario público,
     nota interna, adjunto y, al final, el cambio de estado.
@@ -160,6 +172,7 @@ class DemoAdjustment:
     comentario: str | None = None
     nota_interna: str | None = None
     adjunto: tuple[str, str] | None = None
+    motivo_cierre: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1683,6 +1696,264 @@ DEMO_TICKETS = (
                 adjunto=(
                     "notebooks-a-reemplazar.csv",
                     "usuario,equipo,antiguedad_anos\nsebastian.vargas,NB-0412,5\nandres.silva,NB-0377,6\n",
+                ),
+            ),
+        ),
+    ),
+    # --- Tickets con resolución, cierre y reapertura --------------------------
+    # Resuelto y pendiente de que la solicitante responda: ella ve el aviso
+    # «¿Tu solicitud quedó resuelta?» al abrirlo.
+    DemoTicket(
+        clave="lector-huella-no-reconoce",
+        titulo="el lector de huella de la entrada no me reconoce",
+        descripcion=(
+            "desde ayer el lector de huella de la entrada no me deja marcar, "
+            "dice huella no valida. antes funcionaba bien"
+        ),
+        categoria="Hardware",
+        prioridad="MEDIA",
+        creado_por="paula.contreras",
+        ubicacion=MARCOLETA,
+        hace_dias=3,
+        hora="09:40",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="RESOLVER",
+                texto=(
+                    "Limpié el lector y volví a registrar tu huella. Prueba "
+                    "mañana a primera hora y me avisas si falla."
+                ),
+            ),
+        ),
+    ),
+    # Resuelto y confirmado por quien lo pidió: se cierra con el motivo
+    # «Resolución validada».
+    DemoTicket(
+        clave="cargador-notebook-bodega",
+        titulo="el cargador del notebook ya no carga",
+        descripcion=(
+            "el notebook de la bodega se queda sin bateria porque el cargador "
+            "ya no hace nada, la luz no prende. lo necesito para el inventario"
+        ),
+        categoria="Hardware",
+        prioridad="ALTA",
+        creado_por="ignacio.molina",
+        hace_dias=5,
+        hora="10:15",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                asignar="diego.soto",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Cambié el cargador por uno nuevo y probé que cargue.",
+            ),
+            DemoAdjustment(
+                actor="ignacio.molina",
+                despues_horas=2,
+                estado="CONFIRMAR",
+                texto="Listo, ya carga. Gracias!",
+            ),
+        ),
+    ),
+    # La solución no alcanzó: el solicitante la rechaza, el ticket vuelve a En
+    # progreso y se resuelve por segunda vez (segundo ciclo de resolución).
+    DemoTicket(
+        clave="escritorio-remoto-rechazado",
+        titulo="no puedo entrar al escritorio remoto del trabajo",
+        descripcion=(
+            "estoy en la casa y no logro conectarme al escritorio remoto del "
+            "trabajo, me da error de credenciales. mañana tengo una "
+            "presentacion y necesito mis archivos"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=6,
+        hora="15:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                asignar="valentina.pizarro",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="RESOLVER",
+                texto="Habilité tu usuario en el servidor de escritorio remoto.",
+            ),
+            DemoAdjustment(
+                actor="sebastian.vargas",
+                despues_horas=3,
+                estado="RECHAZAR",
+                texto="Sigo sin poder entrar, ahora me pide una clave que no tengo.",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                comentario="Entiendo, te llamo para revisarlo contigo por teléfono.",
+                nota_interna=(
+                    "La clave del servidor expiró; hay que restablecerla en el "
+                    "directorio, no solo habilitar el usuario."
+                ),
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="RESOLVER",
+                texto=(
+                    "Restablecí la clave del servidor y lo probamos juntos por "
+                    "teléfono: ya entras."
+                ),
+            ),
+        ),
+    ),
+    # Cierre directo sin solicitante: una mantención rutinaria no pasa por la
+    # validación de nadie.
+    DemoTicket(
+        clave="aire-sala-servidores-mensual",
+        titulo="Revisión mensual del aire acondicionado de la sala de servidores",
+        descripcion=(
+            "Revisión mensual programada del aire acondicionado de la sala de "
+            "servidores: filtros, temperatura y drenaje."
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="matias.fuentes",
+        hace_dias=4,
+        hora="09:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=3,
+                estado="CIERRE_DIRECTO",
+                texto="Revisión hecha según el calendario, sin hallazgos.",
+            ),
+        ),
+    ),
+    # Una cancelación no es un estado: es un cierre directo con ese motivo.
+    DemoTicket(
+        clave="segundo-monitor-cancelado",
+        titulo="ya no necesito el segundo monitor",
+        descripcion=(
+            "pedi un segundo monitor para mi puesto pero con el cambio de "
+            "oficina ya no lo voy a usar. cancelen la solicitud porfa"
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="constanza.herrera",
+        ubicacion=MATTA,
+        hace_dias=2,
+        hora="12:05",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                comentario=(
+                    "Constanza, anulamos la solicitud entonces. Si lo vuelves a "
+                    "necesitar nos avisas."
+                ),
+                estado="CIERRE_DIRECTO",
+                motivo_cierre="CANCELACION",
+                texto="Cancelado a pedido de la solicitante.",
+            ),
+        ),
+    ),
+    # Resuelto sin solicitante: nadie puede confirmar y el cierre automático
+    # llega en otra versión, así que lo cierra un Supervisor.
+    DemoTicket(
+        clave="antivirus-notebooks-bodega",
+        titulo="Actualización de antivirus en los notebooks de la bodega",
+        descripcion=(
+            "Actualizar el antivirus en los 8 notebooks de la bodega a la "
+            "última versión. No requiere intervención de los usuarios."
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="matias.fuentes",
+        hace_dias=6,
+        hora="11:00",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=4,
+                estado="RESOLVER",
+                texto="Antivirus actualizado en los 8 notebooks.",
+            ),
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=9,
+                estado="CIERRE_EXCEPCIONAL",
+                texto="Sin solicitante que valide; se cierra por el equipo.",
+            ),
+        ),
+    ),
+    # Se cerró bien, pero el problema volvió: el personal lo reabre y la
+    # solicitante explica con un comentario público.
+    DemoTicket(
+        clave="impresora-contratos-rayas",
+        titulo="la impresora de contratos imprime con rayas",
+        descripcion=(
+            "los contratos salen con una raya negra a lo largo de la hoja. "
+            "necesito imprimir varios para firmar esta semana"
+        ),
+        categoria="Impresoras",
+        prioridad="MEDIA",
+        creado_por="paula.contreras",
+        ubicacion=MARCOLETA,
+        hace_dias=6,
+        hora="14:45",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="RESOLVER",
+                texto="Cambié el cartucho de tóner y limpié el tambor.",
+            ),
+            DemoAdjustment(
+                actor="paula.contreras",
+                despues_horas=2,
+                estado="CONFIRMAR",
+                texto="Quedó perfecta.",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=9,
+                estado="REABRIR",
+            ),
+            DemoAdjustment(
+                actor="paula.contreras",
+                despues_horas=1,
+                comentario=(
+                    "Hoy volvió a imprimir con rayas, no sé si es el mismo "
+                    "problema."
                 ),
             ),
         ),

@@ -234,10 +234,34 @@ def describe_history_changes(entry: TicketHistory) -> list[str]:
 
         return [f"Prioridad: {before} → {after}"]
 
-    if entry.tipo_evento == TicketEvent.ESTADO_CAMBIADO:
+    if entry.tipo_evento in (
+        TicketEvent.ESTADO_CAMBIADO,
+        TicketEvent.TICKET_RESUELTO,
+        TicketEvent.TICKET_CERRADO,
+        TicketEvent.TICKET_REABIERTO,
+    ):
         before, after = _shown(old.get("nombre")), _shown(new.get("nombre"))
+        lines = [f"Estado: {before} → {after}"]
 
-        return [f"Estado: {before} → {after}"]
+        # La explicación de la solución es pública y solo sobrevive aquí
+        # cuando el ticket se reabre y se resuelve de nuevo.
+        if new.get("resolucion"):
+            lines.append(f"Resolución: {_shown(new['resolucion'])}")
+
+        if new.get("motivo_cierre"):
+            lines.append(
+                f"Motivo de cierre: {_shown(new['motivo_cierre'].get('nombre'))}"
+            )
+
+        return lines
+
+    if entry.tipo_evento in (
+        TicketEvent.VALIDACION_ACEPTADA,
+        TicketEvent.VALIDACION_RECHAZADA,
+    ):
+        # El motivo de un rechazo lo muestra la ruta (es público); aquí no hay
+        # nada más que decir que lo que indica el nombre del evento.
+        return []
 
     if entry.tipo_evento == TicketEvent.TECNICO_ASIGNADO:
         return [f"Técnico asignado: {_shown(new.get('nombre'))}"]

@@ -1,7 +1,9 @@
 """Estados y transiciones de un ticket (docs/08, sección 34; docs/09, 12.2).
 
 Cubre la tabla de transiciones y su seed, el servicio de cambios de estado
-operativos (iniciar, poner en espera y reactivar) y sus pantallas.
+operativos (iniciar, poner en espera y reactivar) y sus pantallas. La
+resolución, el cierre y la reapertura tienen su propio archivo
+(`test_ticket_resolution.py`).
 """
 
 import pytest
@@ -250,12 +252,15 @@ def test_a_transition_cannot_go_from_a_state_to_itself(app):
 @pytest.mark.parametrize(
     ("code", "expected"),
     [
-        ("NUEVO", ["INICIAR"]),
-        ("ASIGNADO", ["INICIAR"]),
-        ("EN_PROGRESO", ["PONER_EN_ESPERA"]),
-        ("EN_ESPERA", ["REACTIVAR"]),
-        ("RESUELTO", []),
-        ("CERRADO", []),
+        # Un Técnico puede, desde cualquier estado abierto, resolver o cerrar
+        # directamente; de un ticket Resuelto o Cerrado solo puede reabrirlo
+        # (el cierre excepcional es del Supervisor y el Administrador).
+        ("NUEVO", ["INICIAR", "RESOLVER", "CIERRE_DIRECTO"]),
+        ("ASIGNADO", ["INICIAR", "RESOLVER", "CIERRE_DIRECTO"]),
+        ("EN_PROGRESO", ["PONER_EN_ESPERA", "RESOLVER", "CIERRE_DIRECTO"]),
+        ("EN_ESPERA", ["REACTIVAR", "RESOLVER", "CIERRE_DIRECTO"]),
+        ("RESUELTO", ["REABRIR"]),
+        ("CERRADO", ["REABRIR"]),
     ],
 )
 def test_available_actions_depend_on_the_current_state(
@@ -286,12 +291,17 @@ def test_available_actions_include_the_destination_state(
     public_id = make_ticket(app, catalog, staff["id"])
 
     with app.app_context():
-        (option,) = available_actions(
-            get_ticket(public_id),
-            db.session.get(User, staff["id"]),
-        )
+        options = {
+            o.info.action: o
+            for o in available_actions(
+                get_ticket(public_id),
+                db.session.get(User, staff["id"]),
+            )
+        }
 
-        assert option.destination.codigo == "EN_PROGRESO"
+        assert options[Action.INICIAR].destination.codigo == "EN_PROGRESO"
+        assert options[Action.RESOLVER].destination.codigo == "RESUELTO"
+        assert options[Action.CIERRE_DIRECTO].destination.codigo == "CERRADO"
 
 
 def test_the_requester_has_no_available_actions(
@@ -325,22 +335,37 @@ def test_a_disabled_transition_is_not_offered(app, catalog, staff):
         transition.activa = False
         db.session.commit()
 
-        assert (
-            available_actions(
+        offered = {
+            o.info.action
+            for o in available_actions(
                 get_ticket(public_id),
                 db.session.get(User, staff["id"]),
             )
-            == []
-        )
+        }
+
+        assert Action.INICIAR not in offered
+        assert offered == {Action.RESOLVER, Action.CIERRE_DIRECTO}
 
 
-def test_only_the_operational_actions_are_implemented():
-    assert set(STATE_ACTIONS) == {
-        Action.INICIAR,
-        Action.PONER_EN_ESPERA,
-        Action.REACTIVAR,
+def test_every_action_is_implemented_except_the_system_and_derived_ones():
+    # Asignar y quitar al último técnico son transiciones derivadas de la
+    # asignación y el cierre automático lo hará el planificador (v0.5.0).
+    assert set(STATE_ACTIONS) == set(Action) - {
+        Action.ASIGNAR,
+        Action.DESASIGNACION,
+        Action.AUTO_CIERRE,
     }
-    assert set(ACTION_BY_SLUG) == {"start", "hold", "resume"}
+    assert set(ACTION_BY_SLUG) == {
+        "start",
+        "hold",
+        "resume",
+        "resolve",
+        "close",
+        "confirm",
+        "reject",
+        "close-exceptional",
+        "reopen",
+    }
 
 
 # --- Servicio: cambios de estado ------------------------------------------
@@ -615,10 +640,8 @@ def test_an_action_not_valid_from_the_current_state_is_rejected(
     "action",
     [
         Action.ASIGNAR,
-        Action.RESOLVER,
-        Action.CIERRE_DIRECTO,
-        Action.CONFIRMAR,
-        Action.REABRIR,
+        Action.DESASIGNACION,
+        Action.AUTO_CIERRE,
     ],
 )
 def test_actions_without_an_implementation_yet_are_rejected(
@@ -1224,7 +1247,7 @@ def text_of(html: str) -> str:
 
 
 @pytest.mark.parametrize("code", ["RESUELTO", "CERRADO"])
-def test_the_detail_offers_no_state_action_for_resolved_or_closed(
+def test_the_detail_offers_only_reopening_for_resolved_or_closed(
     client,
     app,
     catalog,
@@ -1235,9 +1258,12 @@ def test_the_detail_offers_no_state_action_for_resolved_or_closed(
     set_state(app, public_id, code)
     login(client, staff)
 
-    assert "/status/" not in client.get(f"/tickets/{public_id}").get_data(
-        as_text=True
-    )
+    html = client.get(f"/tickets/{public_id}").get_data(as_text=True)
+
+    assert f"/tickets/{public_id}/status/reopen" in html
+
+    for slug in ("start", "hold", "resume", "resolve", "close"):
+        assert f"/status/{slug}" not in html
 
 
 def test_the_requester_does_not_see_state_actions(

@@ -91,6 +91,80 @@ def can_change_state(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+# Códigos de estado que las políticas necesitan. Repiten los de `Estado` para
+# que este módulo no dependa de los modelos; un test comprueba que coinciden.
+CLOSED_STATE = "CERRADO"
+RESOLVED_STATE = "RESUELTO"
+
+
+def can_resolve_ticket(user) -> bool:
+    """Marcar un ticket como Resuelto (docs/04, RF-046; docs/03, sección 5):
+    el personal. El Solicitante nunca resuelve; solo valida la solución."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_close_directly(user) -> bool:
+    """Cerrar un ticket sin pasar por Resuelto (docs/06, RN-60 y RN-61): el
+    Técnico, el Supervisor y el Administrador."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_close_exceptionally(user) -> bool:
+    """Cierre excepcional de un ticket Resuelto (docs/04, RF-054): solo el
+    Supervisor y el Administrador."""
+    return has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR)
+
+
+def is_current_requester(user, ticket) -> bool:
+    """Un Solicitante activo que figura como solicitante vigente del ticket
+    (sin `fecha_retiro`). El creador que fue retirado como solicitante deja de
+    serlo: puede seguir viendo el ticket, pero ya no responde por él."""
+    if not has_any_role(user, RoleCode.SOLICITANTE):
+        return False
+
+    return any(
+        requester.solicitante_id == user.id and requester.fecha_retiro is None
+        for requester in ticket.solicitantes
+    )
+
+
+def can_validate_resolution(user, ticket) -> bool:
+    """Confirmar o rechazar la solución de un ticket Resuelto (docs/06, RN-53
+    a RN-55): cualquiera de sus solicitantes vigentes. La confirmación de uno
+    solo basta para cerrar el ticket. Que el ticket esté en Resuelto lo decide
+    `tickets.lifecycle`."""
+    return is_current_requester(user, ticket)
+
+
+def can_reopen_ticket(user, ticket, *, now=None, window_days=None) -> bool:
+    """Reabrir un ticket (docs/06, RN-66, RN-69, RN-70 y RN-73).
+
+    - El personal reabre un ticket Resuelto o Cerrado sin límite de tiempo.
+    - Un solicitante vigente solo reabre un ticket **Cerrado**, dentro de
+      `REOPEN_WINDOW_DAYS` desde el cierre (30 por defecto). Si está Resuelto
+      no reabre: rechaza la solución.
+
+    Que el ticket esté en un estado desde el que se puede reabrir lo decide
+    `tickets.lifecycle`. `now` y `window_days` permiten comprobarlo sin reloj
+    ni configuración.
+    """
+    if has_any_role(user, *STAFF_ROLES):
+        return True
+
+    if not is_current_requester(user, ticket):
+        return False
+
+    if ticket.estado.codigo != CLOSED_STATE or ticket.fecha_cierre is None:
+        return False
+
+    if window_days is None:
+        window_days = current_app.config["REOPEN_WINDOW_DAYS"]
+
+    now = datetime.now(UTC) if now is None else now
+
+    return now - ticket.fecha_cierre <= timedelta(days=window_days)
+
+
 def can_assign_self(user) -> bool:
     """Asignarse (y dejar de estar asignado) a un ticket (docs/03, sección 5).
 

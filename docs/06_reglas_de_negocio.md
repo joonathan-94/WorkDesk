@@ -1570,6 +1570,49 @@ Aplica y precisa RN-81 a RN-84 y RF-072 a RF-076 en la implementación de `v0.4.
 
 ---
 
+## RN-161 — Resolución, validación, cierre y reapertura
+
+Aplica y precisa RN-53 a RN-73 y RF-046 a RF-060 en la implementación de `v0.4.0` (entrega 9). Todas las acciones son cambios de estado (`tickets/lifecycle.py`, función `change_state`): validan la transición contra `transiciones_estados`, bloquean la fila del ticket, comprueban la versión y suben `version`.
+
+**Quién ejecuta cada acción.**
+
+| Acción | Quién | Desde | Hacia |
+| --- | --- | --- | --- |
+| Resolver | Técnico, Supervisor y Administrador | Nuevo, Asignado, En progreso, En espera | Resuelto |
+| Cierre directo | Técnico, Supervisor y Administrador | Nuevo, Asignado, En progreso, En espera | Cerrado |
+| Confirmar la solución | Un solicitante vigente del ticket | Resuelto | Cerrado |
+| Rechazar la solución | Un solicitante vigente del ticket | Resuelto | En progreso |
+| Cierre excepcional | Supervisor y Administrador | Resuelto | Cerrado |
+| Reabrir | Personal sin límite; un solicitante vigente solo un ticket **Cerrado** dentro de `REOPEN_WINDOW_DAYS` (30) desde el cierre | Resuelto o Cerrado | En progreso |
+
+El personal nunca confirma ni rechaza por el solicitante, y el Solicitante nunca resuelve ni cierra directamente. Un solicitante retirado del ticket deja de poder responder o reabrir. Las rutas responden 404 si no se ve el ticket y 403 si se ve pero no se puede ejecutar la acción; el servicio vuelve a comprobar la política tras bloquear el ticket.
+
+**La regla del cierre.** Un ticket en estado `Cerrado` siempre tiene fecha de cierre y motivo de cierre. La base de datos solo garantiza que van juntos (`ck_tickets_cierre_coherente`); que existan cuando el estado es `Cerrado` lo aplica el servicio, porque depende del código del estado. Todo cierre pasa por un único lugar (`_closing_changes`), que fija en la misma operación el estado, `fecha_cierre`, `motivo_cierre_id`, `cerrado_por_usuario_id` y `cerrado_automaticamente = false`. Toda salida de `Resuelto` o `Cerrado` hacia el trabajo (rechazar o reabrir) limpia en la misma operación la resolución, la fecha de resolución y los cuatro datos del cierre. Los hechos anteriores no se pierden: quedan en el historial (la explicación de la solución viaja en el evento `TICKET_RESUELTO`).
+
+**Motivos de cierre.**
+
+* **Confirmación:** `RESOLUCION_VALIDADA`, fijado por el flujo (solo se puede llegar a él confirmando).
+* **Cierre directo:** el personal elige entre `CIERRE_DIRECTO` (por defecto) y `CANCELACION`; una cancelación no es un estado, es un cierre con ese motivo. Deben estar activos.
+* **Cierre excepcional:** `CIERRE_EXCEPCIONAL`, fijado por el flujo, con un motivo escrito obligatorio.
+* `DUPLICADO` lo fijará el flujo de duplicados (entrega 10) e `INACTIVIDAD` el cierre automático (`v0.5.0`): no se pueden elegir al cerrar directamente.
+* Los motivos que fija el flujo son estructurales: desactivarlos en el catálogo no impide que un solicitante confirme su ticket.
+
+**Textos.** La explicación de la solución al resolver es opcional (máx. 2000 caracteres), se guarda en `tickets.resolucion` y la ve quien ve el ticket (es lo que el solicitante revisa). Rechazar exige explicar por qué (máx. 500) y esa explicación es del propio solicitante: la ve quien ve el ticket. El texto de un cierre directo o excepcional (máx. 500) es una nota del equipo: solo la ve el personal, como el motivo de un cambio de prioridad. Confirmar admite un comentario opcional.
+
+**Validación del solicitante.** Cada respuesta queda en `validaciones` con su **ciclo de resolución**: cada entrada a `Resuelto` abre un ciclo nuevo (se deduce de los eventos `TICKET_RESUELTO`) y un solicitante responde una vez por ciclo. La confirmación de **cualquiera** de los solicitantes vigentes cierra el ticket completo. Tras un rechazo el ticket vuelve a En progreso y puede resolverse otra vez.
+
+**Reapertura.** Siempre vuelve a **En progreso**, conservando a los técnicos que participaron (la asignación se puede cambiar después). El comentario que explica la situación es un comentario público normal, posterior a la reapertura; reabrir no pide texto. Un ticket cerrado sigue siendo de solo lectura hasta que se reabre: la reapertura es la única acción de estado que admite.
+
+**Ticket resuelto sin solicitante.** Nadie puede confirmar; solo el Supervisor y el Administrador pueden cerrarlo mediante el cierre excepcional. El cierre automático por inactividad (RN-58 y RN-59) llega con el planificador de `v0.5.0`.
+
+**Historial.** Cada acción deja su evento propio, con el estado anterior y el nuevo: `TICKET_RESUELTO` (con `ciclo` y la explicación), `VALIDACION_ACEPTADA` y `VALIDACION_RECHAZADA` (con `validacion_id`), `TICKET_CERRADO` (con el motivo de cierre y la acción) y `TICKET_REABIERTO` (con la acción y el estado del que viene). Confirmar deja `VALIDACION_ACEPTADA` y después `TICKET_CERRADO`; rechazar, `VALIDACION_RECHAZADA` y después `TICKET_REABIERTO`. Los cinco son públicos; los textos del personal viajan en `contexto["motivo"]`, que solo ve el personal.
+
+**Interfaz.** Cada acción tiene su pantalla de confirmación (`/tickets/<n>/status/<resolve|close|confirm|reject|close-exceptional|reopen>`), que funciona sin JavaScript. Cuando un ticket está Resuelto, el solicitante ve el aviso «¿Tu solicitud quedó resuelta?» con **Sí, está resuelto** y **No, necesito más ayuda** (UI-005A), y la explicación de la solución en su tarjeta. Un ticket cerrado muestra la fecha y el motivo del cierre en el resumen.
+
+**Fuera de esta entrega:** notificaciones de la resolución y la reapertura (`v0.5.0`), cierre automático (`v0.5.0`), duplicados (entrega 10), y configuración de `REOPEN_WINDOW_DAYS` desde la interfaz (`v0.7.0`; hasta entonces es una variable de entorno).
+
+---
+
 # 23. Concurrencia y edición
 
 ## RN-114 — Integridad ante concurrencia

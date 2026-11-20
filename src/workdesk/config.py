@@ -54,6 +54,13 @@ class Config:
         os.getenv("COMMENT_EDIT_WINDOW_MINUTES", "30")
     )
 
+    # Días, desde el cierre, durante los que un solicitante puede reabrir su
+    # ticket (docs/06, RN-73). El personal puede reabrir siempre. Pasará a la
+    # tabla `configuracion` cuando exista la administración (`v0.7.0`).
+    REOPEN_WINDOW_DAYS = int(
+        os.getenv("REOPEN_WINDOW_DAYS", "30")
+    )
+
     # Adjuntos (docs/10, secciones 61 a 69). Pasarán a la tabla
     # `configuracion` cuando exista la administración (`v0.7.0`).
     # Tamaño máximo de cada archivo, en bytes (10 MB por defecto).

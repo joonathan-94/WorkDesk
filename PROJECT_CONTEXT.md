@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-attachments
+feature/ticket-resolution-closing
 ```
 
-Entrega 8 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): archivos adjuntos de los tickets (almacenamiento local, validación, descarga autenticada), con sus pantallas y el seed de demostración ampliado (ver "Archivos adjuntos"). Incluye una migración.
+Entrega 9 de `v0.4.0 — Asignación, colaboración y ciclo de vida` (ver "Próximo hito"): resolución, validación del solicitante, cierre (directo, por confirmación y excepcional) y reapertura de los tickets, con la regla «un ticket cerrado tiene fecha y motivo de cierre», sus pantallas y el seed de demostración ampliado (ver "Resolución, validación, cierre y reapertura"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 7 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las entregas 1 a 8 de `v0.4.0` (la 7, comentarios y notas internas, es el PR #30 y la 8, adjuntos, el PR #31): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), más un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29).
 
 `v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -100,8 +100,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Integrada (PR #27) |
 | 6 | Agregar y retirar solicitantes tras crear el ticket | Integrada (PR #28) |
 | 7 | Comentarios públicos y notas internas | Integrada (PR #30) |
-| 8 | Adjuntos | En curso |
-| 9 | Resolución, validación del solicitante, cierre y reapertura | Pendiente |
+| 8 | Adjuntos | Integrada (PR #31) |
+| 9 | Resolución, validación del solicitante, cierre y reapertura | En curso |
 | 10 | Relaciones y duplicados | Pendiente |
 | 11 | Bloqueo temporal de edición | Pendiente |
 | 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Pendiente |
@@ -165,10 +165,10 @@ Su alcance está en `docs/12_roadmap.md` (fase 4): grupos, asignación de técni
 
 - el bloqueo temporal de edición (RN-115 a RN-117), que se suma al control de versión ya existente;
 - la pantalla de Estados y transiciones (UI-021), que sigue pendiente (entrega 12); la tabla de transiciones ya existe (entrega 3);
-- los eventos del historial que aún no existen (estado, asignación, comentarios, resolución y cierre). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
+- los eventos del historial (estado, asignación, comentarios, adjuntos, resolución y cierre; solo faltan los de relaciones). **Decidido:** el vocabulario vive solo en la aplicación (se eliminó el CHECK `ck_historial_ticket_tipo_evento`), así que cada evento nuevo se añade a `TicketEvent` sin migración (entrega 1, hecha);
 - dos previsiones de `docs/13` (sección 9) que no cambian el alcance: el historial distingue los eventos que ve el Solicitante de los internos mediante la columna `visibilidad` (entrega 1, hecha) y los comentarios y adjuntos se diseñan para tickets, sin generalizarlos por anticipado;
 - las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos (la de grupo ya existe: entrega 5);
-- la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado, y se aplicará en el servicio de cierre.
+- la regla "un ticket en estado `CERRADO` tiene fecha y motivo de cierre", que no puede expresarse en la base porque depende del código del estado: la aplica el servicio de cierre (entrega 9, hecha).
 
 ## Hito completado: v0.2.0
 
@@ -390,6 +390,7 @@ WorkDesk/
 │   ├── test_ticket_comments.py
 │   ├── test_ticket_policies.py
 │   ├── test_ticket_requesters.py
+│   ├── test_ticket_resolution.py
 │   ├── test_ticket_state_transitions.py
 │   ├── test_tickets_edit_routes.py
 │   ├── test_tickets_edit_service.py
@@ -447,6 +448,7 @@ SESSION_COOKIE_SECURE
 SESSION_IDLE_MINUTES
 SESSION_MAX_HOURS
 COMMENT_EDIT_WINDOW_MINUTES
+REOPEN_WINDOW_DAYS
 UPLOAD_MAX_BYTES
 UPLOAD_MAX_FILES_PER_TICKET
 UPLOADS_DIR
@@ -467,6 +469,7 @@ SESSION_COOKIE_SECURE=false
 SESSION_IDLE_MINUTES=30
 SESSION_MAX_HOURS=8
 COMMENT_EDIT_WINDOW_MINUTES=30
+REOPEN_WINDOW_DAYS=30
 UPLOAD_MAX_BYTES=10485760
 UPLOAD_MAX_FILES_PER_TICKET=20
 LOG_LEVEL=DEBUG
@@ -509,7 +512,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente catorce migraciones:
+Existen actualmente quince migraciones:
 
 ```text
 create_roles_table
@@ -526,6 +529,7 @@ create_groups_tables
 create_ticket_technicians_table_and_ticket_group
 create_comments_table
 create_attachments_table
+create_validations_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -738,7 +742,7 @@ Modelos en `models/ticket.py`, `models/ticket_requester.py`, `models/ticket_tech
 Entidad central. Campos principales: `public_id`, `titulo` (máximo 200 caracteres), `descripcion`, `creado_por_usuario_id` (creador original, no cambia), `categoria_id`, `prioridad_id`, `estado_id`, `ubicacion_id` (opcional), `resolucion`, las fechas y usuarios de modificación, resolución y cierre, `motivo_cierre_id`, `cerrado_automaticamente`, `version` (control optimista, inicia en 1) y `activo` (desactivación lógica excepcional, no equivale a un ticket cerrado).
 
 - **`public_id`:** lo genera la secuencia de PostgreSQL `tickets_public_id_seq` (segura ante concurrencia), se guarda como texto y la interfaz lo mostrará como `#N`. Para ordenar por antigüedad se usa `id` o las fechas, no `public_id`.
-- **Restricciones:** `version >= 1`; `fecha_cierre` y `motivo_cierre_id` van siempre juntos o ambos vacíos; un cierre automático no tiene usuario que cierra. Que un ticket en estado `CERRADO` tenga fecha y motivo de cierre no puede expresarse en la base (depende del código del estado en otra tabla): lo aplicará el servicio de cierre de `v0.4.0`.
+- **Restricciones:** `version >= 1`; `fecha_cierre` y `motivo_cierre_id` van siempre juntos o ambos vacíos; un cierre automático no tiene usuario que cierra. Que un ticket en estado `CERRADO` tenga fecha y motivo de cierre no puede expresarse en la base (depende del código del estado en otra tabla): lo aplica el servicio de cierre de `tickets/lifecycle.py` (ver "Resolución, validación, cierre y reapertura").
 - **Grupo (`grupo_id`, opcional, FK a `grupos`):** lo fijan el Supervisor y el Administrador (ver "Asignación"). **Aún sin** impacto ni urgencia: sus catálogos llegan en fases posteriores, y las columnas se añadirán entonces.
 - Índices por estado, prioridad, categoría, ubicación, fecha de creación, fecha de cierre y creador; todas las claves foráneas son `ON DELETE RESTRICT`.
 
@@ -748,7 +752,7 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 
 ## Historial (`historial_ticket`)
 
-Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO` y `ARCHIVO_ELIMINADO`; los de resolución, cierre y relaciones se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO` y `TICKET_REABIERTO`; los de relaciones se añaden en `v0.4.0`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Se usará desde la entrega 3.
 
 **Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, sin migración.
 
@@ -829,6 +833,37 @@ Reglas completas en `docs/06` (RN-155). Las reglas están en `tickets/editing.py
 
 
 
+
+## Resolución, validación, cierre y reapertura (entrega 9 de `v0.4.0`)
+
+Reglas completas en `docs/06` (RN-161) y `docs/09` (16.1). Todas las acciones son cambios de estado y pasan por `change_state` (`tickets/lifecycle.py`; la sección "Estados y transiciones" describe el mecanismo común). **Incluye una migración** (`create_validations_table`).
+
+**Modelo** (`models/validation.py`, `Validation`, tabla `validaciones`): `ticket_id`, `solicitante_id`, `ciclo_resolucion`, `tipo_validacion` (`ValidationType`: `ACEPTADA` o `RECHAZADA`), `motivo_rechazo`, `comentario_adicional` y `fecha_validacion` (la pone la base de datos). `CHECK` de ciclo mayor o igual a 1, de tipo válido y de que un rechazo siempre lleve motivo no vacío; `UNIQUE (ticket_id, solicitante_id, ciclo_resolucion)`. No hay tabla de resoluciones: el ciclo en curso es el número de eventos `TICKET_RESUELTO` del ticket (cada entrada a `Resuelto` abre uno nuevo). `Ticket.motivo_cierre` es una relación nueva.
+
+**Acciones** (`STATE_ACTIONS`, además de las operativas):
+
+| Acción (`slug`) | Quién | Desde → hacia | Texto |
+| --- | --- | --- | --- |
+| `RESOLVER` (`resolve`) | personal | Nuevo, Asignado, En progreso o En espera → Resuelto | explicación de la solución, opcional, máx. 2000, en `tickets.resolucion` |
+| `CIERRE_DIRECTO` (`close`) | personal | los mismos cuatro → Cerrado | opcional, solo personal; motivo `CIERRE_DIRECTO` (por defecto) o `CANCELACION` |
+| `CONFIRMAR` (`confirm`) | un solicitante vigente | Resuelto → Cerrado | comentario opcional (en `validaciones`); motivo `RESOLUCION_VALIDADA` |
+| `RECHAZAR` (`reject`) | un solicitante vigente | Resuelto → En progreso | **obligatorio**, público; limpia la resolución |
+| `CIERRE_EXCEPCIONAL` (`close-exceptional`) | Supervisor y Administrador | Resuelto → Cerrado | **obligatorio**, solo personal; motivo `CIERRE_EXCEPCIONAL` |
+| `REABRIR` (`reopen`) | personal siempre; un solicitante vigente solo un ticket **Cerrado** dentro de `REOPEN_WINDOW_DAYS` desde el cierre | Resuelto o Cerrado → En progreso | sin texto |
+
+**Políticas** (`security/authorization.py`): `can_resolve_ticket`, `can_close_directly`, `can_close_exceptionally`, `is_current_requester` (Solicitante activo con participación vigente, sin `fecha_retiro`), `can_validate_resolution(user, ticket)` y `can_reopen_ticket(user, ticket, now=, window_days=)`. `CLOSED_STATE` y `RESOLVED_STATE` repiten los códigos de estado para que ese módulo no dependa de los modelos (un test comprueba que coinciden). Las políticas de las acciones de estado tienen ahora la firma `(usuario, ticket)` (`_by_role` adapta las que solo miran el rol).
+
+**La regla del cierre.** Un ticket `CERRADO` siempre tiene fecha y motivo de cierre (lo que antes quedó pendiente de esta entrega). Todo cierre pasa por `_closing_changes` y toda salida de `Resuelto` o `Cerrado` hacia el trabajo (`RECHAZAR` y `REABRIR`) por `_CLEARED_FIELDS`, en el mismo `UPDATE` versionado que cambia el estado: no hay otro camino que escriba esos campos, así que nunca queda un ticket cerrado sin fecha ni motivo, ni uno abierto con datos de cierre. Los motivos de la confirmación y del cierre excepcional son estructurales (se buscan por código aunque estén desactivados, para que desactivarlos en el catálogo no impida cerrar); los del cierre directo deben estar activos y solo se ofrecen `CIERRE_DIRECTO` y `CANCELACION`. `DUPLICADO` (entrega 10) e `INACTIVIDAD` (`v0.5.0`) no se pueden elegir.
+
+**Servicio.** `change_state(..., close_reason_id=)` añade el motivo de cierre. Tras bloquear el ticket y refrescar sus solicitantes: un ticket cerrado solo admite `REABRIR` (el resto lanza `TicketClosedError`), la versión debe coincidir, **la política de la acción se vuelve a comprobar** (`StateTransitionError`: «No puedes realizar esta acción sobre este ticket.», pues una confirmación registra al actor como solicitante) y debe existir la transición activa. Dos solicitantes que confirman a la vez cierran el ticket una vez (el segundo recibe `TicketClosedError`; hay un test con dos hilos). `list_close_reasons(info)` entrega los motivos que ofrece la pantalla.
+
+**Historial.** Cada acción deja su evento propio, con los estados anterior y nuevo, en vez de `ESTADO_CAMBIADO` (que queda para las acciones operativas): `TICKET_RESUELTO` (`valor_nuevo` con `resolucion` y `ciclo`), `VALIDACION_ACEPTADA` y `VALIDACION_RECHAZADA` (con `contexto["validacion_id"]` y, en el rechazo, `motivo_rechazo`), `TICKET_CERRADO` (`valor_nuevo["motivo_cierre"]` y `contexto["motivo_cierre"]`) y `TICKET_REABIERTO` (`contexto["desde"]`). Confirmar deja `VALIDACION_ACEPTADA` y luego `TICKET_CERRADO`; rechazar, `VALIDACION_RECHAZADA` y luego `TICKET_REABIERTO`. Los cinco son **públicos**. El texto de un cierre directo o excepcional va en `contexto["motivo"]` (solo lo ve el personal); el motivo de un rechazo, en `contexto["motivo_rechazo"]` (lo ve quien ve el ticket). `describe_history_changes` muestra el cambio de estado, la resolución y el motivo de cierre.
+
+**Pantallas** (`GET, POST /tickets/<n>/status/<slug>`; 404 si no se ve el ticket, 403 si la política de la acción no lo permite, aviso si la acción ya no corresponde al estado; un ticket cerrado solo abre `reopen`). La pantalla (`state_change.html`) muestra, según la acción, el selector de motivo de cierre y el campo de texto (etiqueta, obligatoriedad y límite de `StateActionInfo`); `StateChangeForm` recibe esos datos y valida el límite y la obligatoriedad. La cabecera del detalle ofrece los botones de estado (principales o secundarios según `StateActionInfo.primary`); confirmar y rechazar no son botones de cabecera: el solicitante los ve en el aviso de `Resuelto` (UI-005A). El detalle añade la tarjeta **Resolución** y, en el resumen, **Resuelto** y **Cerrado** con su motivo. `_render_detail` separa `validation_actions` de `state_actions`.
+
+**Configuración:** `REOPEN_WINDOW_DAYS` (30, variable de entorno validada al iniciar como los límites de sesión; pasará a la configuración administrable en `v0.7.0`).
+
+**Seed demo:** `DemoAdjustment` admite `motivo_cierre` y las acciones `RESOLVER`, `CIERRE_DIRECTO`, `CIERRE_EXCEPCIONAL`, `CONFIRMAR`, `RECHAZAR` y `REABRIR` en `estado` (ver "22. CLI"), con siete tickets nuevos (72 en total).
 
 ## Archivos adjuntos (entrega 8 de `v0.4.0`)
 
@@ -981,14 +1016,14 @@ Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en 
 
 **Seed:** `seed-catalogs` carga las 20 transiciones de la matriz de `docs/08` (sección 34) más `DESASIGNACION` (Asignado → Nuevo al quitar al último técnico, que `docs/08` no lista) y `AUTO_CIERRE` (cargada pero sin uso hasta el cierre automático de `v0.5.0`). Es idempotente por (origen, destino, acción) y **no pisa una transición que el Administrador haya deshabilitado**. El comando informa `transiciones: N`. Quien tenga una base anterior debe volver a ejecutar `seed-catalogs`.
 
-**Acciones implementadas hoy** (`STATE_ACTIONS`): iniciar el trabajo (`INICIAR`, Nuevo o Asignado → En progreso), poner en espera (`PONER_EN_ESPERA`, En progreso → En espera) y reactivar (`REACTIVAR`, En espera → En progreso). Las demás acciones de la tabla se añaden a `STATE_ACTIONS` cuando llega su funcionalidad (asignar en la entrega 5; resolver, cerrar y reabrir en la 9): hasta entonces `change_state` las rechaza con `StateTransitionError`. Cada acción es un `StateActionInfo` (ruta, texto, icono, mensaje y política de rol).
+**Acciones implementadas hoy** (`STATE_ACTIONS`): iniciar el trabajo (`INICIAR`, Nuevo o Asignado → En progreso), poner en espera (`PONER_EN_ESPERA`, En progreso → En espera) y reactivar (`REACTIVAR`, En espera → En progreso). Resolver, cerrar, confirmar, rechazar y reabrir se añadieron en la entrega 9 (ver "Resolución, validación, cierre y reapertura"). Las demás acciones de la tabla (`ASIGNAR` y `DESASIGNACION`, derivadas de la asignación, y `AUTO_CIERRE`, del planificador de `v0.5.0`) no están en `STATE_ACTIONS`: `change_state` las rechaza con `StateTransitionError`. Cada acción es un `StateActionInfo` (ruta, texto, icono, mensaje y política de rol).
 
 **Política:** `can_change_state(user)` (Técnico, Supervisor y Administrador; el Solicitante no cambia estados operativos). Que la transición exista desde el estado actual lo decide `available_actions` / `change_state`.
 
 **Servicio** (`tickets/lifecycle.py`, sin commit):
 
-- `available_actions(ticket, user)`: las acciones que ese usuario puede ejecutar ahora (implementada, transición activa desde el estado actual y política de rol), con su estado de destino. Un ticket cerrado no ofrece ninguna.
-- `change_state(ticket, actor=, action=, expected_version=, wait_reason_id=, text=)`: bloquea la fila del ticket (`SELECT ... FOR UPDATE`) y la vuelve a leer, así que la transición se valida contra el estado real; comprueba el ticket cerrado (`TicketClosedError`), la versión (`TicketConflictError`) y que exista una transición activa desde el estado actual (`StateTransitionError`); aplica el cambio con `apply_ticket_changes` (sube la versión) y registra `ESTADO_CAMBIADO` con el estado anterior y el nuevo (columnas `estado_anterior_id` y `estado_nuevo_id`, snapshots en `valor_anterior` y `valor_nuevo`) y `contexto["accion"]`. Dos personas que actúan a la vez producen una sola transición (hay un test con dos hilos).
+- `available_actions(ticket, user)`: las acciones que ese usuario puede ejecutar ahora (implementada, transición activa desde el estado actual y política de rol), con su estado de destino. Un ticket cerrado solo ofrece reabrirlo.
+- `change_state(ticket, actor=, action=, expected_version=, wait_reason_id=, text=, close_reason_id=)`: bloquea la fila del ticket (`SELECT ... FOR UPDATE`) y la vuelve a leer, así que la transición se valida contra el estado real; comprueba el ticket cerrado (`TicketClosedError`), la versión (`TicketConflictError`) y que exista una transición activa desde el estado actual (`StateTransitionError`); aplica el cambio con `apply_ticket_changes` (sube la versión) y registra `ESTADO_CAMBIADO` con el estado anterior y el nuevo (columnas `estado_anterior_id` y `estado_nuevo_id`, snapshots en `valor_anterior` y `valor_nuevo`) y `contexto["accion"]`. Dos personas que actúan a la vez producen una sola transición (hay un test con dos hilos).
 - **Motivo de espera:** solo con `PONER_EN_ESPERA` y siempre opcional. El motivo debe estar activo (`motivo_espera_id` del evento) y un texto libre (máx. 500 caracteres, `contexto["motivo"]`) exige un motivo con `permite_texto_otro`. El resto de acciones rechaza motivo y texto.
 - Los cambios de estado **suben `version`**, como la edición y la prioridad.
 
@@ -1494,7 +1529,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
 
-- carga 65 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- carga 72 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
 - **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario`, `nota_interna` y `adjunto`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
 - necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
 - usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
@@ -1509,6 +1544,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - **solicitantes agregados y retirados:** los cuatro últimos de la lista (bloque "Tickets con solicitantes agregados y retirados") cambian de solicitantes después de crearse. Sus filas de `tickets_solicitantes` también tienen fechas propias: se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["participacion_id"]`), en una sola actualización por fila para que un retiro nunca preceda a su asociación; los solicitantes de la creación siguen a la fecha de creación. Ver "Solicitantes del ticket";
 - **comentarios y notas internas:** los cinco últimos de la lista (bloque "Tickets con comentarios y notas internas") tienen una conversación: respuestas del personal, comentarios de un Solicitante y notas internas (uno con más notas que comentarios públicos). Un paso con `comentario` escrito por un Solicitante debe ser solo ese comentario y su actor, el creador o un solicitante del ticket en ese momento (la validación lo simula); el comentario público se escribe antes que la nota y ambos antes del cambio de estado. Los comentarios tienen fechas propias (`fecha_creacion`, `fecha_modificacion` y `fecha_eliminacion`): se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["comentario_id"]`), también las ediciones y eliminaciones hechas a mano. Los comentarios no suben la versión del ticket, así que no mueven su fecha de modificación. Ver "Comentarios y notas internas";
 - **archivos adjuntos:** los dos últimos de la lista (bloque "Tickets con archivos adjuntos") llevan archivos reales de texto (`adjunto=("nombre.log", "contenido")`, solo `.txt`, `.log` o `.csv`), guardados con el servicio real en `UPLOADS_DIR` (`instance/uploads`; en los tests, un directorio temporal). El archivo cuelga del comentario público del paso, si no de la nota y si no, del ticket. Las fechas (`fecha_subida`, `fecha_eliminacion`) se escriben al crear y se refrescan siguiendo a sus eventos (`contexto["archivo_id"]`); volver a ejecutar el seed no duplica archivos. Ver "Archivos adjuntos".
+- **resolución, cierre y reapertura:** los siete últimos de la lista (bloque "Tickets con resolución, cierre y reapertura") recorren cada camino: uno Resuelto pendiente de validación, uno confirmado por su solicitante (cerrado con `RESOLUCION_VALIDADA`), uno rechazado y resuelto por segunda vez (dos ciclos), un cierre directo sin solicitante, una cancelación (cierre directo con `motivo_cierre="CANCELACION"`), uno Resuelto sin solicitante cerrado por un Supervisor (cierre excepcional) y uno cerrado y reabierto. Los pasos usan `estado` con `RESOLVER`, `CIERRE_DIRECTO`, `CIERRE_EXCEPCIONAL`, `CONFIRMAR`, `RECHAZAR` o `REABRIR` y `texto` (la solución, el motivo de un rechazo o de un cierre) y los ejecutan los servicios reales. `CONFIRMAR` y `RECHAZAR` los ejecuta un Solicitante que sea solicitante del ticket en ese momento (el paso no puede cambiar nada más salvo su comentario público); `CIERRE_EXCEPCIONAL`, un Supervisor; y un ticket cerrado solo admite un paso `REABRIR`, solo. Las fechas de la resolución y el cierre (`tickets.fecha_resolucion` y `fecha_cierre`) y de cada validación (`validaciones.fecha_validacion`) se escriben al crear y se refrescan siguiendo a sus eventos (`TICKET_RESUELTO`, `TICKET_CERRADO` y `contexto["validacion_id"]`), también los hechos a mano; una reapertura hecha a mano deja el ticket sin fechas de cierre. Ver "Resolución, validación, cierre y reapertura".
 
 ---
 
@@ -1544,6 +1580,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 9 de `v0.4.0` (resolución, cierre y reapertura):
+
+```text
+1866 tests passing
+```
+
+Los 136 tests nuevos cubren:
+
+- `tests/test_ticket_resolution.py` (107): **constantes y configuración** (los códigos de estado de las políticas coinciden con el catálogo, `REOPEN_WINDOW_DAYS` vale 30 y la aplicación no arranca con 0 o negativo, los cinco eventos son públicos y tienen nombre); **políticas** (resolver y cerrar por rol, solo Supervisor y Administrador cierran de forma excepcional, solo un solicitante vigente valida —no otro Solicitante, ni el creador que no figura como solicitante, ni uno retirado, ni el personal—, la reapertura del personal sin límite y la del solicitante solo con el ticket Cerrado y dentro del plazo, con el límite exacto y la configuración); **base de datos** (`validaciones` rechaza un tipo inválido, un ciclo 0, un rechazo sin motivo y un duplicado en el mismo ciclo, pero admite el ciclo siguiente); **resolver** (desde los cuatro estados abiertos, evento público con el ciclo, texto opcional con límite de 2000 exacto, no se resuelve dos veces, conserva a los técnicos, conflicto de versión); **cierre directo** (desde los cuatro estados, evento propio con la acción y el motivo, cancelación, motivos de otros caminos rechazados, motivos inactivos o desconocidos, no desde Resuelto, el motivo solo en el cierre directo); **confirmar** (cierra con `RESOLUCION_VALIDADA`, registra la validación y los dos eventos en orden, basta uno de varios solicitantes, solo un solicitante vigente, funciona aunque el motivo esté desactivado, **dos solicitantes a la vez cierran una sola vez**); **rechazar** (exige explicar, limpia la resolución, deja la validación y los dos eventos, conserva a los técnicos, cada resolución abre un ciclo nuevo y la primera explicación sobrevive); **cierre excepcional** (Supervisor, motivo obligatorio, solo desde Resuelto, un Técnico no, y el ticket sin solicitante); **reabrir** (limpia el cierre y conserva el historial y los técnicos, el personal sin límite, el solicitante solo dentro del plazo, un ticket abierto no se reabre, un ticket cerrado rechaza todo lo demás, se puede resolver y cerrar de nuevo); la **regla del cierre en los tres caminos** (cerrado siempre con fecha y motivo, abierto nunca con datos de cierre); el **historial** (el Solicitante recibe los cinco eventos, líneas legibles); y las **pantallas** (botones del Técnico, resolver con su tarjeta y su fecha, límite del texto, los dos motivos del cierre directo, cancelación, aviso de validación solo para un solicitante vigente, confirmar, rechazar con su explicación, qué ve cada rol del motivo del rechazo y de las notas de cierre, 403 y 404 en cada pantalla, cierre excepcional, reapertura por el personal y por el solicitante dentro y fuera del plazo, conflicto de versión).
+- `tests/test_seed_demo_tickets.py` (+31): validación de los pasos nuevos (quién ejecuta cada acción, textos obligatorios y límites, motivos de cierre, transiciones inexistentes, un ticket cerrado solo admite reabrirlo), que los datos cubran los seis caminos, el historial de cada ticket nuevo, las fechas de resolución, cierre y validación con las de sus eventos, lo que ve cada rol, y el refresco de esas fechas (también un cierre y una reapertura hechos a mano). Las instantáneas incluyen ahora la resolución, el cierre y las validaciones.
+- `tests/test_ticket_state_transitions.py` (-2, ajustes por diseño): las acciones disponibles por estado incluyen resolver y cerrar y un ticket Resuelto o Cerrado ofrece reabrir; ahora están implementadas todas las acciones salvo las derivadas y la del sistema; el detalle de un ticket Resuelto o Cerrado ofrece solo reabrir. Se cambiaron esas comprobaciones porque describían el alcance anterior, no para que pasen.
 
 Estado tras la entrega 8 de `v0.4.0` (adjuntos):
 
@@ -2231,7 +2279,7 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 Nada de `v0.2.0` ni de `v0.3.0`. Lo que falta pertenece a `v0.4.0` y a las fases posteriores (lo que `v0.3.0` dejó decidido para `v0.4.0` está en "Próximo hito"):
 
-- `v0.4.0`: cambios de estado, asignación, comentarios, notas internas, adjuntos, resolución y cierre, y el bloqueo temporal de edición (RN-115 a RN-117);
+- `v0.4.0`: relaciones y duplicados, el bloqueo temporal de edición (RN-115 a RN-117) y la pantalla de Estados y transiciones; el resto (estados, asignación, comentarios, notas internas, adjuntos, resolución, cierre y reapertura) ya existe;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
 - `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;
