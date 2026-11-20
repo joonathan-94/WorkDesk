@@ -1,0 +1,88 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb, priority_badge %}
+
+{% block title %}{{ title }}: ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ('Tickets', url_for('tickets.list_tickets_page')),
+        ('#' ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        (title, None),
+    ]) }}
+
+    {{ page_header(title, '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    {# Otra persona tiene reservada la edición (RN-115 y RN-116). Esta pantalla
+       es de solo lectura: se puede consultar, no editar. #}
+    <div
+        class="alert alert-info"
+        role="status"
+    >
+        <p class="fw-semibold mb-1">
+            <i
+                class="bi bi-lock me-1"
+                aria-hidden="true"
+            ></i>
+            {{ lock.usuario.nombre }} {{ lock.usuario.apellido }} está editando
+            este ticket.
+        </p>
+
+        <p class="mb-0">
+            Puedes consultarlo, pero no editarlo hasta que termine. Está
+            editándolo desde {{ lock.fecha_inicio|local_datetime }}; si cierra
+            la pantalla o pierde la conexión, el ticket se libera solo a más
+            tardar a las {{ lock.fecha_expiracion|local_datetime }}.
+        </p>
+    </div>
+
+    <section
+        class="card mb-4"
+        aria-labelledby="readonly-title"
+    >
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="readonly-title"
+            >
+                Datos actuales del ticket
+            </h2>
+
+            <dl class="mb-0">
+                <dt class="small text-secondary fw-normal">Título</dt>
+                <dd class="text-break">{{ ticket.titulo }}</dd>
+
+                <dt class="small text-secondary fw-normal">Descripción</dt>
+                <dd class="ticket-text">{{ ticket.descripcion }}</dd>
+
+                <dt class="small text-secondary fw-normal">Categoría</dt>
+                <dd>{{ ticket.categoria.nombre }}</dd>
+
+                <dt class="small text-secondary fw-normal">Ubicación</dt>
+                <dd>{{ ticket.ubicacion.nombre if ticket.ubicacion else '—' }}</dd>
+
+                <dt class="small text-secondary fw-normal">Prioridad</dt>
+                <dd class="mb-0">{{ priority_badge(ticket.prioridad) }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <div class="d-flex gap-2">
+        <a
+            class="btn btn-primary"
+            href="{{ retry_url }}"
+        >
+            <i
+                class="bi bi-arrow-repeat me-1"
+                aria-hidden="true"
+            ></i>
+            Volver a intentar
+        </a>
+
+        <a
+            class="btn btn-outline-secondary"
+            href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+        >
+            Volver al ticket
+        </a>
+    </div>
+{% endblock %}

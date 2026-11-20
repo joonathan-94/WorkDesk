@@ -1887,6 +1887,8 @@ COMMIT
 
 La restricción única impedirá mantener dos bloqueos no liberados para el mismo ticket.
 
+**Implementación (`v0.4.0`, entrega 11).** `tickets/locking.py` (`acquire_edit_lock`, `release_edit_lock` y `current_edit_lock`). Adquirir y renovar son la misma operación idempotente. Las pantallas que lo usan son `/tickets/<n>/edit` y `/tickets/<n>/priority` (comparten un bloqueo por ticket). La renovación y la liberación son dos rutas JSON (`POST /tickets/<n>/lock/renew` y `/lock/release`, con CSRF) que llama `static/js/tickets/edit-lock.js`; **no existen** las rutas `/api/v1/...` que sugerían los primeros borradores: WorkDesk no tiene una API aparte, son rutas del propio monolito. El tiempo de vida (120 s) y el latido (45 s) son `EDIT_LOCK_TTL_SECONDS` y `EDIT_LOCK_HEARTBEAT_SECONDS`.
+
 ---
 
 # 75. Control optimista

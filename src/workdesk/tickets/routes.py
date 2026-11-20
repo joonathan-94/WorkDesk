@@ -4,6 +4,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -95,6 +96,7 @@ from .lifecycle import (
     change_state,
     list_close_reasons,
 )
+from .locking import acquire_edit_lock, current_edit_lock, release_edit_lock
 from .relations import (
     KIND_DUPLICATE_OF,
     KIND_PRINCIPAL_OF,
@@ -376,6 +378,19 @@ def _render_detail(ticket, comment_form):
     show_relations = can_manage_relations(current_user)
     relation_views = list_relations(ticket) if show_relations else []
 
+    # Quién está editando ahora (RN-116): solo se muestra al personal que
+    # podría editar, y nunca a quien tiene el bloqueo.
+    editing_lock = (
+        current_edit_lock(ticket)
+        if can_edit_ticket(current_user) and not is_closed
+        else None
+    )
+    other_editor = (
+        editing_lock.usuario
+        if editing_lock is not None and editing_lock.usuario_id != current_user.id
+        else None
+    )
+
     return render_template(
         "tickets/detail.html",
         ticket=ticket,
@@ -406,6 +421,7 @@ def _render_detail(ticket, comment_form):
         # la consulta). Cada ruta vuelve a comprobar la autorización.
         show_relations=show_relations,
         relation_views=relation_views,
+        other_editor=other_editor,
         can_edit_relations=show_relations and not is_closed,
         KIND_DUPLICATE_OF=KIND_DUPLICATE_OF,
         KIND_PRINCIPAL_OF=KIND_PRINCIPAL_OF,
@@ -431,6 +447,20 @@ def edit_ticket(public_id: str):
 
     if _is_closed(ticket):
         return _closed_redirect(ticket)
+
+    # El ticket queda reservado para quien lo edita (RN-115): si otra persona
+    # lo tiene, solo se puede consultar. La versión sigue siendo la barrera
+    # final al guardar.
+    holder = _hold_edit_lock(ticket)
+
+    if holder is not None:
+        return _render_locked(
+            ticket,
+            holder,
+            title="Editar ticket",
+            retry_url=url_for("tickets.edit_ticket", public_id=public_id),
+            saved_nothing=request.method == "POST",
+        )
 
     # Solo al abrir el formulario se rellena con los datos actuales; al
     # enviarlo manda lo que se envió.
@@ -465,6 +495,8 @@ def edit_ticket(public_id: str):
                 category_id=form.categoria.data,
                 location_id=form.ubicacion.data,
             )
+            # Terminó de editar: otra persona ya puede hacerlo.
+            release_edit_lock(ticket, _actor())
             db.session.commit()
         except TicketConflictError as error:
             # Otra persona lo modificó: se vuelven a mostrar los datos
@@ -495,6 +527,7 @@ def edit_ticket(public_id: str):
         form=form,
         max_title=MAX_TITLE_LENGTH,
         max_description=MAX_DESCRIPTION_LENGTH,
+        **_lock_context(ticket),
     )
 
 
@@ -508,6 +541,17 @@ def change_ticket_priority(public_id: str):
 
     if _is_closed(ticket):
         return _closed_redirect(ticket)
+
+    holder = _hold_edit_lock(ticket)
+
+    if holder is not None:
+        return _render_locked(
+            ticket,
+            holder,
+            title="Cambiar prioridad",
+            retry_url=url_for("tickets.change_ticket_priority", public_id=public_id),
+            saved_nothing=request.method == "POST",
+        )
 
     initial = {"version": ticket.version} if request.method == "GET" else {}
 
@@ -536,6 +580,7 @@ def change_ticket_priority(public_id: str):
                 priority_id=form.prioridad.data,
                 reason=form.motivo.data,
             )
+            release_edit_lock(ticket, _actor())
             db.session.commit()
         except TicketConflictError as error:
             db.session.rollback()
@@ -568,7 +613,100 @@ def change_ticket_priority(public_id: str):
         ticket=ticket,
         form=form,
         max_reason=MAX_REASON_LENGTH,
+        **_lock_context(ticket),
     )
+
+
+# --- Bloqueo temporal de edición --------------------------------------
+
+
+def _hold_edit_lock(ticket):
+    """Adquiere (o renueva) el bloqueo de edición para el usuario actual y lo
+    confirma. Devuelve el bloqueo de **otra persona** si ella lo tiene, o None
+    si ya es del usuario (RN-115)."""
+    status = acquire_edit_lock(ticket, _actor())
+    db.session.commit()
+
+    return None if status.mine else status.lock
+
+
+def _render_locked(ticket, lock, *, title, retry_url, saved_nothing=False):
+    """Pantalla de solo lectura: otra persona está editando el ticket (RN-116).
+    Se puede consultar, pero no editar hasta que termine o el bloqueo expire."""
+    if saved_nothing:
+        flash(
+            "No se guardó nada: otra persona está editando este ticket.",
+            "warning",
+        )
+
+    return render_template(
+        "tickets/edit_locked.html",
+        ticket=ticket,
+        lock=lock,
+        title=title,
+        retry_url=retry_url,
+    )
+
+
+def _lock_context(ticket) -> dict:
+    """Lo que necesita la pantalla de edición para renovar y liberar el
+    bloqueo mientras está abierta (mejora progresiva con JavaScript)."""
+    return {
+        "lock_renew_url": url_for("tickets.renew_ticket_lock", public_id=ticket.public_id),
+        "lock_release_url": url_for(
+            "tickets.release_ticket_lock", public_id=ticket.public_id
+        ),
+        "lock_heartbeat": current_app.config["EDIT_LOCK_HEARTBEAT_SECONDS"],
+        "lock_ttl_minutes": max(
+            1, round(current_app.config["EDIT_LOCK_TTL_SECONDS"] / 60)
+        ),
+    }
+
+
+@bp.post("/<public_id>/lock/renew")
+@login_required
+def renew_ticket_lock(public_id: str):
+    """Renueva el bloqueo de edición (latido de la pantalla de edición). Solo
+    afecta al bloqueo del usuario; responde JSON. 409 si otra persona lo tiene."""
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_edit_ticket(current_user):
+        abort(403)
+
+    if _is_closed(ticket):
+        return jsonify(ok=False, message="El ticket está cerrado."), 409
+
+    holder = _hold_edit_lock(ticket)
+
+    if holder is not None:
+        return (
+            jsonify(
+                ok=False,
+                message=(
+                    f"{holder.usuario.nombre} {holder.usuario.apellido} "
+                    "está editando este ticket."
+                ),
+            ),
+            409,
+        )
+
+    return jsonify(ok=True)
+
+
+@bp.post("/<public_id>/lock/release")
+@login_required
+def release_ticket_lock(public_id: str):
+    """Libera el bloqueo del usuario (al cancelar o salir de la pantalla). Nunca
+    toca el de otra persona; liberar sin tener bloqueo no es un error."""
+    ticket = _visible_ticket_or_404(public_id)
+
+    if not can_edit_ticket(current_user):
+        abort(403)
+
+    released = release_edit_lock(ticket, _actor())
+    db.session.commit()
+
+    return jsonify(ok=True, released=released)
 
 
 # --- Cambios de estado ------------------------------------------------

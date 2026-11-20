@@ -926,8 +926,8 @@ La fase se divide en 12 entregas pequeñas, cada una en su propia rama, con test
 7. **Comentarios y notas internas** ✓ (PR #30): comentarios públicos y notas internas con el filtro por tipo en la consulta, edición y eliminación con plazo para el autor, y el seed ampliado.
 8. **Adjuntos** ✓ (PR #31): almacenamiento local fuera de `static/`, validación por extensión y contenido, SHA-256, descarga autenticada y visibilidad heredada de la nota interna, con el seed ampliado.
 9. **Resolución, validación del solicitante, cierre y reapertura** ✓ (PR #32): resolver, confirmar o rechazar la solución, cierre directo y excepcional y reapertura, con la regla «cerrado ⇒ fecha y motivo de cierre», la tabla `validaciones`, el plazo de reapertura `REOPEN_WINDOW_DAYS` y el seed ampliado.
-10. **Relaciones y duplicados** (en curso): relacionar tickets, marcar un ticket como duplicado de otro (lo cierra con el motivo «Duplicado»), solo para el personal, con el seed ampliado.
-11. **Bloqueo temporal de edición** (RN-115 a RN-117).
+10. **Relaciones y duplicados** ✓ (PR #33): relacionar tickets, marcar un ticket como duplicado de otro (lo cierra con el motivo «Duplicado»), solo para el personal, con el seed ampliado.
+11. **Bloqueo temporal de edición** (en curso, RN-115 a RN-117): el ticket queda reservado mientras alguien edita sus datos o su prioridad, con aviso de quién edita, renovación mientras la pantalla está abierta y expiración automática; la versión sigue siendo la barrera final.
 12. **Pantalla de Estados y transiciones (UI-021)** y cierre de la versión.
 
 ### Implementación

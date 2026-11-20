@@ -61,6 +61,18 @@ class Config:
         os.getenv("REOPEN_WINDOW_DAYS", "30")
     )
 
+    # Bloqueo temporal de edición (docs/10, secciones 71 a 74). Segundos que
+    # dura un bloqueo sin renovarse y cada cuánto lo renueva la pantalla de
+    # edición mientras está abierta; el latido debe ser menor que la duración.
+    # Pasarán a la tabla `configuracion` cuando exista la administración
+    # (`v0.7.0`).
+    EDIT_LOCK_TTL_SECONDS = int(
+        os.getenv("EDIT_LOCK_TTL_SECONDS", "120")
+    )
+    EDIT_LOCK_HEARTBEAT_SECONDS = int(
+        os.getenv("EDIT_LOCK_HEARTBEAT_SECONDS", "45")
+    )
+
     # Adjuntos (docs/10, secciones 61 a 69). Pasarán a la tabla
     # `configuracion` cuando exista la administración (`v0.7.0`).
     # Tamaño máximo de cada archivo, en bytes (10 MB por defecto).

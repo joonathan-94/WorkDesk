@@ -1671,6 +1671,35 @@ El mecanismo técnico utilizado para controlar la concurrencia se definirá post
 
 ---
 
+## RN-163 — Bloqueo temporal de edición
+
+Aplica y precisa RN-114 a RN-117 en la implementación de `v0.4.0` (entrega 11), junto con el control de versión de RN-155 (que sigue siendo la barrera final).
+
+**Qué se bloquea.** La edición de los datos del ticket (`/tickets/<n>/edit`) y el cambio de su prioridad (`/tickets/<n>/priority`), que comparten **un único bloqueo por ticket**: quien tiene abierta una de las dos pantallas reserva el ticket para ambas. Los demás cambios (estado, asignación, solicitantes, comentarios, archivos, relaciones) son acciones puntuales y no se bloquean: confían en la versión del ticket o son aditivos. El Solicitante no edita, así que no bloquea ni ve quién edita.
+
+**Cómo funciona.**
+
+* **Al abrir** la pantalla se adquiere el bloqueo (se confirma en ese momento, también con un GET). Si otra persona lo tiene vigente, se muestra una pantalla de **solo lectura**: dice quién está editando (RN-116), desde cuándo y hasta cuándo como máximo, enseña los datos actuales del ticket y ofrece «Volver a intentar». No se puede editar.
+* **Mientras la pantalla está abierta**, un script la renueva cada `EDIT_LOCK_HEARTBEAT_SECONDS` (45 s) y el bloqueo dura `EDIT_LOCK_TTL_SECONDS` (120 s) sin renovarse. Si el servidor responde que otra persona lo tiene ahora, el script avisa y desactiva el botón de guardar.
+* **Se libera** al guardar, al cancelar o al salir de la pantalla (RN-117). Si el navegador se cierra o la conexión cae, el bloqueo **expira solo**. Un error de validación o un conflicto de versión no lo liberan: la persona sigue editando.
+* **Al guardar:** si ya no tiene el bloqueo pero nadie más lo tomó (por ejemplo, el suyo expiró), lo vuelve a adquirir y guarda; si otra persona lo tiene vigente, no se guarda nada y se le avisa («No se guardó nada: otra persona está editando este ticket»).
+* **En el detalle**, el personal que podría editar ve «X está editando este ticket» mientras otra persona tenga el bloqueo (nunca quien lo tiene, ni el Solicitante).
+* La misma persona con el ticket abierto en dos pestañas comparte su bloqueo.
+
+**Reglas.**
+
+* Un bloqueo está **vigente** cuando no se liberó y su expiración es futura. Nunca hay dos bloqueos no liberados del mismo ticket (índice único parcial en la base de datos). Como ese índice no puede depender de la hora, quien adquiere primero **libera de forma lógica el bloqueo expirado** que estorba, en la misma transacción y con la fila del ticket bloqueada (`SELECT ... FOR UPDATE`), así que dos personas que abren la pantalla a la vez no se pisan.
+* Los tiempos los toma la base de datos (`clock_timestamp()`), no el reloj del servidor web.
+* **No es la garantía de integridad.** Es una mejora de la experiencia: si el mecanismo fallara (una pestaña olvidada, un script bloqueado), la versión del ticket sigue impidiendo sobrescribir un cambio ajeno sin verlo (RN-155).
+* Sin JavaScript todo funciona igual: no se renueva ni se libera al salir, así que el bloqueo expira solo.
+* El bloqueo es un estado transitorio, no un hecho del ticket: no deja evento en el historial ni en la auditoría. Los bloqueos expirados o liberados se conservan como registro.
+
+**Configuración.** `EDIT_LOCK_TTL_SECONDS` y `EDIT_LOCK_HEARTBEAT_SECONDS` son variables de entorno, validadas al iniciar (enteros mayores que cero y el latido menor que la duración, para que no expire entre dos renovaciones). Pasarán a la configuración administrable en `v0.7.0`.
+
+**Fuera de esta entrega:** la liberación manual de un bloqueo por el Supervisor o el Administrador (el bloqueo expira solo, como mucho a los 120 s) y la actualización en tiempo real de quién edita (`docs/12`, sección 32).
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

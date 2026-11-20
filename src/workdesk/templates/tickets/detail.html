@@ -166,6 +166,23 @@
         </p>
     {% endif %}
 
+    {# RN-116: otra persona está editando el ticket ahora. Solo el personal
+       que podría editarlo lo ve; se puede consultar, no editar. #}
+    {% if other_editor %}
+        <div
+            class="alert alert-info"
+            role="status"
+        >
+            <i
+                class="bi bi-lock me-1"
+                aria-hidden="true"
+            ></i>
+            {{ other_editor.nombre }} {{ other_editor.apellido }} está
+            editando este ticket. Puedes consultarlo, pero no editarlo hasta
+            que termine.
+        </div>
+    {% endif %}
+
     {# UI-005A: el ticket está Resuelto y quien lo pidió debe responder. Los
        botones solo se ofrecen a un solicitante vigente (cada ruta lo
        comprueba por su cuenta). #}

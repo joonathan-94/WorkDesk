@@ -3,6 +3,7 @@ from .attachment import Attachment as Attachment
 from .categoria import Categoria as Categoria
 from .comment import Comment as Comment
 from .comment import CommentType as CommentType
+from .edit_lock import TicketEditLock as TicketEditLock
 from .estado import Estado as Estado
 from .grupo import Grupo as Grupo
 from .grupo import GrupoSupervisor as GrupoSupervisor

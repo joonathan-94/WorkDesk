@@ -541,6 +541,8 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `UPLOADS_DIR` | `instance/uploads` | Carpeta donde se guardan los adjuntos (fuera de `static/`, no se versiona). |
 | `COMMENT_EDIT_WINDOW_MINUTES` | `30` | Minutos durante los que el autor de un comentario puede editarlo o eliminarlo (el Supervisor y el Administrador pueden siempre). Debe ser mayor que cero. |
 | `REOPEN_WINDOW_DAYS` | `30` | Días, desde el cierre, durante los que un solicitante puede reabrir su ticket (el personal puede siempre). Debe ser mayor que cero. |
+| `EDIT_LOCK_TTL_SECONDS` | `120` | Segundos que dura el bloqueo de edición de un ticket sin renovarse. Debe ser mayor que cero. |
+| `EDIT_LOCK_HEARTBEAT_SECONDS` | `45` | Cada cuántos segundos renueva el bloqueo la pantalla de edición mientras está abierta. Debe ser mayor que cero y menor que `EDIT_LOCK_TTL_SECONDS`. |
 | `LOG_LEVEL` | `DEBUG` en desarrollo, `INFO` en otro entorno | Nivel de detalle del registro técnico. |
 | `LOG_MAX_BYTES` | `5242880` (5 MB) | Tamaño máximo de cada archivo de log. |
 | `LOG_BACKUP_COUNT` | `5` | Cantidad de archivos de log antiguos que se conservan. |
@@ -588,6 +590,7 @@ Las migraciones actuales crean estas tablas:
 - `archivos`: los metadatos de los archivos adjuntos (el contenido va a `instance/uploads`, no a la base de datos).
 - `validaciones`: la respuesta de cada solicitante a la resolución de un ticket (confirmada o rechazada), por ciclo de resolución.
 - `tipos_relacion_ticket` y `tickets_relaciones`: los tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`) y las relaciones vigentes o quitadas.
+- `bloqueos_edicion_tickets`: el bloqueo temporal de edición de un ticket (quién lo edita ahora y hasta cuándo).
 
 Para comprobar que se aplicaron:
 
@@ -762,7 +765,7 @@ Al abrir un ticket, el personal (Técnico, Supervisor y Administrador) ve dos bo
 Cosas que conviene saber:
 
 - **Historial:** en el detalle, cada cambio muestra qué se modificó (por ejemplo, `Prioridad: «Media» → «Alta»`). El **motivo** de un cambio de prioridad lo ve solo el personal: el Solicitante ve qué cambió, pero no por qué.
-- **Ediciones simultáneas:** si mientras editas un ticket otra persona lo modifica, al guardar verás un aviso y el formulario se recarga con los datos actuales, sin pisar su cambio.
+- **Ediciones simultáneas:** si mientras editas un ticket otra persona lo modifica, al guardar verás un aviso y el formulario se recarga con los datos actuales, sin pisar su cambio. Además, mientras alguien tiene abierta la pantalla de editar (o de cambiar la prioridad), el ticket queda reservado para esa persona: las demás pueden consultarlo, pero no editarlo, y ven quién lo está editando.
 - **Tickets cerrados:** no se editan ni se les cambia la prioridad; primero deben reabrirse (ver **Resolver, cerrar y reabrir**).
 
 ---
@@ -874,7 +877,8 @@ Entra, por ejemplo, como `diego.soto`.
 8. **Archivos adjuntos:** en la tarjeta **Archivos** pulsa **Elegir archivos**, selecciona uno o varios (por ejemplo un `.pdf` o `.png` pequeño) y pulsa **Subir**: aparecen con su tamaño, quién y cuándo; el nombre es un enlace que lo **descarga** (siempre como descarga, nunca se abre en el navegador). Prueba un `.exe` o un archivo con la extensión cambiada a mano (un `.txt` renombrado a `.png`): se rechaza con un aviso y no se guarda nada. Escribe una **nota interna** y adjúntale un archivo: lo ve el personal, pero para el Solicitante no existe ni su descarga (404). Elimina un archivo con **Eliminar**: deja de verse y de descargarse, pero se conserva en `instance/uploads`. Abre `error-sistema-contable-log` para ver archivos de ejemplo (de un Solicitante y del equipo).
 9. **Resolver, cerrar y reabrir:** abre un ticket en curso. Además de los botones de estado ves **Resolver** y **Cerrar ticket**. **Resolver** pide una explicación de la solución (opcional): el ticket queda **Resuelto** y espera al solicitante; tú no puedes confirmar por él (`/tickets/N/status/confirm` responde **Acceso denegado**). **Cerrar ticket** lo cierra sin pasar por Resuelto y deja elegir el motivo: **Cierre directo** o **Cancelación** (no hay un estado «Cancelado»). En un ticket cerrado, el resumen muestra cuándo y por qué se cerró y solo queda **Reabrir ticket**, que lo devuelve a **En progreso** conservando a los técnicos. Abre `impresora-contratos-rayas` (`la impresora de contratos imprime con rayas`): se cerró, se reabrió y el historial cuenta cada paso. Un Técnico no ve **Cierre excepcional**: `/tickets/N/status/close-exceptional` responde 403.
 10. **Relaciones y duplicados:** abre `el wifi de la bodega se cae todo el dia`: la tarjeta **Relaciones (2)** muestra sus dos duplicados («Su duplicado»). Abre uno (`otra vez sin wifi en la bodega`): está Cerrado con el motivo «Duplicado» y la tarjeta dice «Duplicado de». Para probarlo tú, abre un ticket en curso, pulsa **Gestionar** en **Relaciones** y relaciónalo con otro por su número (`12` o `#12`): aparece en los dos tickets, y puedes **Quitar** la relación (pide confirmación). Con **Marcar como duplicado** escribes el número del ticket principal: el ticket se cierra con el motivo «Duplicado» y queda vinculado. No se puede relacionar un ticket consigo mismo ni repetir una relación (tampoco al revés), ni marcar como duplicado de otro que ya es un duplicado; un ticket Resuelto no se cierra así. La relación de un duplicado cerrado no se quita: si lo reabres, sí.
-11. No ve **Administración**; `/admin` responde **Acceso denegado**.
+11. **Bloqueo de edición:** necesitas dos usuarios del personal a la vez (por ejemplo, un navegador normal y una ventana de incógnito: `diego.soto` y `camila.rojas`). Con `diego.soto` abre un ticket y pulsa **Editar**: la pantalla avisa de que el ticket queda reservado. Con `camila.rojas` abre el mismo ticket: ves **«Diego Soto está editando este ticket»** y, si pulsas **Editar** (o **Cambiar prioridad**), una pantalla de solo lectura con quién edita y hasta cuándo; no puedes editar. Cuando `diego.soto` guarda o pulsa **Cancelar**, `camila.rojas` ya puede editar (pulsa **Volver a intentar**). Si `diego.soto` cierra la pestaña sin guardar, el bloqueo se libera al salir; si apagas la conexión, expira solo a los 2 minutos (`EDIT_LOCK_TTL_SECONDS`). Los cambios de estado, la asignación y los comentarios no se bloquean. Con el mismo usuario en dos pestañas el bloqueo es compartido, y la versión del ticket sigue avisando si guardas sobre un cambio ajeno.
+12. No ve **Administración**; `/admin` responde **Acceso denegado**.
 
 ### 4. Como Supervisor
 
@@ -895,7 +899,8 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 ### Lo que todavía no verás
 
 - No hay cierre automático de un ticket Resuelto que nadie valida: llega con el planificador (`v0.5.0`). Mientras tanto, un ticket Resuelto sin solicitante lo cierra un Supervisor con el cierre excepcional.
-- Todavía no hay el aviso de quién está editando un ticket (llega en una entrega posterior de la `v0.4.0`) ni la advertencia de posibles duplicados al crear un ticket.
+- Todavía no hay la advertencia de posibles duplicados al crear un ticket.
+- El aviso de quién edita no se actualiza solo: aparece al abrir o recargar la pantalla (la actualización en tiempo real es posterior al MVP).
 - El dashboard es una pantalla temporal.
 
 ---
