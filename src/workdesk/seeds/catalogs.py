@@ -2,7 +2,8 @@
 
 Es idempotente, igual que `seed_roles`: cada registro se identifica por su
 `codigo` y, si ya existe, no se toca. Así volver a ejecutarlo nunca pisa lo
-que un Administrador haya renombrado o desactivado.
+que un Administrador haya renombrado o desactivado. Las políticas de SLA, que
+no tienen código, se identifican por su prioridad.
 
 Las ubicaciones no se cargan aquí: no hay ninguna obligatoria para operar y
 dependen de cada organización (los datos de ejemplo no van aquí: ver
@@ -15,6 +16,7 @@ from ..models import (
     Estado,
     MotivoCierre,
     MotivoEspera,
+    PoliticaSla,
     Prioridad,
     StateAction,
     TipoRelacionTicket,
@@ -97,6 +99,20 @@ INITIAL_PRIORITIES = (
         "nivel": 4,
         "color": "#EF4444",
     },
+)
+
+# Objetivos de SLA iniciales por prioridad (docs/09, 40.9), para que el SLA
+# funcione desde el primer uso. Son los valores de ejemplo de docs/11 (UI-022):
+# configurables, no constantes del sistema. Los tiempos son minutos laborales (se
+# miden con el calendario vigente) y todas las políticas pausan el reloj mientras
+# el ticket está en espera.
+#
+# (código de la prioridad, primera respuesta, resolución, umbral de aviso en %)
+INITIAL_SLA_POLICIES = (
+    ("BAJA", 8 * 60, 24 * 60, 80),
+    ("MEDIA", 4 * 60, 12 * 60, 80),
+    ("ALTA", 2 * 60, 6 * 60, 75),
+    ("CRITICA", 30, 4 * 60, 75),
 )
 
 INITIAL_CATEGORIES = (
@@ -298,9 +314,51 @@ def _seed_transitions() -> int:
     return created
 
 
+def _seed_sla_policies() -> int:
+    """Crea la política de las prioridades que todavía no tienen ninguna;
+    devuelve cuántas creó.
+
+    Cada política se identifica por su prioridad. Si ya hay una fila para ella
+    (activa o no) no se toca: no se pisa lo que el Administrador haya editado ni
+    se reactiva lo que haya desactivado.
+    """
+    # Las prioridades se acaban de añadir a la sesión: hay que volcarlas para
+    # poder consultar sus ids.
+    db.session.flush()
+
+    priority_ids = {
+        code: priority_id
+        for code, priority_id in db.session.execute(
+            db.select(Prioridad.codigo, Prioridad.id)
+        )
+    }
+    with_policy = set(db.session.scalars(db.select(PoliticaSla.prioridad_id)))
+    created = 0
+
+    for code, response, resolution, warning in INITIAL_SLA_POLICIES:
+        priority_id = priority_ids.get(code)
+
+        if priority_id is None or priority_id in with_policy:
+            continue
+
+        db.session.add(
+            PoliticaSla(
+                prioridad_id=priority_id,
+                tiempo_objetivo_respuesta_minutos=response,
+                tiempo_objetivo_resolucion_minutos=resolution,
+                umbral_aviso_consumo_porcentaje=warning,
+                pausa_en_espera=True,
+            )
+        )
+        created += 1
+
+    return created
+
+
 def seed_catalogs() -> dict[str, int]:
-    """Carga estados, sus transiciones, prioridades, categoría de respaldo,
-    motivos de cierre, motivos de espera y tipos de relación entre tickets.
+    """Carga estados, sus transiciones, prioridades con sus políticas de SLA,
+    categoría de respaldo, motivos de cierre, motivos de espera y tipos de
+    relación entre tickets.
 
     Devuelve cuántos registros creó de cada catálogo. Confirma una sola vez
     al final: o se cargan todos o ninguno.
@@ -309,6 +367,7 @@ def seed_catalogs() -> dict[str, int]:
         "estados": _seed_by_code(Estado, INITIAL_STATES),
         "transiciones": _seed_transitions(),
         "prioridades": _seed_by_code(Prioridad, INITIAL_PRIORITIES),
+        "politicas_sla": _seed_sla_policies(),
         "categorias": _seed_by_code(Categoria, INITIAL_CATEGORIES),
         "motivos_cierre": _seed_by_code(MotivoCierre, INITIAL_CLOSE_REASONS),
         "motivos_espera": _seed_by_code(MotivoEspera, INITIAL_WAIT_REASONS),

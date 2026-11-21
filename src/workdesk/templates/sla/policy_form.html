@@ -1,0 +1,125 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field, number_field, checkbox_field %}
+
+{% set defining = policy is none %}
+{% set heading = ('Definir' if defining else 'Editar') ~ ' objetivos de SLA: ' ~ priority.nombre %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("SLA", url_for('sla.index')),
+        (heading, None),
+    ]) }}
+
+    {{ page_header(
+        heading,
+        "Cuánto tiempo laboral tienen los tickets de esta prioridad para recibir su primera respuesta y para resolverse."
+    ) }}
+
+    {% if policy and not policy.activo %}
+        <div class="alert alert-warning small">
+            Esta política está desactivada: la prioridad no tiene SLA. Puedes
+            editar sus objetivos, pero seguirá desactivada hasta que la
+            reactives desde la pantalla «SLA».
+        </div>
+    {% endif %}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('sla.policy_edit', priority_id=priority.id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# La marca de la política tal como estaba al abrir la pantalla: sin
+               ella no se puede comprobar que nadie más la haya cambiado. #}
+            <input
+                type="hidden"
+                name="{{ form.base.name }}"
+                value="{{ form.base.data or '' }}"
+            >
+
+            {% if form.base.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.base.errors[0] }}
+                </div>
+            {% endif %}
+
+            <p class="small text-secondary">
+                Escribe las duraciones con su unidad, por ejemplo
+                <span class="font-monospace">30 min</span>,
+                <span class="font-monospace">4 h</span> o
+                <span class="font-monospace">1 h 30 min</span>. Son horas
+                laborales: el reloj solo corre dentro del horario del calendario
+                vigente y no corre en los feriados.
+            </p>
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ text_field(
+                        form.primera_respuesta,
+                        maxlength=40,
+                        hint="Opcional. Se cumple con el primer comentario público del personal. Déjalo vacío si no quieres un objetivo de primera respuesta.",
+                    ) }}
+                </div>
+
+                <div class="col-md-6">
+                    {{ text_field(
+                        form.resolucion,
+                        required=True,
+                        maxlength=40,
+                        autofocus=True,
+                        hint="El tiempo máximo para resolver el ticket.",
+                    ) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ number_field(
+                        form.umbral_aviso,
+                        min=1,
+                        max=100,
+                        hint="Porcentaje del tiempo objetivo consumido a partir del cual el ticket se marca como «próximo a vencer». Déjalo vacío para no avisar antes del vencimiento.",
+                    ) }}
+                </div>
+            </div>
+
+            {{ checkbox_field(
+                form.pausa_en_espera,
+                label="Pausar el SLA mientras el ticket esté en «" ~ on_hold_name ~ "»",
+                hint="Con la pausa, el tiempo que el ticket pasa en ese estado no cuenta para el SLA.",
+            ) }}
+
+            {{ text_field(
+                form.motivo,
+                maxlength=500,
+                hint="Opcional. Queda en el registro de auditoría junto al cambio.",
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    {{ 'Definir objetivos' if defining else 'Guardar objetivos' }}
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('sla.index') }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

@@ -13,6 +13,7 @@ from .grupo import GrupoSupervisor as GrupoSupervisor
 from .grupo import UsuarioGrupo as UsuarioGrupo
 from .motivo_cierre import MotivoCierre as MotivoCierre
 from .motivo_espera import MotivoEspera as MotivoEspera
+from .politica_sla import PoliticaSla as PoliticaSla
 from .prioridad import Prioridad as Prioridad
 from .role import Role as Role
 from .ticket import Ticket as Ticket

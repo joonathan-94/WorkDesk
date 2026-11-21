@@ -2486,6 +2486,15 @@ Ejemplos demostrativos:
 
 Estos valores son ejemplos visuales, no constantes obligatorias del sistema.
 
+**Cómo es la tabla (implementada en `v0.5.0`, entrega 3; reglas en `docs/06`, RN-165).** Es una tarjeta de la propia pantalla «SLA» con una fila por prioridad, de menor a mayor nivel, y las columnas *Prioridad*, *Primera respuesta*, *Resolución*, *Umbral de aviso*, *Pausa en «En espera»* (con el nombre vigente del estado, que el Administrador puede renombrar), *Estado* y las acciones. Una primera respuesta o un umbral sin definir se muestran como «Sin objetivo» y «Sin aviso»; una prioridad sin política, como «Sin definir» con el botón **Definir**; y una política desactivada, atenuada con el botón **Reactivar**.
+
+- **Cada acción tiene su pantalla, sin modales** (como el resto del área de administración): `/admin/sla/priorities/<id>/edit` define o edita los objetivos, y `/deactivate` y `/activate` piden una confirmación con motivo opcional. Todas son del Administrador.
+- **Las duraciones son un texto**: «30 min», «4 h» o «1 h 30 min». Son horas laborales, así que no hay días (su duración depende del calendario) ni decimales, y un número suelto se rechaza porque no dice si son minutos u horas. Todos los errores se señalan a la vez junto a su campo y el formulario conserva lo escrito.
+- **La pausa en espera es por política**, como en el modelo (`docs/09`, 20.2): una casilla en el formulario de cada prioridad en lugar del único interruptor del diseño inicial, que permite pausar el reloj en unas prioridades y en otras no.
+- **El umbral de aviso** es opcional (1 a 100 %) y se propone en 80 % al definir una política nueva.
+- **Si otra persona cambió la política mientras la pantalla estaba abierta**, no se guarda nada: se avisa y se vuelve al formulario con lo vigente (como con el calendario).
+- **Quedan para `v0.7.0`**, con la tabla `configuracion`, el interruptor general «Aplicar SLA a los tickets» y los avisos configurables de «Alertas y comportamiento». Mientras tanto, desactivar las políticas desactiva el SLA y los avisos de la fase siempre se generan.
+
 ### Calendario laboral
 
 Debe existir acceso a configuración de:
@@ -2517,7 +2526,7 @@ La pantalla «Configurar calendario» se implementó en `v0.5.0` (entrega 2), ju
 
 **Cómo es la pantalla (implementada).**
 
-- **«SLA»** (`/admin/sla`) es la pantalla de configuración del SLA. Hoy muestra solo el calendario laboral: el estado («Configurado · versión N» o «Por defecto (sin configurar)»), el horario resumido por días seguidos que comparten horas, la zona horaria, el número de feriados con los próximos cinco, quién y cuándo lo guardó, y la tabla de versiones (la vigente y las anteriores). Las políticas por prioridad se suman en esta misma pantalla.
+- **«SLA»** (`/admin/sla`) es la pantalla de configuración del SLA. Muestra primero los objetivos por prioridad (ver arriba) y después el calendario laboral: el estado («Configurado · versión N» o «Por defecto (sin configurar)»), el horario resumido por días seguidos que comparten horas, la zona horaria, el número de feriados con los próximos cinco, quién y cuándo lo guardó, y la tabla de versiones (la vigente y las anteriores).
 - **«Configurar calendario»** (`/admin/sla/calendar`) es un solo formulario con la zona horaria, el horario de cada día, los feriados y un motivo opcional. Funciona sin JavaScript y, como las demás pantallas de acción, no usa modales.
 - **El horario de cada día es un texto**: `09:00-18:00`, o `09:00-13:00, 14:00-18:00` si hay una pausa de almuerzo; vacío significa que ese día no se trabaja. La hora de fin no se incluye (a las 18:00 ya no se trabaja). Un texto es más compacto que filas dinámicas y admite varias franjas por día, que es lo que permite el modelo (`docs/09`, 21.3).
 - **Los feriados son otro texto, uno por línea**: `25-12-2026 Navidad` (también se acepta año-mes-día). Como cada guardado crea una versión, conviene poder pegar la lista del año de una vez. Cada línea con problemas se señala con su número.
@@ -2533,6 +2542,8 @@ La pantalla «Configurar calendario» se implementó en `v0.5.0` (entrega 2), ju
 [ON] Generar aviso de escalamiento
 [ON] Pausar SLA mientras el ticket esté En espera
 ```
+
+La pausa en espera ya se configura por prioridad (ver «Objetivos por prioridad»). Los otros tres avisos se configurarán con `v0.7.0`.
 
 ### Ayuda semántica
 

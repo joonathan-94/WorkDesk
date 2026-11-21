@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 
-from src.workdesk.formatting import local_datetime
+import pytest
+
+from src.workdesk.formatting import format_duration, local_datetime
 
 
 def test_a_missing_date_is_shown_as_a_dash(app):
@@ -50,3 +52,44 @@ def test_the_filter_is_available_in_templates(app):
         assert template.render(
             value=datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
         ) == "15-01-2026 09:00"
+
+
+# --- Duraciones -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("minutes", "text"),
+    [
+        (0, "0 min"),
+        (1, "1 min"),
+        (30, "30 min"),
+        (59, "59 min"),
+        (60, "1 h"),
+        (61, "1 h 1 min"),
+        (90, "1 h 30 min"),
+        (240, "4 h"),
+        (1440, "24 h"),
+        (1441, "24 h 1 min"),
+        # Sin días: en tiempo laboral un día dura distinto según el calendario.
+        (60000, "1000 h"),
+    ],
+)
+def test_a_duration_is_shown_as_a_person_would_say_it(minutes, text):
+    assert format_duration(minutes) == text
+
+
+def test_a_missing_duration_is_shown_as_a_dash():
+    assert format_duration(None) == "—"
+
+
+def test_a_negative_duration_is_a_bug_not_something_to_show():
+    with pytest.raises(ValueError, match="negativa"):
+        format_duration(-1)
+
+
+def test_the_duration_filter_is_available_in_templates(app):
+    with app.test_request_context():
+        template = app.jinja_env.from_string("{{ value|duration }}")
+
+        assert template.render(value=90) == "1 h 30 min"
+        assert template.render(value=None) == "—"

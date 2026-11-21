@@ -82,20 +82,20 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/work-calendar
+feature/sla-policies
 ```
 
-Entrega 2 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): el calendario laboral administrable. El motor de tiempo laboral admite franjas distintas por día (ver "Tiempo laboral"); tres tablas nuevas guardan las versiones del calendario, sus franjas y sus feriados; `resolve_work_calendar` decide cuál es el vigente (el guardado o el de por defecto); el Administrador lo configura desde «SLA» y «Configurar calendario»; y `seed-demo-tickets` lee el calendario resuelto (ver "Calendario laboral administrable"). Incluye una migración.
+Entrega 3 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): las políticas de SLA por prioridad. Una tabla nueva (`politicas_sla`) guarda los objetivos de cada prioridad (primera respuesta opcional, resolución, umbral de aviso y pausa en espera); el Administrador los define y edita desde «SLA», con las duraciones escritas como «4 h» o «1 h 30 min», y los puede desactivar y reactivar; `seed-catalogs` carga los valores iniciales de UI-022 (ver "Políticas de SLA"). Incluye una migración. Los objetivos todavía no se aplican a ningún ticket: el cálculo llega con los períodos de SLA (entrega 4).
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y la entrega 1 de `v0.5.0`, el motor de tiempo laboral compartido (PR #36).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las dos primeras entregas de `v0.5.0`: el motor de tiempo laboral compartido (PR #36) y el calendario laboral administrable (PR #37).
 
 `v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
 | # | Entrega | Estado |
 | --- | --- | --- |
 | 1 | Motor de tiempo laboral compartido (`worktime.py`) | Integrada (PR #36) |
-| 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | En curso |
-| 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Pendiente |
+| 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | Integrada (PR #37) |
+| 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | En curso |
 | 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Pendiente |
 | 5 | Notificaciones internas: infraestructura y centro de notificaciones | Pendiente |
 | 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Pendiente |
@@ -436,6 +436,9 @@ WorkDesk/
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
+│   ├── test_sla_policies.py
+│   ├── test_sla_policies_routes.py
+│   ├── test_sla_policy_forms.py
 │   ├── test_state_actions.py
 │   ├── test_states_admin.py
 │   ├── test_system.py
@@ -578,7 +581,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente dieciocho migraciones:
+Existen actualmente diecinueve migraciones:
 
 ```text
 create_roles_table
@@ -599,6 +602,7 @@ create_validations_table
 create_ticket_relations_tables
 create_ticket_edit_locks_table
 create_work_calendar_tables
+create_sla_policies_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -735,7 +739,7 @@ Reglas:
 - **Origen de la petición:** la IP y el user agent se toman de la petición actual y se truncan al tamaño de la columna.
 - **Append-only:** el ORM rechaza actualizar o eliminar registros existentes (`AuditLogImmutableError`). Una corrección se registra como un evento nuevo.
 
-Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Desde `v0.3.0` también la administración de catálogos (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO` y `CATALOGO_DESACTIVADO`, con el tipo en `entidad_tipo`) y, desde `v0.5.0`, el guardado del calendario laboral (`CALENDARIO_LABORAL_GUARDADO`). Las acciones críticas admiten un motivo opcional.
+Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Desde `v0.3.0` también la administración de catálogos (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO` y `CATALOGO_DESACTIVADO`, con el tipo en `entidad_tipo`) y, desde `v0.5.0`, el guardado del calendario laboral (`CALENDARIO_LABORAL_GUARDADO`) y las políticas de SLA (`POLITICA_SLA_CREADA`, `POLITICA_SLA_MODIFICADA`, `POLITICA_SLA_ACTIVADA` y `POLITICA_SLA_DESACTIVADA`, con `politica_sla` en `entidad_tipo`). Las acciones críticas admiten un motivo opcional.
 
 ## Gestión de usuarios (Administrador)
 
@@ -782,7 +786,7 @@ Seis catálogos que los tickets necesitan, cada uno con su modelo en `src/workde
 
 Prioridad, categoría, ubicación, motivo de cierre y motivo de espera comparten el mixin `CatalogAuditMixin` (`models/_catalog.py`): `activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion`, `usuario_modificacion_id` y el método `mark_modified(actor)`. Desactivar un valor no afecta a los tickets que ya lo referencian: solo impide elegirlo en operaciones nuevas.
 
-**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades, la categoría `Sin clasificar`, los seis motivos de cierre y los cinco motivos de espera, y los dos tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`, ver "Relaciones y duplicados"). Es idempotente: cada registro se identifica por su `codigo` y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
+**Datos iniciales.** `seed-catalogs` (`seeds/catalogs.py`) carga los seis estados, las cuatro prioridades con sus políticas de SLA (ver "Políticas de SLA"), la categoría `Sin clasificar`, los seis motivos de cierre y los cinco motivos de espera, y los dos tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`, ver "Relaciones y duplicados"). Es idempotente: cada registro se identifica por su `codigo` (las políticas, por su prioridad) y, si existe, no se toca, de modo que respeta lo que un Administrador haya renombrado o desactivado. Confirma una sola vez al final. **No carga ubicaciones ni otras categorías**: dependen de cada organización y se crean desde la interfaz.
 
 ## Administración de catálogos (entrega 3 de `v0.3.0`)
 
@@ -1197,7 +1201,7 @@ Módulo `src/workdesk/worktime.py` (entrega 1 de `v0.5.0`). Es el motor de tiemp
 
 # 11 quinquies. Calendario laboral administrable
 
-Paquete `src/workdesk/sla/` (blueprint `sla`, prefijo `/admin/sla`), entrega 2 de `v0.5.0`. Es el módulo `sla` previsto en `docs/10` (sección 22), donde se sumarán las políticas y los períodos. Reglas completas en `docs/09` (21 y 40.8), `docs/11` (UI-022) y `docs/12` (fase 5). **Incluye una migración** (`create_work_calendar_tables`).
+Paquete `src/workdesk/sla/` (blueprint `sla`, prefijo `/admin/sla`), entrega 2 de `v0.5.0`. Es el módulo `sla` previsto en `docs/10` (sección 22), donde se sumaron las políticas (entrega 3, ver "Políticas de SLA") y se sumarán los períodos. Reglas completas en `docs/09` (21 y 40.8), `docs/11` (UI-022) y `docs/12` (fase 5). **Incluye una migración** (`create_work_calendar_tables`).
 
 **Modelos** (`models/calendario_laboral.py`): `CalendarioLaboral` (`calendarios_laborales`: `version`, `zona_horaria`, `activo`, `fecha_creacion` y `usuario_creacion_id`), `HorarioLaboral` (`horarios_laborales`: una fila por franja, con `dia_semana` ISO de 1 a 7) y `Feriado` (`feriados`: fecha y nombre). Restricciones: versión positiva y única, **como máximo una versión vigente** (índice único parcial sobre `activo`), franjas con inicio anterior al fin y sin repetir el inicio dentro de una versión, un feriado por fecha y versión, nombre de feriado no vacío y claves foráneas con `ON DELETE RESTRICT`. Que las franjas de un día no se solapen lo comprueba el servicio (no hay restricción de exclusión: necesitaría la extensión `btree_gist`).
 
@@ -1213,11 +1217,42 @@ Paquete `src/workdesk/sla/` (blueprint `sla`, prefijo `/admin/sla`), entrega 2 d
 
 **Pantallas** (todas del Administrador, 403 al resto):
 
-- `GET /admin/sla` («SLA», UI-022): hoy solo el calendario laboral. Muestra el estado («Configurado · versión N» o «Por defecto (sin configurar)»), el horario resumido, la zona, el número de feriados con los **próximos cinco**, quién y cuándo lo guardó, y la tabla de versiones (la vigente y las anteriores).
+- `GET /admin/sla` («SLA», UI-022): los objetivos por prioridad (entrega 3) y el calendario laboral. Del calendario muestra el estado («Configurado · versión N» o «Por defecto (sin configurar)»), el horario resumido, la zona, el número de feriados con los **próximos cinco**, quién y cuándo lo guardó, y la tabla de versiones (la vigente y las anteriores).
 - `GET, POST /admin/sla/calendar` («Configurar calendario»): el formulario. Lleva la versión base en un campo oculto y **se rellena con lo vigente solo al abrirlo** (en un envío manda lo que llegó, para que una petición sin versión no se complete sola y se salte la comprobación). Ante un conflicto de versión se vuelve al formulario con lo vigente y un aviso (lo escrito se pierde a propósito); sin cambios, se avisa y no se crea nada. La lista de zonas horarias válidas ayuda a escribirla (`<datalist>`).
 - La tarjeta «SLA» del hub enlaza con `/admin/sla` y «Administración» se marca activa en estas pantallas.
 
 **Seed de demostración.** `seed_demo_tickets` lee el calendario resuelto: con uno guardado planifica todas sus fechas dentro de sus franjas, en su zona horaria y sin que ninguna caiga en un feriado; con un `calendar=` explícito (los tests) manda ese. La hora de creación de cada ticket pasa por `into_business`, así que si cae en una pausa pasa al siguiente momento de trabajo (con el calendario por defecto no se mueve). Con un calendario guardado `validate_demo_tickets` no compara la hora de cada ticket con una jornada única (`calendar=None`): solo comprueba que está bien escrita. Con el calendario por defecto (y con cualquier otro de una sola jornada en la que caigan las horas de los tickets) las fechas que genera el seed son exactamente las de antes: el cambio de `_planned_times` solo afecta a combinaciones que la validación del seed rechaza.
+
+---
+
+# 11 sexies. Políticas de SLA
+
+Entrega 3 de `v0.5.0`, en el mismo paquete `src/workdesk/sla/` que el calendario laboral. Reglas completas en `docs/06` (RN-165), `docs/09` (20.2 y 40.9), `docs/10` (sección 28.1, «Políticas de SLA por prioridad») y `docs/11` (UI-022). **Incluye una migración** (`create_sla_policies_table`). Los objetivos todavía no se aplican a ningún ticket: el cálculo, los períodos y la pausa efectiva llegan en la entrega 4.
+
+**Modelo** (`models/politica_sla.py`, `PoliticaSla`, tabla `politicas_sla`): `prioridad_id` (FK `ON DELETE RESTRICT`), `tiempo_objetivo_respuesta_minutos` (opcional), `tiempo_objetivo_resolucion_minutos`, `pausa_en_espera` (verdadero por defecto), `umbral_aviso_consumo_porcentaje` (opcional) y las columnas del mixin `CatalogAuditMixin` (`activo`, creación y modificación). Restricciones: resolución mayor que cero, respuesta mayor que cero y **no mayor que la resolución**, umbral entre 1 y 100, e **índice único parcial** `(prioridad_id) WHERE activo` (como máximo una política activa por prioridad). Se omiten dos columnas de `docs/09` (20.2): `calendario_laboral_id` (el calendario es global y versionado: la política usa el vigente y cada período de SLA anotará la versión con la que se calculó) y `nombre` (sería el de la prioridad). Los tiempos son **minutos laborales**.
+
+**Reglas** (`sla/policies.py`, sin commit):
+
+- **Una política por prioridad, editada en el sitio.** `save_policy(prioridad, actor=, base_token=, response_minutes=, resolution_minutes=, warning_percent=, pause_on_hold=, reason=)` la crea si la prioridad no tiene (`POLITICA_SLA_CREADA`) o aplica solo los campos que cambiaron (`POLITICA_SLA_MODIFICADA`, con sus valores anterior y nuevo); devuelve `SaveOutcome.CREATED`, `UPDATED` o `UNCHANGED` (sin cambios no audita). Nunca crea una segunda fila para la misma prioridad (activa o no). Una política desactivada puede editarse y sigue desactivada. `deactivate_policy` y `activate_policy` (`POLITICA_SLA_DESACTIVADA` y `POLITICA_SLA_ACTIVADA`, con motivo opcional) no tocan los objetivos; desactivarla significa que esa prioridad no tiene SLA.
+- **Los valores se validan en un solo lugar.** `policy_problems` devuelve lo que está mal por campo (resolución obligatoria, mayor que cero y de hasta 1000 horas; primera respuesta, si existe, mayor que cero y no mayor que la resolución; umbral entre 1 y 100). La usan el formulario (todos los errores a la vez, cada uno junto a su campo) y `save_policy`, que lanza `PolicyRuleError` con el campo afectado. La primera respuesta no se compara con una resolución que ya está mal.
+- **Quien edita dice qué vio.** El formulario lleva `policy_token` (la fecha de la última modificación de la política, o «0» si todavía no hay): si no coincide con la actual, `save_policy` lanza `PolicyConflictError` y no guarda nada. No necesita una columna de versión porque cada cambio, activación y desactivación anota su fecha.
+- **Concurrencia.** Toda escritura empieza bloqueando la fila de la prioridad con `FOR NO KEY UPDATE` (el bloqueo más débil que sirve: no frena la creación de tickets, que solo lee su clave) y relee la política con `populate_existing`: sin él, la sesión devolvería la copia que cargó la propia petición antes de que otra transacción confirmara y el conflicto pasaría inadvertido (hay tests que lo demuestran). Dos Administradores que definen, editan o desactivan a la vez la misma política dejan un solo resultado y una sola auditoría (tests con dos hilos). El índice único parcial es la última defensa.
+- Para las pantallas: `list_policy_rows()` (todas las prioridades por nivel, cada una con su política, en una sola consulta), `get_priority`, `get_policy` y `on_hold_state_name()` (el nombre vigente del estado en espera, que el Administrador puede renombrar; el código `EN_ESPERA` es `ON_HOLD_STATE_CODE` en `models/estado.py`).
+
+**Formulario** (`sla/policy_forms.py`, `PolicyForm`, que hereda el motivo opcional de `ReasonForm`): **las duraciones son un texto** («30 min», «4 h», «1 h 30 min»). `parse_duration` entiende `h`, `hr`, `hrs`, `hora(s)`, `m`, `min`, `mins`, `minuto(s)` con o sin espacios, también «1h30»; rechaza los decimales, los días (su duración depende del calendario) y un número suelto (no dice si son minutos u horas); `duration_text` hace el camino inverso. El umbral es un número opcional, la pausa una casilla y la marca de la política un campo oculto. Todos los errores se informan a la vez junto a su campo y el formulario conserva lo escrito. Se rellena con lo vigente **solo al abrirlo** (en un envío manda lo que llegó: una petición sin marca no debe completarse sola y saltarse la comprobación). Una política nueva se propone con el umbral en 80 % y la pausa activada.
+
+**Pantallas** (todas del Administrador, 403 al resto, 404 con una prioridad inexistente; sin modales y sin JavaScript). La política se identifica por su **prioridad** (`/admin/sla/priorities/<id>/...`):
+
+- `GET /admin/sla` («Configuración de SLA»): ahora empieza con la tarjeta **Objetivos por prioridad** (una fila por prioridad, de menor a mayor nivel: primera respuesta, resolución, umbral, pausa en «<nombre del estado en espera>», estado y acciones) y sigue con el calendario laboral. Una prioridad sin política muestra «Sin definir» y el botón **Definir**; una desactivada, la fila atenuada y **Reactivar**; una prioridad inactiva se marca «(inactiva)» pero se lista, porque conserva su política.
+- `GET, POST /admin/sla/priorities/<id>/edit`: define o edita los objetivos. Ante un conflicto se vuelve al formulario con lo vigente y un aviso (lo escrito se pierde a propósito); sin cambios, se avisa y no se audita.
+- `GET, POST /admin/sla/priorities/<id>/deactivate` y `/activate`: confirmación con motivo opcional. Una acción que ya no corresponde (ya desactivada, ya activa o sin política) vuelve a «SLA» con un aviso, también desde el GET.
+- Las plantillas son `sla/_policies.html` (la tarjeta, que incluye `index.html`), `sla/policy_form.html` y `sla/policy_status.html`. El formateo es el filtro `duration` (`format_duration` en `formatting.py`, que también usará la entrega 7). El macro `checkbox_field` ganó un parámetro `label` para poner el nombre vigente del estado en la etiqueta de la pausa.
+
+**Datos iniciales.** `seed-catalogs` carga una política por prioridad con los valores de ejemplo de UI-022 (`INITIAL_SLA_POLICIES`; minutos laborales, pausa en espera): Baja 8 h / 24 h / 80 %, Media 4 h / 12 h / 80 %, Alta 2 h / 6 h / 75 % y Crítica 30 min / 4 h / 75 % (primera respuesta, resolución y umbral). Cada política se identifica por su prioridad: si ya hay una fila (activa o no) no se toca, así que no pisa lo editado ni reactiva lo desactivado. El seed `seed-demo-tickets` no cambia en esta entrega: sin períodos de SLA no hay nada que sembrar en los tickets.
+
+**Quedan fuera** (ver `docs/06`, RN-165): el interruptor general «Aplicar SLA a los tickets» y los avisos configurables de UI-022, que dependen de la tabla `configuracion` de `v0.7.0`; mientras tanto, desactivar las políticas desactiva el SLA.
+
+**Mejora de lo existente.** La red de seguridad de autorización (`tests/test_route_authorization.py`) no cubría las rutas `sla.*`, que ya eran del Administrador: ahora las recorre como a `users`, `catalogs` y `admin`.
 
 ---
 
@@ -1454,6 +1489,9 @@ GET, POST  /admin/transitions/<id>/deactivate
 GET, POST  /admin/transitions/<id>/activate
 GET        /admin/sla
 GET, POST  /admin/sla/calendar
+GET, POST  /admin/sla/priorities/<id>/edit
+GET, POST  /admin/sla/priorities/<id>/deactivate
+GET, POST  /admin/sla/priorities/<id>/activate
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -1500,7 +1538,7 @@ GET        /static/<path:filename>
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera, ver "Administración de catálogos", estados y transiciones, ver "Administración de estados y transiciones", y SLA, ver "Calendario laboral administrable") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
+`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera, ver "Administración de catálogos", estados y transiciones, ver "Administración de estados y transiciones", y SLA, ver "Calendario laboral administrable" y "Políticas de SLA") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
@@ -1707,7 +1745,7 @@ python -m flask --app src.workdesk seed-demo
 python -m flask --app src.workdesk seed-demo-tickets
 ```
 
-`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las transiciones entre estados, las prioridades, la categoría `Sin clasificar`, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. Es idempotente y no pisa lo que un Administrador haya cambiado. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
+`seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las transiciones entre estados, las prioridades con sus políticas de SLA, la categoría `Sin clasificar`, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. Es idempotente y no pisa lo que un Administrador haya cambiado. Informa cuántos registros creó de cada tipo (`políticas de SLA: N`); quien tenga una base anterior a la entrega 3 de `v0.5.0` debe volver a ejecutarlo para cargar las políticas. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
 
 `create-admin`:
 
@@ -1779,6 +1817,21 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 3 de `v0.5.0` (políticas de SLA por prioridad):
+
+```text
+2768 tests passing
+```
+
+Los 260 tests nuevos cubren:
+
+- `tests/test_sla_policies.py` (91): **los valores iniciales** (una política por prioridad con los valores documentados, que sigan las reglas de una política, que las prioridades más altas tengan objetivos más ajustados, que el seed informe lo que crea y sea idempotente, que no pise lo que el Administrador cambió ni reactive o duplique una política desactivada, que cree solo las que faltan y siga a la prioridad por su código y no por su nombre); **restricciones de la base de datos** (resolución y respuesta positivas, la respuesta que no supera la resolución, el umbral entre 1 y 100 con sus límites exactos, una sola política activa por prioridad pero con una desactivada conviviendo con otra activa, prioridad obligatoria y que una prioridad con política no se elimina); **las reglas de los valores** (`policy_problems`: la resolución obligatoria, mayor que cero y con su tope inclusivo; la primera respuesta, que no se compara con una resolución que ya está mal; el umbral; todos los problemas a la vez); **consultas** (las filas por nivel y no por orden de inserción, una prioridad sin política o inactiva, una sola consulta, el nombre vigente del estado en espera, la marca de la política); **definir y editar** (qué se crea y audita, solo se aplican y auditan los campos que cambiaron, sin cambios no se audita, un motivo en blanco, editar una política desactivada, que el servicio no hace commit y que un valor inválido no deja nada); **ediciones simultáneas** (una marca vieja, una desactivación o una definición ocurridas mientras la pantalla estaba abierta, una marca vacía o falsa, una copia de la sesión que otra transacción dejó vieja —se relee bajo el bloqueo—, y el índice único como última defensa); **desactivar y reactivar**; y **tres carreras con hilos** (dos Administradores que definen la misma política a la vez, que editan desde la misma pantalla y que desactivan: queda un solo resultado y una sola auditoría).
+- `tests/test_sla_policy_forms.py` (87): **las duraciones** (treinta formas válidas, los números sueltos que piden la unidad, los decimales, lo que no es una duración, que los días no se admiten, que un número enorme se lee y se rechaza después y que escribir y leer son operaciones inversas hasta 60 001 minutos) y **el formulario** (conversión, todos los errores a la vez y junto a su campo, sin repetir un error, el texto demasiado largo que no se intenta leer, la marca de la política obligatoria, el motivo opcional, y los valores con que se abre, que vuelven a enviarse sin cambios).
+- `tests/test_sla_policies_routes.py` (68): **acceso** (anónimo al login, los tres roles sin permiso reciben 403 en GET y POST en las tres pantallas sin cambiar nada, 404 con una prioridad inexistente, «Administración» sigue marcada); **la tabla en «SLA»** (los valores iniciales, el orden, los enlaces de cada fila, «Sin objetivo» y «Sin aviso», una prioridad sin política, una política desactivada atenuada, una prioridad inactiva, el título de la columna que sigue al renombrado del estado, sin prioridades y los nombres escapados); **el formulario** (abierto con lo vigente, para definir, de una política desactivada, la etiqueta de la pausa con el nombre vigente del estado) y **guardar** (editar con su auditoría, cada campo, sin cambios, definir, una política desactivada que sigue desactivada); **trece errores distintos señalados junto a su campo** que no guardan nada, que conserva lo escrito y todos a la vez; **una pantalla desactualizada** (vuelve con lo vigente y no guarda; una petición sin marca no se completa sola; una política definida mientras tanto no se crea dos veces) y los errores de regla del servicio; y **desactivar y reactivar** (la confirmación, el motivo opcional y su límite, y las acciones que ya no corresponden o sin política, también desde el GET).
+- `tests/test_formatting.py` (+14): las duraciones («30 min», «1 h», «1 h 30 min», «1000 h»), «—» sin valor, que una duración negativa es un error y que el filtro `duration` está disponible en las plantillas.
+- Ajustes por diseño, sin cambiar lo que comprueban: `tests/test_catalogs.py` (el diccionario de `seed_catalogs` incluye `politicas_sla` y el comando informa `políticas de SLA: N`) y `tests/test_route_authorization.py` (el recorrido de las áreas de administración ahora incluye `sla.`, que ya eran del Administrador pero no estaban cubiertas). `tests/test_route_protection.py` cubre las tres rutas nuevas sin cambios (sesión obligatoria y CSRF).
+- **Prueba de mutación** (un script desechable, no versionado): 46 mutaciones del modelo, el servicio, el formulario, las rutas, las plantillas, el seed y el formateo —el conflicto de edición, el bloqueo de la prioridad, la relectura bajo el bloqueo, los límites, la auditoría, la autorización de cada pantalla, los valores del seed...— y los tests detectaron las 46. Antes de correrla se reforzaron dos tests que habrían dejado pasar un orden por id en lugar de por nivel y un texto largo ilegible señalado dos veces.
 
 Estado tras la entrega 2 de `v0.5.0` (calendario laboral administrable):
 
@@ -2565,7 +2618,7 @@ Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases poste
 - `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.5.0`: el calendario laboral administrable y el motor de tiempo laboral compartido ya existen (entregas 1 y 2: `worktime.py` y el paquete `sla/`); falta que el SLA los use (entregas 3 y 4);
+- `v0.5.0`: el calendario laboral administrable, el motor de tiempo laboral compartido y las políticas de SLA por prioridad ya existen (entregas 1 a 3: `worktime.py` y el paquete `sla/`); falta que el SLA los use (entrega 4: los períodos);
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

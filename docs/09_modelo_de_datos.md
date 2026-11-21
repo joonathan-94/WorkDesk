@@ -1315,7 +1315,19 @@ Representa la configuración vigente de SLA por prioridad en el MVP.
 UNIQUE (prioridad_id) WHERE activo = TRUE
 ```
 
-- El significado exacto de “primera respuesta” se cerrará en `10_arquitectura.md`.
+- **Primera respuesta** es el primer comentario público del personal (Técnico, Supervisor o Administrador). Asignar el ticket o cambiar su estado no cuenta: no garantizan que el solicitante haya recibido una respuesta (decisión de `v0.5.0`, `12_roadmap.md`, fase 5).
+
+**Implementación (`v0.5.0`, entrega 3).** `politicas_sla` se crea con las columnas de esta sección, salvo dos que no se implementaron:
+
+- `calendario_laboral_id`: el calendario es global y está versionado (sección 21), así que una política que apuntara a una versión se quedaría con la antigua en cuanto se guardara otra, y sin ninguna fila guardada (se usa el predeterminado, sección 40.8) no habría nada a lo que apuntar. La política usa «el calendario vigente» y cada período de SLA guarda la versión con la que se calculó (`calendario_laboral_id` de `tickets_sla_periodos`, sección 20.3).
+- `nombre`: hay una política por prioridad y su nombre sería el de la prioridad; copiarlo daría dos fuentes de verdad al renombrarla.
+
+Las columnas de vigencia y trazabilidad (`activo`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion` y `usuario_modificacion_id`) son las de los demás catálogos editables. Además de las restricciones de arriba (`CHECK` de resolución positiva, de respuesta positiva y de umbral entre 1 y 100, y el índice único parcial de una política activa por prioridad) se añadió una: **la primera respuesta no puede superar la resolución** (`ck_politicas_sla_respuesta_dentro_de_resolucion`), porque un objetivo de primera respuesta posterior a la resolución completa solo puede ser un error de configuración.
+
+- Los tiempos son **minutos laborales**: se miden con el calendario vigente (`worktime.py`), no con el reloj de pared.
+- **Se edita en el sitio.** A diferencia del calendario laboral, una política no se versiona: lo que ya se calculó no cambia porque cada ticket guarda su propia copia de los objetivos en el período de SLA que abre (sección 20.3). Cada cambio queda en la auditoría administrativa con sus valores anterior y nuevo.
+- **Una política por prioridad.** El servicio nunca crea una segunda fila para la misma prioridad, activa o no; desactivarla significa que esa prioridad no tiene SLA y reactivarla la devuelve con los objetivos que tenía.
+- `pausa_en_espera` es por política (se puede pausar en unas prioridades y en otras no) y vale verdadero por defecto.
 
 ## 20.3 `tickets_sla_periodos`
 
@@ -2193,6 +2205,7 @@ Los índices finales deberán revisarse con datos representativos y `EXPLAIN`/`E
 - Máximo una política SLA activa por prioridad.
 - Objetivo de resolución > 0 y objetivo de respuesta > 0 cuando exista.
 - Umbral de aviso entre 1 y 100 cuando exista.
+- El objetivo de primera respuesta no supera el de resolución (`v0.5.0`, entrega 3).
 - Un único período SLA activo por ticket.
 - `fecha_fin IS NULL OR fecha_fin >= fecha_inicio`.
 - `segundos_consumidos >= 0`.
@@ -2508,6 +2521,17 @@ Debe existir una versión de calendario laboral global apropiada para el entorno
 ## 40.9 Políticas SLA iniciales
 
 El sistema deberá disponer de políticas SLA operativas para las prioridades activas del entorno inicial. Los tiempos exactos son configurables, pero el seed debe dejar funcional el cálculo de SLA del MVP desde la primera utilización.
+
+**Valores iniciales (`v0.5.0`, entrega 3).** `seed-catalogs` carga una política por prioridad con los valores de ejemplo de `11_diseno_de_pantallas.md` (UI-022), que el Administrador puede cambiar. Son minutos laborales, el reloj se pausa en espera y la primera respuesta es opcional:
+
+| Prioridad | Primera respuesta | Resolución | Umbral de aviso |
+| --- | ---: | ---: | ---: |
+| Baja | 8 h | 24 h | 80 % |
+| Media | 4 h | 12 h | 80 % |
+| Alta | 2 h | 6 h | 75 % |
+| Crítica | 30 min | 4 h | 75 % |
+
+Cada política se identifica por su prioridad: si ya existe una fila para ella (activa o no) el seed no la toca, así que no pisa lo que el Administrador haya editado ni reactiva lo que haya desactivado. Quien tenga una base anterior debe volver a ejecutar `seed-catalogs`.
 
 ## 40.10 Administrador inicial y configuración esencial
 

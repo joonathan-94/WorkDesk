@@ -781,7 +781,7 @@ src/workdesk/
 ├── models/         modelos SQLAlchemy (uno por entidad)
 ├── security/       políticas de autorización y de contraseñas
 ├── seeds/          datos iniciales y de demostración
-├── sla/            configuración del SLA (v0.5.0): por ahora, el calendario laboral
+├── sla/            configuración del SLA (v0.5.0): el calendario laboral y los objetivos por prioridad
 ├── system/         health check
 ├── tickets/        núcleo de tickets (ver abajo)
 ├── users/          administración de usuarios
@@ -848,21 +848,37 @@ Las decisiones del módulo:
 
 ### Calendario laboral administrable (`sla/`)
 
-La pantalla del Administrador, las versiones y la función que resuelve el calendario vigente viven en el paquete `sla/`, que es el módulo `sla` previsto en la sección 22 y donde se sumarán las políticas y los períodos. `worktime.py` no sabe nada de la base de datos; `sla/work_calendar.py` es el puente:
+La pantalla del Administrador, las versiones y la función que resuelve el calendario vigente viven en el paquete `sla/`, que es el módulo `sla` previsto en la sección 22 y donde se suman las políticas (entrega 3) y se sumarán los períodos (entrega 4). `worktime.py` no sabe nada de la base de datos; `sla/work_calendar.py` es el puente:
 
 ```text
 sla/
-├── work_calendar.py   las reglas: resolver el calendario vigente, guardar una
+├── work_calendar.py   las reglas del calendario: resolver el vigente, guardar una
 │                      versión nueva y describir el horario
-├── forms.py           el formulario y los dos textos que escribe el Administrador
-│                      (el horario de cada día y los feriados)
-└── routes.py          «SLA» (/admin/sla) y «Configurar calendario» (/admin/sla/calendar)
+├── forms.py           el formulario del calendario y los dos textos que escribe el
+│                      Administrador (el horario de cada día y los feriados)
+├── routes.py          «SLA» (/admin/sla) y «Configurar calendario» (/admin/sla/calendar)
+├── policies.py        las reglas de las políticas por prioridad: definir, editar,
+│                      desactivar y reactivar los objetivos
+├── policy_forms.py    el formulario de los objetivos y las duraciones que escribe el
+│                      Administrador («30 min», «4 h», «1 h 30 min»)
+└── policy_routes.py   definir o editar, desactivar y reactivar los objetivos de una
+                       prioridad (/admin/sla/priorities/<id>/...)
 ```
 
 - **`resolve_work_calendar()` es la única función que decide cuál es el calendario vigente:** el guardado o, si todavía no hay ninguno, el de por defecto en la zona de `APP_TIMEZONE` (`09_modelo_de_datos.md`, sección 40.8). Devuelve un `ResolvedCalendar` con el reloj listo para usar y la versión de la que sale (0 si es el de por defecto). `clock_for(versión)` construye el reloj de una versión concreta, que es lo que necesitará el SLA para seguir calculando con la versión con la que abrió cada período.
 - **Guardar nunca modifica una versión:** crea la siguiente y deja la anterior como histórica. La pantalla lleva la versión con la que se abrió y, si otra persona guardó mientras tanto, no se guarda nada y se avisa (la misma idea que `tickets.version`). Dos guardados simultáneos se resuelven con la fila vigente bloqueada (`SELECT ... FOR UPDATE`) y, cuando todavía no hay ninguna, con los índices únicos; hay un test con dos hilos para cada caso.
 - **El servicio no hace commit:** la versión nueva y su evento de auditoría (`CALENDARIO_LABORAL_GUARDADO`, con solo las secciones que cambiaron) se confirman juntos desde la ruta.
 - **Una sola fuente para quien lee el calendario:** el SLA, los datos de demostración y las pantallas llaman a `resolve_work_calendar`. El seed ya lo hace: con un calendario guardado planifica todas sus fechas dentro de sus franjas y de su zona horaria.
+
+### Políticas de SLA por prioridad (`sla/policies.py`)
+
+Una política (`PoliticaSla`) dice cuántos minutos laborales tiene un ticket de cierta prioridad para recibir su primera respuesta (opcional) y para resolverse, desde qué consumo pasa a «próximo a vencer» y si el reloj se detiene en espera. Son las reglas de `09_modelo_de_datos.md` (20.2) y de `06_reglas_de_negocio.md` (RN-165):
+
+- **Una política por prioridad y se edita en el sitio.** No se versiona como el calendario: lo que ya se calculó no cambia porque cada período de SLA (entrega 4) guarda su propia copia de los objetivos. Por eso la política no apunta a un calendario: usa el vigente, y es el período el que anota la versión con la que se calculó.
+- **Quien edita dice qué vio.** El formulario lleva una marca de la política tal como estaba al abrirlo (`policy_token`: la fecha de su última modificación). Si otra persona la cambió mientras tanto, no se guarda nada y se avisa, como con el calendario y con `tickets.version`; la política no necesita una columna de versión porque cada cambio, activación o desactivación anota su fecha.
+- **Las operaciones sobre una prioridad se serializan** bloqueando la fila de la prioridad con `FOR NO KEY UPDATE`, el bloqueo más débil que sirve: no frena la creación de tickets de esa prioridad, que solo necesita leer su clave. Bajo el bloqueo, la política se vuelve a leer con `populate_existing`: sin él, la sesión devolvería la copia que cargó la propia petición antes de que la otra transacción confirmara, y el conflicto pasaría inadvertido (hay un test que lo demuestra). El índice único parcial es la última defensa, por si otra vía escribiera sin ese bloqueo.
+- **Los valores se validan en un solo lugar.** `policy_problems` devuelve lo que está mal por campo; lo usa el formulario (para señalar todos los errores a la vez, cada uno junto a su campo) y `save_policy` (que no confía en quien lo llama). Las duraciones se escriben como las diría una persona (`parse_duration`: «30 min», «4 h», «1 h 30 min»; no hay días porque su duración depende del calendario) y se muestran con el filtro `duration` (`format_duration`).
+- **El servicio no hace commit:** el cambio y su evento de auditoría (`POLITICA_SLA_CREADA`, `POLITICA_SLA_MODIFICADA`, `POLITICA_SLA_ACTIVADA` y `POLITICA_SLA_DESACTIVADA`) se confirman juntos desde la ruta.
 
 ## 28.2. Evolución objetivo
 

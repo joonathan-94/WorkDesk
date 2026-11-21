@@ -44,6 +44,7 @@ def register_commands(app: Flask) -> None:
             f"Estados: {created['estados']}, "
             f"transiciones: {created['transiciones']}, "
             f"prioridades: {created['prioridades']}, "
+            f"políticas de SLA: {created['politicas_sla']}, "
             f"categorías: {created['categorias']}, "
             f"motivos de cierre: {created['motivos_cierre']}, "
             f"motivos de espera: {created['motivos_espera']}, "
