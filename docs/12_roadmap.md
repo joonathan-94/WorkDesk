@@ -1031,8 +1031,8 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 1. **Motor de tiempo laboral compartido** ✓ (PR #36): el motor del seed de demostración pasa a `worktime.py` y gana las dos operaciones que necesita el SLA (medir los segundos laborales entre dos momentos y sumarlos a un momento). Sin migración ni cambio funcional.
 2. **Calendario laboral administrable** ✓ (PR #37): tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), el motor con franjas distintas por día, la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`), la pantalla «SLA» con la de «Configurar calendario» y el seed leyendo el calendario resuelto.
 3. **Políticas de SLA por prioridad** ✓: `politicas_sla` (una por prioridad, editable en el sitio y sin columna de calendario: usa el vigente) y su pantalla (UI-022) dentro de «SLA», con las duraciones escritas como «4 h» o «1 h 30 min», la pausa en espera por política y el control de ediciones simultáneas; los valores iniciales los carga `seed-catalogs` (RN-165).
-4. **Períodos de SLA** ✓: `tickets_sla_periodos`, el cálculo en tiempo laboral, la pausa en `En espera`, la detención al resolver (y la reanudación al reabrir) y la continuidad ante cambios de prioridad (RN-88 y RN-166); el comando `sla-rebuild` para los tickets anteriores y `sla-status` para ver un ticket. El seed de demostración deja los tickets en tiempo, por vencer, vencidos y pausados.
-5. **Notificaciones internas, 1: infraestructura y centro de notificaciones:** tabla, servicio, campana con contador y marcar como leídas.
+4. **Períodos de SLA** ✓ (PR #39): `tickets_sla_periodos`, el cálculo en tiempo laboral, la pausa en `En espera`, la detención al resolver (y la reanudación al reabrir) y la continuidad ante cambios de prioridad (RN-88 y RN-166); el comando `sla-rebuild` para los tickets anteriores y `sla-status` para ver un ticket. El seed de demostración deja los tickets en tiempo, por vencer, vencidos y pausados.
+5. **Notificaciones internas, 1: infraestructura y centro de notificaciones** ✓: la tabla `notificaciones` (contenido inmutable, solo evoluciona la lectura), el servicio (`notify`, `notify_many`, consultar, contar y marcar), el centro (`/notifications`, con «Todas» y «No leídas») y la campana con contador que se actualiza cada 30 segundos (RN-167). Todavía **ningún evento genera avisos** (entrega 6): mientras tanto, el comando `seed-demo-notifications` deja avisos de ejemplo para verlo funcionar.
 6. **Notificaciones internas, 2: eventos:** creación, asignación, cambio de estado, comentarios, resolución y reapertura (incluye RF-068 y RN-96).
 7. **Indicadores de SLA en la interfaz:** insignias en el listado y el detalle (solo para el personal), filtro por estado de SLA y la advertencia al bajar la prioridad con el SLA en riesgo.
 8. **Planificador:** el comando `run-scheduler` con los avisos de SLA y el cierre automático (RN-58 y RN-59).
@@ -1094,6 +1094,8 @@ Eventos iniciales recomendados:
 - SLA vencido.
 
 No implementar correo.
+
+**Avance.** La entrega 5 dejó el vocabulario de eventos (`NotificationEvent`, los nueve de la lista más reasignación, nota interna, espera y cierre), el servicio y el centro con la campana. La generación por eventos (entrega 6) y los avisos de SLA (entrega 8) las producirán con `notify` y `notify_many`; el servicio no decide a quién avisar (esa regla es de quien genera el aviso y sigue la visibilidad del historial; ver `10_arquitectura.md`, «Notificaciones internas»). La configuración de eventos y destinatarios (RN-97) llega con `v0.7.0`.
 
 ### Criterio de salida
 

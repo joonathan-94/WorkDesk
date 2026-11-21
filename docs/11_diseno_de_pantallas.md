@@ -1334,6 +1334,8 @@ Leída:
 
 El color rojo no debe utilizarse simplemente para representar una notificación pendiente.
 
+**Implementación (`v0.5.0`, entrega 5).** El contador de la campana usa el azul principal con texto blanco, no rojo, por la regla anterior. El fondo azul muy suave y el texto sobre el azul son tokens nuevos de `static/css/app.css` (`--wd-primary-soft` y `--wd-on-primary`), con su valor del tema claro, para que el tema oscuro posterior los redefina sin tocar los componentes (sección 41.1). Una notificación sin leer no depende solo del color: además del punto y el fondo, lleva el texto «(no leída)» oculto visualmente para los lectores de pantalla.
+
 ---
 
 # 31. Responsive
@@ -2033,6 +2035,17 @@ Debe permitir:
 - filtrar cuando corresponda.
 
 MVP prioriza notificaciones internas.
+
+**Implementación (`v0.5.0`, entrega 5).** `GET /notifications`, para los cuatro roles, con el layout principal y la opción **Notificaciones** del menú (icono de campana, también marcada en sus pantallas):
+
+- **Cabecera** con el botón «Marcar todas como leídas», que solo aparece si hay alguna sin leer.
+- **Pestañas «Todas» y «No leídas»**, cada una con su contador, y una lista de 20 por página, de la más reciente a la más antigua, con paginación «Anterior / Siguiente».
+- **Cada notificación** muestra su icono y el nombre del evento, la fecha en hora local, el título, el mensaje y el ticket asociado. Si tiene ticket, el título es el botón que la marca como leída y abre el ticket; las no leídas ofrecen además «Marcar como leída». Un aviso general es solo texto.
+- **Estados vacíos** distintos para «Todas» («Todavía no tienes notificaciones…») y «No leídas» («No tienes notificaciones sin leer.»).
+- **La campana** de la barra superior (desde cualquier pantalla con el layout principal) lleva al centro y muestra el número de no leídas, «99+» a partir de 100 y nada si no hay. No hay desplegable: un enlace con contador es más simple, accesible y no necesita JavaScript.
+- Marcar y abrir son formularios POST con CSRF que conservan la pestaña y la página, y todo funciona sin JavaScript (el script solo actualiza el contador cada 30 segundos).
+
+La configuración de notificaciones (UI-024) y sus eventos y destinatarios no forman parte de esta entrega.
 
 ---
 
@@ -3031,7 +3044,7 @@ Se recomienda:
 - **Estado activo:** fondo suave y acento azul a la izquierda, con `aria-current="page"`. La opción Administración se marca activa en el hub y en las pantallas de usuarios.
 - **Navegación por rol:** definida en `navigation.py` y filtrada en backend. Hoy incluye solo las pantallas que existen (Dashboard, Administración y Mi cuenta); el resto de las opciones de la sección 5 se añaden con su módulo. Las opciones no autorizadas no se muestran.
 - **Accesibilidad:** enlace "Saltar al contenido", navegación por teclado, foco visible y etiquetas ARIA.
-- El buscador de tickets de la topbar ya funciona (sección 8.3). Las notificaciones se incorporan con su módulo; no se muestran controles que todavía no funcionan.
+- El buscador de tickets de la topbar ya funciona (sección 8.3) y, desde `v0.5.0`, también la campana de notificaciones (sección 30 y UI-008), a la izquierda del menú del usuario; no se muestran controles que todavía no funcionan.
 - **Avisos:** las categorías de mensaje (éxito, error, advertencia, información) se muestran como alertas de Bootstrap que se pueden cerrar.
 
 ---

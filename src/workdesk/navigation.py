@@ -14,7 +14,8 @@ from dataclasses import dataclass
 from flask import request
 from flask_login import current_user
 
-from .security import STAFF_ROLES, RoleCode, has_any_role
+from .notifications.service import count_unread
+from .security import STAFF_ROLES, RoleCode, current_actor, has_any_role
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,13 @@ MAIN_NAVIGATION = (
         endpoint="tickets.new_ticket",
         icon="plus-circle",
         active_prefixes=("tickets.new_ticket",),
+    ),
+    # Los avisos del propio usuario: los ven los cuatro roles (docs/11, 5.x).
+    NavItem(
+        label="Notificaciones",
+        endpoint="notifications.list_notifications_page",
+        icon="bell",
+        active_prefixes=("notifications.",),
     ),
     # El Supervisor gestiona los técnicos de sus grupos. El Administrador llega
     # a los grupos desde Administración.
@@ -183,6 +191,8 @@ def layout_context() -> dict:
             endpoint,
         ),
         "user_initials": user_initials(current_user),
+        # El contador de la campana: se vuelve a calcular en cada página.
+        "unread_notifications": count_unread(current_actor()),
     }
 
 

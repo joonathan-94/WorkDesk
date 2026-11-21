@@ -1,6 +1,8 @@
 :root {
     --wd-primary: #1d4ed8;
     --wd-primary-hover: #1e40af;
+    /* Texto sobre el color principal (el contador de la campana). */
+    --wd-on-primary: #ffffff;
 
     --wd-background: #f1f5f9;
     --wd-surface: #fcfcfd;
@@ -17,6 +19,9 @@
     /* Notas internas (docs/11, 21.1): acento y fondo morados muy suaves. */
     --wd-purple: #7c3aed;
     --wd-purple-soft: #f5f3ff;
+
+    /* Notificación sin leer (docs/11, sección 30): fondo azul muy suave. */
+    --wd-primary-soft: #eff6ff;
 
     --wd-radius: 8px;
 

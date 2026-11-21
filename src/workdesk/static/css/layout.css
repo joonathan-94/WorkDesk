@@ -260,6 +260,130 @@
     height: 28px;
 }
 
+/* La campana de notificaciones de la barra superior. Su contador es azul, no rojo:
+   un aviso pendiente no es una alarma (docs/11, sección 30). */
+.topbar-bell {
+    position: relative;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 40px;
+    height: 40px;
+
+    border-radius: 8px;
+
+    color: var(--wd-text-secondary);
+
+    font-size: 1.25rem;
+    text-decoration: none;
+}
+
+.topbar-bell:hover,
+.topbar-bell:focus-visible {
+    background: var(--wd-background);
+    color: var(--wd-text-primary);
+}
+
+.topbar-bell__badge {
+    position: absolute;
+    top: 2px;
+    right: 0;
+
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+
+    border-radius: 9px;
+
+    background: var(--wd-primary);
+    color: var(--wd-on-primary);
+
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+}
+
+.topbar-bell__badge[hidden] {
+    display: none;
+}
+
+/* Centro de notificaciones (docs/11, UI-008 y sección 30): sin leer, punto azul y
+   fondo azul muy suave; leída, superficie normal. */
+.notification {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--wd-border);
+}
+
+.notification:last-child {
+    border-bottom: 0;
+}
+
+.notification--unread {
+    background: var(--wd-primary-soft);
+}
+
+.notification__dot {
+    flex: 0 0 auto;
+
+    width: 8px;
+    height: 8px;
+    margin-top: 8px;
+
+    border-radius: 50%;
+}
+
+.notification--unread .notification__dot {
+    background: var(--wd-primary);
+}
+
+.notification__icon {
+    flex: 0 0 auto;
+
+    margin-top: 2px;
+
+    color: var(--wd-text-secondary);
+
+    font-size: 1.125rem;
+}
+
+.notification__body {
+    flex: 1 1 auto;
+
+    min-width: 0;
+}
+
+.notification__title {
+    padding: 0;
+
+    border: 0;
+
+    background: none;
+    color: var(--wd-text-primary);
+
+    font-weight: 600;
+    text-align: left;
+}
+
+.notification__title:hover,
+.notification__title:focus-visible {
+    color: var(--wd-primary);
+    text-decoration: underline;
+}
+
+.notification__message {
+    margin: 2px 0 0;
+
+    overflow-wrap: anywhere;
+}
+
 .user-menu__button {
     display: inline-flex;
     align-items: center;

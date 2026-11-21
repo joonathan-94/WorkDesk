@@ -1773,6 +1773,26 @@ Aplica y precisa RN-85 a RN-91 en la implementación de `v0.5.0` (entrega 4). Ca
 
 ---
 
+## RN-167 — Centro de notificaciones
+
+Aplica y precisa RN-93 en la implementación de `v0.5.0` (entrega 5): la infraestructura de las notificaciones internas y el centro donde cada persona las ve. Qué eventos las generan y a quién (RN-94 a RN-96) llega con la entrega 6.
+
+* **Son siempre internas.** WorkDesk no envía correo ni mensajes externos: la persona las ve en el centro de notificaciones y en el contador de la barra superior (la campana).
+* **Cada quien ve solo las suyas.** Todas las consultas filtran por el usuario de la sesión. Una notificación de otra persona responde 404 igual que una inexistente, también al marcarla o abrirla: con un 403 cualquiera podría averiguar cuáles existen.
+* **El contenido no se reescribe.** Título, mensaje, evento, ticket, destinatario y fecha de creación no cambian nunca (la aplicación lo rechaza); solo evoluciona la lectura. Marcar como leída fija la **primera** lectura y volver a marcarla no la cambia. Leer no elimina.
+* **Vocabulario controlado.** Los eventos válidos (`NotificationEvent`: creación, asignación, reasignación, cambio de estado, comentario público, nota interna, espera, resolución, validación pendiente, cierre, reapertura, SLA próximo a vencer y SLA vencido) viven en la aplicación, no en la base de datos. Un evento nuevo obliga a decidir su nombre y su icono, y un test lo exige; no necesita migración.
+* **Quien genera el aviso decide a quién.** Crear una notificación no comprueba si el destinatario puede ver el ticket ni si el evento es interno: esa decisión es de quien la genera y debe seguir las mismas reglas de visibilidad del historial (un Solicitante nunca recibe un aviso de una nota interna ni del SLA). Lo único que el servicio impone es que el destinatario esté activo: a un usuario desactivado no se le crea nada. Un aviso puede no tener ticket (aviso general).
+* **La campana** muestra cuántas notificaciones sin leer tiene la persona (sin número si no hay; «99+» a partir de 100) y lleva al centro. El número lo calcula el servidor en cada página y, con JavaScript, se actualiza cada 30 segundos consultando `GET /notifications/unread-count` (sin caché). Es una mejora progresiva y no hay actualización en tiempo real: queda para después del MVP.
+* **El centro** (`/notifications`, los cuatro roles) lista las notificaciones de la más reciente a la más antigua, 20 por página, con las pestañas **Todas** y **No leídas** y sus contadores. Las no leídas se distinguen por un punto y un fondo suave (también para un lector de pantalla). Se puede marcar una como leída o todas a la vez.
+* **Abrir** una notificación con ticket la marca como leída y lleva al ticket. Abrirla no es un permiso: si la persona ya no puede ver el ticket, el ticket responde 404 como siempre. Una notificación sin ticket solo se marca.
+* **Una acción, un POST con CSRF.** Marcar y abrir cambian algo, así que nunca son un GET; los formularios conservan el filtro y la página para volver al mismo punto del listado.
+
+**Datos de demostración.** Mientras ningún evento del sistema genera avisos (entrega 6), `seed-demo-notifications` deja notificaciones de ejemplo escritas para cada rol, apuntando a tickets que esa persona puede ver (ver `PROJECT_CONTEXT.md`, comando `seed-demo-notifications`).
+
+**Fuera de esta entrega:** la generación de avisos por los eventos del sistema, incluidos RF-068 (el solicitante comenta), RN-95 y RN-96 (entrega 6); los avisos de SLA (entrega 8); la configuración de eventos y destinatarios (RN-97) y las preferencias de cada persona, que dependen de la configuración administrable de `v0.7.0`; y la política de retención de las leídas.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

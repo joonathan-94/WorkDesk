@@ -274,6 +274,7 @@ WorkDesk/
 │       ├── groups/
 │       ├── main/
 │       ├── models/
+│       ├── notifications/
 │       ├── security/
 │       ├── seeds/
 │       ├── sla/
@@ -307,6 +308,7 @@ WorkDesk/
 │       │   ├── groups/
 │       │   ├── layouts/
 │       │   ├── main/
+│       │   ├── notifications/
 │       │   ├── sla/
 │       │   ├── tickets/
 │       │   └── users/
@@ -341,11 +343,14 @@ WorkDesk/
 │   ├── test_formatting.py
 │   ├── test_groups.py
 │   ├── test_layout.py
+│   ├── test_notifications.py
+│   ├── test_notifications_routes.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_route_authorization.py
 │   ├── test_route_protection.py
 │   ├── test_seed_demo.py
+│   ├── test_seed_demo_notifications.py
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
 │   ├── test_sla_periods.py
@@ -645,6 +650,7 @@ Las migraciones actuales crean estas tablas:
 - `calendarios_laborales`, `horarios_laborales` y `feriados`: las versiones del calendario laboral, sus franjas por día y sus feriados.
 - `politicas_sla`: los objetivos de SLA de cada prioridad (primera respuesta, resolución, umbral de aviso y pausa en espera).
 - `tickets_sla_periodos`: los períodos de SLA de cada ticket (los tramos de su vida bajo unas mismas condiciones de SLA, con lo consumido y los vencimientos).
+- `notificaciones`: los avisos internos de cada usuario (su contenido no se reescribe; solo cambia si ya los leyó).
 
 Para comprobar que se aplicaron:
 
@@ -953,6 +959,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 13. **Calendario laboral:** en **Administración → SLA** ves el calendario laboral. Mientras no hayas guardado ninguno dice **Por defecto (sin configurar)**: lunes a viernes de 09:00 a 18:00, sin feriados. Pulsa **Configurar calendario**. El horario de cada día es un texto: déjale al viernes `09:00-17:00` y escribe en el sábado `10:00-12:00`; si quieres una pausa de almuerzo, usa `09:00-13:00, 14:00-18:00`. En **Feriados** escribe uno por línea, por ejemplo `25-12-2026 Navidad` (también vale `2026-12-25`). Guarda: la pantalla pasa a decir **Configurado · versión 1** y resume el horario («Lunes a jueves · 09:00–18:00», «Viernes · 09:00–17:00»…). Vuelve a configurarlo, cambia una hora y guarda: ahora hay una **versión 2** y la 1 queda en la tabla de versiones como **Anterior**, tal como se guardó. Prueba a escribir `mañana` en un día, una hora de fin anterior a la de inicio, dos franjas que se solapan o un feriado sin nombre: cada error aparece junto a su campo y lo escrito no se pierde. Para ver el control de versiones, abre **Configurar calendario** en dos pestañas, guarda en una y luego en la otra: la segunda avisa de que otra persona guardó mientras editabas y no pisa el cambio. Si no cambias nada y guardas, avisa de que no hay cambios y no crea una versión. Si ejecutas `seed-demo-tickets` de nuevo con un calendario guardado, las fechas de los tickets de demostración respetan sus franjas y sus feriados.
 14. **Objetivos de SLA:** en **Administración → SLA** ves, sobre el calendario, la tarjeta **Objetivos por prioridad** con una fila por prioridad: primera respuesta, resolución, umbral de aviso y si el reloj se pausa mientras el ticket está en espera. Si ejecutaste `seed-catalogs`, ya traen los valores iniciales (por ejemplo, Crítica: 30 min / 4 h / 75 %); si la tarjeta dice **Sin definir** en alguna, usa **Definir** o ejecuta `seed-catalogs` (no pisa nada). Pulsa **Editar** en `Alta`. Las duraciones se escriben como las dirías: `30 min`, `4 h` o `1 h 30 min` (son horas laborales: solo cuentan dentro del calendario). Cámbiale la resolución a `1 h 30 min` y guarda: pasa a mostrarse así en la tabla. Prueba a escribir `4` (te pide la unidad), `1,5 h` (no admite decimales), `2 días` (no admite días), una primera respuesta mayor que la resolución, o un umbral de `0` o de `101`: cada error aparece junto a su campo y todos a la vez, y lo escrito no se pierde. Vacía **Primera respuesta** para dejarla sin objetivo (la tabla dice «Sin objetivo») y desmarca la pausa para ver «No». Pulsa **Desactivar** en `Baja`: pide confirmación con un motivo opcional y la fila queda atenuada como **Inactiva** (esa prioridad ya no tiene SLA); **Reactivar** la devuelve con los mismos objetivos. Para ver el control de ediciones simultáneas, abre **Editar** en dos pestañas, guarda en una y luego en la otra: la segunda avisa de que otra persona modificó los objetivos y no pisa el cambio. Cada cambio queda en la auditoría administrativa. Los objetivos se aplican a los tickets de forma automática (ver el paso siguiente).
 15. **SLA de un ticket:** todavía no hay pantalla para verlo (llega más adelante), pero ya se calcula y puedes comprobarlo con un comando. Crea un ticket de prioridad **Alta** y apunta su número. En la terminal ejecuta `python -m flask --app src.workdesk sla-status 12` (cambia 12 por el número). Verás la prioridad, `SLA: dentro de plazo`, lo consumido (`0 min de 6 h`), cuándo vence y la lista de períodos con uno solo, **vigente**. Después prueba, volviendo a ejecutar el comando tras cada paso: **Iniciar trabajo** y **Poner en espera** (aparece un período nuevo y `SLA: pausado`: el tiempo en espera no cuenta), **Reactivar** (otro período, otra vez corriendo), **Cambiar prioridad** a Crítica con un motivo (se cierra el período y se abre otro con el objetivo de 4 h, descontando lo ya consumido: el reloj no se reinicia) y **Resolver** (el último período se cierra y el reloj se detiene). Si **Reabres** el ticket, sigue contando donde iba. El SLA corre solo en horario laboral del calendario: de noche y en fin de semana el consumo no avanza. Si cargaste tickets de demostración, `sla-status` también funciona con ellos (los de más días suelen salir vencidos).
+16. **Notificaciones:** en la barra superior, a la izquierda de tu nombre, hay una **campana**. Todavía **ningún evento genera avisos solo** (eso llega más adelante), así que para ver algo carga avisos de ejemplo: con tickets ya cargados, ejecuta en la terminal `python -m flask --app src.workdesk seed-demo-notifications --username TU_USUARIO` (cambia `TU_USUARIO` por el usuario con el que entraste) y recarga la página: la campana muestra un **número azul** con los avisos sin leer. Púlsala: abre **Notificaciones** (también está en el menú lateral). Las no leídas tienen un punto y un fondo azul suave. Prueba **No leídas** (solo esas), **Marcar como leída** en una (el número baja), el título de una que tenga ticket (la marca como leída y abre el ticket) y **Marcar todas como leídas** (el número desaparece). Con la página abierta el número se actualiza solo cada 30 segundos. Cada persona ve solo los suyos: los avisos de ejemplo se crean por persona y el contador de cada una es independiente (los del personal hablan de asignaciones y SLA; los de un Solicitante, de cambios de estado y de la solución de su ticket).
 
 ### 2. Como Solicitante
 
@@ -970,6 +977,7 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 10. **Adjuntar:** en tu ticket puedes subir archivos (tarjeta **Archivos**) o adjuntarlos a un comentario (**Adjuntar archivos (opcional)**). Ves y descargas los tuyos y los del equipo en comentarios públicos, pero no los de una nota interna.
 11. **Validar una solución:** abre `el lector de huella de la entrada no me reconoce` (es de `paula.contreras`, está Resuelto). Arriba aparece **«¿Tu solicitud quedó resuelta?»** y, en la tarjeta **Resolución**, lo que escribió el técnico. Pulsa **No, necesito más ayuda**: te pide explicar qué falta (sin texto no avanza); al enviar, el ticket vuelve a **En progreso** y el historial muestra tu motivo. Como técnico, vuelve a resolverlo; entra otra vez como `paula.contreras` y pulsa **Sí, está resuelto**: el ticket queda **Cerrado**, el resumen indica la fecha y el motivo «Resolución validada», y aparece **Reabrir ticket** (lo tienes disponible durante `REOPEN_WINDOW_DAYS` días desde el cierre; después, `/tickets/N/status/reopen` responde **Acceso denegado**). Tampoco puedes resolver ni cerrar tickets: `/tickets/N/status/resolve` y `/tickets/N/status/close` responden 403.
 12. **Relaciones:** abre `otra vez sin wifi en la bodega` (`ignacio.molina`): está Cerrado con el motivo «Duplicado», pero no ves de qué ticket es duplicado ni hay tarjeta de **Relaciones**. `/tickets/N/relations` y `/tickets/N/duplicate` responden **Acceso denegado** (403): las relaciones las gestiona el personal.
+13. **Notificaciones:** la barra lateral incluye **Notificaciones** y, arriba, la campana. Si cargaste avisos de ejemplo para esta persona (`seed-demo-notifications --username paula.contreras`, ver el paso 16 del Administrador), ves los suyos: un cambio de estado, una respuesta del equipo, la revisión de la solución de un ticket, un cierre y la creación de un ticket. No hay avisos de SLA ni de notas internas: eso es solo del personal.
 
 ### 3. Como Técnico
 
@@ -1006,6 +1014,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 
 ### Lo que todavía no verás
 
+- Los avisos no se generan solos: el centro de notificaciones y la campana ya funcionan, pero ningún evento (asignar un ticket, comentar, resolver...) crea todavía un aviso; llegan con la siguiente entrega de `v0.5.0`. Mientras tanto, `seed-demo-notifications` deja avisos de ejemplo.
 - No hay cierre automático de un ticket Resuelto que nadie valida: llega con el planificador (`v0.5.0`). Mientras tanto, un ticket Resuelto sin solicitante lo cierra un Supervisor con el cierre excepcional.
 - Todavía no hay la advertencia de posibles duplicados al crear un ticket.
 - El aviso de quién edita no se actualiza solo: aparece al abrir o recargar la pantalla (la actualización en tiempo real es posterior al MVP).
@@ -1035,6 +1044,8 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `seed-demo-tickets`: "Faltan los catálogos iniciales. Ejecuta primero seed-catalogs." o "Faltan las transiciones de estado..." | Se saltó el paso 3 de la preparación, o los catálogos se cargaron antes de que existieran las transiciones entre estados. | Ejecuta `seed-catalogs` (no duplica nada) y vuelve a intentarlo. |
 | **Administración → SLA** muestra «Sin definir» en las prioridades | Cargaste los catálogos antes de que existieran los objetivos de SLA (`v0.5.0`, entrega 3). | Ejecuta `seed-catalogs`: crea los objetivos que faltan (`políticas de SLA: 4`) y no pisa nada. También puedes definirlos a mano con **Definir**. |
 | `seed-demo-tickets`: "Hay transiciones deshabilitadas que la demostración necesita..." | Un Administrador deshabilitó una transición que los tickets de demostración recorren. | Habilítala en **Administración → Estados y transiciones** y vuelve a intentarlo. No se cargó ningún ticket. |
+| La campana no muestra número y **Notificaciones** está vacío | Todavía ningún evento genera avisos (llegan con la siguiente entrega de `v0.5.0`), así que una instalación nueva no tiene ninguno. | Para ver el centro funcionando, ejecuta `python -m flask --app src.workdesk seed-demo-notifications --username TU_USUARIO` (necesita tickets que esa cuenta pueda ver, por ejemplo los de `seed-demo-tickets`). |
+| `seed-demo-notifications`: "No existe el usuario: ..." o "Faltan los usuarios de demostración..." | El usuario de `--username` está mal escrito, o ejecutaste el comando sin opciones y falta `seed-demo`. | Revisa el nombre de usuario, o ejecuta antes `seed-demo`. |
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
 | `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 76" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
@@ -1131,10 +1142,15 @@ GET POST  /tickets/<public_id>/relations/<relation_id>/remove
 GET POST  /tickets/<public_id>/duplicate
 POST      /tickets/<public_id>/lock/renew
 POST      /tickets/<public_id>/lock/release
+GET       /notifications
+POST      /notifications/<id>/read
+POST      /notifications/<id>/open
+POST      /notifications/read-all
+GET       /notifications/unread-count
 GET       /health
 ```
 
-`/dashboard`, `/tickets` (y todas sus rutas) y `/account/password` requieren una sesión autenticada. `/admin` (incluidas las pantallas de catálogos y de estados y transiciones) y todas las rutas `/users` requieren el rol Administrador; `/groups`, el rol Administrador o Supervisor.
+`/dashboard`, `/tickets` (y todas sus rutas), `/notifications` (y todas sus rutas) y `/account/password` requieren una sesión autenticada. Cada persona ve solo sus notificaciones: la de otra responde 404. `/admin` (incluidas las pantallas de catálogos y de estados y transiciones) y todas las rutas `/users` requieren el rol Administrador; `/groups`, el rol Administrador o Supervisor.
 
 El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los casos, y el Solicitante solo si creó el ticket o es su solicitante. Si no tiene acceso, la respuesta es un **404** idéntica a la de un ticket inexistente: los números son correlativos y un 403 permitiría descubrir cuáles existen. Las rutas de edición, de prioridad y de solicitantes son solo del personal: quien ve el ticket pero no puede usarlas recibe un **403**. En los comentarios, una nota interna que el usuario no puede ver responde **404** (como si no existiera) y editar o eliminar un comentario ajeno, o uno propio fuera del plazo, responde **403**. Un test recorre todo el mapa de rutas y comprueba estas reglas por rol, así que una ruta nueva queda cubierta sin tocarlo.
 
@@ -1268,7 +1284,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-2832 tests
+2955 tests
 ```
 
 Los tests cubren principalmente:
@@ -1297,7 +1313,8 @@ Los tests cubren principalmente:
 - calendario laboral administrable: las restricciones de la base de datos (una sola versión vigente, franjas y feriados sin repetir), que guardar crea siempre una versión nueva y deja la anterior intacta, los conflictos entre dos personas (también con dos hilos a la vez), qué se audita, la lectura de los textos del horario y de los feriados, las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito) y que el seed de demostración respete el calendario guardado;
 - políticas de SLA: las restricciones de la base de datos (una sola política activa por prioridad, la primera respuesta que no supera la resolución, el umbral entre 1 y 100), las reglas de los valores y sus límites exactos, la lectura de las duraciones («30 min», «4 h», «1 h 30 min») con sus formas válidas, las inválidas y que escribirlas y leerlas sean operaciones inversas, los valores iniciales del seed (y que no pise lo que el Administrador cambió), qué se audita, desactivar y reactivar, los conflictos entre dos Administradores (con dos hilos a la vez, y con una política que la sesión ya había cargado cuando otra transacción la cambió) y las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito y la comprobación de que la pantalla estaba desactualizada).
 
-- períodos de SLA: abrir un período al crear el ticket, la pausa en espera y su reanudación, detener el reloj al resolver y cerrar y seguir donde iba al reabrir, que un cambio de prioridad conserve lo consumido (nacer vencido, bajar la prioridad sin borrar un incumplimiento, nacer pausado), que las condiciones se hereden aunque se edite la política, el tiempo laboral (noches, fines de semana y el calendario con que se calculó cada período), la primera respuesta, el estado del SLA con sus límites exactos, que reconstruir desde el historial dé lo mismo que el cálculo en vivo, las restricciones de la base de datos, dos cambios de prioridad a la vez, los comandos `sla-rebuild` y `sla-status` y que el seed de demostración deje los períodos de todos sus tickets.
+- períodos de SLA: abrir un período al crear el ticket, la pausa en espera y su reanudación, detener el reloj al resolver y cerrar y seguir donde iba al reabrir, que un cambio de prioridad conserve lo consumido (nacer vencido, bajar la prioridad sin borrar un incumplimiento, nacer pausado), que las condiciones se hereden aunque se edite la política, el tiempo laboral (noches, fines de semana y el calendario con que se calculó cada período), la primera respuesta, el estado del SLA con sus límites exactos, que reconstruir desde el historial dé lo mismo que el cálculo en vivo, las restricciones de la base de datos, dos cambios de prioridad a la vez, los comandos `sla-rebuild` y `sla-status` y que el seed de demostración deje los períodos de todos sus tickets;
+- notificaciones internas: el vocabulario de eventos (con su nombre y su icono), las restricciones de la base de datos (lectura coherente y un mensaje que no sea solo espacios o saltos de línea), que el contenido no se pueda reescribir pero la lectura sí, que marcar de nuevo no cambie la fecha de la primera lectura (ni con dos pestañas a la vez), que cada consulta devuelva solo las notificaciones de quien las pide (la de otra persona responde 404), que no se notifique a un usuario inactivo ni dos veces a la misma persona, el listado (filtro, orden, paginación y ausencia de consultas por fila), el contador y la campana, los formularios con su token CSRF y que el comando `seed-demo-notifications` solo apunte a tickets que cada persona puede ver.
 
 Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
 
@@ -1307,7 +1324,7 @@ Ejecutar:
 python -m pytest -q
 ```
 
-La suite completa tarda varios minutos (unos 24 en el equipo de desarrollo del proyecto), porque cada test parte de una base recién creada. No es un cuelgue.
+La suite completa tarda varios minutos (unos 30 en el equipo de desarrollo del proyecto), porque cada test parte de una base recién creada. No es un cuelgue.
 
 Ejecuta **una sola vez a la vez**: todas las ejecuciones comparten `workdesk_test` y cada test recrea las tablas, de modo que dos ejecuciones en paralelo se estorban y fallan de forma aleatoria.
 
@@ -1366,6 +1383,9 @@ python -m flask --app src.workdesk seed-demo
 
 # Cargar tickets de demostración (opcional; requiere seed-demo y las categorías de la demo)
 python -m flask --app src.workdesk seed-demo-tickets
+
+# Cargar notificaciones de ejemplo (opcional; requiere tickets visibles; --username para una cuenta concreta)
+python -m flask --app src.workdesk seed-demo-notifications
 
 # Ver rutas
 python -m flask --app src.workdesk routes
