@@ -82,29 +82,26 @@ main
 ## Rama de trabajo actual
 
 ```text
-main
+feature/shared-business-time
 ```
 
-Con `v0.4.0` cerrada no hay una rama de trabajo abierta: la fase siguiente (`v0.5.0`) empezará en la suya. La última fue `feature/states-screen-close-v0-4-0` (entrega 12): la pantalla de Estados y transiciones, la revisión final del código de la fase y la documentación de cierre (ver "Administración de estados y transiciones" y "Revisión final de la fase"). No incluye migraciones ni cambia el seed de demostración, salvo un aviso claro si faltan transiciones.
+Entrega 1 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): el motor de tiempo laboral que tenía el seed `seed-demo-tickets` (`_BusinessClock`) pasa a un módulo compartido, `src/workdesk/worktime.py`, y gana las dos operaciones que necesita el SLA: medir los segundos laborales entre dos momentos y sumarlos a un momento (ver "Tiempo laboral"). Es un refactor: no incluye migraciones y las fechas que genera el seed no cambian.
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35).
 
-`v0.4.0` se divide en 12 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
+`v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
 | # | Entrega | Estado |
 | --- | --- | --- |
-| 1 | Historial: vocabulario en la aplicación y visibilidad por evento | Integrada (PR #23) |
-| 2 | Catálogo de motivos de espera y su administración | Integrada (PR #24) |
-| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Integrada (PR #25) |
-| 4 | Grupos (`/groups`), con membresías y supervisores responsables | Integrada (PR #26) |
-| 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Integrada (PR #27) |
-| 6 | Agregar y retirar solicitantes tras crear el ticket | Integrada (PR #28) |
-| 7 | Comentarios públicos y notas internas | Integrada (PR #30) |
-| 8 | Adjuntos | Integrada (PR #31) |
-| 9 | Resolución, validación del solicitante, cierre y reapertura | Integrada (PR #32) |
-| 10 | Relaciones y duplicados | Integrada (PR #33) |
-| 11 | Bloqueo temporal de edición | Integrada (PR #34) |
-| 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Integrada (PR #35) |
+| 1 | Motor de tiempo laboral compartido (`worktime.py`) | En curso |
+| 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | Pendiente |
+| 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Pendiente |
+| 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Pendiente |
+| 5 | Notificaciones internas: infraestructura y centro de notificaciones | Pendiente |
+| 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Pendiente |
+| 7 | Indicadores de SLA en el listado y el detalle | Pendiente |
+| 8 | Planificador: avisos de SLA y cierre automático | Pendiente |
+| 9 | Cierre de la versión: revisión de toda la fase y documentación | Pendiente |
 
 ## Identidad visual (integrada en `main`)
 
@@ -161,7 +158,24 @@ Cierre de la versión (entrega 7), sin migraciones ni cambios de funcionalidad:
 v0.4.0 — Asignación, colaboración y ciclo de vida
 ```
 
-Es la fase en que el ticket pasa a trabajarse en equipo: grupos, asignación, estados, comentarios y notas internas, adjuntos, resolución, cierre y reapertura, relaciones, bloqueo de edición y la administración de los estados. Se dividió en 12 entregas (la tabla está en "Rama de trabajo actual"), cada una con su rama, tests, Pull Request y ampliación del seed de demostración. Sus reglas están en `docs/06` (RN-146 y RN-156 a RN-164) y su alcance en `docs/12_roadmap.md` (fase 4, con las decisiones de la fase).
+Es la fase en que el ticket pasa a trabajarse en equipo: grupos, asignación, estados, comentarios y notas internas, adjuntos, resolución, cierre y reapertura, relaciones, bloqueo de edición y la administración de los estados. Se dividió en 12 entregas, cada una con su rama, tests, Pull Request y ampliación del seed de demostración:
+
+| # | Entrega | Estado |
+| --- | --- | --- |
+| 1 | Historial: vocabulario en la aplicación y visibilidad por evento | Integrada (PR #23) |
+| 2 | Catálogo de motivos de espera y su administración | Integrada (PR #24) |
+| 3 | Estados y transiciones (`transiciones_estados`) y cambios de estado operativos | Integrada (PR #25) |
+| 4 | Grupos (`/groups`), con membresías y supervisores responsables | Integrada (PR #26) |
+| 5 | Asignación de técnicos, grupo del ticket y escalamiento manual | Integrada (PR #27) |
+| 6 | Agregar y retirar solicitantes tras crear el ticket | Integrada (PR #28) |
+| 7 | Comentarios públicos y notas internas | Integrada (PR #30) |
+| 8 | Adjuntos | Integrada (PR #31) |
+| 9 | Resolución, validación del solicitante, cierre y reapertura | Integrada (PR #32) |
+| 10 | Relaciones y duplicados | Integrada (PR #33) |
+| 11 | Bloqueo temporal de edición | Integrada (PR #34) |
+| 12 | Pantalla de Estados y transiciones (UI-021) y cierre de la versión | Integrada (PR #35) |
+
+Sus reglas están en `docs/06` (RN-146 y RN-156 a RN-164) y su alcance en `docs/12_roadmap.md` (fase 4, con las decisiones de la fase).
 
 Decisiones de la fase:
 
@@ -182,9 +196,17 @@ Su alcance está en `docs/12_roadmap.md` (fase 5): SLA por prioridad calculado e
 
 - el cierre automático de un ticket `Resuelto` que nadie valida: la transición `AUTO_CIERRE`, el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente` ya existen, pero nada los usa. Hasta entonces, un ticket resuelto sin solicitante solo lo cierra un Supervisor o el Administrador con el cierre excepcional;
 - las notificaciones a los técnicos cuando el Solicitante comenta (RF-068) y el aviso de reapertura (RN-72 y RN-96);
-- el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasa a un módulo compartido con el SLA, y `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado;
+- el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasó a un módulo propio, `src/workdesk/worktime.py`, para compartirlo con el SLA (entrega 1, ver "Tiempo laboral"); `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado, y el calendario administrable llega con la entrega 2;
 - por el motor de estados pasa todo cambio de estado (`change_state` y `apply_derived_transition`): ahí tendrá que reaccionar el SLA al entrar y salir de `En espera`;
 - la política de continuidad del SLA ante un cambio de prioridad (RN-88): `change_priority` todavía no la aplica.
+
+Decisiones tomadas al planificar la fase (el detalle está en `docs/12_roadmap.md`):
+
+- **El planificador será un comando propio** (`run-scheduler`), sin APScheduler ni otra dependencia nueva: las tareas son idempotentes y pueden ejecutarse también una sola vez desde el Programador de tareas de Windows o `cron`.
+- **«Primera respuesta»** es el primer comentario público del personal y es un objetivo opcional de la política de SLA.
+- **Las excepciones de SLA (RF-083) quedan fuera** de la fase.
+- **La pausa del SLA no usa columnas nuevas:** al entrar en `En espera` se cierra el período y, al reanudar, se abre otro que arrastra el consumo acumulado.
+- **El plazo del cierre automático** es una variable de entorno (24 horas por defecto) hasta que llegue la configuración administrable de `v0.7.0`.
 
 Asignada a `v0.7.0`: la advertencia de posibles duplicados al crear un ticket (RF-061), junto a la base de conocimiento, con la que comparte la búsqueda.
 
@@ -387,7 +409,8 @@ WorkDesk/
 │       ├── formatting.py
 │       ├── logging_config.py
 │       ├── navigation.py
-│       └── search.py
+│       ├── search.py
+│       └── worktime.py
 ├── tests/
 │   ├── conftest.py
 │   ├── test_account_password.py
@@ -437,6 +460,7 @@ WorkDesk/
 │   ├── test_users_routes.py
 │   ├── test_users_service.py
 │   ├── test_wait_reasons.py
+│   ├── test_worktime.py
 │   └── ticket_helpers.py
 ├── .github/
 │   └── copilot-instructions.md
@@ -1152,6 +1176,19 @@ La entrega 12 cerró la versión con una revisión de todo el código de la fase
 
 ---
 
+# 11 quater. Tiempo laboral
+
+Módulo `src/workdesk/worktime.py` (entrega 1 de `v0.5.0`). Es el motor de tiempo laboral. Hoy lo usa el seed `seed-demo-tickets` (donde vivía como `_BusinessClock`) y lo usará el SLA, por eso tiene su propio módulo. No usa la base de datos ni Flask: recibe un calendario y una zona horaria. Sus decisiones están en `docs/10` (sección «Tiempo laboral»).
+
+- **`WorkCalendar`** (`dias`, `inicio`, `fin` y `feriados`) describe una jornada única, igual para todos los días laborales, y **`DEMO_CALENDAR`** (lunes a viernes de 09:00 a 18:00, sin feriados) es el calendario por defecto. Los dos salieron de `seeds/demo_tickets_data.py`.
+- **`BusinessClock(calendario, zona)`** ofrece los días (`is_workday`, `previous_workday`, `next_workday` y `workdays_before`), los momentos (`into_business` y `latest_before`), `business_seconds_between(inicio, fin)` (los segundos laborales completos entre dos momentos) y dos formas de avanzar: `add_business_seconds` calcula un vencimiento (si el plazo se cumple justo al cerrar, el resultado es la hora de cierre) y `add_hours` un momento de trabajo (en ese caso pasa a la apertura del día siguiente, que es lo que necesita el seed). Son nuevas `business_seconds_between` y `add_business_seconds`; `add_hours` conserva su comportamiento y ahora se apoya en la segunda, y el resto se movió con el mismo comportamiento para las fechas que ya estaban en la zona del calendario (lo único que ganaron es la conversión a esa zona).
+- **Medir y sumar son operaciones inversas**, y `tests/test_worktime.py` lo comprueba, además de comparar la medición con un recuento minuto a minuto que no comparte ninguna idea con el motor.
+- **La jornada incluye el inicio y excluye el fin.** Las fechas llevan siempre zona horaria: el motor las convierte a la zona del calendario (se le pueden pasar las de la base de datos, en UTC) y rechaza las que no la tienen. Se calcula con la hora de pared y se da por hecho que ninguna jornada cruza un cambio de horario de verano.
+- **`calendar_problems(calendario)`** valida un calendario con mensajes pensados para quien lo edita (la usan el seed y, desde la entrega 2, la pantalla del Administrador), y `BusinessClock` lanza `ValueError` ante un calendario inválido: sin días laborales, buscar el siguiente día laboral no terminaría nunca.
+- **El seed no cambió su comportamiento.** `seed_demo_tickets` usa `BusinessClock` y `calendar_problems` en lugar de sus copias privadas, y sus tests siguen igual (solo cambió el módulo desde el que importan `WorkCalendar`). Lo que sigue pendiente del calendario, como que el seed lea el calendario guardado por el Administrador y las franjas distintas por día, llega con la entrega 2.
+
+---
+
 # 12. Autenticación actual
 
 La autenticación utiliza:
@@ -1662,7 +1699,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
 - **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
-- **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `demo_tickets_data.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (`_BusinessClock`) pasará a un módulo compartido con el SLA. Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
+- **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `worktime.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (antes `_BusinessClock`) ya es un módulo propio, `worktime.py`, que usará también el SLA (ver "Tiempo laboral"). Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
 - valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad, y que la secuencia de acciones de estado de cada ticket sea ejecutable desde Nuevo con la matriz de transiciones y con motivos y textos coherentes...);
 - una sola transacción: si algo falla se revierte todo (`DemoTicketsError`);
 - se niega a ejecutarse con `APP_ENV=production`;
@@ -1708,6 +1745,24 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 1 de `v0.5.0` (motor de tiempo laboral compartido):
+
+```text
+2301 tests passing
+```
+
+Los 100 tests nuevos están en `tests/test_worktime.py`, son unitarios y no usan la base de datos. Cubren:
+
+- **el calendario:** el calendario por defecto, el formato HH:MM, cada problema que detecta `calendar_problems` y que `BusinessClock` se niega a construirse con un calendario inválido;
+- **los días:** los días laborales, los feriados, otro día de la semana como laboral y `workdays_before` (fines de semana, contando desde un domingo y con feriados);
+- **pasar al horario laboral** (`into_business` y `latest_before`): dentro de la jornada, justo al abrir y al cerrar, antes de abrir, por la noche y en fin de semana;
+- **avanzar horas** (`add_hours`): terminar justo al cierre pasa a la apertura siguiente, empezar fuera de la jornada, fines de semana, feriados, la fracción de segundo y que el resultado nunca cae fuera del horario;
+- **medir** (`business_seconds_between`): las noches, los fines de semana y los feriados no suman, la fracción de segundo se descarta, tres años enteros de días laborales, una comparación con un recuento minuto a minuto (con dos calendarios) que no comparte ninguna idea con el motor, y que las mediciones suman lo mismo sin importar cómo se divida el intervalo;
+- **sumar** (`add_business_seconds`): un plazo que se cumple justo al cierre vence a la hora de cierre (a diferencia de `add_hours`), con 0 segundos no se mueve, no admite cantidades negativas, sumar en dos pasos equivale a sumar de una vez y medir y sumar son operaciones inversas (el resultado es además el primer instante en que se cumple);
+- **zonas horarias:** las fechas en UTC se convierten a la zona del calendario, el resultado queda en esa zona, las fechas sin zona se rechazan y un fin de semana con cambio de horario de verano no mueve la jornada.
+
+`tests/test_seed_demo_tickets.py` cambia una sola línea (importa `WorkCalendar` desde `worktime`) y ninguna comprobación se tocó: el seed sigue produciendo las mismas fechas.
 
 Estado tras la entrega 12 de `v0.4.0` (estados y transiciones, y cierre de la versión):
 
@@ -2462,7 +2517,7 @@ Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases poste
 - `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.5.0`: calendario laboral administrable (tablas, motor de tiempo laboral compartido y pantalla del Administrador), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;
+- `v0.5.0`: calendario laboral administrable (tablas y pantalla del Administrador; el motor de tiempo laboral compartido ya existe, `worktime.py`), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

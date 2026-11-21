@@ -31,10 +31,12 @@ normal del historial y no se añadió ningún parámetro de fecha a los
 servicios.
 
 Tiempo laboral. Todo el tiempo del seed corre según un calendario laboral
-configurable (`WorkCalendar`, por defecto lunes a viernes de 09:00 a 18:00):
-`hace_dias` cuenta días laborales, las horas de creación caen dentro de la
-jornada y los ajustes avanzan en horas laborales, saltando noches, fines de
-semana y feriados. Nada cae fuera del calendario ni en el futuro.
+configurable (`WorkCalendar`, de `worktime.py`, por defecto lunes a viernes de
+09:00 a 18:00): `hace_dias` cuenta días laborales, las horas de creación caen
+dentro de la jornada y los ajustes avanzan en horas laborales, saltando noches,
+fines de semana y feriados. Nada cae fuera del calendario ni en el futuro. El
+motor que lo calcula (`BusinessClock`) no es del seed: vive en `worktime.py`
+porque lo usará también el SLA.
 
 Volver a ejecutarlo. No duplica nada. Los tickets que ya existen no se
 vuelven a crear: se *refrescan*, es decir, se reescriben sus fechas para que
@@ -48,7 +50,7 @@ se tocan nunca.
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta
 from io import BytesIO
 
 from sqlalchemy import update
@@ -97,17 +99,23 @@ from ..tickets.service import (
 )
 from ..tickets.state_actions import MAX_WAIT_TEXT_LENGTH, STATE_ACTIONS
 from ..tickets.storage import ALLOWED_TYPES
+from ..worktime import (
+    DEMO_CALENDAR,
+    TIME_PATTERN,
+    BusinessClock,
+    WorkCalendar,
+    calendar_problems,
+    parse_time,
+)
 from .catalogs import INITIAL_TRANSITIONS, INITIAL_WAIT_REASONS
 from .demo import DEMO_GROUPS, DEMO_USERS
 from .demo_tickets_data import (
-    DEMO_CALENDAR,
     DEMO_CATEGORIES,
     DEMO_LOCATIONS,
     DEMO_TICKETS,
     FALLBACK_CATEGORY,
     PRIORITY_CODES,
     DemoTicket,
-    WorkCalendar,
 )
 
 STAFF_ROLES = ("TECNICO", "SUPERVISOR")
@@ -121,7 +129,6 @@ MARKER_STEP = "demo_paso"
 
 MAX_KEY_LENGTH = 60
 _KEY_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
-_TIME_PATTERN = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 # Margen para que ningún evento quede en el futuro.
 _LIMIT_MARGIN = timedelta(minutes=1)
@@ -155,7 +162,7 @@ def validate_demo_tickets(
     claro, no a mitad de la carga.
     """
     roles = {demo.username: demo.rol for demo in DEMO_USERS}
-    problems: list[str] = _calendar_problems(calendar)
+    problems: list[str] = calendar_problems(calendar)
     calendar_ok = not problems
     keys: set[str] = set()
     duplicates: dict[str, str] = {}
@@ -196,12 +203,12 @@ def validate_demo_tickets(
         if ticket.hace_dias < 0:
             problems.append(f"{label}: hace_dias no puede ser negativo.")
 
-        if not _TIME_PATTERN.fullmatch(ticket.hora):
+        if not TIME_PATTERN.fullmatch(ticket.hora):
             problems.append(f"{label}: la hora «{ticket.hora}» no tiene formato HH:MM.")
         elif calendar_ok and not (
-            _parse_time(calendar.inicio)
-            <= _parse_time(ticket.hora)
-            < _parse_time(calendar.fin)
+            parse_time(calendar.inicio)
+            <= parse_time(ticket.hora)
+            < parse_time(calendar.fin)
         ):
             problems.append(
                 f"{label}: la hora {ticket.hora} cae fuera de la jornada "
@@ -221,37 +228,6 @@ def validate_demo_tickets(
         raise DemoTicketsError(
             "Los datos de demostración no son válidos:\n- " + "\n- ".join(problems)
         )
-
-
-def _parse_time(value: str) -> time:
-    hour, minute = (int(part) for part in value.split(":"))
-
-    return time(hour, minute)
-
-
-def _calendar_problems(calendar: WorkCalendar) -> list[str]:
-    problems: list[str] = []
-
-    if not calendar.dias:
-        problems.append("Calendario: debe haber al menos un día laboral.")
-
-    if any(not isinstance(d, int) or not 0 <= d <= 6 for d in calendar.dias):
-        problems.append("Calendario: los días van de 0 (lunes) a 6 (domingo).")
-
-    if len(set(calendar.dias)) != len(calendar.dias):
-        problems.append("Calendario: hay días repetidos.")
-
-    for name, value in (("inicio", calendar.inicio), ("fin", calendar.fin)):
-        if not _TIME_PATTERN.fullmatch(value):
-            problems.append(f"Calendario: el {name} «{value}» no tiene formato HH:MM.")
-
-    if not problems and _parse_time(calendar.inicio) >= _parse_time(calendar.fin):
-        problems.append("Calendario: el inicio debe ser anterior al fin.")
-
-    if any(not isinstance(holiday, date) for holiday in calendar.feriados):
-        problems.append("Calendario: los feriados deben ser fechas.")
-
-    return problems
 
 
 def _check_text(problems, label, name, value, limit) -> None:
@@ -737,7 +713,7 @@ def seed_demo_tickets(
     zone = app_zone()
     now = (now or datetime.now(UTC)).astimezone(zone)
     limit = now - _LIMIT_MARGIN
-    clock = _BusinessClock(calendar, zone)
+    clock = BusinessClock(calendar, zone)
     latest = clock.latest_before(limit)
 
     catalogs = _Catalogs.load(tickets)
@@ -1041,96 +1017,8 @@ def _is_own(context: dict | None, key: str) -> bool:
 # --- Fechas planificadas --------------------------------------------------
 
 
-class _BusinessClock:
-    """Calendario laboral: sabe qué días y horas cuentan y avanza en ellos.
-
-    Todos los momentos son fechas con zona horaria (la de la aplicación). La
-    jornada incluye el inicio y excluye el fin.
-    """
-
-    def __init__(self, calendar: WorkCalendar, zone) -> None:
-        self.zone = zone
-        self.days = set(calendar.dias)
-        self.holidays = set(calendar.feriados)
-        self.start = _parse_time(calendar.inicio)
-        self.end = _parse_time(calendar.fin)
-
-    def is_workday(self, day: date) -> bool:
-        return day.weekday() in self.days and day not in self.holidays
-
-    def previous_workday(self, day: date) -> date:
-        """`day` si es laboral; si no, el día laboral anterior."""
-        while not self.is_workday(day):
-            day -= timedelta(days=1)
-
-        return day
-
-    def next_workday(self, day: date) -> date:
-        """`day` si es laboral; si no, el día laboral siguiente."""
-        while not self.is_workday(day):
-            day += timedelta(days=1)
-
-        return day
-
-    def workdays_before(self, day: date, count: int) -> date:
-        """El día laboral que está `count` días laborales antes de `day`."""
-        day = self.previous_workday(day)
-
-        for _ in range(count):
-            day = self.previous_workday(day - timedelta(days=1))
-
-        return day
-
-    def at(self, day: date, moment: time) -> datetime:
-        return datetime.combine(day, moment, tzinfo=self.zone)
-
-    def into_business(self, moment: datetime) -> datetime:
-        """El primer momento laboral que no es anterior a `moment`."""
-        day = moment.date()
-
-        if self.is_workday(day):
-            if moment.time() < self.start:
-                return self.at(day, self.start)
-
-            if moment.time() < self.end:
-                return moment
-
-        return self.at(self.next_workday(day + timedelta(days=1)), self.start)
-
-    def latest_before(self, limit: datetime) -> datetime:
-        """El último momento laboral que no es posterior a `limit`."""
-        day = limit.date()
-
-        if self.is_workday(day):
-            if self.start <= limit.time() < self.end:
-                return limit
-
-            if limit.time() >= self.end:
-                return self.at(day, self.end) - _LIMIT_MARGIN
-
-        day = self.previous_workday(day - timedelta(days=1))
-
-        return self.at(day, self.end) - _LIMIT_MARGIN
-
-    def add_hours(self, moment: datetime, hours: int) -> datetime:
-        """Avanza `hours` horas LABORALES: salta noches, fines de semana y feriados."""
-        moment = self.into_business(moment)
-        remaining = timedelta(hours=hours)
-
-        while True:
-            available = self.at(moment.date(), self.end) - moment
-
-            if remaining < available:
-                return moment + remaining
-
-            remaining -= available
-            moment = self.at(
-                self.next_workday(moment.date() + timedelta(days=1)), self.start
-            )
-
-
 def _planned_times(
-    demo: DemoTicket, clock: _BusinessClock, now: datetime, latest: datetime
+    demo: DemoTicket, clock: BusinessClock, now: datetime, latest: datetime
 ) -> list[datetime]:
     """Momentos de la historia: [creación, ajuste 1, ajuste 2, ...].
 

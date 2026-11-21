@@ -20,10 +20,11 @@ Cómo leerla:
   `hora` indicada (hora local de `APP_TIMEZONE`, siempre dentro de la
   jornada). Así la demostración siempre tiene tickets de hoy, de la semana
   pasada y del mes anterior.
-- Qué días y horas son laborales lo define `DEMO_CALENDAR` (más abajo):
-  por defecto, de lunes a viernes de 09:00 a 18:00 y sin feriados. Se
-  puede cambiar sin tocar el código que carga los datos. Ningún ticket ni
-  ningún ajuste cae fuera de ese calendario.
+- Qué días y horas son laborales lo define `DEMO_CALENDAR` (en
+  `worktime.py`, junto al motor que calcula el tiempo laboral): por defecto,
+  de lunes a viernes de 09:00 a 18:00 y sin feriados. Se puede cambiar sin
+  tocar el código que carga los datos. Ningún ticket ni ningún ajuste cae
+  fuera de ese calendario.
 - `ajustes` son pasos posteriores del personal sobre el mismo ticket
   (reclasificar, cambiar la prioridad con motivo o corregir el título tras
   hablar con la persona). `despues_horas` son horas LABORALES desde el paso
@@ -51,7 +52,6 @@ cambios en tickets antiguos hay que recrear la base de desarrollo).
 """
 
 from dataclasses import dataclass
-from datetime import date
 
 # Categoría de respaldo: la crea `seed-catalogs` y siempre existe.
 FALLBACK_CATEGORY = "Sin clasificar"
@@ -72,29 +72,6 @@ DEMO_LOCATIONS = (MARCOLETA, MATTA)
 
 # Códigos de prioridad (no cambian aunque un Administrador renombre la prioridad).
 PRIORITY_CODES = ("BAJA", "MEDIA", "ALTA", "CRITICA")
-
-
-@dataclass(frozen=True)
-class WorkCalendar:
-    """Días y horas laborales con los que se fechan los tickets demo.
-
-    - `dias`: números de día de la semana, de 0 (lunes) a 6 (domingo).
-    - `inicio` y `fin`: jornada en formato HH:MM; `fin` no se incluye (un
-      ticket puede crearse a las 17:59, no a las 18:00).
-    - `feriados`: fechas que no son laborales aunque caigan en un día laboral.
-
-    Cuando exista el calendario laboral administrable del proyecto (llega con
-    el SLA, en `v0.5.0`), el motor deberá leerlo de la base de datos; esta
-    constante quedará como respaldo.
-    """
-
-    dias: tuple[int, ...] = (0, 1, 2, 3, 4)
-    inicio: str = "09:00"
-    fin: str = "18:00"
-    feriados: tuple[date, ...] = ()
-
-
-DEMO_CALENDAR = WorkCalendar()
 
 
 @dataclass(frozen=True)

@@ -320,7 +320,8 @@ WorkDesk/
 │       ├── formatting.py
 │       ├── logging_config.py
 │       ├── navigation.py
-│       └── search.py
+│       ├── search.py
+│       └── worktime.py
 │
 ├── tests/
 │   ├── conftest.py
@@ -371,6 +372,7 @@ WorkDesk/
 │   ├── test_users_routes.py
 │   ├── test_users_service.py
 │   ├── test_wait_reasons.py
+│   ├── test_worktime.py
 │   └── ticket_helpers.py
 │
 ├── .env.example
@@ -1250,7 +1252,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-2201 tests
+2301 tests
 ```
 
 Los tests cubren principalmente:
@@ -1274,7 +1276,8 @@ Los tests cubren principalmente:
 - comentarios, notas internas y adjuntos: el filtro por tipo en la consulta, los plazos de edición, los nombres de archivo hostiles, la extensión falsa, los límites de tamaño y la descarga autenticada;
 - relaciones y duplicados: el par simétrico, la ausencia de cadenas y ciclos y el cierre del duplicado;
 - administración de estados y transiciones: renombrar sin repetir nombres, las transiciones esenciales, que ninguna deshabilitación rompa el flujo (también entre dos Administradores a la vez) y que el catálogo de acciones y las políticas de autorización no se separen;
-- seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión, que las rutas POST exigen token CSRF y que cada ruta responde según quién la use (404 al ticket ajeno, 403 al rol sin permiso), con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o mal protegida.
+- seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión, que las rutas POST exigen token CSRF y que cada ruta responde según quién la use (404 al ticket ajeno, 403 al rol sin permiso), con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o mal protegida;
+- tiempo laboral (`worktime.py`): días y jornadas, feriados, medir y sumar tiempo laboral como operaciones inversas, una comparación con un recuento minuto a minuto, fechas en otra zona horaria y un fin de semana con cambio de horario de verano. Son pruebas unitarias: no usan la base de datos.
 
 Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
 
