@@ -2513,7 +2513,17 @@ Lunes a viernes · Por defecto (sin configurar)
 [Configurar calendario]
 ```
 
-La pantalla «Configurar calendario» se implementa en `v0.5.0`, junto al SLA, y es exclusiva del Administrador (RF-083). Muestra los días laborales con su franja de inicio y fin, la lista de feriados (fecha y nombre), la zona horaria y la versión vigente. Guardar crea una versión nueva y no altera las que ya usan períodos de SLA calculados (`docs/09`, sección 21). Se enlaza desde la tarjeta «SLA» del hub de administración.
+La pantalla «Configurar calendario» se implementó en `v0.5.0` (entrega 2), junto al SLA, y es exclusiva del Administrador (RF-077 y RF-079). Muestra los días laborales con su franja de inicio y fin, la lista de feriados (fecha y nombre), la zona horaria y la versión vigente. Guardar crea una versión nueva y no altera las que ya usan períodos de SLA calculados (`docs/09`, sección 21). Se enlaza desde la tarjeta «SLA» del hub de administración.
+
+**Cómo es la pantalla (implementada).**
+
+- **«SLA»** (`/admin/sla`) es la pantalla de configuración del SLA. Hoy muestra solo el calendario laboral: el estado («Configurado · versión N» o «Por defecto (sin configurar)»), el horario resumido por días seguidos que comparten horas, la zona horaria, el número de feriados con los próximos cinco, quién y cuándo lo guardó, y la tabla de versiones (la vigente y las anteriores). Las políticas por prioridad se suman en esta misma pantalla.
+- **«Configurar calendario»** (`/admin/sla/calendar`) es un solo formulario con la zona horaria, el horario de cada día, los feriados y un motivo opcional. Funciona sin JavaScript y, como las demás pantallas de acción, no usa modales.
+- **El horario de cada día es un texto**: `09:00-18:00`, o `09:00-13:00, 14:00-18:00` si hay una pausa de almuerzo; vacío significa que ese día no se trabaja. La hora de fin no se incluye (a las 18:00 ya no se trabaja). Un texto es más compacto que filas dinámicas y admite varias franjas por día, que es lo que permite el modelo (`docs/09`, 21.3).
+- **Los feriados son otro texto, uno por línea**: `25-12-2026 Navidad` (también se acepta año-mes-día). Como cada guardado crea una versión, conviene poder pegar la lista del año de una vez. Cada línea con problemas se señala con su número.
+- **La zona horaria** se escribe con ayuda de una lista de las zonas válidas y se rellena, la primera vez, con la de la aplicación (`APP_TIMEZONE`).
+- **Los errores se señalan junto a su campo** y el formulario conserva lo escrito. Todos se informan a la vez.
+- **Si otra persona guardó mientras la pantalla estaba abierta**, no se guarda nada: se avisa y se vuelve al formulario con lo vigente (lo escrito se pierde a propósito, como con la edición de un ticket). Guardar sin cambios tampoco crea una versión.
 
 ### Alertas y comportamiento
 

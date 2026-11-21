@@ -1,0 +1,192 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}SLA{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("SLA", None),
+    ]) }}
+
+    {{ page_header(
+        "SLA",
+        "El SLA se mide en tiempo laboral: aquí se define qué días y a qué horas corre su reloj."
+    ) }}
+
+    {# --- Calendario laboral ---------------------------------------------- #}
+    <section
+        class="card mb-4"
+        aria-labelledby="calendar-title"
+    >
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                    <h2
+                        class="h6 mb-2"
+                        id="calendar-title"
+                    >
+                        Calendario laboral
+                    </h2>
+
+                    {% if calendar.is_default %}
+                        <span class="badge badge-soft badge-soft-neutral">
+                            Por defecto (sin configurar)
+                        </span>
+                    {% else %}
+                        <span class="badge badge-soft badge-soft-success">
+                            Configurado · versión {{ calendar.version }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <a
+                    class="btn btn-primary"
+                    href="{{ url_for('sla.calendar_edit') }}"
+                >
+                    Configurar calendario
+                </a>
+            </div>
+
+            {% if calendar.is_default %}
+                <p class="small text-secondary">
+                    Todavía no se guardó ningún calendario, así que el sistema usa
+                    el predeterminado. Al guardar el primero se crea la versión 1
+                    y, desde entonces, todo el sistema usa lo guardado.
+                </p>
+            {% endif %}
+
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Horario</dt>
+                <dd class="col-sm-9">
+                    {% for line in calendar.schedule %}
+                        <div>
+                            <span class="fw-semibold">{{ line.days }}</span>
+                            · {{ line.hours }}
+                        </div>
+                    {% else %}
+                        <span class="text-secondary">Sin días laborales</span>
+                    {% endfor %}
+                </dd>
+
+                <dt class="col-sm-3">Zona horaria</dt>
+                <dd class="col-sm-9">{{ calendar.zone_name }}</dd>
+
+                <dt class="col-sm-3">Feriados</dt>
+                <dd class="col-sm-9">
+                    {% if calendar.holidays %}
+                        {{ calendar.holidays|length }}
+                        {{ 'feriado' if calendar.holidays|length == 1 else 'feriados' }}
+                        en total.
+                        {% if upcoming_holidays %}
+                            Próximos:
+                            <ul class="list-unstyled small mb-0 mt-1">
+                                {% for holiday in upcoming_holidays %}
+                                    <li>
+                                        <span class="font-monospace">{{ holiday.fecha.strftime('%d-%m-%Y') }}</span>
+                                        {{ holiday.nombre }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            Ninguno próximo.
+                        {% endif %}
+                    {% else %}
+                        <span class="text-secondary">Sin feriados</span>
+                    {% endif %}
+                </dd>
+
+                {% if not calendar.is_default %}
+                    <dt class="col-sm-3">Guardado</dt>
+                    <dd class="col-sm-9">
+                        {{ calendar.saved_at|local_datetime }}
+                        {% if calendar.saved_by %}
+                            por {{ calendar.saved_by.nombre }} {{ calendar.saved_by.apellido }}
+                        {% endif %}
+                    </dd>
+                {% endif %}
+            </dl>
+        </div>
+    </section>
+
+    {# --- Versiones ---------------------------------------------------------- #}
+    <section
+        class="card"
+        aria-labelledby="versions-title"
+    >
+        <div class="card-body pb-2">
+            <h2
+                class="h6 mb-1"
+                id="versions-title"
+            >
+                Versiones del calendario
+            </h2>
+
+            <p class="small text-secondary mb-3">
+                Cada vez que se guarda, se crea una versión nueva y la anterior
+                se conserva tal como estaba: lo que ya se calculó con una
+                versión no cambia cuando se guarda otra.
+            </p>
+        </div>
+
+        {% if versions %}
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Versión</th>
+                            <th scope="col">Guardada</th>
+                            <th scope="col">Horario</th>
+                            <th scope="col">Zona horaria</th>
+                            <th
+                                class="text-end"
+                                scope="col"
+                            >
+                                Feriados
+                            </th>
+                            <th scope="col">Estado</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for item in versions %}
+                            {% set record = item.record %}
+
+                            <tr>
+                                <td class="fw-semibold">{{ record.version }}</td>
+
+                                <td>
+                                    {{ record.fecha_creacion|local_datetime }}
+                                    {% if record.creado_por %}
+                                        <span class="small text-secondary d-block">
+                                            {{ record.creado_por.nombre }} {{ record.creado_por.apellido }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="small">{{ item.summary }}</td>
+                                <td class="small">{{ record.zona_horaria }}</td>
+                                <td class="text-end">{{ item.holiday_count }}</td>
+
+                                <td>
+                                    {% if record.activo %}
+                                        <span class="badge badge-soft badge-soft-success">Vigente</span>
+                                    {% else %}
+                                        <span class="badge badge-soft badge-soft-neutral">Anterior</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="card-body pt-0">
+                <p class="small text-secondary mb-0">
+                    Todavía no hay versiones guardadas: se usa el calendario por
+                    defecto.
+                </p>
+            </div>
+        {% endif %}
+    </section>
+{% endblock %}

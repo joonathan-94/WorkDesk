@@ -1,0 +1,197 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import field_errors, required_mark, text_field, textarea_field %}
+
+{% block title %}Configurar calendario laboral{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("SLA", url_for('sla.index')),
+        ("Configurar calendario", None),
+    ]) }}
+
+    {{ page_header(
+        "Configurar calendario laboral",
+        "Los días y las horas en que corre el reloj del SLA, y los feriados en que no corre."
+    ) }}
+
+    {% if calendar.is_default %}
+        <div class="alert alert-info small">
+            Todavía no hay un calendario guardado: el sistema usa el
+            predeterminado (lunes a viernes, de 09:00 a 18:00, sin feriados).
+            Al guardar se crea la <strong>versión 1</strong> y, desde entonces,
+            todo el sistema usa lo guardado.
+        </div>
+    {% else %}
+        <div class="alert alert-info small">
+            Vigente: <strong>versión {{ calendar.version }}</strong>, guardada
+            el {{ calendar.saved_at|local_datetime }}{% if calendar.saved_by %}
+            por {{ calendar.saved_by.nombre }} {{ calendar.saved_by.apellido }}{% endif %}.
+            Al guardar se creará la <strong>versión {{ calendar.version + 1 }}</strong>;
+            la actual se conserva tal como está, y lo que ya se calculó con ella
+            no cambia.
+        </div>
+    {% endif %}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('sla.calendar_edit') }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            {# La versión con la que se abrió la pantalla: sin ella no se puede
+               comprobar que nadie más haya guardado mientras tanto. #}
+            <input
+                type="hidden"
+                name="{{ form.version_base.name }}"
+                value="{{ form.version_base.data if form.version_base.data is not none else '' }}"
+            >
+
+            {% if form.version_base.errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {{ form.version_base.errors[0] }}
+                </div>
+            {% endif %}
+
+            {% if form.general_errors %}
+                <div
+                    class="alert alert-danger"
+                    role="alert"
+                >
+                    {% for message in form.general_errors %}
+                        <div>{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {# --- Zona horaria ------------------------------------------------ #}
+            <div class="mb-4">
+                <label
+                    class="form-label"
+                    for="{{ form.zona_horaria.id }}"
+                >
+                    Zona horaria {{ required_mark() }}
+                </label>
+
+                <input
+                    class="form-control{% if form.zona_horaria.errors %} is-invalid{% endif %}"
+                    id="{{ form.zona_horaria.id }}"
+                    name="{{ form.zona_horaria.name }}"
+                    type="text"
+                    value="{{ form.zona_horaria.data or '' }}"
+                    list="zone-names"
+                    autocomplete="off"
+                    maxlength="64"
+                    required
+                    {% if form.zona_horaria.errors %}
+                        aria-invalid="true"
+                        aria-describedby="{{ form.zona_horaria.id }}-error"
+                    {% endif %}
+                >
+
+                <datalist id="zone-names">
+                    {% for name in zone_names %}
+                        <option value="{{ name }}"></option>
+                    {% endfor %}
+                </datalist>
+
+                <div class="form-text">
+                    Es la zona en la que se interpretan las horas de abajo y los
+                    feriados. Empieza a escribir para ver las opciones, por
+                    ejemplo <span class="font-monospace">America/Santiago</span>.
+                </div>
+
+                {{ field_errors(form.zona_horaria) }}
+            </div>
+
+            {# --- Horario de cada día ----------------------------------------- #}
+            <fieldset class="mb-4">
+                <legend class="h6">Horario de cada día</legend>
+
+                <p class="small text-secondary">
+                    Escribe las horas en que se trabaja cada día, por ejemplo
+                    <span class="font-monospace">09:00-18:00</span>. Si hay una
+                    pausa, separa las franjas con una coma:
+                    <span class="font-monospace">09:00-13:00, 14:00-18:00</span>.
+                    Deja el día vacío si no se trabaja. La hora de fin no se
+                    incluye: a las 18:00 ya no se trabaja.
+                </p>
+
+                {% for number, field in form.day_fields() %}
+                    <div class="row align-items-start mb-2">
+                        <label
+                            class="col-sm-3 col-form-label"
+                            for="{{ field.id }}"
+                        >
+                            {{ field.label.text }}
+                        </label>
+
+                        <div class="col-sm-9">
+                            <input
+                                class="form-control font-monospace{% if field.errors %} is-invalid{% endif %}"
+                                id="{{ field.id }}"
+                                name="{{ field.name }}"
+                                type="text"
+                                value="{{ field.data or '' }}"
+                                placeholder="No se trabaja"
+                                autocomplete="off"
+                                maxlength="200"
+                                {% if field.errors %}
+                                    aria-invalid="true"
+                                    aria-describedby="{{ field.id }}-error"
+                                {% endif %}
+                            >
+
+                            {{ field_errors(field) }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </fieldset>
+
+            {# --- Feriados ------------------------------------------------------ #}
+            {{ textarea_field(
+                form.feriados,
+                rows=8,
+                maxlength=max_holidays,
+                counter=True,
+                hint="Uno por línea: la fecha y el nombre, por ejemplo «25-12-2026 Navidad». También sirve año-mes-día (2026-12-25). En esos días no corre el reloj del SLA.",
+            ) }}
+
+            {# --- Motivo ---------------------------------------------------------- #}
+            {{ text_field(
+                form.motivo,
+                maxlength=max_reason,
+                hint="Opcional. Queda en el registro de auditoría junto al cambio.",
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Guardar calendario
+                </button>
+
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('sla.index') }}"
+                >
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script
+        src="{{ url_for('static', filename='js/common/char-counter.js') }}"
+    ></script>
+{% endblock %}

@@ -1028,8 +1028,8 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 
 ### Entregas de `v0.5.0`
 
-1. **Motor de tiempo laboral compartido:** el motor del seed de demostración pasa a `worktime.py` y gana las dos operaciones que necesita el SLA (medir los segundos laborales entre dos momentos y sumarlos a un momento). Sin migración ni cambio funcional.
-2. **Calendario laboral administrable:** tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`) y la pantalla del Administrador.
+1. **Motor de tiempo laboral compartido** ✓ (PR #36): el motor del seed de demostración pasa a `worktime.py` y gana las dos operaciones que necesita el SLA (medir los segundos laborales entre dos momentos y sumarlos a un momento). Sin migración ni cambio funcional.
+2. **Calendario laboral administrable:** tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), el motor con franjas distintas por día, la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`), la pantalla «SLA» con la de «Configurar calendario» y el seed leyendo el calendario resuelto.
 3. **Políticas de SLA por prioridad:** `politicas_sla` y su pantalla (UI-022), con valores iniciales en `seed-catalogs`.
 4. **Períodos de SLA:** `tickets_sla_periodos`, el cálculo, la pausa en `En espera` y la continuidad ante cambios de prioridad (RN-88).
 5. **Notificaciones internas, 1: infraestructura y centro de notificaciones:** tabla, servicio, campana con contador y marcar como leídas.
@@ -1069,11 +1069,11 @@ Implementar:
 
 El SLA se calcula en tiempo laboral, así que el calendario se construye en esta fase como parte del SLA y no como un dato de apoyo:
 
-- tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (`docs/09`, sección 21), con un único calendario global vigente y versionado: guardar un cambio crea una versión nueva y no altera las que ya usan períodos de SLA;
+- tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (`docs/09`, sección 21), con un único calendario global vigente y versionado: guardar un cambio crea una versión nueva y no altera las que ya usan períodos de SLA. ✓ Entrega 2: ninguna versión se modifica una vez guardada y quien guarda indica con qué versión abrió la pantalla, así que un guardado sobre una pantalla desactualizada se rechaza en lugar de pisar el cambio ajeno;
 - **motor de tiempo laboral compartido** (medir y sumar tiempo laboral, contar días laborales, saltar noches, fines de semana y feriados). ✓ Entrega 1: el motor que tenía el seed `seed-demo-tickets` (`_BusinessClock`) pasó a `worktime.py`, con las dos operaciones que necesita el SLA, y lo usarán el SLA y el seed en lugar de duplicarlo (ver `10_arquitectura.md`, «Tiempo laboral»);
-- **pantalla del Administrador** (RF-079; `docs/11`, «Configurar calendario»): días y franjas laborales, feriados, zona horaria y versión vigente, con auditoría de los cambios, enlazada desde la tarjeta «SLA» del hub de administración;
-- **calendario por defecto:** mientras el Administrador no haya guardado ninguno, todo el sistema (el SLA y los datos de demostración) usa `DEMO_CALENDAR` (lunes a viernes de 09:00 a 18:00, sin feriados) y la pantalla lo indica. En cuanto se guarda uno, todos usan el guardado. Una única función resuelve el calendario vigente (`docs/09`, sección 40.8);
-- `seed-demo-tickets` pasa a leer el calendario resuelto (el guardado o el predeterminado): `DEMO_CALENDAR` y la configuración de la interfaz conviven.
+- **pantalla del Administrador** (RF-079; `docs/11`, «Configurar calendario»): días y franjas laborales, feriados, zona horaria y versión vigente, con auditoría de los cambios, enlazada desde la tarjeta «SLA» del hub de administración. ✓ Entrega 2 (`/admin/sla` y `/admin/sla/calendar`). El horario de cada día es un texto (`09:00-18:00` o `09:00-13:00, 14:00-18:00`) y los feriados otro, uno por línea: así el motor y la base admiten varias franjas por día sin filas dinámicas;
+- **calendario por defecto:** mientras el Administrador no haya guardado ninguno, todo el sistema (el SLA y los datos de demostración) usa `DEMO_CALENDAR` (lunes a viernes de 09:00 a 18:00, sin feriados) y la pantalla lo indica. En cuanto se guarda uno, todos usan el guardado. Una única función resuelve el calendario vigente (`docs/09`, sección 40.8). ✓ Entrega 2: `resolve_work_calendar`;
+- `seed-demo-tickets` pasa a leer el calendario resuelto (el guardado o el predeterminado): `DEMO_CALENDAR` y la configuración de la interfaz conviven. ✓ Entrega 2: con un calendario guardado, ningún evento de los tickets demo cae fuera de sus franjas ni en un feriado, y la hora de creación de cada ticket pasa al siguiente momento de trabajo si cae en una pausa.
 
 ### Cierre automático
 

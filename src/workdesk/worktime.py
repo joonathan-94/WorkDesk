@@ -2,31 +2,52 @@
 
 Lo usan los datos de demostración (`seed-demo-tickets`) y lo usará el SLA: por
 eso vive aquí y no dentro del seed. No usa la base de datos: quien lo necesita
-le entrega un `WorkCalendar` (qué días y a qué horas se trabaja) y una zona
-horaria, y obtiene un `BusinessClock` con el que medir cuánto tiempo laboral
-pasó entre dos momentos o hasta dónde llega un plazo.
+le entrega qué días y a qué horas se trabaja, y una zona horaria, y obtiene un
+`BusinessClock` con el que medir cuánto tiempo laboral pasó entre dos momentos
+o hasta dónde llega un plazo.
+
+Hay dos formas de describir el horario:
+
+- `WorkCalendar`: una única jornada, igual para todos los días laborales. Es lo
+  más sencillo y es el calendario por defecto (`DEMO_CALENDAR`).
+- `BusinessClock.from_schedule`: una lista de `Franja`, para horarios distintos
+  según el día (el viernes se sale antes) o con varias franjas en un mismo día
+  (una pausa de almuerzo). Es lo que guarda el calendario laboral del
+  Administrador.
 
 Reglas que conviene tener presentes:
 
-- Un día es laboral si su día de la semana está en `dias` y no es feriado.
-- La jornada incluye la hora de inicio y excluye la de fin: a las 09:00 ya se
-  trabaja y a las 18:00 ya no.
+- Un día es laboral si tiene al menos una franja de trabajo y no es feriado.
+- Cada franja incluye la hora de inicio y excluye la de fin: a las 09:00 ya se
+  trabaja y a las 18:00 ya no. Una franja no cruza la medianoche.
 - Los momentos son fechas con zona horaria, nunca fechas «ingenuas». El motor
   las convierte a la zona del calendario antes de calcular, así que se pueden
   pasar tal como llegan de la base de datos (en UTC).
 - Todo se calcula con la hora de pared de la zona: se da por hecho que ninguna
-  jornada cruza un cambio de horario de verano (en Chile ocurren a medianoche).
+  franja cruza un cambio de horario de verano (en Chile ocurren a medianoche).
 """
 
 import re
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
+from itertools import pairwise
 
 # Una hora en formato HH:MM, de 00:00 a 23:59.
 TIME_PATTERN = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
-# La jornada excluye la hora de fin, así que el último minuto en que se trabaja
+# Los días de la semana, en el orden de `date.weekday()` (0 = lunes).
+WEEKDAY_NAMES = (
+    "lunes",
+    "martes",
+    "miércoles",
+    "jueves",
+    "viernes",
+    "sábado",
+    "domingo",
+)
+
+# Una franja excluye la hora de fin, así que el último minuto en que se trabaja
 # es el anterior a ella.
 _LAST_MINUTE = timedelta(minutes=1)
 
@@ -49,6 +70,19 @@ class WorkCalendar:
 
 # Calendario por defecto: de lunes a viernes, de 09:00 a 18:00 y sin feriados.
 DEMO_CALENDAR = WorkCalendar()
+
+
+@dataclass(frozen=True)
+class Franja:
+    """Una franja de trabajo de un día de la semana.
+
+    - `dia`: de 0 (lunes) a 6 (domingo).
+    - `inicio` y `fin`: horas; `fin` no se incluye.
+    """
+
+    dia: int
+    inicio: time
+    fin: time
 
 
 def parse_time(value: str) -> time:
@@ -87,13 +121,61 @@ def calendar_problems(calendar: WorkCalendar) -> list[str]:
     return problems
 
 
+def schedule_problems(
+    franjas: Iterable[Franja], feriados: Iterable[date] = ()
+) -> list[str]:
+    """Lo que está mal en un horario de franjas, con mensajes para mostrar.
+
+    Es el equivalente de `calendar_problems` para `BusinessClock.from_schedule`:
+    hace falta al menos una franja, los días van de 0 a 6, cada franja empieza
+    antes de terminar y las de un mismo día no se solapan. Devuelve una lista
+    vacía si el horario es válido.
+    """
+    problems: list[str] = []
+    by_day: dict[int, list[Franja]] = {}
+    franjas = tuple(franjas)
+
+    if not franjas:
+        problems.append("Calendario: debe haber al menos un día laboral.")
+
+    for franja in franjas:
+        if not isinstance(franja.dia, int) or not 0 <= franja.dia <= 6:
+            message = "Calendario: los días van de 0 (lunes) a 6 (domingo)."
+
+            if message not in problems:
+                problems.append(message)
+        else:
+            by_day.setdefault(franja.dia, []).append(franja)
+
+    for day, slots in sorted(by_day.items()):
+        name = WEEKDAY_NAMES[day]
+
+        if any(slot.inicio >= slot.fin for slot in slots):
+            problems.append(
+                f"Calendario: el inicio de una franja del {name} debe ser "
+                "anterior a su fin."
+            )
+            continue
+
+        slots.sort(key=lambda slot: slot.inicio)
+
+        if any(first.fin > second.inicio for first, second in pairwise(slots)):
+            problems.append(f"Calendario: hay franjas del {name} que se solapan.")
+
+    if any(not isinstance(holiday, date) for holiday in feriados):
+        problems.append("Calendario: los feriados deben ser fechas.")
+
+    return problems
+
+
 class BusinessClock:
     """Un calendario laboral en una zona horaria: mide y avanza en tiempo laboral.
 
     `zone` es la zona en la que se interpretan las horas del calendario. Si el
     calendario no es válido lanza `ValueError`: con un calendario sin días
     laborales, los bucles que buscan el siguiente día laboral no terminarían
-    nunca.
+    nunca. Para un horario con franjas distintas por día se usa
+    `from_schedule`.
     """
 
     def __init__(self, calendar: WorkCalendar, zone: tzinfo) -> None:
@@ -102,16 +184,54 @@ class BusinessClock:
         if problems:
             raise ValueError(" ".join(problems))
 
+        shift = (parse_time(calendar.inicio), parse_time(calendar.fin))
+
+        self._setup({day: (shift,) for day in calendar.dias}, calendar.feriados, zone)
+
+    @classmethod
+    def from_schedule(
+        cls,
+        franjas: Iterable[Franja],
+        feriados: Iterable[date],
+        zone: tzinfo,
+    ) -> "BusinessClock":
+        """Un reloj para un horario con franjas, que pueden variar según el día.
+
+        Un día puede tener varias franjas (una pausa de almuerzo son dos) y un
+        día sin franjas no es laboral. Lanza `ValueError` si el horario no es
+        válido (ver `schedule_problems`).
+        """
+        franjas, feriados = tuple(franjas), tuple(feriados)
+        problems = schedule_problems(franjas, feriados)
+
+        if problems:
+            raise ValueError(" ".join(problems))
+
+        week: dict[int, list[tuple[time, time]]] = {}
+
+        for franja in sorted(franjas, key=lambda slot: (slot.dia, slot.inicio)):
+            week.setdefault(franja.dia, []).append((franja.inicio, franja.fin))
+
+        clock = cls.__new__(cls)
+        clock._setup({day: tuple(slots) for day, slots in week.items()}, feriados, zone)
+
+        return clock
+
+    def _setup(
+        self,
+        week: dict[int, tuple[tuple[time, time], ...]],
+        holidays: Iterable[date],
+        zone: tzinfo,
+    ) -> None:
         self.zone = zone
-        self.days = set(calendar.dias)
-        self.holidays = set(calendar.feriados)
-        self.start = parse_time(calendar.inicio)
-        self.end = parse_time(calendar.fin)
+        self.holidays = set(holidays)
+        # Las franjas de cada día de la semana, en orden y sin solaparse.
+        self._week = week
 
     # --- Días -----------------------------------------------------------
 
     def is_workday(self, day: date) -> bool:
-        return day.weekday() in self.days and day not in self.holidays
+        return day.weekday() in self._week and day not in self.holidays
 
     def previous_workday(self, day: date) -> date:
         """`day` si es laboral; si no, el día laboral anterior."""
@@ -142,48 +262,57 @@ class BusinessClock:
         """La hora `moment` de `day`, en la zona del calendario."""
         return datetime.combine(day, moment, tzinfo=self.zone)
 
+    def is_working_time(self, moment: datetime) -> bool:
+        """Si en `moment` se trabaja: cae dentro de una franja de un día laboral."""
+        moment = self._local(moment)
+
+        return any(
+            begin <= moment < finish for begin, finish in self._shifts(moment.date())
+        )
+
     def into_business(self, moment: datetime) -> datetime:
         """El primer momento laboral que no es anterior a `moment`."""
         moment = self._local(moment)
         day = moment.date()
 
-        if self.is_workday(day):
-            if moment.time() < self.start:
-                return self.at(day, self.start)
+        for begin, finish in self._shifts(day):
+            if moment < begin:
+                return begin
 
-            if moment.time() < self.end:
+            if moment < finish:
                 return moment
 
-        return self.at(self.next_workday(day + timedelta(days=1)), self.start)
+        return self._shifts(self.next_workday(day + timedelta(days=1)))[0][0]
 
     def latest_before(self, limit: datetime) -> datetime:
         """El último momento laboral que no es posterior a `limit`.
 
-        Si `limit` ya pasó el cierre, o cae en un día que no es laboral, es el
-        último minuto de la jornada anterior.
+        Si `limit` cae fuera de las franjas (después de una, en una pausa, o en
+        un día que no es laboral), es el último minuto de la franja anterior.
         """
         limit = self._local(limit)
         day = limit.date()
 
-        if self.is_workday(day):
-            if self.start <= limit.time() < self.end:
-                return limit
+        for begin, finish in reversed(self._shifts(day)):
+            if limit >= finish:
+                return finish - _LAST_MINUTE
 
-            if limit.time() >= self.end:
-                return self.at(day, self.end) - _LAST_MINUTE
+            if limit >= begin:
+                return limit
 
         day = self.previous_workday(day - timedelta(days=1))
 
-        return self.at(day, self.end) - _LAST_MINUTE
+        return self._shifts(day)[-1][1] - _LAST_MINUTE
 
     # --- Medir y avanzar ------------------------------------------------
 
     def business_seconds_between(self, start: datetime, end: datetime) -> int:
         """Los segundos laborales completos que hay entre `start` y `end`.
 
-        Solo cuenta el tiempo que cae dentro de la jornada de un día laboral:
-        las noches, los fines de semana y los feriados no suman. Si `end` no es
-        posterior a `start` devuelve 0. La fracción de segundo se descarta.
+        Solo cuenta el tiempo que cae dentro de una franja de un día laboral:
+        las noches, las pausas, los fines de semana y los feriados no suman. Si
+        `end` no es posterior a `start` devuelve 0. La fracción de segundo se
+        descarta.
         """
         start, end = self._local(start), self._local(end)
         total = timedelta()
@@ -200,13 +329,13 @@ class BusinessClock:
     def add_business_seconds(self, moment: datetime, seconds: int) -> datetime:
         """El primer momento en que han corrido `seconds` segundos laborales.
 
-        Es el cálculo de un vencimiento: el reloj solo corre dentro de la
-        jornada de los días laborales (salta noches, fines de semana y
-        feriados) y, si `moment` cae fuera de ella, empieza a correr cuando
-        abre. Si el plazo se cumple justo al cerrar, el resultado es la hora de
-        cierre: ahí se cumplió, aunque a esa hora ya no se trabaje (`add_hours`,
-        en cambio, devuelve siempre un momento en que sí se trabaja). Con 0
-        segundos devuelve `moment` sin moverlo.
+        Es el cálculo de un vencimiento: el reloj solo corre dentro de las
+        franjas de los días laborales (salta noches, pausas, fines de semana y
+        feriados) y, si `moment` cae fuera de ellas, empieza a correr cuando
+        abre la siguiente. Si el plazo se cumple justo al cerrar una franja, el
+        resultado es su hora de cierre: ahí se cumplió, aunque a esa hora ya no
+        se trabaje (`add_hours`, en cambio, devuelve siempre un momento en que
+        sí se trabaja). Con 0 segundos devuelve `moment` sin moverlo.
 
         Es la operación inversa de `business_seconds_between`: midiendo desde
         `moment` hasta el resultado se obtienen exactamente `seconds`.
@@ -233,9 +362,9 @@ class BusinessClock:
     def add_hours(self, moment: datetime, hours: int) -> datetime:
         """Avanza `hours` horas LABORALES y cae siempre en un momento en que se trabaja.
 
-        Salta noches, fines de semana y feriados. Si el avance termina justo al
-        cerrar la jornada, el resultado es la apertura del siguiente día
-        laboral. Es lo que necesita el seed para que ningún evento quede fuera
+        Salta noches, pausas, fines de semana y feriados. Si el avance termina
+        justo al cerrar una franja, el resultado es la apertura de la
+        siguiente. Es lo que necesita el seed para que ningún evento quede fuera
         del horario; para calcular un vencimiento está `add_business_seconds`.
         """
         moment = self.into_business(moment)
@@ -253,20 +382,29 @@ class BusinessClock:
 
         return moment.astimezone(self.zone)
 
+    def _shifts(self, day: date) -> list[tuple[datetime, datetime]]:
+        """Las franjas de `day` como momentos, en orden (vacío si no es laboral)."""
+        if not self.is_workday(day):
+            return []
+
+        return [
+            (self.at(day, start), self.at(day, end))
+            for start, end in self._week[day.weekday()]
+        ]
+
     def _working_intervals(
         self, moment: datetime
     ) -> Iterator[tuple[datetime, datetime]]:
         """Los tramos laborales desde `moment`, en orden y sin fin.
 
-        Cada tramo es la jornada de un día laboral. El primero se recorta para
-        empezar en `moment` y se omite si ese día ya cerró.
+        Cada tramo es una franja de un día laboral. El primero se recorta para
+        empezar en `moment` y se omiten las franjas que ya terminaron.
         """
         day = moment.date()
 
         while True:
-            if self.is_workday(day):
-                begin = max(self.at(day, self.start), moment)
-                finish = self.at(day, self.end)
+            for opening, finish in self._shifts(day):
+                begin = max(opening, moment)
 
                 if begin < finish:
                     yield begin, finish

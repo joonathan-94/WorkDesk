@@ -82,19 +82,19 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/shared-business-time
+feature/work-calendar
 ```
 
-Entrega 1 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): el motor de tiempo laboral que tenía el seed `seed-demo-tickets` (`_BusinessClock`) pasa a un módulo compartido, `src/workdesk/worktime.py`, y gana las dos operaciones que necesita el SLA: medir los segundos laborales entre dos momentos y sumarlos a un momento (ver "Tiempo laboral"). Es un refactor: no incluye migraciones y las fechas que genera el seed no cambian.
+Entrega 2 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): el calendario laboral administrable. El motor de tiempo laboral admite franjas distintas por día (ver "Tiempo laboral"); tres tablas nuevas guardan las versiones del calendario, sus franjas y sus feriados; `resolve_work_calendar` decide cuál es el vigente (el guardado o el de por defecto); el Administrador lo configura desde «SLA» y «Configurar calendario»; y `seed-demo-tickets` lee el calendario resuelto (ver "Calendario laboral administrable"). Incluye una migración.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y la entrega 1 de `v0.5.0`, el motor de tiempo laboral compartido (PR #36).
 
 `v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
 | # | Entrega | Estado |
 | --- | --- | --- |
-| 1 | Motor de tiempo laboral compartido (`worktime.py`) | En curso |
-| 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | Pendiente |
+| 1 | Motor de tiempo laboral compartido (`worktime.py`) | Integrada (PR #36) |
+| 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | En curso |
 | 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Pendiente |
 | 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Pendiente |
 | 5 | Notificaciones internas: infraestructura y centro de notificaciones | Pendiente |
@@ -196,7 +196,7 @@ Su alcance está en `docs/12_roadmap.md` (fase 5): SLA por prioridad calculado e
 
 - el cierre automático de un ticket `Resuelto` que nadie valida: la transición `AUTO_CIERRE`, el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente` ya existen, pero nada los usa. Hasta entonces, un ticket resuelto sin solicitante solo lo cierra un Supervisor o el Administrador con el cierre excepcional;
 - las notificaciones a los técnicos cuando el Solicitante comenta (RF-068) y el aviso de reapertura (RN-72 y RN-96);
-- el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasó a un módulo propio, `src/workdesk/worktime.py`, para compartirlo con el SLA (entrega 1, ver "Tiempo laboral"); `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado, y el calendario administrable llega con la entrega 2;
+- el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasó a un módulo propio, `src/workdesk/worktime.py`, para compartirlo con el SLA (entrega 1, ver "Tiempo laboral"); `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado, y el calendario administrable (entrega 2, ver "Calendario laboral administrable") ya existe: `resolve_work_calendar` decide cuál es el vigente;
 - por el motor de estados pasa todo cambio de estado (`change_state` y `apply_derived_transition`): ahí tendrá que reaccionar el SLA al entrar y salir de `En espera`;
 - la política de continuidad del SLA ante un cambio de prioridad (RN-88): `change_priority` todavía no la aplica.
 
@@ -365,6 +365,7 @@ WorkDesk/
 │       ├── models/
 │       ├── security/
 │       ├── seeds/
+│       ├── sla/
 │       ├── tickets/
 │       │   └── routes/
 │       ├── users/
@@ -398,6 +399,7 @@ WorkDesk/
 │       │   ├── groups/
 │       │   ├── layouts/
 │       │   ├── main/
+│       │   ├── sla/
 │       │   ├── tickets/
 │       │   └── users/
 │       ├── __init__.py
@@ -460,6 +462,8 @@ WorkDesk/
 │   ├── test_users_routes.py
 │   ├── test_users_service.py
 │   ├── test_wait_reasons.py
+│   ├── test_work_calendar.py
+│   ├── test_work_calendar_routes.py
 │   ├── test_worktime.py
 │   └── ticket_helpers.py
 ├── .github/
@@ -574,7 +578,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente diecisiete migraciones:
+Existen actualmente dieciocho migraciones:
 
 ```text
 create_roles_table
@@ -594,6 +598,7 @@ create_attachments_table
 create_validations_table
 create_ticket_relations_tables
 create_ticket_edit_locks_table
+create_work_calendar_tables
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -730,7 +735,7 @@ Reglas:
 - **Origen de la petición:** la IP y el user agent se toman de la petición actual y se truncan al tamaño de la columna.
 - **Append-only:** el ORM rechaza actualizar o eliminar registros existentes (`AuditLogImmutableError`). Una corrección se registra como un evento nuevo.
 
-Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Desde `v0.3.0` también la administración de catálogos (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO` y `CATALOGO_DESACTIVADO`, con el tipo en `entidad_tipo`). Las acciones críticas admiten un motivo opcional.
+Se invoca desde todas las acciones sobre usuarios: creación (`USUARIO_CREADO`), edición de datos (`USUARIO_MODIFICADO`, con los valores anteriores y nuevos de los campos cambiados), cambio de rol (`CAMBIO_ROL`), desactivación y reactivación (`USUARIO_DESACTIVADO`, `USUARIO_ACTIVADO`) y contraseñas (`PASSWORD_CAMBIADA`, `PASSWORD_RESTABLECIDA`). Desde `v0.3.0` también la administración de catálogos (`CATALOGO_CREADO`, `CATALOGO_MODIFICADO`, `CATALOGO_ACTIVADO` y `CATALOGO_DESACTIVADO`, con el tipo en `entidad_tipo`) y, desde `v0.5.0`, el guardado del calendario laboral (`CALENDARIO_LABORAL_GUARDADO`). Las acciones críticas admiten un motivo opcional.
 
 ## Gestión de usuarios (Administrador)
 
@@ -1181,11 +1186,38 @@ La entrega 12 cerró la versión con una revisión de todo el código de la fase
 Módulo `src/workdesk/worktime.py` (entrega 1 de `v0.5.0`). Es el motor de tiempo laboral. Hoy lo usa el seed `seed-demo-tickets` (donde vivía como `_BusinessClock`) y lo usará el SLA, por eso tiene su propio módulo. No usa la base de datos ni Flask: recibe un calendario y una zona horaria. Sus decisiones están en `docs/10` (sección «Tiempo laboral»).
 
 - **`WorkCalendar`** (`dias`, `inicio`, `fin` y `feriados`) describe una jornada única, igual para todos los días laborales, y **`DEMO_CALENDAR`** (lunes a viernes de 09:00 a 18:00, sin feriados) es el calendario por defecto. Los dos salieron de `seeds/demo_tickets_data.py`.
-- **`BusinessClock(calendario, zona)`** ofrece los días (`is_workday`, `previous_workday`, `next_workday` y `workdays_before`), los momentos (`into_business` y `latest_before`), `business_seconds_between(inicio, fin)` (los segundos laborales completos entre dos momentos) y dos formas de avanzar: `add_business_seconds` calcula un vencimiento (si el plazo se cumple justo al cerrar, el resultado es la hora de cierre) y `add_hours` un momento de trabajo (en ese caso pasa a la apertura del día siguiente, que es lo que necesita el seed). Son nuevas `business_seconds_between` y `add_business_seconds`; `add_hours` conserva su comportamiento y ahora se apoya en la segunda, y el resto se movió con el mismo comportamiento para las fechas que ya estaban en la zona del calendario (lo único que ganaron es la conversión a esa zona).
+- **`BusinessClock(calendario, zona)`** (o `BusinessClock.from_schedule(franjas, feriados, zona)`, ver abajo) ofrece los días (`is_workday`, `previous_workday`, `next_workday` y `workdays_before`), los momentos (`is_working_time`, `into_business` y `latest_before`), `business_seconds_between(inicio, fin)` (los segundos laborales completos entre dos momentos) y dos formas de avanzar: `add_business_seconds` calcula un vencimiento (si el plazo se cumple justo al cerrar, el resultado es la hora de cierre) y `add_hours` un momento de trabajo (en ese caso pasa a la apertura del día siguiente, que es lo que necesita el seed). Son nuevas `business_seconds_between` y `add_business_seconds`; `add_hours` conserva su comportamiento y ahora se apoya en la segunda, y el resto se movió con el mismo comportamiento para las fechas que ya estaban en la zona del calendario (lo único que ganaron es la conversión a esa zona).
 - **Medir y sumar son operaciones inversas**, y `tests/test_worktime.py` lo comprueba, además de comparar la medición con un recuento minuto a minuto que no comparte ninguna idea con el motor.
 - **La jornada incluye el inicio y excluye el fin.** Las fechas llevan siempre zona horaria: el motor las convierte a la zona del calendario (se le pueden pasar las de la base de datos, en UTC) y rechaza las que no la tienen. Se calcula con la hora de pared y se da por hecho que ninguna jornada cruza un cambio de horario de verano.
 - **`calendar_problems(calendario)`** valida un calendario con mensajes pensados para quien lo edita (la usan el seed y, desde la entrega 2, la pantalla del Administrador), y `BusinessClock` lanza `ValueError` ante un calendario inválido: sin días laborales, buscar el siguiente día laboral no terminaría nunca.
-- **El seed no cambió su comportamiento.** `seed_demo_tickets` usa `BusinessClock` y `calendar_problems` en lugar de sus copias privadas, y sus tests siguen igual (solo cambió el módulo desde el que importan `WorkCalendar`). Lo que sigue pendiente del calendario, como que el seed lea el calendario guardado por el Administrador y las franjas distintas por día, llega con la entrega 2.
+- **El seed no cambió su comportamiento con el calendario por defecto.** `seed_demo_tickets` usa `BusinessClock` y `calendar_problems` en lugar de sus copias privadas, y sus tests siguen igual (solo cambió el módulo desde el que importan `WorkCalendar`).
+- **Franjas distintas por día (entrega 2).** Además de una jornada única, el motor admite una lista de `Franja` (`BusinessClock.from_schedule`): horarios distintos según el día o varias franjas en un mismo día, como una pausa de almuerzo. Internamente el reloj guarda las franjas de cada día de la semana y una única jornada es el caso particular de una franja por día laboral; un test comprueba que ambas formas se comportan igual. `schedule_problems` es el equivalente de `calendar_problems` para las franjas (al menos una, días de 0 a 6, cada una empieza antes de terminar y las de un día no se solapan). `is_working_time(momento)` dice si en un momento se trabaja y `WEEKDAY_NAMES` da los nombres de los días en el orden de `date.weekday()`. Los atributos `start`, `end` y `days` del reloj desaparecieron: con franjas por día ya no hay una jornada única que exponer.
+
+---
+
+# 11 quinquies. Calendario laboral administrable
+
+Paquete `src/workdesk/sla/` (blueprint `sla`, prefijo `/admin/sla`), entrega 2 de `v0.5.0`. Es el módulo `sla` previsto en `docs/10` (sección 22), donde se sumarán las políticas y los períodos. Reglas completas en `docs/09` (21 y 40.8), `docs/11` (UI-022) y `docs/12` (fase 5). **Incluye una migración** (`create_work_calendar_tables`).
+
+**Modelos** (`models/calendario_laboral.py`): `CalendarioLaboral` (`calendarios_laborales`: `version`, `zona_horaria`, `activo`, `fecha_creacion` y `usuario_creacion_id`), `HorarioLaboral` (`horarios_laborales`: una fila por franja, con `dia_semana` ISO de 1 a 7) y `Feriado` (`feriados`: fecha y nombre). Restricciones: versión positiva y única, **como máximo una versión vigente** (índice único parcial sobre `activo`), franjas con inicio anterior al fin y sin repetir el inicio dentro de una versión, un feriado por fecha y versión, nombre de feriado no vacío y claves foráneas con `ON DELETE RESTRICT`. Que las franjas de un día no se solapen lo comprueba el servicio (no hay restricción de exclusión: necesitaría la extensión `btree_gist`).
+
+**Una versión nunca se modifica.** Guardar crea la siguiente y deja la anterior como histórica, así que lo que ya se calculó con una versión (los períodos de SLA, desde la entrega 4) no cambia retroactivamente. Por eso `docs/09` perdió las columnas de modificación y de vigencia por fila que el diseño inicial preveía (`nombre`, `fecha_modificacion`, `activo` de franjas y feriados...): ninguna hace falta.
+
+**Servicio** (`sla/work_calendar.py`, sin commit):
+
+- `resolve_work_calendar()` es la **única función que decide cuál es el calendario vigente**: el guardado o, si todavía no hay ninguno, el de por defecto (`DEMO_CALENDAR` en la zona de `APP_TIMEZONE`). Devuelve un `ResolvedCalendar` con el reloj listo, el nombre de la zona y la versión de la que sale (`record`, `None` si es el de por defecto). `clock_for(versión)` construye el reloj de una versión concreta (es lo que usará el SLA).
+- `save_work_calendar(actor=, base_version=, zone_name=, franjas=, holidays=, reason=)` guarda una versión nueva y la deja vigente. `base_version` es la versión con la que se abrió la pantalla (0 si no había ninguna): si otra persona guardó mientras tanto lanza `CalendarConflictError` y no se guarda nada. Bloquea la fila vigente (`SELECT ... FOR UPDATE`), libera el lugar de «vigente» antes de insertar y, si todavía no había ninguna versión y dos personas guardan la primera a la vez, gana el índice único y la otra recibe el mismo conflicto (savepoint, como los catálogos). Guardar un contenido idéntico al vigente lanza `NothingToChangeError` y no crea una versión; la zona (se comprueba contra `available_zone_names`, no basta con que `ZoneInfo` la acepte), los feriados repetidos o sin nombre, el motivo y las franjas se validan y lanzan `CalendarRuleError`. Registra `CALENDARIO_LABORAL_GUARDADO` (`entidad_tipo` `calendario_laboral`, `detalle` «Versión N») con la versión anterior y la nueva y **solo las secciones que cambiaron** (`zona_horaria`, `horario` y `feriados`); la primera versión se compara con el calendario por defecto.
+- Para las pantallas: `describe_calendar` (un `CalendarView` con el horario resumido por días seguidos que comparten horas: «Lunes a jueves · 09:00–18:00», «Viernes · 09:00–17:00»), `list_calendar_versions` (tres consultas, sin una por versión) y `describe_schedule` y `summarize`.
+
+**Formulario** (`sla/forms.py`, `WorkCalendarForm`, que hereda el motivo opcional de `ReasonForm`): **el horario de cada día es un texto** (`09:00-18:00`, o `09:00-13:00, 14:00-18:00` si hay una pausa; vacío = no se trabaja) y **los feriados son otro, uno por línea** (`25-12-2026 Navidad`; también se acepta año-mes-día, con barras y con el día sin cero). Así se admiten varias franjas por día sin filas dinámicas ni JavaScript. `parse_day` y `parse_holidays` convierten los textos (una franja que termina antes de empezar, dos solapadas, una hora que no existe, una fecha imposible, un año fuera de 2000-2100, un nombre ausente o una fecha repetida se señalan con el campo o la línea), y `format_day` y `format_holidays` hacen el camino inverso para rellenar el formulario. Todos los errores se informan a la vez y el formulario conserva lo escrito. Un calendario sin ningún día laboral se rechaza.
+
+**Pantallas** (todas del Administrador, 403 al resto):
+
+- `GET /admin/sla` («SLA», UI-022): hoy solo el calendario laboral. Muestra el estado («Configurado · versión N» o «Por defecto (sin configurar)»), el horario resumido, la zona, el número de feriados con los **próximos cinco**, quién y cuándo lo guardó, y la tabla de versiones (la vigente y las anteriores).
+- `GET, POST /admin/sla/calendar` («Configurar calendario»): el formulario. Lleva la versión base en un campo oculto y **se rellena con lo vigente solo al abrirlo** (en un envío manda lo que llegó, para que una petición sin versión no se complete sola y se salte la comprobación). Ante un conflicto de versión se vuelve al formulario con lo vigente y un aviso (lo escrito se pierde a propósito); sin cambios, se avisa y no se crea nada. La lista de zonas horarias válidas ayuda a escribirla (`<datalist>`).
+- La tarjeta «SLA» del hub enlaza con `/admin/sla` y «Administración» se marca activa en estas pantallas.
+
+**Seed de demostración.** `seed_demo_tickets` lee el calendario resuelto: con uno guardado planifica todas sus fechas dentro de sus franjas, en su zona horaria y sin que ninguna caiga en un feriado; con un `calendar=` explícito (los tests) manda ese. La hora de creación de cada ticket pasa por `into_business`, así que si cae en una pausa pasa al siguiente momento de trabajo (con el calendario por defecto no se mueve). Con un calendario guardado `validate_demo_tickets` no compara la hora de cada ticket con una jornada única (`calendar=None`): solo comprueba que está bien escrita. Con el calendario por defecto (y con cualquier otro de una sola jornada en la que caigan las horas de los tickets) las fechas que genera el seed son exactamente las de antes: el cambio de `_planned_times` solo afecta a combinaciones que la validación del seed rechaza.
 
 ---
 
@@ -1420,6 +1452,8 @@ GET        /admin/states
 GET, POST  /admin/states/<id>/edit
 GET, POST  /admin/transitions/<id>/deactivate
 GET, POST  /admin/transitions/<id>/activate
+GET        /admin/sla
+GET, POST  /admin/sla/calendar
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -1466,7 +1500,7 @@ GET        /static/<path:filename>
 
 `/account` es "Mi cuenta" (ver "Mi cuenta"). `/account/password` permite al usuario cambiar su propia contraseña (ver "Cambio de contraseña propio y cambio obligatorio").
 
-`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera, ver "Administración de catálogos", y estados y transiciones, ver "Administración de estados y transiciones") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
+`/admin`, todas las rutas `/admin/...` (categorías, prioridades, ubicaciones y motivos de espera, ver "Administración de catálogos", estados y transiciones, ver "Administración de estados y transiciones", y SLA, ver "Calendario laboral administrable") y todas las rutas `/users` requieren el rol Administrador. Las rutas `/groups...` requieren Administrador o Supervisor (403 al resto) y, dentro, cada acción se vuelve a comprobar (ver "Grupos") (403 para otros roles autenticados y redirección al login para anónimos). `/admin` es el hub de administración (ver "Layout y navegación"). No existe ruta de alta de prioridades (`/admin/priorities/new`): son exactamente cuatro.
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
@@ -1493,13 +1527,13 @@ No representa todavía los dashboards finales del MVP.
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
 - Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
-- Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos y de grupos; Grupos (del Supervisor), en las de grupos; Mi cuenta, en `/account` y en el cambio de contraseña.
+- Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos, de grupos y de SLA; Grupos (del Supervisor), en las de grupos; Mi cuenta, en `/account` y en el cambio de contraseña.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
 - Las iniciales del avatar salen de `user_initials` (nombre y apellido; usa el username si no hay ninguno).
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera" y "Estados y transiciones"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones" y "SLA"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -1699,7 +1733,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
 - **identidad y marca, sin migración:** al crear un ticket, el motor marca en `historial_ticket.contexto` todos los eventos que genera con `{"demo_clave": <clave>, "demo_paso": <n>}` (0 = creación, 1... = cada ajuste), junto al `motivo` si lo hay. Es la única huella del seed: permite reconocer el ticket aunque después cambie de título (en la lista o a mano) y distinguir los eventos del seed de los hechos a mano. La aplicación solo lee `contexto["motivo"]`, así que la marca no se ve en la interfaz;
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
-- **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `worktime.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Decidido: en `v0.5.0` el calendario laboral será administrable desde la interfaz, junto al SLA (`calendarios_laborales`, `horarios_laborales` y `feriados`). Entonces el seed leerá el calendario vigente: el que guarde el Administrador o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. El motor de tiempo laboral (antes `_BusinessClock`) ya es un módulo propio, `worktime.py`, que usará también el SLA (ver "Tiempo laboral"). Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
+- **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `worktime.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Desde la entrega 2 de `v0.5.0` el seed lee el calendario vigente (`resolve_work_calendar`): el que guarde el Administrador desde «SLA» o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. Con uno guardado, todas las fechas caen dentro de sus franjas y en su zona horaria, y la hora de creación de cada ticket pasa al siguiente momento de trabajo si cae en una pausa; `hora` debe caer dentro de la jornada solo cuando se usa el calendario por defecto (ver "Calendario laboral administrable"). El motor de tiempo laboral (antes `_BusinessClock`) es un módulo propio, `worktime.py`, que usará también el SLA (ver "Tiempo laboral"). Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
 - valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad, y que la secuencia de acciones de estado de cada ticket sea ejecutable desde Nuevo con la matriz de transiciones y con motivos y textos coherentes...);
 - una sola transacción: si algo falla se revierte todo (`DemoTicketsError`);
 - se niega a ejecutarse con `APP_ENV=production`;
@@ -1745,6 +1779,20 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 2 de `v0.5.0` (calendario laboral administrable):
+
+```text
+2508 tests passing
+```
+
+Los 207 tests nuevos cubren:
+
+- `tests/test_worktime.py` (+67, 167 en total; unitarios, sin base de datos): **el motor con franjas por día**. `schedule_problems` y `from_schedule` (franjas sin ninguna, de un día que no existe, que terminan antes de empezar o solapadas; contiguas válidas; el orden en que llegan no importa), que una franja por día se comporta igual que un `WorkCalendar`, `is_working_time`, y cada operación con una pausa de almuerzo (pasar al horario laboral, el último minuto, avanzar horas, medir y sumar, con los bordes en el inicio y el fin de cada franja). Además, dos horarios (uno con almuerzo y otro deliberadamente incómodo, con un martes de un solo minuto, un día sin trabajo, una franja que empieza a medianoche y feriados) se comparan con el recuento minuto a minuto y cumplen que medir y sumar son operaciones inversas, que nada cae fuera de las franjas y que las mediciones suman igual sin importar cómo se divida el intervalo.
+- `tests/test_work_calendar.py` (96): **el calendario por defecto** (qué se usa sin nada guardado y que sigue la zona de la aplicación); **guardar** (la versión 1, que cada guardado crea una versión nueva y deja la anterior exactamente como estaba, que una versión antigua sigue construyendo su reloj, los días ISO en la base, que guardar tal cual el calendario por defecto es válido, feriados ordenados y recortados, que el servicio no hace commit); **sin cambios, conflicto y reglas** (guardar lo mismo no crea nada, el orden de franjas y feriados no es un cambio y cualquier diferencia sí, una versión base obsoleta o del futuro es un conflicto, once datos inválidos que no dejan nada pendiente, los límites exactos, un usuario inactivo); **auditoría** (la primera versión se compara con el calendario por defecto y las siguientes solo registran las secciones que cambiaron); **descripciones** (días seguidos que comparten horas, el resumen, el historial de versiones en tres consultas); **restricciones de la base de datos** (una sola versión vigente, versión única y positiva, día de la semana de 1 a 7, inicio anterior al fin, sin repetir franja ni feriado, nombre de feriado no vacío, una versión con filas no se elimina); **los textos del formulario** (franjas de un día y feriados, con sus formas válidas y cada error con su línea) y **dos carreras con hilos** (dos Administradores que guardan la primera versión a la vez, y dos que guardan sobre la misma versión: en ambos casos queda una sola versión nueva y el otro recibe el conflicto).
+- `tests/test_work_calendar_routes.py` (37): **acceso** (anónimo al login, los tres roles sin permiso reciben 403 en GET y POST sin guardar nada, el hub enlaza la pantalla y «Administración» sigue marcada); **«SLA»** (el calendario por defecto, uno guardado con su horario, su zona y sus feriados, solo los cinco próximos, el historial de versiones, el HTML de un nombre de feriado escapado); **el formulario** (abierto con lo por defecto y con lo guardado, abrirlo no guarda nada, la lista de zonas, guardar la primera versión y las siguientes, la auditoría con quién y por qué, sin cambios no se crea nada, una pantalla desactualizada vuelve con lo vigente y no guarda, una petición sin versión se rechaza en lugar de completarse sola, doce errores distintos señalados junto a su campo, que conserva lo escrito, que rechaza un calendario sin días laborales y que informa todos los errores a la vez).
+- `tests/test_seed_demo_tickets.py` (+7): el seed respeta un calendario guardado (franjas, feriados y días sin trabajo), usa su zona horaria y cuenta «hoy» en ella (con una hora de referencia en la que Santiago y Bogotá no coinciden en la fecha), un calendario explícito sigue ganando, una hora de creación que cae en una pausa pasa al siguiente momento de trabajo, refrescar con un calendario guardado mantiene todo en horario laboral y la validación no compara la hora de cada ticket con una jornada única cuando no la hay.
+- Ajustes por diseño, sin cambiar lo que comprueban: `tests/test_layout.py` (la tarjeta «SLA» del hub ya está enlazada) y `tests/test_worktime.py` (los atributos `start` y `end` del reloj desaparecieron: un test usa ahora `is_working_time` y el recuento minuto a minuto entiende franjas). `tests/test_route_protection.py` y `tests/test_route_authorization.py` cubren las dos rutas nuevas sin cambios (sesión obligatoria, CSRF y solo Administrador).
 
 Estado tras la entrega 1 de `v0.5.0` (motor de tiempo laboral compartido):
 
@@ -2517,7 +2565,7 @@ Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases poste
 - `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.5.0`: calendario laboral administrable (tablas y pantalla del Administrador; el motor de tiempo laboral compartido ya existe, `worktime.py`), con `DEMO_CALENDAR` como calendario por defecto mientras no haya uno guardado;
+- `v0.5.0`: el calendario laboral administrable y el motor de tiempo laboral compartido ya existen (entregas 1 y 2: `worktime.py` y el paquete `sla/`); falta que el SLA los use (entregas 3 y 4);
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

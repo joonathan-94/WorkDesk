@@ -276,6 +276,7 @@ WorkDesk/
 │       ├── models/
 │       ├── security/
 │       ├── seeds/
+│       ├── sla/
 │       ├── static/
 │       │   ├── css/
 │       │   ├── img/
@@ -306,6 +307,7 @@ WorkDesk/
 │       │   ├── groups/
 │       │   ├── layouts/
 │       │   ├── main/
+│       │   ├── sla/
 │       │   ├── tickets/
 │       │   └── users/
 │       ├── tickets/
@@ -372,6 +374,8 @@ WorkDesk/
 │   ├── test_users_routes.py
 │   ├── test_users_service.py
 │   ├── test_wait_reasons.py
+│   ├── test_work_calendar.py
+│   ├── test_work_calendar_routes.py
 │   ├── test_worktime.py
 │   └── ticket_helpers.py
 │
@@ -634,6 +638,7 @@ Las migraciones actuales crean estas tablas:
 - `validaciones`: la respuesta de cada solicitante a la resolución de un ticket (confirmada o rechazada), por ciclo de resolución.
 - `tipos_relacion_ticket` y `tickets_relaciones`: los tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`) y las relaciones vigentes o quitadas.
 - `bloqueos_edicion_tickets`: el bloqueo temporal de edición de un ticket (quién lo edita ahora y hasta cuándo).
+- `calendarios_laborales`, `horarios_laborales` y `feriados`: las versiones del calendario laboral, sus franjas por día y sus feriados.
 
 Para comprobar que se aplicaron:
 
@@ -890,7 +895,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - Dos más, también al final, con archivos adjuntos reales (de texto: un registro de errores de un Solicitante, un diagnóstico del equipo y una lista `.csv` del ticket), guardados en `instance/uploads`. Así se puede probar la descarga y comprobar que los archivos de una nota interna no los ve el Solicitante.
 - Siete más, al final de todo, recorren la resolución y el cierre: uno **Resuelto** esperando que la solicitante lo confirme (ella ve el aviso «¿Tu solicitud quedó resuelta?»), uno que la solicitante **confirmó** y se cerró con el motivo «Resolución validada», uno que la solicitante **rechazó** («Sigo sin poder entrar...») y que el técnico resolvió por segunda vez, un **cierre directo** sin solicitante (una mantención rutinaria), una **cancelación** (cierre directo con ese motivo), uno **Resuelto sin solicitante** que cerró un Supervisor con un **cierre excepcional** y uno que se cerró y el personal **reabrió** porque el problema volvió. Así la pestaña **Cerrados** tiene tickets y se puede probar cada camino.
 - Cuatro más, al final de todo, con **duplicados y relaciones**: dos tickets de la bodega que repiten el del wifi (el personal los marca como duplicados y se cierran con el motivo «Duplicado», dejando al ticket del wifi como principal de ambos) y dos tickets que el personal relaciona con otros sin ser duplicados (una impresora y el wifi de la sala de reuniones). Solo el personal ve las relaciones.
-- Fechas repartidas hasta unas nueve semanas atrás, **relativas al día en que lo ejecutes** y medidas en **tiempo laboral**: «hace 3 días» son tres días laborales antes de hoy, cada ticket se crea dentro de la jornada y los pasos posteriores del personal avanzan en horas laborales (el reloj salta noches, fines de semana y feriados). Por defecto la jornada es de lunes a viernes de 09:00 a 18:00 y se cambia en `DEMO_CALENDAR`, en el mismo archivo de datos (cuando exista la pantalla del calendario laboral, con el SLA en `v0.5.0`, el comando usará el que guarde el Administrador y, si no hay ninguno, este). Nada queda fuera de ese calendario ni en el futuro, y si lo ejecutas un fin de semana, cuenta desde el último día laboral. Así los filtros por fecha y «Recién actualizados» se ven vivos en cualquier demostración.
+- Fechas repartidas hasta unas nueve semanas atrás, **relativas al día en que lo ejecutes** y medidas en **tiempo laboral**: «hace 3 días» son tres días laborales antes de hoy, cada ticket se crea dentro de la jornada y los pasos posteriores del personal avanzan en horas laborales (el reloj salta noches, fines de semana y feriados). La jornada es la del calendario laboral vigente: el que guarde el Administrador en **Administración → SLA** o, si no hay ninguno, el de por defecto (lunes a viernes de 09:00 a 18:00, que se define en `DEMO_CALENDAR`, en `src/workdesk/worktime.py`). Nada queda fuera de ese calendario ni en el futuro, y si lo ejecutas un fin de semana, cuenta desde el último día laboral. Así los filtros por fecha y «Recién actualizados» se ven vivos en cualquier demostración.
 
 **Cómo se comporta**
 
@@ -938,6 +943,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 10. **Catálogos:** en **Administración → Categorías**, desactiva una categoría que ya usan tickets. Esos tickets la conservan, pero ya no aparece en **Crear ticket**. Reactívala cuando quieras.
 11. **Grupos:** en **Administración → Grupos** ves los tres grupos de demostración (si ejecutaste `seed-demo`). Crea uno nuevo, ábrelo y designa a un supervisor responsable y agrega técnicos con los selectores de cada tarjeta. Prueba **Editar**, **Desactivar** (un grupo desactivado no admite cambios de técnicos ni de responsables) y **Reactivar**.
 12. **Estados y transiciones:** en **Administración → Estados y transiciones** ves los seis estados con cuántos tickets hay en cada uno. Pulsa **Editar** en `En progreso`, cámbiale el nombre a `En curso` y guarda: el nuevo nombre aparece en el listado, el detalle y los botones, pero el historial de los tickets que ya pasaron por ahí conserva el que tenía entonces. Prueba a ponerle a otro estado un nombre que ya existe: lo rechaza. Más abajo están las transiciones, agrupadas por estado de origen, con quién ejecuta cada una. Algunas llevan la etiqueta **Protegida** (pasa el cursor para ver por qué): por ejemplo, confirmar la solución no se puede deshabilitar. Deshabilita **Iniciar trabajo** desde `Nuevo`: pide confirmación y, desde ahora, ese botón no se ofrece a los tickets `Nuevo`. Fíjate en el mismo botón desde `Asignado`: ahora aparece como **Protegida**, porque deshabilitarlo también dejaría `En progreso` sin camino de entrada desde `Nuevo`. Vuelve a habilitar la primera con **Habilitar**. Cada cambio queda registrado en la auditoría administrativa (la pantalla para consultarla llega más adelante).
+13. **Calendario laboral:** en **Administración → SLA** ves el calendario laboral. Mientras no hayas guardado ninguno dice **Por defecto (sin configurar)**: lunes a viernes de 09:00 a 18:00, sin feriados. Pulsa **Configurar calendario**. El horario de cada día es un texto: déjale al viernes `09:00-17:00` y escribe en el sábado `10:00-12:00`; si quieres una pausa de almuerzo, usa `09:00-13:00, 14:00-18:00`. En **Feriados** escribe uno por línea, por ejemplo `25-12-2026 Navidad` (también vale `2026-12-25`). Guarda: la pantalla pasa a decir **Configurado · versión 1** y resume el horario («Lunes a jueves · 09:00–18:00», «Viernes · 09:00–17:00»…). Vuelve a configurarlo, cambia una hora y guarda: ahora hay una **versión 2** y la 1 queda en la tabla de versiones como **Anterior**, tal como se guardó. Prueba a escribir `mañana` en un día, una hora de fin anterior a la de inicio, dos franjas que se solapan o un feriado sin nombre: cada error aparece junto a su campo y lo escrito no se pierde. Para ver el control de versiones, abre **Configurar calendario** en dos pestañas, guarda en una y luego en la otra: la segunda avisa de que otra persona guardó mientras editabas y no pisa el cambio. Si no cambias nada y guardas, avisa de que no hay cambios y no crea una versión. Si ejecutas `seed-demo-tickets` de nuevo con un calendario guardado, las fechas de los tickets de demostración respetan sus franjas y sus feriados.
 
 ### 2. Como Solicitante
 
@@ -1252,7 +1258,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-2301 tests
+2508 tests
 ```
 
 Los tests cubren principalmente:
@@ -1277,7 +1283,8 @@ Los tests cubren principalmente:
 - relaciones y duplicados: el par simétrico, la ausencia de cadenas y ciclos y el cierre del duplicado;
 - administración de estados y transiciones: renombrar sin repetir nombres, las transiciones esenciales, que ninguna deshabilitación rompa el flujo (también entre dos Administradores a la vez) y que el catálogo de acciones y las políticas de autorización no se separen;
 - seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión, que las rutas POST exigen token CSRF y que cada ruta responde según quién la use (404 al ticket ajeno, 403 al rol sin permiso), con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o mal protegida;
-- tiempo laboral (`worktime.py`): días y jornadas, feriados, medir y sumar tiempo laboral como operaciones inversas, una comparación con un recuento minuto a minuto, fechas en otra zona horaria y un fin de semana con cambio de horario de verano. Son pruebas unitarias: no usan la base de datos.
+- tiempo laboral (`worktime.py`): días y jornadas, franjas distintas por día (una pausa de almuerzo, un martes de un solo minuto, una franja que empieza a medianoche), feriados, medir y sumar tiempo laboral como operaciones inversas, una comparación con un recuento minuto a minuto, fechas en otra zona horaria y un fin de semana con cambio de horario de verano. Son pruebas unitarias: no usan la base de datos;
+- calendario laboral administrable: las restricciones de la base de datos (una sola versión vigente, franjas y feriados sin repetir), que guardar crea siempre una versión nueva y deja la anterior intacta, los conflictos entre dos personas (también con dos hilos a la vez), qué se audita, la lectura de los textos del horario y de los feriados, las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito) y que el seed de demostración respete el calendario guardado.
 
 Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
 
@@ -1432,7 +1439,7 @@ v1.0.0  MVP
 
 El desarrollo prioriza mantener cada incremento ejecutable, probado y documentado antes de avanzar al siguiente.
 
-El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) llega con el SLA, en `v0.5.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
+El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) ya existe (`v0.5.0`, entrega 2); el SLA que lo usa llega en las entregas siguientes de la fase. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 ---
 

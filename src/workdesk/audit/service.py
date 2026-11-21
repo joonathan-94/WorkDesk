@@ -62,6 +62,10 @@ class AuditAction(StrEnum):
     TRANSICION_ACTIVADA = "TRANSICION_ACTIVADA"
     TRANSICION_DESACTIVADA = "TRANSICION_DESACTIVADA"
 
+    # Calendario laboral: cada guardado crea una versión nueva (`entidad_tipo`
+    # es "calendario_laboral"; `entidad_id`, la versión creada).
+    CALENDARIO_LABORAL_GUARDADO = "CALENDARIO_LABORAL_GUARDADO"
+
 
 def record_admin_event(
     action: AuditAction,

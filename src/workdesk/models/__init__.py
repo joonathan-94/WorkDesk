@@ -1,5 +1,8 @@
 from .admin_audit_log import AdminAuditLog as AdminAuditLog
 from .attachment import Attachment as Attachment
+from .calendario_laboral import CalendarioLaboral as CalendarioLaboral
+from .calendario_laboral import Feriado as Feriado
+from .calendario_laboral import HorarioLaboral as HorarioLaboral
 from .categoria import Categoria as Categoria
 from .comment import Comment as Comment
 from .comment import CommentType as CommentType

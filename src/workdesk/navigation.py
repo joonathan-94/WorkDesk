@@ -111,7 +111,7 @@ MAIN_NAVIGATION = (
         endpoint="admin.index",
         icon="gear",
         roles=(RoleCode.ADMINISTRADOR,),
-        active_prefixes=("admin.", "users.", "catalogs.", "groups."),
+        active_prefixes=("admin.", "users.", "catalogs.", "groups.", "sla."),
     ),
 )
 

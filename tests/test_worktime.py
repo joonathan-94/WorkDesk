@@ -7,10 +7,13 @@ import pytest
 from src.workdesk.worktime import (
     DEMO_CALENDAR,
     TIME_PATTERN,
+    WEEKDAY_NAMES,
     BusinessClock,
+    Franja,
     WorkCalendar,
     calendar_problems,
     parse_time,
+    schedule_problems,
 )
 
 ZONE = ZoneInfo("America/Santiago")
@@ -241,8 +244,7 @@ def test_add_hours_never_lands_outside_the_working_hours():
         for hours in (0, 1, 2, 3, 5, 8, 9, 10, 17, 18, 19, 27):
             result = CLOCK.add_hours(moment, hours)
 
-            assert CLOCK.is_workday(result.date()), (moment, hours)
-            assert CLOCK.start <= result.time() < CLOCK.end, (moment, hours)
+            assert CLOCK.is_working_time(result), (moment, hours)
             assert result >= moment
 
         moment += timedelta(minutes=89)
@@ -309,18 +311,26 @@ def test_a_long_span_counts_every_working_day():
     assert CLOCK.business_seconds_between(start, end) == working_days * WORKDAY
 
 
-def brute_force_seconds(calendar, start, end):
-    """Cuenta minuto a minuto, sin ninguna de las ideas del motor."""
-    opening, closing = parse_time(calendar.inicio), parse_time(calendar.fin)
+def uniform_week(calendar):
+    """Las franjas de cada día de un calendario de una sola jornada."""
+    shift = (parse_time(calendar.inicio), parse_time(calendar.fin))
+
+    return {day: [shift] for day in calendar.dias}
+
+
+def brute_force_seconds(week, holidays, start, end):
+    """Cuenta minuto a minuto, sin ninguna de las ideas del motor.
+
+    `week` dice qué franjas (inicio, fin) tiene cada día de la semana.
+    """
     total = 0
     minute = start
 
     while minute < end:
-        if (
-            minute.date().weekday() in calendar.dias
-            and minute.date() not in calendar.feriados
-            and opening <= minute.time() < closing
-        ):
+        day = minute.date()
+        shifts = [] if day in holidays else week.get(day.weekday(), [])
+
+        if any(opening <= minute.time() < closing for opening, closing in shifts):
             total += 60
 
         minute += timedelta(minutes=1)
@@ -343,15 +353,16 @@ def brute_force_seconds(calendar, start, end):
 )
 def test_measuring_matches_a_minute_by_minute_count(calendar):
     clock = BusinessClock(calendar, ZONE)
+    week = uniform_week(calendar)
     start = at(13, 0, 3)
 
     for _ in range(14):
         for minutes in (0, 1, 59, 600, 1441, 3000, 4321):
             end = start + timedelta(minutes=minutes)
 
-            assert clock.business_seconds_between(
-                start, end
-            ) == brute_force_seconds(calendar, start, end), (start, end)
+            assert clock.business_seconds_between(start, end) == brute_force_seconds(
+                week, calendar.feriados, start, end
+            ), (start, end)
 
         start += timedelta(hours=11, minutes=37)
 
@@ -505,3 +516,334 @@ def test_a_daylight_saving_change_over_the_weekend_does_not_move_the_working_hou
     # 18:00 antes y después del cambio.
     assert CLOCK.business_seconds_between(friday, monday) == 2 * HOUR
     assert CLOCK.add_business_seconds(friday, 2 * HOUR) == monday
+
+
+# --- Franjas por día --------------------------------------------------------
+
+
+def franja(day, start, end):
+    return Franja(day, parse_time(start), parse_time(end))
+
+
+# De lunes a jueves con pausa de almuerzo (09:00-13:00 y 14:00-18:00), el viernes
+# corrido de 09:00 a 14:00 y sin fines de semana.
+LUNCH_SCHEDULE = (
+    *(franja(day, "09:00", "13:00") for day in range(4)),
+    *(franja(day, "14:00", "18:00") for day in range(4)),
+    franja(4, "09:00", "14:00"),
+)
+LUNCH_CLOCK = BusinessClock.from_schedule(LUNCH_SCHEDULE, (), ZONE)
+
+# Un horario a propósito incómodo: el lunes con almuerzo, un martes de un solo
+# minuto, el miércoles sin trabajo, un jueves casi completo, un viernes de
+# madrugada y de noche y un sábado de una hora. El martes 24 y el sábado 28 de
+# noviembre son feriados.
+IRREGULAR_SCHEDULE = (
+    franja(0, "08:00", "12:00"),
+    franja(0, "13:00", "17:30"),
+    franja(1, "10:00", "10:01"),
+    franja(3, "09:00", "23:59"),
+    franja(4, "00:00", "06:00"),
+    franja(4, "22:00", "23:59"),
+    franja(5, "10:00", "11:00"),
+)
+IRREGULAR_HOLIDAYS = (date(2026, 11, 24), date(2026, 11, 28))
+IRREGULAR_CLOCK = BusinessClock.from_schedule(
+    IRREGULAR_SCHEDULE, IRREGULAR_HOLIDAYS, ZONE
+)
+
+# (reloj, horario, feriados, primer momento de los recorridos)
+SHIFT_CLOCKS = [
+    pytest.param(LUNCH_CLOCK, LUNCH_SCHEDULE, (), at(13, 0, 3), id="lunch-break"),
+    pytest.param(
+        IRREGULAR_CLOCK,
+        IRREGULAR_SCHEDULE,
+        IRREGULAR_HOLIDAYS,
+        at(21, 0, 3),
+        id="irregular",
+    ),
+]
+
+
+def week_of(schedule):
+    """Las franjas (inicio, fin) de cada día de la semana de un horario."""
+    week = {}
+
+    for slot in schedule:
+        week.setdefault(slot.dia, []).append((slot.inicio, slot.fin))
+
+    return week
+
+
+def test_the_weekday_names_follow_the_python_order():
+    assert len(WEEKDAY_NAMES) == 7
+    assert WEEKDAY_NAMES[date(2026, 11, 16).weekday()] == "lunes"
+    assert WEEKDAY_NAMES[date(2026, 11, 22).weekday()] == "domingo"
+
+
+def test_a_valid_schedule_has_no_problems():
+    adjacent = [franja(0, "09:00", "13:00"), franja(0, "13:00", "18:00")]
+
+    assert schedule_problems(LUNCH_SCHEDULE) == []
+    assert schedule_problems(IRREGULAR_SCHEDULE, IRREGULAR_HOLIDAYS) == []
+    # Una franja puede empezar justo donde termina la anterior.
+    assert schedule_problems(adjacent) == []
+
+
+@pytest.mark.parametrize(
+    ("franjas", "holidays", "message"),
+    [
+        ([], (), "al menos un día laboral"),
+        ([Franja(7, time(9), time(18))], (), "de 0 (lunes) a 6"),
+        ([Franja(-1, time(9), time(18))], (), "de 0 (lunes) a 6"),
+        ([franja(1, "18:00", "09:00")], (), "franja del martes"),
+        ([franja(1, "09:00", "09:00")], (), "anterior a su fin"),
+        (
+            [franja(2, "09:00", "13:00"), franja(2, "12:59", "18:00")],
+            (),
+            "franjas del miércoles que se solapan",
+        ),
+        ([franja(0, "09:00", "18:00")], ("2026-11-17",), "deben ser fechas"),
+    ],
+)
+def test_schedule_problems_say_what_is_wrong(franjas, holidays, message):
+    problems = schedule_problems(franjas, holidays)
+
+    assert any(message in problem for problem in problems)
+
+
+def test_from_schedule_refuses_an_invalid_schedule():
+    with pytest.raises(ValueError, match="al menos un día laboral"):
+        BusinessClock.from_schedule([], (), ZONE)
+
+    with pytest.raises(ValueError, match="se solapan"):
+        BusinessClock.from_schedule(
+            [franja(2, "09:00", "13:00"), franja(2, "12:00", "18:00")], (), ZONE
+        )
+
+
+def test_the_order_of_the_shifts_does_not_matter():
+    shuffled = BusinessClock.from_schedule(reversed(LUNCH_SCHEDULE), (), ZONE)
+    moment = at(13, 0, 7)
+
+    for _ in range(60):
+        assert shuffled.into_business(moment) == LUNCH_CLOCK.into_business(moment)
+        assert shuffled.latest_before(moment) == LUNCH_CLOCK.latest_before(moment)
+        assert shuffled.add_hours(moment, 7) == LUNCH_CLOCK.add_hours(moment, 7)
+
+        moment += timedelta(minutes=71)
+
+
+def test_a_schedule_with_one_shift_per_day_equals_the_uniform_calendar():
+    same = BusinessClock.from_schedule(
+        [franja(day, "09:00", "18:00") for day in range(5)], (), ZONE
+    )
+    moment = at(13, 0, 7)
+
+    for _ in range(120):
+        assert same.into_business(moment) == CLOCK.into_business(moment)
+        assert same.latest_before(moment) == CLOCK.latest_before(moment)
+
+        for hours in (0, 1, 5, 9, 27):
+            assert same.add_hours(moment, hours) == CLOCK.add_hours(moment, hours)
+
+        for seconds in (0, 1, HOUR, WORKDAY, 40 * HOUR + 17):
+            assert same.add_business_seconds(
+                moment, seconds
+            ) == CLOCK.add_business_seconds(moment, seconds)
+
+            later = moment + timedelta(seconds=3 * seconds)
+            assert same.business_seconds_between(
+                moment, later
+            ) == CLOCK.business_seconds_between(moment, later)
+
+        moment += timedelta(minutes=83)
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        (at(18, 9, 0), True),
+        (at(18, 12, 59), True),
+        (at(18, 13, 0), False),  # la hora de fin de una franja no se incluye
+        (at(18, 13, 30), False),  # pausa de almuerzo
+        (at(18, 14, 0), True),
+        (at(18, 17, 59), True),
+        (at(18, 18, 0), False),
+        (at(20, 13, 59), True),  # el viernes se trabaja hasta las 14:00
+        (at(20, 14, 0), False),
+        (at(21, 10, 0), False),  # sábado
+    ],
+)
+def test_is_working_time_follows_every_shift(moment, expected):
+    assert LUNCH_CLOCK.is_working_time(moment) is expected
+
+
+def test_is_working_time_converts_to_the_calendar_zone():
+    # Las 10:30 de Santiago, expresadas en UTC como llegan de la base de datos.
+    assert CLOCK.is_working_time(at(18, 10, 30).astimezone(UTC))
+    assert not CLOCK.is_working_time(at(18, 7, 0).astimezone(UTC))
+
+
+def test_a_day_without_shifts_is_not_a_working_day():
+    assert not IRREGULAR_CLOCK.is_workday(date(2026, 11, 18))  # miércoles
+    assert not IRREGULAR_CLOCK.is_workday(date(2026, 11, 22))  # domingo
+    assert not IRREGULAR_CLOCK.is_workday(date(2026, 11, 24))  # martes feriado
+    assert IRREGULAR_CLOCK.is_workday(date(2026, 11, 17))  # martes
+    assert IRREGULAR_CLOCK.is_workday(date(2026, 11, 23))  # lunes
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        (at(18, 10, 30), at(18, 10, 30)),
+        (at(18, 13, 0), at(18, 14, 0)),  # justo al empezar la pausa
+        (at(18, 13, 30), at(18, 14, 0)),
+        (at(18, 8, 0), at(18, 9, 0)),
+        (at(18, 18, 0), at(19, 9, 0)),
+        (at(20, 10, 0), at(20, 10, 0)),
+        (at(20, 14, 0), at(23, 9, 0)),  # el viernes cierra a las 14:00: el lunes
+        (at(21, 12, 0), at(23, 9, 0)),
+    ],
+)
+def test_into_business_skips_the_break(moment, expected):
+    assert LUNCH_CLOCK.into_business(moment) == expected
+
+
+@pytest.mark.parametrize(
+    ("limit", "expected"),
+    [
+        (at(18, 10, 30), at(18, 10, 30)),
+        (at(18, 13, 30), at(18, 12, 59)),  # en la pausa: el último minuto de la mañana
+        (at(18, 14, 30), at(18, 14, 30)),
+        (at(18, 20, 0), at(18, 17, 59)),
+        (at(18, 8, 0), at(17, 17, 59)),
+        (at(23, 8, 0), at(20, 13, 59)),  # lunes antes de abrir: el viernes cierra a las 14:00
+        (at(21, 12, 0), at(20, 13, 59)),
+        (at(20, 14, 30), at(20, 13, 59)),
+    ],
+)
+def test_latest_before_finds_the_last_minute_of_the_previous_shift(limit, expected):
+    assert LUNCH_CLOCK.latest_before(limit) == expected
+
+
+@pytest.mark.parametrize(
+    ("moment", "hours", "expected"),
+    [
+        (at(18, 12, 0), 1, at(18, 14, 0)),  # termina justo al empezar la pausa
+        (at(18, 12, 0), 2, at(18, 15, 0)),  # 1 h antes y 1 h después del almuerzo
+        (at(18, 17, 0), 1, at(19, 9, 0)),
+        (at(19, 12, 0), 6, at(20, 10, 0)),  # 1 h + 4 h el jueves y 1 h el viernes
+        (at(20, 13, 0), 2, at(23, 10, 0)),  # 1 h el viernes y 1 h el lunes
+        (at(18, 13, 30), 1, at(18, 15, 0)),  # empieza en la pausa: corre desde las 14:00
+    ],
+)
+def test_add_hours_crosses_the_break(moment, hours, expected):
+    assert LUNCH_CLOCK.add_hours(moment, hours) == expected
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "expected"),
+    [
+        (at(18, 12, 0), at(18, 15, 0), 2 * HOUR),  # la pausa no suma
+        (at(18, 13, 0), at(18, 14, 0), 0),
+        (at(18, 9, 0), at(18, 18, 0), 8 * HOUR),
+        (at(18, 0, 0), at(19, 0, 0), 8 * HOUR),
+        (at(20, 0, 0), at(21, 0, 0), 5 * HOUR),  # el viernes, de 09:00 a 14:00
+        (at(16, 0, 0), at(23, 0, 0), 37 * HOUR),  # cuatro días de 8 h y un viernes de 5 h
+        (at(20, 13, 0), at(23, 10, 0), 2 * HOUR),
+    ],
+)
+def test_business_seconds_between_with_a_break(start, end, expected):
+    assert LUNCH_CLOCK.business_seconds_between(start, end) == expected
+
+
+@pytest.mark.parametrize(
+    ("moment", "seconds", "expected"),
+    [
+        (at(18, 12, 0), HOUR, at(18, 13, 0)),  # vence justo al empezar la pausa
+        (at(18, 12, 0), HOUR + 1, at(18, 14, 0, 1)),  # un segundo más: tras el almuerzo
+        (at(18, 17, 0), HOUR, at(18, 18, 0)),
+        (at(18, 9, 0), 8 * HOUR, at(18, 18, 0)),
+        (at(20, 13, 0), 3 * HOUR, at(23, 11, 0)),
+        (at(18, 13, 30), HOUR, at(18, 15, 0)),  # empieza en la pausa
+    ],
+)
+def test_add_business_seconds_with_a_break(moment, seconds, expected):
+    assert LUNCH_CLOCK.add_business_seconds(moment, seconds) == expected
+
+
+@pytest.mark.parametrize(("clock", "schedule", "holidays", "first"), SHIFT_CLOCKS)
+def test_measuring_with_shifts_matches_a_minute_by_minute_count(
+    clock, schedule, holidays, first
+):
+    week = week_of(schedule)
+    start = first
+
+    for _ in range(14):
+        for minutes in (0, 1, 59, 600, 1441, 3000, 4321):
+            end = start + timedelta(minutes=minutes)
+
+            assert clock.business_seconds_between(start, end) == brute_force_seconds(
+                week, holidays, start, end
+            ), (start, end)
+
+        start += timedelta(hours=11, minutes=37)
+
+
+@pytest.mark.parametrize(("clock", "schedule", "holidays", "first"), SHIFT_CLOCKS)
+def test_adding_and_measuring_are_inverse_operations_with_shifts(
+    clock, schedule, holidays, first
+):
+    moment = first
+
+    for _ in range(150):
+        for seconds in (1, 59, HOUR, WORKDAY, WORKDAY + 1, 2 * WORKDAY, 40 * HOUR + 17):
+            result = clock.add_business_seconds(moment, seconds)
+
+            assert clock.business_seconds_between(moment, result) == seconds
+            # Y es el primer instante en que se cumple.
+            before = result - timedelta(seconds=1)
+            assert clock.business_seconds_between(moment, before) == seconds - 1
+
+        moment += timedelta(minutes=97)
+
+
+@pytest.mark.parametrize(("clock", "schedule", "holidays", "first"), SHIFT_CLOCKS)
+def test_the_moment_helpers_never_land_outside_the_shifts(
+    clock, schedule, holidays, first
+):
+    moment = first
+
+    for _ in range(200):
+        into = clock.into_business(moment)
+        assert clock.is_working_time(into)
+        assert into >= moment
+        assert clock.into_business(into) == into
+
+        latest = clock.latest_before(moment)
+        assert clock.is_working_time(latest)
+        assert latest <= moment
+
+        for hours in (0, 1, 2, 5, 9, 27):
+            result = clock.add_hours(moment, hours)
+
+            assert clock.is_working_time(result), (moment, hours)
+            assert result >= moment
+
+        moment += timedelta(minutes=89)
+
+
+@pytest.mark.parametrize(("clock", "schedule", "holidays", "first"), SHIFT_CLOCKS)
+def test_measurements_with_shifts_add_up_across_any_split(
+    clock, schedule, holidays, first
+):
+    points = [first + timedelta(seconds=n * 26_237) for n in range(30)]
+
+    for start, middle, end in combinations(points, 3):
+        whole = clock.business_seconds_between(start, end)
+        parts = clock.business_seconds_between(
+            start, middle
+        ) + clock.business_seconds_between(middle, end)
+
+        assert whole == parts, (start, middle, end)

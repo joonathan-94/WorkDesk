@@ -1406,6 +1406,14 @@ Para evitar almacenar días de semana como una estructura opaca, este documento 
 
 Esta es una decisión física de modelado y no modifica el comportamiento funcional ya definido.
 
+**Una versión nunca se modifica (implementado en `v0.5.0`).** Guardar un cambio crea siempre una versión nueva y deja la anterior como histórica (`docs/11`, UI-022: «Guardar crea una versión nueva»). Como ninguna versión se edita después de escribirse, el diseño inicial de este documento tenía columnas que no hacen falta y no se implementaron:
+
+- en `calendarios_laborales`: `nombre` (hay un único calendario global y las versiones se distinguen por su número) y `fecha_modificacion` y `usuario_modificacion_id` (nada se modifica: quién y cuándo la guardó es lo único que hay que recordar);
+- en `horarios_laborales`: `activo` (una franja existe en una versión o no existe);
+- en `feriados`: `activo`, `descripcion`, `fecha_creacion`, `usuario_creacion_id`, `fecha_modificacion` y `usuario_modificacion_id` (quién y cuándo lo guardó lo dice la versión de la que cuelga).
+
+Las tablas de abajo son las implementadas.
+
 ---
 
 ## 21.2 `calendarios_laborales`
@@ -1415,22 +1423,25 @@ Esta es una decisión física de modelado y no modifica el comportamiento funcio
 | Campo | Tipo | Nulo | Descripción |
 | --- | --- | --- | --- |
 | `id` | BIGINT | No | PK. |
-| `nombre` | VARCHAR | No | Nombre del calendario. |
-| `version` | INTEGER | No | Versión lógica del calendario; comienza en 1. |
-| `zona_horaria` | VARCHAR | No | Zona horaria de interpretación. |
+| `version` | INTEGER | No | Versión del calendario: correlativa en todo el sistema (hay un único calendario global); comienza en 1. |
+| `zona_horaria` | VARCHAR | No | Nombre de la zona horaria IANA en la que se interpretan las horas y los feriados (por ejemplo, `America/Santiago`). |
 | `activo` | BOOLEAN | No | Indica la versión vigente. |
-| `fecha_creacion` | TIMESTAMPTZ | No | Creación. |
-| `usuario_creacion_id` | BIGINT | Sí | Creador. |
-| `fecha_modificacion` | TIMESTAMPTZ | Sí | Último cambio permitido antes de quedar histórico. |
-| `usuario_modificacion_id` | BIGINT | Sí | Modificador. |
+| `fecha_creacion` | TIMESTAMPTZ | No | Cuándo se guardó. |
+| `usuario_creacion_id` | BIGINT | Sí | Quién la guardó. |
+
+### Restricciones
+
+- `version >= 1` y `UNIQUE (version)`.
+- Como máximo una versión vigente: índice único parcial sobre `activo` donde `activo` es verdadero.
+- `usuario_creacion_id` es FK a `usuarios` con `ON DELETE RESTRICT`.
 
 ### MVP y versionado histórico
 
 En el MVP existirá **un único calendario global vigente a la vez**.
 
-Cuando una modificación de horarios o feriados pueda alterar el cálculo de SLA de tickets históricos, no se reescribirá destructivamente la versión utilizada. Se conservará la versión anterior y se creará una nueva versión de calendario para las políticas y tickets posteriores.
+Guardar nunca modifica una versión: crea la siguiente y deja la anterior como histórica (`activo` falso), de modo que las versiones que ya usan períodos de SLA no cambian retroactivamente. Mientras no exista ninguna fila, el sistema usa el calendario por defecto definido en código (sección 40.8).
 
-Las versiones históricas de calendario, horarios y feriados que ya sean referenciadas por períodos SLA no deberán modificarse de forma que cambie retrospectivamente las condiciones aplicadas.
+Quien guarda indica con qué versión abrió la pantalla (0 si no había ninguna). Si mientras tanto otra persona guardó, no se guarda nada y se avisa, como con la versión de un ticket. Dos guardados simultáneos se resuelven bloqueando la fila vigente y, cuando todavía no hay ninguna, con los índices únicos. Guardar un contenido idéntico al vigente no crea una versión.
 
 ## 21.3 `horarios_laborales`
 
@@ -1444,15 +1455,17 @@ Una fila representa una franja horaria de un día de semana para una versión de
 | `calendario_laboral_id` | BIGINT | No | FK. |
 | `dia_semana` | SMALLINT | No | ISO-8601: lunes=1 ... domingo=7. |
 | `hora_inicio` | TIME | No | Inicio. |
-| `hora_fin` | TIME | No | Fin. |
-| `activo` | BOOLEAN | No | Vigencia dentro de la versión. |
+| `hora_fin` | TIME | No | Fin (no se incluye: a las 18:00 ya no se trabaja). |
 
 ### Restricciones
 
 - `dia_semana BETWEEN 1 AND 7`.
 - `hora_inicio < hora_fin`.
-- Las franjas activas de un mismo calendario y día no podrán solaparse.
+- `UNIQUE (calendario_laboral_id, dia_semana, hora_inicio)`: no hay dos franjas que empiecen a la vez; su primera columna sirve de índice por versión.
+- Las franjas de un mismo calendario y día no pueden solaparse. Lo comprueba el servicio antes de guardar la versión, que se escribe de una sola vez y no se modifica después; no hay una restricción de exclusión porque necesitaría la extensión `btree_gist` de PostgreSQL.
+- Un día puede tener varias franjas (una pausa de almuerzo son dos) y un día sin ninguna no es laboral.
 - Para el MVP las franjas se representan dentro del mismo día; turnos que crucen medianoche deberán dividirse o modelarse posteriormente si el requisito aparece.
+- `calendario_laboral_id` es FK con `ON DELETE RESTRICT`: las versiones no se eliminan.
 
 ## 21.4 `feriados`
 
@@ -1463,19 +1476,16 @@ Una fila representa una franja horaria de un día de semana para una versión de
 | `id` | BIGINT | No | PK. |
 | `calendario_laboral_id` | BIGINT | No | FK. |
 | `fecha` | DATE | No | Día no laboral. |
-| `nombre` | VARCHAR | No | Nombre. |
-| `descripcion` | TEXT | Sí | Contexto. |
-| `activo` | BOOLEAN | No | Vigencia dentro de la versión. |
-| `fecha_creacion` | TIMESTAMPTZ | No | Creación. |
-| `usuario_creacion_id` | BIGINT | Sí | Creador. |
-| `fecha_modificacion` | TIMESTAMPTZ | Sí | Modificación permitida antes de quedar histórico. |
-| `usuario_modificacion_id` | BIGINT | Sí | Modificador. |
+| `nombre` | VARCHAR | No | Nombre (obligatorio, hasta 100 caracteres en la pantalla). |
 
-### Restricción recomendada
+### Restricciones
 
 ```text
 UNIQUE (calendario_laboral_id, fecha)
+CHECK (btrim(nombre) <> '')
 ```
+
+Su primera columna sirve de índice por versión y `calendario_laboral_id` es FK con `ON DELETE RESTRICT`.
 
 El MVP utiliza un calendario global y no necesita clasificar feriados como nacionales/regionales/locales. Si en el futuro aparecen múltiples calendarios o reglas regionales, esa clasificación podrá incorporarse cuando exista un comportamiento funcional que la utilice.
 
@@ -2200,7 +2210,8 @@ Los índices finales deberán revisarse con datos representativos y `EXPLAIN`/`E
 - `hora_inicio < hora_fin`.
 - Las franjas del mismo día/calendario no se solapan.
 - `UNIQUE(calendario_laboral_id, fecha)` para feriados.
-- Versiones históricas utilizadas por SLA no se modifican destructivamente.
+- `UNIQUE(version)` y, como máximo, una versión con `activo` verdadero (índice único parcial).
+- Ninguna versión se modifica una vez guardada: un cambio crea una versión nueva. Así, las versiones utilizadas por SLA no cambian retroactivamente.
 
 ---
 
