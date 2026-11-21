@@ -84,6 +84,7 @@ from ..models import (
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
+from ..sla.work_calendar import resolve_work_calendar
 from ..tickets.assignment import assign_technician, set_group
 from ..tickets.attachments import add_attachments
 from ..tickets.comments import add_comment
@@ -153,17 +154,19 @@ class DemoTicketsResult:
 
 def validate_demo_tickets(
     tickets: tuple[DemoTicket, ...] = DEMO_TICKETS,
-    calendar: WorkCalendar = DEMO_CALENDAR,
+    calendar: WorkCalendar | None = DEMO_CALENDAR,
 ) -> None:
     """Comprueba que los datos son coherentes antes de tocar la base.
 
     Así un error al editar la lista (un username mal escrito, una prioridad
     inexistente, una clave repetida) se descubre al instante y con un mensaje
-    claro, no a mitad de la carga.
+    claro, no a mitad de la carga. Con `calendar=None` (un calendario de
+    franjas guardado por el Administrador) no se comprueba que cada hora caiga
+    en la jornada: no hay una jornada única con la que compararla.
     """
     roles = {demo.username: demo.rol for demo in DEMO_USERS}
-    problems: list[str] = calendar_problems(calendar)
-    calendar_ok = not problems
+    problems: list[str] = [] if calendar is None else calendar_problems(calendar)
+    calendar_ok = calendar is not None and not problems
     keys: set[str] = set()
     duplicates: dict[str, str] = {}
     titles: set[str] = set()
@@ -703,17 +706,27 @@ def seed_demo_tickets(
     `now` fija el instante de referencia (los tests lo usan para que las
     fechas sean deterministas), `tickets` permite cargar otra lista (por
     defecto, `DEMO_TICKETS`) y `calendar` otro calendario laboral (por
-    defecto, `DEMO_CALENDAR`). Hace commit. Si algo falla, no queda nada a
+    defecto, el vigente del sistema: el que guardó el Administrador o, si no
+    hay ninguno, `DEMO_CALENDAR`). Hace commit. Si algo falla, no queda nada a
     medias: se revierte todo y se lanza `DemoTicketsError`.
     """
     tickets = DEMO_TICKETS if tickets is None else tickets
-    calendar = DEMO_CALENDAR if calendar is None else calendar
-    validate_demo_tickets(tickets, calendar)
 
-    zone = app_zone()
-    now = (now or datetime.now(UTC)).astimezone(zone)
+    if calendar is None:
+        # El calendario vigente: el que guardó el Administrador o, si no hay
+        # ninguno, el de por defecto. La lista está escrita para el de por
+        # defecto, así que solo con él se comprueba que cada hora cae dentro de
+        # la jornada; con uno guardado, las horas se pasan a horario laboral al
+        # planificar (`_planned_times`).
+        resolved = resolve_work_calendar()
+        clock = resolved.clock
+        validate_demo_tickets(tickets, DEMO_CALENDAR if resolved.is_default else None)
+    else:
+        validate_demo_tickets(tickets, calendar)
+        clock = BusinessClock(calendar, app_zone())
+
+    now = (now or datetime.now(UTC)).astimezone(clock.zone)
     limit = now - _LIMIT_MARGIN
-    clock = BusinessClock(calendar, zone)
     latest = clock.latest_before(limit)
 
     catalogs = _Catalogs.load(tickets)
@@ -1034,7 +1047,11 @@ def _planned_times(
     """
     hour, minute = (int(part) for part in demo.hora.split(":"))
     day = clock.workdays_before(now.date(), demo.hace_dias)
-    times = [min(clock.at(day, time(hour, minute)), latest)]
+    # Con un calendario de franjas la hora pedida puede caer en una pausa o fuera
+    # de horario: se pasa al siguiente momento en que se trabaja (con el
+    # calendario por defecto ya lo es y no se mueve).
+    created = clock.into_business(clock.at(day, time(hour, minute)))
+    times = [min(created, latest)]
 
     for adjustment in demo.ajustes:
         moment = clock.add_hours(times[-1], adjustment.despues_horas)

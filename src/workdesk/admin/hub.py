@@ -84,6 +84,7 @@ HUB_SECTIONS = (
                 title="SLA",
                 description="Tiempos objetivo y calendario laboral.",
                 icon="clock",
+                endpoint="sla.index",
             ),
             HubCard(
                 title="Cierre y reapertura",

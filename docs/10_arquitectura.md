@@ -781,6 +781,7 @@ src/workdesk/
 ├── models/         modelos SQLAlchemy (uno por entidad)
 ├── security/       políticas de autorización y de contraseñas
 ├── seeds/          datos iniciales y de demostración
+├── sla/            configuración del SLA (v0.5.0): por ahora, el calendario laboral
 ├── system/         health check
 ├── tickets/        núcleo de tickets (ver abajo)
 ├── users/          administración de usuarios
@@ -821,12 +822,15 @@ Dos decisiones se tomaron al cerrar la fase, cuando el tamaño lo justificó, y 
 
 ### Tiempo laboral (`worktime.py`)
 
-Desde `v0.5.0` el cálculo de tiempo laboral vive en un único módulo, pensado para compartirse: hoy lo usan los datos de demostración (`seed-demo-tickets`) y lo usarán el SLA y el planificador. No usa la base de datos: recibe un calendario (`WorkCalendar`: días laborales, jornada y feriados) y una zona horaria, y entrega un `BusinessClock`.
+Desde `v0.5.0` el cálculo de tiempo laboral vive en un único módulo, pensado para compartirse: hoy lo usan los datos de demostración (`seed-demo-tickets`) y lo usarán el SLA y el planificador. No usa la base de datos: recibe un calendario y una zona horaria, y entrega un `BusinessClock`. El calendario se describe de dos formas:
+
+- `WorkCalendar`: una única jornada, igual para todos los días laborales (días, inicio, fin y feriados). Es lo más sencillo y es el calendario por defecto (`DEMO_CALENDAR`).
+- `BusinessClock.from_schedule(franjas, feriados, zona)`: una lista de `Franja` (día, inicio y fin), para horarios distintos según el día o con varias franjas en un mismo día, como una pausa de almuerzo. Es lo que guarda el calendario laboral del Administrador.
 
 ```text
-BusinessClock(calendario, zona)
+BusinessClock(calendario, zona)    BusinessClock.from_schedule(franjas, feriados, zona)
 ├── días        is_workday · previous_workday · next_workday · workdays_before
-├── momentos    into_business · latest_before
+├── momentos    is_working_time · into_business · latest_before
 ├── medir       business_seconds_between(inicio, fin)  → segundos laborales
 └── avanzar     add_business_seconds(momento, n)       → un vencimiento
                 add_hours(momento, horas)              → un momento de trabajo
@@ -834,13 +838,31 @@ BusinessClock(calendario, zona)
 
 Las decisiones del módulo:
 
-- **La jornada incluye la hora de inicio y excluye la de fin.** A las 09:00 ya se trabaja y a las 18:00 ya no.
+- **Cada franja incluye la hora de inicio y excluye la de fin.** A las 09:00 ya se trabaja y a las 18:00 ya no. Una franja no cruza la medianoche.
+- **Un día es laboral si tiene al menos una franja y no es feriado.** Internamente el reloj guarda las franjas de cada día de la semana, y una única jornada es el caso particular de una franja por día laboral: un test comprueba que `from_schedule` con una franja por día se comporta exactamente igual que `WorkCalendar`, y otros comparan los cálculos con franjas partidas, con un martes de un solo minuto o con una franja que empieza a medianoche contra el recuento minuto a minuto.
 - **Hay dos formas de avanzar porque responden a preguntas distintas.** `add_business_seconds` calcula un *vencimiento*: el primer momento en que han corrido los segundos pedidos, así que si se cumplen justo al cerrar el resultado es la hora de cierre (a las 18:00 el plazo se cumplió, aunque a esa hora ya no se trabaje). `add_hours` *planifica*: devuelve siempre un momento en que se trabaja, así que en ese mismo caso pasa a la apertura del día siguiente. El SLA necesita la primera, para que un plazo no parezca vencer «al día siguiente» por un borde; el seed necesita la segunda, para que ningún evento caiga fuera del horario.
 - **Medir y sumar son operaciones inversas.** Medir desde un momento hasta `add_business_seconds(momento, n)` da exactamente `n` segundos, y un segundo antes todavía falta uno. Un test lo comprueba para cientos de momentos y otro compara la medición con un recuento minuto a minuto que no comparte ninguna idea con el motor.
 - **Las fechas llevan zona horaria.** El motor convierte cualquier fecha a la zona del calendario antes de calcular, así que se le pueden pasar tal como salen de la base de datos (en UTC), y rechaza las fechas sin zona (`ValueError`). Se calcula con la hora de pared: se da por hecho que ninguna jornada cruza un cambio de horario de verano (en Chile ocurre a medianoche), y un test comprueba un fin de semana que lo contiene.
-- **Un calendario inválido no llega a construirse.** `calendar_problems` devuelve lo que está mal, con mensajes pensados para mostrarse a quien edita el calendario (los usa el seed y los usará la pantalla del Administrador), y `BusinessClock` lanza `ValueError` si recibe uno: con un calendario sin días laborales, buscar el siguiente día laboral no terminaría nunca.
-- **Por ahora, una sola jornada** igual para todos los días laborales. Las franjas por día de `horarios_laborales` (`09_modelo_de_datos.md`, sección 21.3) llegan con el calendario administrable.
+- **Un calendario inválido no llega a construirse.** `calendar_problems` y `schedule_problems` devuelven lo que está mal, con mensajes pensados para mostrarse a quien edita el calendario, y `BusinessClock` lanza `ValueError` si recibe uno (sin franjas, con una que termina antes de empezar, con dos solapadas o con un feriado que no es una fecha): con un calendario sin días laborales, buscar el siguiente día laboral no terminaría nunca.
 - **`DEMO_CALENDAR`** (lunes a viernes de 09:00 a 18:00, sin feriados) es el calendario por defecto del proyecto.
+
+### Calendario laboral administrable (`sla/`)
+
+La pantalla del Administrador, las versiones y la función que resuelve el calendario vigente viven en el paquete `sla/`, que es el módulo `sla` previsto en la sección 22 y donde se sumarán las políticas y los períodos. `worktime.py` no sabe nada de la base de datos; `sla/work_calendar.py` es el puente:
+
+```text
+sla/
+├── work_calendar.py   las reglas: resolver el calendario vigente, guardar una
+│                      versión nueva y describir el horario
+├── forms.py           el formulario y los dos textos que escribe el Administrador
+│                      (el horario de cada día y los feriados)
+└── routes.py          «SLA» (/admin/sla) y «Configurar calendario» (/admin/sla/calendar)
+```
+
+- **`resolve_work_calendar()` es la única función que decide cuál es el calendario vigente:** el guardado o, si todavía no hay ninguno, el de por defecto en la zona de `APP_TIMEZONE` (`09_modelo_de_datos.md`, sección 40.8). Devuelve un `ResolvedCalendar` con el reloj listo para usar y la versión de la que sale (0 si es el de por defecto). `clock_for(versión)` construye el reloj de una versión concreta, que es lo que necesitará el SLA para seguir calculando con la versión con la que abrió cada período.
+- **Guardar nunca modifica una versión:** crea la siguiente y deja la anterior como histórica. La pantalla lleva la versión con la que se abrió y, si otra persona guardó mientras tanto, no se guarda nada y se avisa (la misma idea que `tickets.version`). Dos guardados simultáneos se resuelven con la fila vigente bloqueada (`SELECT ... FOR UPDATE`) y, cuando todavía no hay ninguna, con los índices únicos; hay un test con dos hilos para cada caso.
+- **El servicio no hace commit:** la versión nueva y su evento de auditoría (`CALENDARIO_LABORAL_GUARDADO`, con solo las secciones que cambiaron) se confirman juntos desde la ruta.
+- **Una sola fuente para quien lee el calendario:** el SLA, los datos de demostración y las pantallas llaman a `resolve_work_calendar`. El seed ya lo hace: con un calendario guardado planifica todas sus fechas dentro de sus franjas y de su zona horaria.
 
 ## 28.2. Evolución objetivo
 

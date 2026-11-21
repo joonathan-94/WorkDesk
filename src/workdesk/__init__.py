@@ -17,6 +17,7 @@ from .logging_config import configure_logging
 from .main import bp as main_bp
 from .navigation import layout_context, user_initials
 from .security import MAX_LENGTH, MIN_LENGTH_FLOOR, can_manage_users
+from .sla import bp as sla_bp
 from .system import bp as system_bp
 from .tickets import bp as tickets_bp
 from .tickets.storage import MAX_FILES_PER_REQUEST
@@ -61,6 +62,7 @@ def create_app(
     app.register_blueprint(catalogs_bp)
     app.register_blueprint(groups_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(sla_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(tickets_bp)
     app.register_blueprint(users_bp)

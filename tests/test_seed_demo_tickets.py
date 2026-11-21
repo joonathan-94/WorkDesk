@@ -44,10 +44,15 @@ from src.workdesk.seeds.demo_tickets_data import (
     MATTA,
     DemoAdjustment,
 )
+from src.workdesk.sla.work_calendar import (
+    Holiday,
+    resolve_work_calendar,
+    save_work_calendar,
+)
 from src.workdesk.tickets.attachments import attachment_path
 from src.workdesk.tickets.editing import update_ticket
 from src.workdesk.tickets.service import create_ticket
-from src.workdesk.worktime import WorkCalendar
+from src.workdesk.worktime import Franja, WorkCalendar, parse_time
 
 DEMO_PASSWORD = "ClaveDemoSegura2026"
 ZONE = ZoneInfo("America/Santiago")
@@ -1243,6 +1248,161 @@ def test_refreshing_equals_a_fresh_load_with_a_custom_calendar(app, prepared):
         seed_demo_tickets(now=later, calendar=calendar)
 
         assert date_snapshot() == fresh
+
+
+# --- El calendario laboral que guarda el Administrador ----------------------
+
+
+def save_calendar(*, franjas, holidays=(), zone="America/Santiago"):
+    """Guarda un calendario laboral como lo haría el Administrador.
+
+    El servicio no comprueba el rol (lo hace la ruta), así que sirve cualquier
+    persona activa del equipo demo.
+    """
+    save_work_calendar(
+        actor=user("camila.rojas"),
+        base_version=0,
+        zone_name=zone,
+        franjas=franjas,
+        holidays=holidays,
+    )
+    db.session.commit()
+
+
+def lunch_break_week(days=range(5)):
+    """De 09:00 a 13:00 y de 14:00 a 18:00 en los días indicados."""
+    return [
+        Franja(day, parse_time(start), parse_time(end))
+        for day in days
+        for start, end in (("09:00", "13:00"), ("14:00", "18:00"))
+    ]
+
+
+def test_the_seed_reads_the_calendar_the_administrator_saved(app, prepared):
+    with app.app_context():
+        # De lunes a jueves, con pausa de almuerzo, y el martes 17 de noviembre
+        # es feriado.
+        save_calendar(
+            franjas=lunch_break_week(range(4)),
+            holidays=[Holiday(date(2026, 11, 17), "Feriado de prueba")],
+        )
+        clock = resolve_work_calendar().clock
+
+        seed_demo_tickets(now=NOW)
+
+        moments = all_event_times()
+
+        assert moments
+        for moment in moments:
+            assert clock.is_working_time(moment), local(moment)
+            assert local(moment).date() != date(2026, 11, 17)
+        # Con el viernes sin trabajo, tampoco hay nada en viernes.
+        assert all(local(moment).weekday() < 4 for moment in moments)
+
+
+def test_the_seed_uses_the_zone_of_the_saved_calendar(app, prepared):
+    bogota = ZoneInfo("America/Bogota")
+
+    with app.app_context():
+        save_calendar(franjas=lunch_break_week(), zone="America/Bogota")
+
+        seed_demo_tickets(now=NOW)
+
+        for moment in all_event_times():
+            when = moment.astimezone(bogota)
+
+            assert when.weekday() < 5, when
+            assert time(9, 0) <= when.time() < time(13, 0) or time(14, 0) <= when.time() < time(18, 0), when
+
+
+def test_the_seed_counts_today_in_the_zone_of_the_saved_calendar(app, prepared):
+    bogota = ZoneInfo("America/Bogota")
+    # Pasada la medianoche en Santiago (jueves 19, 01:00) en Bogotá todavía es la
+    # noche del miércoles 18: «hoy» es el miércoles.
+    after_midnight = datetime(2026, 11, 19, 1, 0, tzinfo=ZONE)
+    today = replace(
+        DEMO_TICKETS[0],
+        clave="ticket-de-hoy",
+        titulo="Un ticket de hoy",
+        hace_dias=0,
+        hora="10:40",
+        ajustes=(),
+    )
+
+    with app.app_context():
+        save_calendar(franjas=lunch_break_week(), zone="America/Bogota")
+
+        seed_demo_tickets(now=after_midnight, tickets=(today,))
+
+        created = by_clave("ticket-de-hoy").fecha_creacion.astimezone(bogota)
+
+        assert created == datetime(2026, 11, 18, 10, 40, tzinfo=bogota)
+
+
+def test_an_explicit_calendar_wins_over_the_saved_one(app, prepared):
+    with app.app_context():
+        save_calendar(franjas=lunch_break_week(range(4)))
+
+        seed_demo_tickets(now=NOW, calendar=WorkCalendar())
+
+        moments = all_event_times()
+
+        # El guardado no tiene viernes y el explícito (el de por defecto) sí.
+        assert any(local(moment).weekday() == 4 for moment in moments)
+        for moment in moments:
+            assert_inside_the_default_calendar(moment)
+
+
+def test_a_creation_hour_inside_a_break_moves_to_the_next_working_moment(app, prepared):
+    lunch = replace(
+        DEMO_TICKETS[0],
+        clave="ticket-del-almuerzo",
+        titulo="Un ticket creado a la hora de almuerzo",
+        hace_dias=2,
+        hora="13:30",
+        ajustes=(),
+    )
+
+    with app.app_context():
+        save_calendar(franjas=lunch_break_week())
+
+        seed_demo_tickets(now=NOW, tickets=(lunch,))
+
+        # Dos días laborales antes del miércoles 18 es el lunes 16; las 13:30 caen
+        # en la pausa, así que el ticket queda a las 14:00.
+        assert local(by_clave("ticket-del-almuerzo").fecha_creacion) == datetime(
+            2026, 11, 16, 14, 0, tzinfo=ZONE
+        )
+
+
+def test_refreshing_with_a_saved_calendar_keeps_everything_in_working_time(app, prepared):
+    with app.app_context():
+        save_calendar(
+            franjas=lunch_break_week(),
+            holidays=[Holiday(date(2026, 11, 26), "Feriado de prueba")],
+        )
+        clock = resolve_work_calendar().clock
+
+        seed_demo_tickets(now=NOW)
+        seed_demo_tickets(now=NOW + timedelta(days=11))
+
+        assert count(Ticket) == len(DEMO_TICKETS)
+        for moment in all_event_times():
+            assert clock.is_working_time(moment), local(moment)
+
+
+def test_validation_with_a_saved_calendar_does_not_compare_hours_with_one_shift():
+    early = replace(DEMO_TICKETS[0], hora="07:00")
+
+    with pytest.raises(DemoTicketsError, match="fuera de la jornada"):
+        validate_demo_tickets((early,), WorkCalendar())
+
+    # Sin una jornada única con la que compararla, la hora solo debe estar bien
+    # escrita: al planificar se pasa a horario laboral.
+    validate_demo_tickets((early,), None)
+
+    with pytest.raises(DemoTicketsError, match="formato HH:MM"):
+        validate_demo_tickets((replace(DEMO_TICKETS[0], hora="25:00"),), None)
 
 
 # --- Ajustes del personal -----------------------------------------------
