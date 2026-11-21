@@ -189,8 +189,10 @@
     </div>
 {% endmacro %}
 
-{# Casilla única (un BooleanField). La etiqueta va junto a la casilla. #}
-{% macro checkbox_field(field, hint=None) %}
+{# Casilla única (un BooleanField). La etiqueta va junto a la casilla; con
+   `label` se sustituye la del campo (por ejemplo, para incluir el nombre
+   vigente de un estado, que el Administrador puede renombrar). #}
+{% macro checkbox_field(field, hint=None, label=None) %}
     <div class="mb-3">
         <div class="form-check">
             <input
@@ -210,7 +212,7 @@
                 class="form-check-label"
                 for="{{ field.id }}"
             >
-                {{ field.label.text }}
+                {{ label or field.label.text }}
             </label>
         </div>
 

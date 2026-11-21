@@ -23,6 +23,29 @@ def start_of_local_day(value: date) -> datetime:
     return datetime(value.year, value.month, value.day, tzinfo=app_zone())
 
 
+def format_duration(minutes: int | None) -> str:
+    """Una duración como la lee una persona: «30 min», «4 h» o «1 h 30 min».
+
+    Sin valor (por ejemplo, un objetivo que no se definió) muestra «—». Una
+    duración negativa es un error de quien llama, no algo que mostrar.
+    """
+    if minutes is None:
+        return "—"
+
+    if minutes < 0:
+        raise ValueError("Una duración no puede ser negativa.")
+
+    hours, rest = divmod(minutes, 60)
+
+    if hours == 0:
+        return f"{rest} min"
+
+    if rest == 0:
+        return f"{hours} h"
+
+    return f"{hours} h {rest} min"
+
+
 def local_datetime(value: datetime | None) -> str:
     """Muestra una fecha y hora en la zona horaria de la aplicación.
 

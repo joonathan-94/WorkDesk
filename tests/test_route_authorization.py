@@ -12,7 +12,7 @@ queda cubierta sin tocar el test y es *segura por defecto*:
 - **Tickets (rol).** Un Solicitante que sí es solicitante del ticket solo puede
   usar las rutas de `REQUESTER_ENDPOINTS`; todas las demás son del personal y
   responden 403.
-- **Áreas de administración.** `users`, `catalogs` y `admin` son del
+- **Áreas de administración.** `users`, `catalogs`, `admin` y `sla` son del
   Administrador y `groups` del Administrador y los Supervisores: el resto de
   roles recibe 403.
 
@@ -43,8 +43,10 @@ REQUESTER_ENDPOINTS = {
     ),
 }
 
-# Rutas que, para cada área, solo pueden usar los roles indicados.
-ADMIN_ONLY_PREFIXES = ("users.", "catalogs.", "admin.")
+# Rutas que, para cada área, solo pueden usar los roles indicados. `sla.` (el
+# calendario laboral y los objetivos de SLA) se añadió en v0.5.0: sus rutas ya
+# eran del Administrador, pero este recorrido no las cubría.
+ADMIN_ONLY_PREFIXES = ("users.", "catalogs.", "admin.", "sla.")
 STAFF_METHODS = ("GET", "POST")
 
 

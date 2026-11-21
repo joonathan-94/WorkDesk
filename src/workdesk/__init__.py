@@ -11,7 +11,7 @@ from .cli import register_commands
 from .config import Config
 from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
-from .formatting import local_datetime
+from .formatting import format_duration, local_datetime
 from .groups import bp as groups_bp
 from .logging_config import configure_logging
 from .main import bp as main_bp
@@ -68,6 +68,8 @@ def create_app(
     app.register_blueprint(users_bp)
 
     app.add_template_filter(local_datetime, "local_datetime")
+    # Minutos como «1 h 30 min» (los objetivos de SLA).
+    app.add_template_filter(format_duration, "duration")
     # Iniciales de una persona para el avatar de un comentario.
     app.add_template_filter(user_initials, "initials")
 

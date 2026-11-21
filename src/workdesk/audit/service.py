@@ -66,6 +66,14 @@ class AuditAction(StrEnum):
     # es "calendario_laboral"; `entidad_id`, la versión creada).
     CALENDARIO_LABORAL_GUARDADO = "CALENDARIO_LABORAL_GUARDADO"
 
+    # Políticas de SLA por prioridad (`entidad_tipo` es "politica_sla";
+    # `entidad_id`, la política). Se crean al definir los objetivos de una
+    # prioridad y después solo se editan, se desactivan y se reactivan.
+    POLITICA_SLA_CREADA = "POLITICA_SLA_CREADA"
+    POLITICA_SLA_MODIFICADA = "POLITICA_SLA_MODIFICADA"
+    POLITICA_SLA_ACTIVADA = "POLITICA_SLA_ACTIVADA"
+    POLITICA_SLA_DESACTIVADA = "POLITICA_SLA_DESACTIVADA"
+
 
 def record_admin_event(
     action: AuditAction,

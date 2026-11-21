@@ -1029,8 +1029,8 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 ### Entregas de `v0.5.0`
 
 1. **Motor de tiempo laboral compartido** ✓ (PR #36): el motor del seed de demostración pasa a `worktime.py` y gana las dos operaciones que necesita el SLA (medir los segundos laborales entre dos momentos y sumarlos a un momento). Sin migración ni cambio funcional.
-2. **Calendario laboral administrable:** tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), el motor con franjas distintas por día, la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`), la pantalla «SLA» con la de «Configurar calendario» y el seed leyendo el calendario resuelto.
-3. **Políticas de SLA por prioridad:** `politicas_sla` y su pantalla (UI-022), con valores iniciales en `seed-catalogs`.
+2. **Calendario laboral administrable** ✓ (PR #37): tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), el motor con franjas distintas por día, la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`), la pantalla «SLA» con la de «Configurar calendario» y el seed leyendo el calendario resuelto.
+3. **Políticas de SLA por prioridad** ✓: `politicas_sla` (una por prioridad, editable en el sitio y sin columna de calendario: usa el vigente) y su pantalla (UI-022) dentro de «SLA», con las duraciones escritas como «4 h» o «1 h 30 min», la pausa en espera por política y el control de ediciones simultáneas; los valores iniciales los carga `seed-catalogs` (RN-165).
 4. **Períodos de SLA:** `tickets_sla_periodos`, el cálculo, la pausa en `En espera` y la continuidad ante cambios de prioridad (RN-88).
 5. **Notificaciones internas, 1: infraestructura y centro de notificaciones:** tabla, servicio, campana con contador y marcar como leídas.
 6. **Notificaciones internas, 2: eventos:** creación, asignación, cambio de estado, comentarios, resolución y reapertura (incluye RF-068 y RN-96).
@@ -1052,12 +1052,12 @@ Se tomaron al planificarla y se reflejan en el resto de los documentos cuando ca
 
 Implementar:
 
-- políticas por prioridad;
-- primera respuesta opcional;
-- objetivo de resolución;
-- porcentaje de aviso;
-- calendario laboral administrable (ver más abajo);
-- pausa en `En espera`;
+- políticas por prioridad ✓ (entrega 3);
+- primera respuesta opcional ✓ (entrega 3: se configura; la mide el cálculo de la entrega 4);
+- objetivo de resolución ✓ (entrega 3);
+- porcentaje de aviso ✓ (entrega 3);
+- calendario laboral administrable (ver más abajo) ✓ (entrega 2);
+- pausa en `En espera` (entrega 3: la casilla por política; el comportamiento, entrega 4);
 - reanudación;
 - próximo a vencer;
 - vencido;

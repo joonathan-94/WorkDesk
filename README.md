@@ -348,6 +348,9 @@ WorkDesk/
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
+│   ├── test_sla_policies.py
+│   ├── test_sla_policies_routes.py
+│   ├── test_sla_policy_forms.py
 │   ├── test_state_actions.py
 │   ├── test_states_admin.py
 │   ├── test_system.py
@@ -607,7 +610,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | --- | --- | --- |
 | 1 | `db upgrade` | Crea las tablas en PostgreSQL. |
 | 2 | `seed-roles` | Carga los cuatro roles del sistema. |
-| 3 | `seed-catalogs` | Carga estados y sus transiciones, prioridades, la categoría de respaldo, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. |
+| 3 | `seed-catalogs` | Carga estados y sus transiciones, prioridades con sus objetivos de SLA, la categoría de respaldo, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. |
 | 4 | `create-admin` | Crea tu cuenta de Administrador. |
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
@@ -639,6 +642,7 @@ Las migraciones actuales crean estas tablas:
 - `tipos_relacion_ticket` y `tickets_relaciones`: los tipos de relación entre tickets (`DUPLICADO` y `RELACIONADO`) y las relaciones vigentes o quitadas.
 - `bloqueos_edicion_tickets`: el bloqueo temporal de edición de un ticket (quién lo edita ahora y hasta cuándo).
 - `calendarios_laborales`, `horarios_laborales` y `feriados`: las versiones del calendario laboral, sus franjas por día y sus feriados.
+- `politicas_sla`: los objetivos de SLA de cada prioridad (primera respuesta, resolución, umbral de aviso y pausa en espera).
 
 Para comprobar que se aplicaron:
 
@@ -737,7 +741,7 @@ Si ya tenías WorkDesk funcionando con una versión anterior (por ejemplo, `v0.3
 | --- | --- | --- |
 | 1 | `python -m pip install -r requirements-dev.txt` | Instala las dependencias si cambiaron (si no cambiaron, no hace nada). |
 | 2 | `python -m flask --app src.workdesk db upgrade` | Aplica las migraciones nuevas. |
-| 3 | `python -m flask --app src.workdesk seed-catalogs` | Carga lo estructural que las versiones nuevas necesitan: las transiciones entre estados, los motivos de espera y los tipos de relación entre tickets. No duplica nada ni pisa lo que hayas renombrado o desactivado. |
+| 3 | `python -m flask --app src.workdesk seed-catalogs` | Carga lo estructural que las versiones nuevas necesitan: las transiciones entre estados, los motivos de espera, los tipos de relación entre tickets y los objetivos de SLA de cada prioridad. No duplica nada ni pisa lo que hayas renombrado, editado o desactivado. |
 | 4 | `python -m flask --app src.workdesk run --debug` | Reinicia WorkDesk. |
 
 Para comprobarlo, `db current` debe terminar en `(head)` y `db check` no debe encontrar cambios pendientes.
@@ -944,6 +948,7 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 11. **Grupos:** en **Administración → Grupos** ves los tres grupos de demostración (si ejecutaste `seed-demo`). Crea uno nuevo, ábrelo y designa a un supervisor responsable y agrega técnicos con los selectores de cada tarjeta. Prueba **Editar**, **Desactivar** (un grupo desactivado no admite cambios de técnicos ni de responsables) y **Reactivar**.
 12. **Estados y transiciones:** en **Administración → Estados y transiciones** ves los seis estados con cuántos tickets hay en cada uno. Pulsa **Editar** en `En progreso`, cámbiale el nombre a `En curso` y guarda: el nuevo nombre aparece en el listado, el detalle y los botones, pero el historial de los tickets que ya pasaron por ahí conserva el que tenía entonces. Prueba a ponerle a otro estado un nombre que ya existe: lo rechaza. Más abajo están las transiciones, agrupadas por estado de origen, con quién ejecuta cada una. Algunas llevan la etiqueta **Protegida** (pasa el cursor para ver por qué): por ejemplo, confirmar la solución no se puede deshabilitar. Deshabilita **Iniciar trabajo** desde `Nuevo`: pide confirmación y, desde ahora, ese botón no se ofrece a los tickets `Nuevo`. Fíjate en el mismo botón desde `Asignado`: ahora aparece como **Protegida**, porque deshabilitarlo también dejaría `En progreso` sin camino de entrada desde `Nuevo`. Vuelve a habilitar la primera con **Habilitar**. Cada cambio queda registrado en la auditoría administrativa (la pantalla para consultarla llega más adelante).
 13. **Calendario laboral:** en **Administración → SLA** ves el calendario laboral. Mientras no hayas guardado ninguno dice **Por defecto (sin configurar)**: lunes a viernes de 09:00 a 18:00, sin feriados. Pulsa **Configurar calendario**. El horario de cada día es un texto: déjale al viernes `09:00-17:00` y escribe en el sábado `10:00-12:00`; si quieres una pausa de almuerzo, usa `09:00-13:00, 14:00-18:00`. En **Feriados** escribe uno por línea, por ejemplo `25-12-2026 Navidad` (también vale `2026-12-25`). Guarda: la pantalla pasa a decir **Configurado · versión 1** y resume el horario («Lunes a jueves · 09:00–18:00», «Viernes · 09:00–17:00»…). Vuelve a configurarlo, cambia una hora y guarda: ahora hay una **versión 2** y la 1 queda en la tabla de versiones como **Anterior**, tal como se guardó. Prueba a escribir `mañana` en un día, una hora de fin anterior a la de inicio, dos franjas que se solapan o un feriado sin nombre: cada error aparece junto a su campo y lo escrito no se pierde. Para ver el control de versiones, abre **Configurar calendario** en dos pestañas, guarda en una y luego en la otra: la segunda avisa de que otra persona guardó mientras editabas y no pisa el cambio. Si no cambias nada y guardas, avisa de que no hay cambios y no crea una versión. Si ejecutas `seed-demo-tickets` de nuevo con un calendario guardado, las fechas de los tickets de demostración respetan sus franjas y sus feriados.
+14. **Objetivos de SLA:** en **Administración → SLA** ves, sobre el calendario, la tarjeta **Objetivos por prioridad** con una fila por prioridad: primera respuesta, resolución, umbral de aviso y si el reloj se pausa mientras el ticket está en espera. Si ejecutaste `seed-catalogs`, ya traen los valores iniciales (por ejemplo, Crítica: 30 min / 4 h / 75 %); si la tarjeta dice **Sin definir** en alguna, usa **Definir** o ejecuta `seed-catalogs` (no pisa nada). Pulsa **Editar** en `Alta`. Las duraciones se escriben como las dirías: `30 min`, `4 h` o `1 h 30 min` (son horas laborales: solo cuentan dentro del calendario). Cámbiale la resolución a `1 h 30 min` y guarda: pasa a mostrarse así en la tabla. Prueba a escribir `4` (te pide la unidad), `1,5 h` (no admite decimales), `2 días` (no admite días), una primera respuesta mayor que la resolución, o un umbral de `0` o de `101`: cada error aparece junto a su campo y todos a la vez, y lo escrito no se pierde. Vacía **Primera respuesta** para dejarla sin objetivo (la tabla dice «Sin objetivo») y desmarca la pausa para ver «No». Pulsa **Desactivar** en `Baja`: pide confirmación con un motivo opcional y la fila queda atenuada como **Inactiva** (esa prioridad ya no tiene SLA); **Reactivar** la devuelve con los mismos objetivos. Para ver el control de ediciones simultáneas, abre **Editar** en dos pestañas, guarda en una y luego en la otra: la segunda avisa de que otra persona modificó los objetivos y no pisa el cambio. Cada cambio queda en la auditoría administrativa. Por ahora los objetivos solo se configuran: aplicarlos a cada ticket llega en la siguiente entrega de la fase.
 
 ### 2. Como Solicitante
 
@@ -1024,6 +1029,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `create-admin`: "No existe el rol ADMINISTRADOR. Ejecuta primero el comando seed-roles." | Se saltó el paso 2 de la preparación. | Ejecuta `seed-roles` y vuelve a intentarlo. |
 | `seed-demo-tickets`: "Faltan usuarios de demostración... Ejecuta primero seed-demo." | Todavía no cargaste el equipo de demostración. | Ejecuta `seed-demo` y vuelve a intentarlo. No se cargó ningún ticket. |
 | `seed-demo-tickets`: "Faltan los catálogos iniciales. Ejecuta primero seed-catalogs." o "Faltan las transiciones de estado..." | Se saltó el paso 3 de la preparación, o los catálogos se cargaron antes de que existieran las transiciones entre estados. | Ejecuta `seed-catalogs` (no duplica nada) y vuelve a intentarlo. |
+| **Administración → SLA** muestra «Sin definir» en las prioridades | Cargaste los catálogos antes de que existieran los objetivos de SLA (`v0.5.0`, entrega 3). | Ejecuta `seed-catalogs`: crea los objetivos que faltan (`políticas de SLA: 4`) y no pisa nada. También puedes definirlos a mano con **Definir**. |
 | `seed-demo-tickets`: "Hay transiciones deshabilitadas que la demostración necesita..." | Un Administrador deshabilitó una transición que los tickets de demostración recorren. | Habilítala en **Administración → Estados y transiciones** y vuelve a intentarlo. No se cargó ningún ticket. |
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
 | `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 76" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
@@ -1258,7 +1264,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-2508 tests
+2768 tests
 ```
 
 Los tests cubren principalmente:
@@ -1284,7 +1290,8 @@ Los tests cubren principalmente:
 - administración de estados y transiciones: renombrar sin repetir nombres, las transiciones esenciales, que ninguna deshabilitación rompa el flujo (también entre dos Administradores a la vez) y que el catálogo de acciones y las políticas de autorización no se separen;
 - seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión, que las rutas POST exigen token CSRF y que cada ruta responde según quién la use (404 al ticket ajeno, 403 al rol sin permiso), con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o mal protegida;
 - tiempo laboral (`worktime.py`): días y jornadas, franjas distintas por día (una pausa de almuerzo, un martes de un solo minuto, una franja que empieza a medianoche), feriados, medir y sumar tiempo laboral como operaciones inversas, una comparación con un recuento minuto a minuto, fechas en otra zona horaria y un fin de semana con cambio de horario de verano. Son pruebas unitarias: no usan la base de datos;
-- calendario laboral administrable: las restricciones de la base de datos (una sola versión vigente, franjas y feriados sin repetir), que guardar crea siempre una versión nueva y deja la anterior intacta, los conflictos entre dos personas (también con dos hilos a la vez), qué se audita, la lectura de los textos del horario y de los feriados, las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito) y que el seed de demostración respete el calendario guardado.
+- calendario laboral administrable: las restricciones de la base de datos (una sola versión vigente, franjas y feriados sin repetir), que guardar crea siempre una versión nueva y deja la anterior intacta, los conflictos entre dos personas (también con dos hilos a la vez), qué se audita, la lectura de los textos del horario y de los feriados, las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito) y que el seed de demostración respete el calendario guardado;
+- políticas de SLA: las restricciones de la base de datos (una sola política activa por prioridad, la primera respuesta que no supera la resolución, el umbral entre 1 y 100), las reglas de los valores y sus límites exactos, la lectura de las duraciones («30 min», «4 h», «1 h 30 min») con sus formas válidas, las inválidas y que escribirlas y leerlas sean operaciones inversas, los valores iniciales del seed (y que no pise lo que el Administrador cambió), qué se audita, desactivar y reactivar, los conflictos entre dos Administradores (con dos hilos a la vez, y con una política que la sesión ya había cargado cuando otra transacción la cambió) y las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito y la comprobación de que la pantalla estaba desactualizada).
 
 Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
 
@@ -1439,7 +1446,7 @@ v1.0.0  MVP
 
 El desarrollo prioriza mantener cada incremento ejecutable, probado y documentado antes de avanzar al siguiente.
 
-El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) ya existe (`v0.5.0`, entrega 2); el SLA que lo usa llega en las entregas siguientes de la fase. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
+El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) y los objetivos de SLA por prioridad ya existen (`v0.5.0`, entregas 2 y 3); el cálculo del SLA de cada ticket, que los usa, llega en las entregas siguientes de la fase. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 ---
 

@@ -99,6 +99,7 @@ def test_seed_reports_what_it_created_and_is_idempotent(app):
             "estados": 6,
             "transiciones": 20,
             "prioridades": 4,
+            "politicas_sla": 4,
             "categorias": 1,
             "motivos_cierre": 6,
             "motivos_espera": 5,
@@ -108,6 +109,7 @@ def test_seed_reports_what_it_created_and_is_idempotent(app):
             "estados": 0,
             "transiciones": 0,
             "prioridades": 0,
+            "politicas_sla": 0,
             "categorias": 0,
             "motivos_cierre": 0,
             "motivos_espera": 0,
@@ -236,6 +238,7 @@ def test_seed_catalogs_command_loads_the_catalogs(app):
     assert result.exit_code == 0
     assert "Estados: 6" in result.output
     assert "prioridades: 4" in result.output
+    assert "políticas de SLA: 4" in result.output
 
     with app.app_context():
         assert db.session.scalar(db.select(db.func.count(Estado.id))) == 6
@@ -249,3 +252,4 @@ def test_seed_catalogs_command_is_idempotent(app):
 
     assert result.exit_code == 0
     assert "Estados: 0" in result.output
+    assert "políticas de SLA: 0" in result.output

@@ -1,0 +1,158 @@
+{#
+    Objetivos de SLA por prioridad (docs/11, UI-022). Se incluye desde
+    sla/index.html, que recibe `policy_rows` (una fila por prioridad, con su
+    política si ya tiene una) y `on_hold_name` (el nombre vigente del estado en
+    que el SLA puede pausarse).
+#}
+{% from "_ui_macros.html" import priority_badge %}
+
+<section
+    class="card mb-4"
+    aria-labelledby="policies-title"
+>
+    <div class="card-body pb-2">
+        <h2
+            class="h6 mb-1"
+            id="policies-title"
+        >
+            Objetivos por prioridad
+        </h2>
+
+        <p class="small text-secondary mb-3">
+            Los tiempos son horas laborales: solo corren dentro del calendario
+            vigente. Una prioridad sin una política activa no tiene SLA. Los
+            cambios no alteran el SLA que un ticket ya tiene en curso.
+        </p>
+    </div>
+
+    {% if policy_rows %}
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Prioridad</th>
+                        <th scope="col">Primera respuesta</th>
+                        <th scope="col">Resolución</th>
+                        <th scope="col">Umbral de aviso</th>
+                        <th scope="col">Pausa en «{{ on_hold_name }}»</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">
+                            <span class="visually-hidden">Acciones</span>
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for row in policy_rows %}
+                        {% set priority = row.priority %}
+                        {% set policy = row.policy %}
+
+                        {# Una política desactivada se muestra atenuada. #}
+                        <tr{% if policy and not policy.activo %} class="text-secondary"{% endif %}>
+                            <td>
+                                {{ priority_badge(priority) }}
+                                {% if not priority.activo %}
+                                    <span class="small text-secondary ms-1">(inactiva)</span>
+                                {% endif %}
+                            </td>
+
+                            {% if policy %}
+                                <td>
+                                    {% if policy.tiempo_objetivo_respuesta_minutos is none %}
+                                        <span class="text-secondary">Sin objetivo</span>
+                                    {% else %}
+                                        {{ policy.tiempo_objetivo_respuesta_minutos|duration }}
+                                    {% endif %}
+                                </td>
+
+                                <td>{{ policy.tiempo_objetivo_resolucion_minutos|duration }}</td>
+
+                                <td>
+                                    {% if policy.umbral_aviso_consumo_porcentaje is none %}
+                                        <span class="text-secondary">Sin aviso</span>
+                                    {% else %}
+                                        {{ policy.umbral_aviso_consumo_porcentaje }} %
+                                    {% endif %}
+                                </td>
+
+                                <td>{{ 'Sí' if policy.pausa_en_espera else 'No' }}</td>
+
+                                <td>
+                                    {% if policy.activo %}
+                                        <span class="badge badge-soft badge-soft-success">Activa</span>
+                                    {% else %}
+                                        <span class="badge badge-soft badge-soft-neutral">Inactiva</span>
+                                    {% endif %}
+                                </td>
+                            {% else %}
+                                <td
+                                    class="text-secondary"
+                                    colspan="4"
+                                >
+                                    Sin objetivos: esta prioridad no tiene SLA.
+                                </td>
+
+                                <td>
+                                    <span class="badge badge-soft badge-soft-warning">Sin definir</span>
+                                </td>
+                            {% endif %}
+
+                            <td class="text-end text-nowrap">
+                                {% if policy %}
+                                    <a
+                                        class="btn btn-sm btn-outline-secondary"
+                                        href="{{ url_for('sla.policy_edit', priority_id=priority.id) }}"
+                                    >
+                                        Editar
+                                        <span class="visually-hidden">
+                                            los objetivos de {{ priority.nombre }}
+                                        </span>
+                                    </a>
+
+                                    {% if policy.activo %}
+                                        <a
+                                            class="btn btn-sm btn-outline-danger ms-1"
+                                            href="{{ url_for('sla.policy_deactivate', priority_id=priority.id) }}"
+                                        >
+                                            Desactivar
+                                            <span class="visually-hidden">
+                                                el SLA de {{ priority.nombre }}
+                                            </span>
+                                        </a>
+                                    {% else %}
+                                        <a
+                                            class="btn btn-sm btn-outline-primary ms-1"
+                                            href="{{ url_for('sla.policy_activate', priority_id=priority.id) }}"
+                                        >
+                                            Reactivar
+                                            <span class="visually-hidden">
+                                                el SLA de {{ priority.nombre }}
+                                            </span>
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <a
+                                        class="btn btn-sm btn-outline-primary"
+                                        href="{{ url_for('sla.policy_edit', priority_id=priority.id) }}"
+                                    >
+                                        Definir
+                                        <span class="visually-hidden">
+                                            los objetivos de {{ priority.nombre }}
+                                        </span>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="card-body pt-0">
+            <p class="small text-secondary mb-0">
+                No hay prioridades configuradas. Carga los catálogos iniciales
+                con el comando <span class="font-monospace">seed-catalogs</span>.
+            </p>
+        </div>
+    {% endif %}
+</section>

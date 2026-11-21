@@ -1727,6 +1727,32 @@ Habilitar una transición siempre se puede.
 
 ---
 
+## RN-165 — Configuración del SLA: calendario laboral y objetivos por prioridad
+
+Aplica y precisa RN-85 a RN-92 y RF-077 a RF-080 en la implementación de `v0.5.0` (entregas 2 y 3). Es la pantalla **SLA** (`/admin/sla`, UI-022) del área de administración: solo la usa el Administrador (RN-92), la autorización se comprueba en backend como en el resto de `/admin` y cada cambio queda en la auditoría administrativa (RN-123).
+
+**Calendario laboral (entrega 2).** Es global y está versionado. Guardarlo **nunca modifica una versión**: crea la siguiente y deja la anterior como histórica, de modo que lo que ya se calculó con una versión no cambia retroactivamente. Mientras no se guarde ninguno, todo el sistema usa el calendario por defecto (lunes a viernes de 09:00 a 18:00, sin feriados) y la pantalla lo indica. Quien guarda indica con qué versión abrió la pantalla: si otra persona guardó mientras tanto, no se guarda nada. Guardar un contenido idéntico al vigente no crea una versión. El horario de cada día admite varias franjas (una pausa de almuerzo son dos).
+
+**Objetivos por prioridad (entrega 3).** Cada prioridad tiene como máximo **una política** con:
+
+* **Objetivo de resolución** (obligatorio): el tiempo máximo para resolver el ticket.
+* **Objetivo de primera respuesta** (opcional): el tiempo máximo hasta el primer comentario público del personal. Asignar el ticket o cambiar su estado no cuenta (fase 5 del roadmap).
+* **Umbral de aviso** (opcional, de 1 a 100 %): el porcentaje del tiempo objetivo consumido a partir del cual el ticket pasa a «próximo a vencer» (RF-081).
+* **Pausa en espera** (RN-89): si el reloj se detiene mientras el ticket está en `En espera`. Es por política y vale sí por defecto.
+
+Los tiempos son **minutos laborales**: se miden con el calendario vigente, no con el reloj de pared, y se escriben como «30 min», «4 h» o «1 h 30 min» (no hay días porque su duración depende del calendario, ni decimales). Deben ser mayores que cero y no superar 1000 horas, y **la primera respuesta no puede tardar más que la resolución**.
+
+* **Se edita en el sitio.** Una política no se versiona: cada ticket guarda su propia copia de los objetivos en el período de SLA que abre, así que cambiar una política no altera el SLA que un ticket ya tiene en curso, solo el de los tickets que reciban esa prioridad desde ese momento (RN-88).
+* **Desactivar significa que esa prioridad no tiene SLA.** La política se conserva y puede reactivarse con los mismos objetivos. No se eliminan.
+* **Edición simultánea.** Si otra persona cambió, activó o desactivó la política mientras la pantalla estaba abierta, no se guarda nada y se avisa; lo escrito se pierde a propósito, porque reenviarlo pisaría un cambio que no se vio. Las operaciones sobre una misma prioridad se serializan, así que dos Administradores que la definen a la vez no la crean dos veces.
+* **Los datos iniciales** (los valores de ejemplo de UI-022) los carga `seed-catalogs`, de modo que el SLA funcione desde el primer uso. El seed no pisa lo que el Administrador haya editado ni reactiva lo que haya desactivado.
+
+**Auditoría.** `CALENDARIO_LABORAL_GUARDADO` (con solo las secciones que cambiaron) y, para las políticas, `POLITICA_SLA_CREADA`, `POLITICA_SLA_MODIFICADA` (solo los campos que cambiaron, con su valor anterior y nuevo; sin cambios no se registra nada), `POLITICA_SLA_DESACTIVADA` y `POLITICA_SLA_ACTIVADA`, con el motivo si se escribió.
+
+**Fuera de esta entrega:** el cálculo del SLA de cada ticket, los períodos y la pausa efectiva (entrega 4), las excepciones de SLA (RF-083, fuera de la fase) y el interruptor general y los avisos configurables de UI-022, que dependen de la tabla `configuracion` de `v0.7.0`.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

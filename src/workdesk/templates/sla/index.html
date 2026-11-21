@@ -10,9 +10,12 @@
     ]) }}
 
     {{ page_header(
-        "SLA",
-        "El SLA se mide en tiempo laboral: aquí se define qué días y a qué horas corre su reloj."
+        "Configuración de SLA",
+        "Define los objetivos de atención y resolución según la prioridad del ticket, y el calendario laboral en que corre su reloj."
     ) }}
+
+    {# --- Objetivos por prioridad -------------------------------------------- #}
+    {% include "sla/_policies.html" %}
 
     {# --- Calendario laboral ---------------------------------------------- #}
     <section

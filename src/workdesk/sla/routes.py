@@ -1,7 +1,9 @@
-"""Pantallas de la configuración del SLA (docs/11, UI-022). Las reglas están en
-`sla/work_calendar.py`; aquí solo se orquesta. Como el resto del área de
-administración, todas las rutas son exclusivas del Administrador y la
-autorización se comprueba en backend."""
+"""Pantallas de la configuración del SLA (docs/11, UI-022): la pantalla «SLA», que
+reúne los objetivos por prioridad y el calendario laboral, y el formulario del
+calendario. Las reglas están en `sla/work_calendar.py` y `sla/policies.py`; aquí
+solo se orquesta (las acciones sobre cada política están en `sla/policy_routes.py`).
+Como el resto del área de administración, todas las rutas son exclusivas del
+Administrador y la autorización se comprueba en backend."""
 
 from datetime import datetime
 
@@ -16,6 +18,7 @@ from .forms import (
     WorkCalendarForm,
     calendar_form_data,
 )
+from .policies import list_policy_rows, on_hold_state_name
 from .work_calendar import (
     MAX_REASON_LENGTH,
     CalendarConflictError,
@@ -44,6 +47,8 @@ def index():
 
     return render_template(
         "sla/index.html",
+        policy_rows=list_policy_rows(),
+        on_hold_name=on_hold_state_name(),
         calendar=view,
         upcoming_holidays=upcoming[:UPCOMING_HOLIDAYS],
         versions=list_calendar_versions(),

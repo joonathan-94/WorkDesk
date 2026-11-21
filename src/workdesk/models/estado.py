@@ -3,6 +3,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from ..extensions import db
 
+# Código del estado en que el SLA puede pausarse (docs/06, RN-89). Es
+# estructural: lo que el Administrador renombra es el nombre visible.
+ON_HOLD_STATE_CODE = "EN_ESPERA"
+
 
 class Estado(db.Model):
     """Estados estructurales del ticket (docs/09, 12.1).
