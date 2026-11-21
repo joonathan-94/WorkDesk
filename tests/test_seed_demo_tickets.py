@@ -13,6 +13,7 @@ from src.workdesk.models import (
     Attachment,
     Categoria,
     Comment,
+    Estado,
     Prioridad,
     Ticket,
     TicketEvent,
@@ -44,6 +45,7 @@ from src.workdesk.seeds.demo_tickets_data import (
     MATTA,
     DemoAdjustment,
 )
+from src.workdesk.sla.periods import SlaStatus, evaluate_ticket_sla, list_periods
 from src.workdesk.sla.work_calendar import (
     Holiday,
     resolve_work_calendar,
@@ -3312,3 +3314,88 @@ def test_renaming_the_states_does_not_affect_the_demo(app):
         result = seed_demo_tickets(now=NOW)
 
         assert result.created == len(DEMO_TICKETS)
+
+
+# --- Períodos de SLA -------------------------------------------------------------
+
+
+def sla_picture() -> dict[str, list[tuple]]:
+    """Los períodos de cada ticket demo, sin ids, por clave."""
+    picture = {}
+
+    for demo in DEMO_TICKETS:
+        ticket = by_clave(demo.clave)
+        picture[demo.clave] = [
+            (
+                p.prioridad_id,
+                p.fecha_inicio,
+                p.fecha_fin,
+                p.segundos_consumidos,
+                p.fecha_vencimiento_respuesta,
+                p.fecha_vencimiento_resolucion,
+                p.usuario_cambio_id,
+            )
+            for p in list_periods(ticket.id)
+        ]
+
+    return picture
+
+
+def test_every_demo_ticket_has_sla_periods_that_follow_its_state(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+            found = list_periods(ticket.id)
+            state = db.session.get(Estado, ticket.estado_id).codigo
+            open_ones = [p for p in found if p.fecha_fin is None]
+
+            assert found, demo.clave
+            assert len(open_ones) <= 1, demo.clave
+
+            if state in ("RESUELTO", "CERRADO"):
+                # Resuelto o cerrado: el reloj está detenido.
+                assert open_ones == [], demo.clave
+            elif state == "EN_ESPERA":
+                assert [p.esta_pausado for p in open_ones] == [True], demo.clave
+            else:
+                assert [p.esta_pausado for p in open_ones] == [False], demo.clave
+
+
+def test_the_demo_tickets_show_every_kind_of_sla_state(app, seeded):
+    with app.app_context():
+        statuses = {
+            evaluate_ticket_sla(by_clave(demo.clave).id, NOW).status
+            for demo in DEMO_TICKETS
+        }
+
+        assert {SlaStatus.DENTRO, SlaStatus.VENCIDO, SlaStatus.PAUSADO} <= statuses
+
+
+def test_the_first_period_of_a_demo_ticket_starts_when_it_was_created(app, seeded):
+    with app.app_context():
+        for demo in DEMO_TICKETS:
+            ticket = by_clave(demo.clave)
+
+            assert list_periods(ticket.id)[0].fecha_inicio == ticket.fecha_creacion
+
+
+def test_running_the_seed_again_leaves_the_same_sla_periods(app, seeded):
+    with app.app_context():
+        before = sla_picture()
+
+        seed_demo_tickets(now=NOW)
+
+        assert sla_picture() == before
+
+
+def test_the_demo_periods_move_with_the_tickets_to_a_new_day(app, seeded):
+    with app.app_context():
+        before = sla_picture()["wifi-bodega"]
+
+        seed_demo_tickets(now=NOW + timedelta(days=7))
+        after = sla_picture()["wifi-bodega"]
+
+        # Los períodos siguen a las fechas del ticket: una semana después, todo se
+        # corre una semana y el consumo es el mismo.
+        assert [row[3] for row in after] == [row[3] for row in before]
+        assert after[0][1] == before[0][1] + timedelta(days=7)

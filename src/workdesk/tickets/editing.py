@@ -19,6 +19,7 @@ from ..models import (
     Ubicacion,
     User,
 )
+from ..sla.periods import reconcile_sla
 from .service import (
     CLOSED_STATE_CODE,
     MAX_REASON_LENGTH,
@@ -189,6 +190,11 @@ def change_priority(
         new_value=_priority_snapshot(priority),
         context={"motivo": reason},
     )
+
+    # Cierra el período de SLA vigente y abre otro con la política de la
+    # prioridad nueva, conservando lo ya consumido (RN-88). El motivo y quien
+    # cambió la prioridad quedan en el período nuevo.
+    reconcile_sla(ticket, actor, reason=reason)
 
     return True
 

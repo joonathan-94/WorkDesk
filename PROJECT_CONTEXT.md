@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/sla-policies
+feature/sla-periods
 ```
 
-Entrega 3 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): las políticas de SLA por prioridad. Una tabla nueva (`politicas_sla`) guarda los objetivos de cada prioridad (primera respuesta opcional, resolución, umbral de aviso y pausa en espera); el Administrador los define y edita desde «SLA», con las duraciones escritas como «4 h» o «1 h 30 min», y los puede desactivar y reactivar; `seed-catalogs` carga los valores iniciales de UI-022 (ver "Políticas de SLA"). Incluye una migración. Los objetivos todavía no se aplican a ningún ticket: el cálculo llega con los períodos de SLA (entrega 4).
+Entrega 4 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): los períodos de SLA. Una tabla nueva (`tickets_sla_periodos`) guarda, para cada ticket, los tramos de su vida bajo unas mismas condiciones de SLA. Los objetivos de las políticas ya se aplican: abrir un ticket, cambiar su prioridad o su estado abre y cierra períodos, con el reloj en tiempo laboral, la pausa en `En espera`, la detención al resolver y la continuidad del consumo ante cambios de prioridad (ver "Períodos de SLA"). Incluye una migración y los comandos `sla-rebuild` y `sla-status`. Todavía no hay interfaz para ver el SLA: llega con la entrega 7.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las dos primeras entregas de `v0.5.0`: el motor de tiempo laboral compartido (PR #36) y el calendario laboral administrable (PR #37).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las dos primeras entregas de `v0.5.0`: el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37) y las políticas de SLA por prioridad (PR #38).
 
 `v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -95,8 +95,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | --- | --- | --- |
 | 1 | Motor de tiempo laboral compartido (`worktime.py`) | Integrada (PR #36) |
 | 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | Integrada (PR #37) |
-| 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | En curso |
-| 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Pendiente |
+| 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Integrada (PR #38) |
+| 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | En curso |
 | 5 | Notificaciones internas: infraestructura y centro de notificaciones | Pendiente |
 | 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Pendiente |
 | 7 | Indicadores de SLA en el listado y el detalle | Pendiente |
@@ -197,8 +197,8 @@ Su alcance está en `docs/12_roadmap.md` (fase 5): SLA por prioridad calculado e
 - el cierre automático de un ticket `Resuelto` que nadie valida: la transición `AUTO_CIERRE`, el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente` ya existen, pero nada los usa. Hasta entonces, un ticket resuelto sin solicitante solo lo cierra un Supervisor o el Administrador con el cierre excepcional;
 - las notificaciones a los técnicos cuando el Solicitante comenta (RF-068) y el aviso de reapertura (RN-72 y RN-96);
 - el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasó a un módulo propio, `src/workdesk/worktime.py`, para compartirlo con el SLA (entrega 1, ver "Tiempo laboral"); `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado, y el calendario administrable (entrega 2, ver "Calendario laboral administrable") ya existe: `resolve_work_calendar` decide cuál es el vigente;
-- por el motor de estados pasa todo cambio de estado (`change_state` y `apply_derived_transition`): ahí tendrá que reaccionar el SLA al entrar y salir de `En espera`;
-- la política de continuidad del SLA ante un cambio de prioridad (RN-88): `change_priority` todavía no la aplica.
+- por el motor de estados pasa todo cambio de estado (`change_state`): ahí reacciona el SLA al entrar y salir de `En espera`, al resolver, cerrar y reabrir (entrega 4, ver "Períodos de SLA");
+- la política de continuidad del SLA ante un cambio de prioridad (RN-88): `change_priority` la aplica desde la entrega 4.
 
 Decisiones tomadas al planificar la fase (el detalle está en `docs/12_roadmap.md`):
 
@@ -436,6 +436,7 @@ WorkDesk/
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
+│   ├── test_sla_periods.py
 │   ├── test_sla_policies.py
 │   ├── test_sla_policies_routes.py
 │   ├── test_sla_policy_forms.py
@@ -581,7 +582,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente diecinueve migraciones:
+Existen actualmente veinte migraciones:
 
 ```text
 create_roles_table
@@ -603,6 +604,7 @@ create_ticket_relations_tables
 create_ticket_edit_locks_table
 create_work_calendar_tables
 create_sla_policies_table
+create_sla_periods_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -1227,7 +1229,7 @@ Paquete `src/workdesk/sla/` (blueprint `sla`, prefijo `/admin/sla`), entrega 2 d
 
 # 11 sexies. Políticas de SLA
 
-Entrega 3 de `v0.5.0`, en el mismo paquete `src/workdesk/sla/` que el calendario laboral. Reglas completas en `docs/06` (RN-165), `docs/09` (20.2 y 40.9), `docs/10` (sección 28.1, «Políticas de SLA por prioridad») y `docs/11` (UI-022). **Incluye una migración** (`create_sla_policies_table`). Los objetivos todavía no se aplican a ningún ticket: el cálculo, los períodos y la pausa efectiva llegan en la entrega 4.
+Entrega 3 de `v0.5.0`, en el mismo paquete `src/workdesk/sla/` que el calendario laboral. Reglas completas en `docs/06` (RN-165), `docs/09` (20.2 y 40.9), `docs/10` (sección 28.1, «Políticas de SLA por prioridad») y `docs/11` (UI-022). **Incluye una migración** (`create_sla_policies_table`). Los objetivos se aplican a los tickets desde la entrega 4 (ver "Períodos de SLA").
 
 **Modelo** (`models/politica_sla.py`, `PoliticaSla`, tabla `politicas_sla`): `prioridad_id` (FK `ON DELETE RESTRICT`), `tiempo_objetivo_respuesta_minutos` (opcional), `tiempo_objetivo_resolucion_minutos`, `pausa_en_espera` (verdadero por defecto), `umbral_aviso_consumo_porcentaje` (opcional) y las columnas del mixin `CatalogAuditMixin` (`activo`, creación y modificación). Restricciones: resolución mayor que cero, respuesta mayor que cero y **no mayor que la resolución**, umbral entre 1 y 100, e **índice único parcial** `(prioridad_id) WHERE activo` (como máximo una política activa por prioridad). Se omiten dos columnas de `docs/09` (20.2): `calendario_laboral_id` (el calendario es global y versionado: la política usa el vigente y cada período de SLA anotará la versión con la que se calculó) y `nombre` (sería el de la prioridad). Los tiempos son **minutos laborales**.
 
@@ -1253,6 +1255,34 @@ Entrega 3 de `v0.5.0`, en el mismo paquete `src/workdesk/sla/` que el calendario
 **Quedan fuera** (ver `docs/06`, RN-165): el interruptor general «Aplicar SLA a los tickets» y los avisos configurables de UI-022, que dependen de la tabla `configuracion` de `v0.7.0`; mientras tanto, desactivar las políticas desactiva el SLA.
 
 **Mejora de lo existente.** La red de seguridad de autorización (`tests/test_route_authorization.py`) no cubría las rutas `sla.*`, que ya eran del Administrador: ahora las recorre como a `users`, `catalogs` y `admin`.
+
+---
+
+# 11 septies. Períodos de SLA
+
+Entrega 4 de `v0.5.0`, en el paquete `src/workdesk/sla/` (módulo `periods.py`). Reglas completas en `docs/06` (RN-166), `docs/09` (20.3), `docs/10` (sección 28.1, «Períodos de SLA»). **Incluye una migración** (`create_sla_periods_table`). No tiene pantallas: el estado del SLA se verá en el listado y el detalle con la entrega 7; mientras tanto se consulta con el comando `sla-status`.
+
+**Modelo** (`models/periodo_sla.py`, `PeriodoSla`, tabla `tickets_sla_periodos`): `ticket_id`, `politica_sla_id`, `prioridad_id`, `calendario_laboral_id`, los objetivos copiados (`tiempo_objetivo_respuesta_minutos`, `tiempo_objetivo_resolucion_minutos`) y `pausa_en_espera`, `fecha_inicio`, `fecha_fin` (NULL mientras está vigente), `segundos_consumidos`, `fecha_vencimiento_respuesta`, `fecha_vencimiento_resolucion`, `usuario_cambio_id` y `motivo_cambio`. Restricciones: fin no anterior al inicio, consumo no negativo, objetivos positivos, claves foráneas `ON DELETE RESTRICT` e **índice único parcial** `(ticket_id) WHERE fecha_fin IS NULL` (un solo período vigente por ticket). Se aparta de `docs/09` en que `calendario_laboral_id` admite NULL (el calendario por defecto no tiene fila). Propiedades `esta_vigente` y `esta_pausado`.
+
+**Cómo funciona** (`sla/periods.py`, sin commit):
+
+- **`reconcile_sla(ticket, actor, reason=)` es el único punto de entrada.** La llaman `create_ticket` (sin usuario: el período de la creación no anota quién cambió), `change_priority` (con el motivo) y `change_state` al terminar. No recibe qué pasó: mira la prioridad y el estado del ticket y deja los períodos como deben estar, así que es idempotente. Las asignaciones (`Nuevo` ↔ `Asignado`) no la llaman: no cambian el reloj.
+- **Modo del reloj según el estado:** corriendo (en trabajo), pausado (`En espera` con una política que pausa) o detenido (`Resuelto`, `Cerrado`, o prioridad sin política). Cambiar de modo o de prioridad cierra el período vigente (anota lo consumido, en tiempo laboral, con el calendario del propio período) y abre otro.
+- **Continuidad:** el vencimiento del período nuevo es el momento del cambio más lo que queda del objetivo (`objetivo − consumo acumulado`, en horario laboral); si no queda nada, nace vencido. Mientras la prioridad no cambia, los períodos nuevos **copian las condiciones del anterior** (editar una política no altera el SLA en curso); un cambio de prioridad toma la política vigente de la prioridad nueva. Un ticket cuya prioridad no tiene política activa no tiene SLA.
+- **Pausa:** un período pausado es un período vigente sin `fecha_vencimiento_resolucion` (no hay columna de pausa). No consume tiempo; al reanudar se abre otro con lo que queda.
+- **Primera respuesta** (`first_response_at`): el primer comentario público del personal que sigue visible. Se evalúa al abrir cada período y deja de tener vencimiento una vez respondida.
+- **`evaluate_ticket_sla(ticket_id, now=)`** calcula sin guardar nada un `SlaSnapshot`: estado (`SlaStatus`: `DENTRO`, `PROXIMO_A_VENCER`, `VENCIDO`, `PAUSADO`), consumo acumulado, porcentaje, vencimientos, si la primera respuesta venció y si el ticket ya incumplió alguna vez (un incumplimiento no se borra al bajar la prioridad). Devuelve `None` si el ticket no tiene SLA. El umbral de aviso se lee de la política de origen.
+- **`current_time()`** es el `now()` de la base de datos (el mismo instante que los eventos del historial); los tests lo reemplazan para fijar «la hora».
+- **`rebuild_ticket_periods(ticket)`** reconstruye los períodos repasando el historial (creación, cambios de prioridad y de estado) con la misma lógica que el cálculo en vivo (comparten `_reconcile`; un test comprueba que dan el mismo resultado para un recorrido completo). Usa la política y el calendario vigentes hoy, porque el historial no guarda cuáles eran. **`rebuild_periods(only_missing=, public_id=)`** lo aplica a varios tickets.
+
+**Comandos** (`cli.py`):
+
+- `sla-rebuild [--all] [--ticket N]`: calcula los períodos de los tickets que **no tienen ninguno** (los anteriores al SLA); `--all` recalcula también los que ya tienen y se niega con `APP_ENV=production` (son el cálculo en vivo); `--ticket` limita a uno. Informa `Tickets recalculados: N. Períodos de SLA: M.`.
+- `sla-status <número>`: el estado del SLA de un ticket (dentro de plazo, próximo a vencer, vencido o pausado), el consumo (`3 h de 12 h (25 %)`), el vencimiento, la primera respuesta y la lista de períodos.
+
+**Seed de demostración.** `seed_demo_tickets` recalcula los períodos de todos sus tickets (`rebuild_ticket_periods`) al terminar, cuando el historial ya está en fechas pasadas: los servicios abren los períodos con la hora real de la carga y ese cálculo se descarta. Así los tickets quedan en tiempo, próximos a vencer, vencidos y pausados según su historia. Es idempotente y los períodos siguen a las fechas al refrescar otro día.
+
+**Pendiente de la fase:** mostrar el estado del SLA en el listado y el detalle y la advertencia al bajar la prioridad con el SLA en riesgo (entrega 7), las notificaciones (entregas 5 y 6) y el planificador con los avisos y el cierre automático (entrega 8). Los tickets anteriores al SLA no tienen períodos hasta que se ejecuta `sla-rebuild`.
 
 ---
 
@@ -1743,7 +1773,11 @@ python -m flask --app src.workdesk seed-catalogs
 python -m flask --app src.workdesk create-admin
 python -m flask --app src.workdesk seed-demo
 python -m flask --app src.workdesk seed-demo-tickets
+python -m flask --app src.workdesk sla-rebuild
+python -m flask --app src.workdesk sla-status <número>
 ```
+
+`sla-rebuild` y `sla-status` calculan y muestran los períodos de SLA de los tickets (ver "Períodos de SLA").
 
 `seed-catalogs` (`src/workdesk/seeds/catalogs.py`): carga los estados, las transiciones entre estados, las prioridades con sus políticas de SLA, la categoría `Sin clasificar`, los motivos de cierre, los motivos de espera y los tipos de relación entre tickets. Es idempotente y no pisa lo que un Administrador haya cambiado. Informa cuántos registros creó de cada tipo (`políticas de SLA: N`); quien tenga una base anterior a la entrega 3 de `v0.5.0` debe volver a ejecutarlo para cargar las políticas. No carga ubicaciones ni categorías de ejemplo (ver "Catálogos de tickets").
 
@@ -1773,6 +1807,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 - **no duplica y refresca al volver a ejecutarlo:** un ticket cuya clave ya existe no se vuelve a crear, se *refresca*: se reescriben sus fechas relativas al nuevo día de ejecución (`fecha_creacion`, `fecha_modificacion`, `fecha_hora` de los eventos del seed según su paso y `fecha_asociacion` de los solicitantes). Ejecutarlo el mismo día deja exactamente las mismas fechas, y un refresco da lo mismo que una carga nueva ese día (hay un test que lo comprueba). Las ediciones hechas a mano sobre un ticket demo (eventos sin marca) se desplazan lo mismo que el último evento del seed para seguir después de él y se recortan a «hace un minuto» si quedaran en el futuro; la fecha de modificación acompaña al evento que la originó. **No toca el contenido** (título, descripción, categoría, prioridad, versión) ni crea eventos, y nunca toca tickets creados a mano. Para cambiar el contenido de tickets ya cargados hay que recrear la base de desarrollo;
 - **fechas relativas en tiempo laboral:** todo corre según un calendario laboral configurable (`WorkCalendar` / `DEMO_CALENDAR` en `worktime.py`: `dias`, `inicio`, `fin` y `feriados`; por defecto lunes a viernes de 09:00 a 18:00, sin feriados). `hace_dias` son *días laborales* antes del último día laboral (si se ejecuta un fin de semana, se cuenta desde el viernes); `hora` (en `APP_TIMEZONE`) debe caer dentro de la jornada, con el fin excluido; y `despues_horas` de cada ajuste son *horas laborales* desde el paso anterior, de modo que el reloj salta noches, fines de semana y feriados. Nada cae fuera del calendario ni en el futuro (se recorta al último momento laboral ya pasado). Desde la entrega 2 de `v0.5.0` el seed lee el calendario vigente (`resolve_work_calendar`): el que guarde el Administrador desde «SLA» o, si no hay ninguno, `DEMO_CALENDAR`, que es el calendario por defecto de todo el sistema. Con uno guardado, todas las fechas caen dentro de sus franjas y en su zona horaria, y la hora de creación de cada ticket pasa al siguiente momento de trabajo si cae en una pausa; `hora` debe caer dentro de la jornada solo cuando se usa el calendario por defecto (ver "Calendario laboral administrable"). El motor de tiempo laboral (antes `_BusinessClock`) es un módulo propio, `worktime.py`, que usará también el SLA (ver "Tiempo laboral"). Como los servicios sellan la hora actual, las fechas se escriben con un `UPDATE` de Core solo en las filas que el propio seed creó (`tickets`, `tickets_solicitantes` e `historial_ticket`). Es el único lugar del proyecto que lo hace: el guard del ORM sigue rechazando cualquier modificación normal del historial y los servicios no recibieron parámetros de fecha;
 - valida sus datos antes de tocar la base (`validate_demo_tickets`: calendario coherente, horas dentro de la jornada, claves y títulos únicos, usuarios y roles, categorías y prioridades conocidas, motivo obligatorio al cambiar la prioridad, y que la secuencia de acciones de estado de cada ticket sea ejecutable desde Nuevo con la matriz de transiciones y con motivos y textos coherentes...);
+- **períodos de SLA:** al terminar recalcula los períodos de todos sus tickets desde su historial (`rebuild_ticket_periods`): los servicios los abren con la hora real de la carga y el historial se mueve después a fechas pasadas, así que ese cálculo se descarta y se rehace sobre la línea de tiempo del seed. Los tickets quedan en tiempo, próximos a vencer, vencidos y pausados. Ver "Períodos de SLA";
 - una sola transacción: si algo falla se revierte todo (`DemoTicketsError`);
 - se niega a ejecutarse con `APP_ENV=production`;
 - **grupo y asignación:** los seis últimos de la lista (bloque "Tickets con grupo y asignación") se asignan a técnicos y se agrupan: uno solo con grupo (queda `Nuevo`), uno con dos técnicos (uno se asigna a sí mismo y otro lo asigna un Supervisor), dos que además se inician y uno que queda en espera. Necesitan los grupos de `seed-demo`: si faltan, se avisa y el ticket queda sin grupo;
@@ -1817,6 +1852,19 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 4 de `v0.5.0` (períodos de SLA):
+
+```text
+2832 tests passing
+```
+
+Los 64 tests nuevos cubren:
+
+- `tests/test_sla_periods.py` (59): **al crear el ticket** (el período con los objetivos de la política, sus vencimientos en tiempo laboral —también un viernes por la tarde y fuera de horario—, una prioridad sin política, un ticket que gana SLA al pasar a una prioridad con política, que reconciliar de nuevo no cambia nada y que una creación fallida no deja períodos); **la pausa** (poner en espera cierra el período y abre uno pausado, reanudar abre otro con lo que queda, el tiempo en espera no cuenta ni en varios días, una política que no pausa y que los períodos nuevos heredan los objetivos aunque se edite la política); **cambios de prioridad (RN-88)** (se conserva lo consumido, quién y por qué, nacer vencido al subir, que un incumplimiento no se borra al bajar, nacer pausado, una prioridad sin política, cambiar la prioridad de un ticket resuelto y que un cambio posterior toma la política editada); **resolver, cerrar y reabrir** (el reloj se detiene, la reapertura sigue donde iba, cerrar directamente, resolver desde la espera y que las noches y fines de semana no consumen); **el calendario** (cada período se cierra con el reloj de su propio calendario); **la primera respuesta** (solo un comentario público del personal que sigue visible, no una nota interna, no el solicitante ni uno eliminado, y qué pasa con el vencimiento una vez respondida); **el estado del SLA** (dentro, próximo con el umbral exacto, vencido, pausado, sin umbral, la primera respuesta vencida por separado y un ticket sin SLA); **reconstrucción desde el historial** (da lo mismo que el cálculo en vivo para un recorrido de siete pasos, crea los períodos de un ticket que no tiene, reemplaza los existentes, el ticket manda si su estado no se explica por el historial, la selección por defecto y `--all`/`--ticket`, y que una respuesta posterior al inicio del período conserve su vencimiento); **restricciones de la base de datos** (un solo período vigente, los cerrados no cuentan, fin anterior al inicio, consumo negativo, objetivos no positivos y que una política con períodos no se elimine); **una carrera con hilos** (dos cambios de prioridad a la vez: uno cambia, el otro recibe el conflicto y quedan los períodos coherentes); y **los comandos** (`sla-status` con y sin SLA y con un ticket inexistente; `sla-rebuild` por defecto, con `--all`, con `--ticket` y rechazado en producción).
+- `tests/test_seed_demo_tickets.py` (+5): todos los tickets demo tienen períodos que siguen su estado (resuelto o cerrado sin período vigente, en espera con uno pausado), la demostración muestra tickets dentro de plazo, vencidos y pausados, el primer período empieza cuando se creó el ticket, volver a ejecutar el seed deja los mismos períodos y estos siguen a los tickets a otro día.
+- Los tests de tickets, de estados y de edición que ya existían no cambiaron: pasan con los períodos activos.
+- **Prueba de mutación** (un script desechable, no versionado): 39 mutaciones del modelo, el servicio, los tres enganches, los comandos y el seed —el vencimiento que reinicia el reloj, la pausa, la herencia de condiciones, quién cuenta como respuesta, el incumplimiento que se borra, el umbral exacto, el calendario de cada período, la reconstrucción...— y los tests detectaron las 39. Una sobrevivió al principio (una respuesta posterior al inicio del período al reconstruir) y se añadió el test que la cubre.
 
 Estado tras la entrega 3 de `v0.5.0` (políticas de SLA por prioridad):
 
@@ -2618,7 +2666,7 @@ Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases poste
 - `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.5.0`: el calendario laboral administrable, el motor de tiempo laboral compartido y las políticas de SLA por prioridad ya existen (entregas 1 a 3: `worktime.py` y el paquete `sla/`); falta que el SLA los use (entrega 4: los períodos);
+- `v0.5.0`: el motor de tiempo laboral, el calendario laboral administrable, las políticas de SLA por prioridad y los períodos de SLA ya existen (entregas 1 a 4: `worktime.py` y el paquete `sla/`); faltan el estado del SLA en la interfaz, las notificaciones y el planificador (entregas 5 a 8);
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

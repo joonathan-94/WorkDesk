@@ -1372,6 +1372,16 @@ UNIQUE (ticket_id) WHERE fecha_fin IS NULL
 - Una vez que `fecha_fin` deja de ser NULL, el período se considera histórico e inmutable mediante operaciones normales.
 - El consumo total histórico puede obtenerse agregando los períodos aplicables; no se mantienen acumulados redundantes por fila.
 
+**Implementación (`v0.5.0`, entrega 4).** `tickets_sla_periodos` se crea con las columnas y restricciones de esta sección (incluido el índice único parcial de un período vigente por ticket) más un índice `(ticket_id, fecha_inicio)` para leer el historial en orden. Se aparta de ella en un punto: **`calendario_laboral_id` admite NULL**, que significa que se usó el calendario por defecto, el único que no tiene fila mientras el Administrador no guarda ninguno (sección 40.8). Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-166) y las decisiones de diseño son estas:
+
+- **Un período pausado es un período vigente sin `fecha_vencimiento_resolucion`:** no consume tiempo y no vence. No hay columna de pausa; el vacío lo dice y, como el objetivo de resolución es obligatorio, solo una pausa lo deja vacío.
+- **`segundos_consumidos` se fija al cerrar el período** (nada si estuvo pausado). Mientras está vigente se calcula al consultarlo, con el reloj de su propio calendario.
+- **El reloj se detiene en `Resuelto` y `Cerrado`** y sigue donde iba al reabrir: el consumo se acumula entre períodos, así que un ticket reabierto no reinicia su SLA.
+- **Las condiciones (objetivos, pausa y política de origen) se copian del período anterior mientras la prioridad no cambia**; solo un cambio de prioridad toma la política vigente. Así editar una política no altera el SLA en curso.
+- **`usuario_cambio_id` y `motivo_cambio`** los rellenan los períodos que abre un cambio posterior a la creación: el de prioridad (con el usuario y el motivo del evento) y los de estado (con el usuario). El período que abre la creación del ticket los deja vacíos.
+- **El umbral de aviso no se copia:** se lee de la política de origen (`politica_sla_id`) al evaluar, así que editarlo se nota de inmediato.
+- Un período cerrado se considera histórico, pero la base no lo impide (como no lo hace con `tickets`): lo garantiza el código. La única excepción es el comando `sla-rebuild`, que recalcula períodos desde el historial.
+
 ## 20.4 `sla_excepciones`
 
 Registra excepciones manuales de Supervisor/Administrador.

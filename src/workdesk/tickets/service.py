@@ -34,6 +34,7 @@ from ..security import (
     can_view_internal_activity,
     has_any_role,
 )
+from ..sla.periods import reconcile_sla
 
 INITIAL_STATE_CODE = "NUEVO"
 CLOSED_STATE_CODE = "CERRADO"
@@ -213,6 +214,10 @@ def create_ticket(
     )
 
     db.session.refresh(ticket)
+
+    # Abre el primer período de SLA con la política de la prioridad (si la tiene).
+    # Sin usuario de cambio: ese campo es de quien cambia algo después de crearlo.
+    reconcile_sla(ticket, None)
 
     return ticket
 

@@ -84,6 +84,7 @@ from ..models import (
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
+from ..sla.periods import rebuild_ticket_periods
 from ..sla.work_calendar import resolve_work_calendar
 from ..tickets.assignment import assign_technician, set_group
 from ..tickets.attachments import add_attachments
@@ -745,6 +746,13 @@ def seed_demo_tickets(
             else:
                 _refresh(ticket, demo, times, limit)
                 refreshed += 1
+
+        # Los servicios abrieron los períodos de SLA con la hora real de la carga y
+        # el historial acaba de moverse a fechas pasadas: se calculan de nuevo sobre
+        # esa línea de tiempo, con lo que los tickets quedan en tiempo, por vencer,
+        # vencidos o pausados según su historia.
+        for demo in tickets:
+            rebuild_ticket_periods(_find_ticket(demo.clave))
 
         db.session.commit()
     except TicketRuleError as error:
