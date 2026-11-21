@@ -76,7 +76,13 @@ def page(client, make_user, role_code, path="/dashboard"):
 def test_a_technician_sees_tickets_and_create_ticket():
     # El personal ve todos los tickets; Administración es solo del
     # Administrador y los grupos, del Supervisor y el Administrador.
-    assert labels(stub("TECNICO")) == ["Dashboard", "Tickets", "Crear ticket"]
+    # Las notificaciones son de los cuatro roles (cada uno ve las suyas).
+    assert labels(stub("TECNICO")) == [
+        "Dashboard",
+        "Tickets",
+        "Crear ticket",
+        "Notificaciones",
+    ]
 
 
 def test_a_supervisor_also_sees_the_groups_they_manage():
@@ -84,6 +90,7 @@ def test_a_supervisor_also_sees_the_groups_they_manage():
         "Dashboard",
         "Tickets",
         "Crear ticket",
+        "Notificaciones",
         "Grupos",
     ]
 
@@ -93,6 +100,7 @@ def test_a_solicitante_sees_only_their_own_tickets_option():
         "Dashboard",
         "Mis tickets",
         "Crear ticket",
+        "Notificaciones",
     ]
 
 
@@ -101,6 +109,7 @@ def test_administrator_sees_the_administration_hub():
         "Dashboard",
         "Tickets",
         "Crear ticket",
+        "Notificaciones",
         "Administración",
     ]
 

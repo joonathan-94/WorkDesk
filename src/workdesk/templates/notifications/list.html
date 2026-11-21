@@ -1,0 +1,197 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
+
+{% block title %}Notificaciones{% endblock %}
+
+{# Una acción sobre una notificación: un formulario POST con CSRF que conserva el
+   filtro y la página, para volver al mismo punto del listado. #}
+{% macro hidden_fields() %}
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="{{ csrf_token() }}"
+    >
+    <input
+        type="hidden"
+        name="vista"
+        value="{{ view }}"
+    >
+    <input
+        type="hidden"
+        name="page"
+        value="{{ pagination.page }}"
+    >
+{% endmacro %}
+
+{% block content %}
+    {% call page_header("Notificaciones", "Avisos sobre tus tickets y lo que ocurre en ellos.") %}
+        {% if counts.unread %}
+            <form
+                method="post"
+                action="{{ url_for('notifications.read_all_notifications') }}"
+            >
+                {{ hidden_fields() }}
+
+                <button
+                    class="btn btn-outline-secondary"
+                    type="submit"
+                >
+                    <i
+                        class="bi bi-check2-all me-1"
+                        aria-hidden="true"
+                    ></i>
+                    Marcar todas como leídas
+                </button>
+            </form>
+        {% endif %}
+    {% endcall %}
+
+    <ul
+        class="nav nav-pills mb-3"
+        aria-label="Filtrar notificaciones"
+    >
+        <li class="nav-item">
+            <a
+                class="nav-link{% if view == 'todas' %} active{% endif %}"
+                href="{{ url_for('notifications.list_notifications_page') }}"
+                {% if view == 'todas' %}aria-current="page"{% endif %}
+            >
+                Todas
+                <span class="small">({{ counts.total }})</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a
+                class="nav-link{% if view == 'no-leidas' %} active{% endif %}"
+                href="{{ url_for('notifications.list_notifications_page', vista='no-leidas') }}"
+                {% if view == 'no-leidas' %}aria-current="page"{% endif %}
+            >
+                No leídas
+                <span class="small">({{ counts.unread }})</span>
+            </a>
+        </li>
+    </ul>
+
+    {% if pagination.items %}
+        <div class="card">
+            <ul class="list-unstyled mb-0">
+                {% for notification in pagination.items %}
+                    {% set ticket = notification.ticket %}
+
+                    <li class="notification{% if not notification.leida %} notification--unread{% endif %}">
+                        <span
+                            class="notification__dot"
+                            aria-hidden="true"
+                        ></span>
+
+                        <i
+                            class="bi bi-{{ notification.icono }} notification__icon"
+                            aria-hidden="true"
+                        ></i>
+
+                        <div class="notification__body">
+                            <div class="small text-secondary">
+                                {{ notification.etiqueta }}
+                                ·
+                                <time datetime="{{ notification.fecha_creacion.isoformat() }}">
+                                    {{ notification.fecha_creacion|local_datetime }}
+                                </time>
+                                {% if not notification.leida %}
+                                    <span class="visually-hidden">(no leída)</span>
+                                {% endif %}
+                            </div>
+
+                            {# Con ticket, el título lo abre (y la marca como leída); un
+                               aviso general es solo texto. #}
+                            {% if ticket %}
+                                <form
+                                    method="post"
+                                    action="{{ url_for('notifications.open_notification', notification_id=notification.id) }}"
+                                >
+                                    {{ hidden_fields() }}
+
+                                    <button
+                                        class="notification__title"
+                                        type="submit"
+                                    >
+                                        {{ notification.titulo or notification.etiqueta }}
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="fw-semibold">
+                                    {{ notification.titulo or notification.etiqueta }}
+                                </span>
+                            {% endif %}
+
+                            <p class="notification__message">{{ notification.mensaje }}</p>
+
+                            {% if ticket %}
+                                <span class="small text-secondary">
+                                    Ticket #{{ ticket.public_id }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        {% if not notification.leida %}
+                            <form
+                                class="text-nowrap"
+                                method="post"
+                                action="{{ url_for('notifications.read_notification', notification_id=notification.id) }}"
+                            >
+                                {{ hidden_fields() }}
+
+                                <button
+                                    class="btn btn-sm btn-outline-secondary"
+                                    type="submit"
+                                >
+                                    Marcar como leída
+                                </button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        {% if pagination.pages > 1 %}
+            <nav
+                class="d-flex align-items-center justify-content-center gap-3 mt-3"
+                aria-label="Paginación"
+            >
+                {% set filter = view if view != 'todas' else none %}
+
+                {% if pagination.has_prev %}
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('notifications.list_notifications_page', vista=filter, page=pagination.prev_num if pagination.prev_num > 1 else none) }}"
+                    >
+                        Anterior
+                    </a>
+                {% endif %}
+
+                <span class="small text-secondary">
+                    Página {{ pagination.page }} de {{ pagination.pages }}
+                </span>
+
+                {% if pagination.has_next %}
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('notifications.list_notifications_page', vista=filter, page=pagination.next_num) }}"
+                    >
+                        Siguiente
+                    </a>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="text-center text-secondary border rounded p-4 mb-0">
+            {% if view == 'no-leidas' %}
+                No tienes notificaciones sin leer.
+            {% else %}
+                Todavía no tienes notificaciones. Aquí aparecerán los avisos
+                sobre tus tickets.
+            {% endif %}
+        </p>
+    {% endif %}
+{% endblock %}

@@ -1552,6 +1552,15 @@ Entidad transaccional persistente con estado de lectura. El contenido original d
 - La retención podrá gestionar notificaciones antiguas únicamente cuando una política explícita lo autorice.
 - La configuración de eventos y destinatarios podrá utilizar `configuracion` —incluido JSON controlado cuando sea estrictamente necesario— sin crear un motor avanzado de reglas de notificación en el MVP.
 
+**Implementación (`v0.5.0`, entrega 5).** `notificaciones` se crea con las columnas de esta sección, `id` autogenerado y las dos claves foráneas (`usuario_id` y `ticket_id`) con `ON DELETE RESTRICT`. Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-167) y las decisiones de diseño son estas:
+
+- **Dos `CHECK`.** `ck_notificaciones_lectura_coherente` exige que `leida` y `fecha_lectura` vayan siempre juntas (las dos reglas de «Reglas» en una sola condición) y `ck_notificaciones_mensaje_no_vacio` que el mensaje tenga al menos un carácter que no sea un espacio, un salto de línea ni un tabulador. Se escribe como una expresión regular (`mensaje ~ '\S'`) y no con `btrim`, que solo recorta espacios y dejaría pasar un mensaje de saltos de línea.
+- **Un índice** `(usuario_id, leida, fecha_creacion)`: sirve al contador de no leídas (la campana, que se consulta en cada página y cada 30 segundos) y al listado de cada persona.
+- **El vocabulario vive solo en la aplicación.** `tipo_evento` no tiene `CHECK` en la base de datos: lo valida `NotificationEvent` (13 eventos), igual que `TicketEvent` en el historial. Añadir un evento es añadirlo al enum, a sus nombres y a sus iconos (un test exige que ninguno falte), sin migración. Una notificación cuyo evento ya no esté en el vocabulario se sigue mostrando, con el código como nombre y un icono genérico.
+- **El contenido es inmutable en la aplicación.** Como el historial y la auditoría, el ORM rechaza reescribir `usuario_id`, `ticket_id`, `tipo_evento`, `titulo`, `mensaje` y `fecha_creacion` (`NotificationContentImmutableError`); solo cambian `leida` y `fecha_lectura`. A diferencia de ellos, sí se puede actualizar la fila, porque la lectura evoluciona.
+- **La primera lectura no se pierde.** Marcar como leída es un único `UPDATE ... WHERE leida = FALSE`: si ya estaba leída no cambia nada y, si dos pestañas la marcan a la vez, una sola escribe la fecha.
+- **Sin columnas de retención.** No existe todavía una política explícita que archive o elimine notificaciones antiguas, así que la tabla no tiene nada para ello; se añadirá con esa política.
+
 # 23. Base de conocimientos
 
 ## 23.1 `articulos_conocimiento`

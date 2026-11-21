@@ -664,6 +664,8 @@ Responsabilidades:
 - destinatarios;
 - reglas configurables.
 
+Desde `v0.5.0` (entrega 5) existen la infraestructura y el centro de notificaciones (crear, consultar, marcar como leída y el contador); los productores de avisos llegan con las entregas 6 y 8. Ver «Notificaciones internas (`notifications/`)» en la sección 28.1.
+
 ---
 
 # 24. Módulo `knowledge`
@@ -779,6 +781,7 @@ src/workdesk/
 ├── groups/         grupos, membresías y supervisores responsables
 ├── main/           inicio y dashboard temporal
 ├── models/         modelos SQLAlchemy (uno por entidad)
+├── notifications/  notificaciones internas (v0.5.0): servicio y centro de notificaciones
 ├── security/       políticas de autorización y de contraseñas
 ├── seeds/          datos iniciales y de demostración
 ├── sla/            configuración del SLA (v0.5.0): el calendario laboral y los objetivos por prioridad
@@ -893,6 +896,26 @@ Es el `SLAService` de las secciones 78 a 82, sin una clase: funciones sobre `Per
 - **`evaluate_ticket_sla` calcula el estado** (`DENTRO`, `PROXIMO_A_VENCER`, `VENCIDO` y `PAUSADO`) sin guardar nada: el consumo de un período vigente depende de la hora de la consulta, así que no se almacena. La entrega 7 lo usará para las insignias y la 8, para los avisos.
 - **`rebuild_ticket_periods` reconstruye los períodos repasando el historial** con la misma lógica que el cálculo en vivo (comparten `_reconcile`), y un test comprueba que ambos dan el mismo resultado para un recorrido completo. Lo usan `seed-demo-tickets` y el comando `sla-rebuild`.
 - **Dos comandos de apoyo:** `sla-rebuild` (calcula los períodos de los tickets que no tienen ninguno; `--all` recalcula también los reales y no se ejecuta en producción) y `sla-status <número>` (muestra el estado del SLA de un ticket y sus períodos).
+
+### Notificaciones internas (`notifications/`)
+
+Es el módulo de la sección 23, con la forma de los demás: rutas finas que orquestan y un servicio con las reglas, sin capas vacías. Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-167) y el modelo en `09_modelo_de_datos.md` (22.1).
+
+```text
+notifications/
+├── service.py   las reglas: crear (notify y notify_many), consultar, contar y marcar
+│                como leída
+└── routes.py    el centro (/notifications), marcar, abrir, marcar todas y el contador
+                 (/notifications/unread-count)
+```
+
+- **Dos formas de entrar al servicio, una de salida.** Los productores de avisos (entregas 6 y 8) llamarán a `notify` o `notify_many` dentro de la transacción del cambio que los provoca, como pide la sección 88: el aviso se confirma o se revierte con la operación, y el servicio **no hace commit**. Las pantallas leen con `list_notifications`, `count_unread` y `count_notifications` y escriben con `mark_as_read` y `mark_all_as_read`; el commit lo hace la ruta.
+- **Quién recibe un aviso lo decide el productor, no el servicio.** `notify` no sabe de visibilidad de tickets: el productor debe aplicar las mismas reglas que el historial (nada interno a un Solicitante) y el servicio solo impone un destinatario activo. Así el servicio no se acopla a las reglas de cada evento y esas reglas se prueban donde nacen.
+- **Cada consulta filtra por el usuario.** Listar, contar, obtener y marcar reciben al usuario de la sesión y lo ponen en el `WHERE`: la notificación de otra persona no existe para quien la pide (404). No hay una variante «sin usuario» que pudiera usarse por error.
+- **Marcar como leída es un solo `UPDATE`** con `leida = FALSE` en la condición. Es idempotente, conserva la primera lectura y, si dos pestañas lo hacen a la vez, una sola escribe; `get_notification` relee con `populate_existing` para no devolver la copia vieja de la sesión.
+- **Abrir es un POST.** Abrir una notificación cambia su estado de lectura, así que no puede ser un GET (un GET no debe cambiar nada y un enlace precargado la marcaría). La acción marca y redirige al ticket; la autorización del ticket sigue siendo la suya.
+- **La campana está en el layout.** `layout_context` (`navigation.py`) entrega el número de no leídas a `layouts/app.html` en cada página autenticada, y `static/js/common/notifications.js` lo actualiza cada 30 segundos con `GET /notifications/unread-count` (JSON, sin caché). Es una mejora progresiva: sin JavaScript, el número se actualiza al navegar. Se detiene si la pestaña no está visible y si el servidor deja de responder JSON (sesión caducada).
+- **El contador cuesta una consulta por página**, resuelta por el índice `(usuario_id, leida, fecha_creacion)`. Se prefirió al contador en la sesión o en caché porque siempre es exacto y no hay un segundo lugar donde guardar el estado.
 
 ## 28.2. Evolución objetivo
 
@@ -2297,6 +2320,8 @@ Como referencia inicial podrá realizarse polling cada:
 ```
 
 También se actualizarán las notificaciones al navegar normalmente entre páginas.
+
+**Implementación (`v0.5.0`, entrega 5).** El endpoint es `GET /notifications/unread-count` y responde `{"unread": N}` sin caché; no lleva el prefijo `/api/v1/` porque todavía no forma una interfaz reusable (sección 34), igual que los endpoints de renovar y liberar el bloqueo de edición. El navegador lo consulta cada 30 segundos, solo con la pestaña visible, y el número también se recalcula en el servidor en cada página.
 
 ---
 

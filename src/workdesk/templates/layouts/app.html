@@ -247,6 +247,35 @@
 
                 <div class="app-topbar__spacer"></div>
 
+                {# La campana: lleva al centro de notificaciones y muestra cuántas hay
+                   sin leer. El número lo calcula el servidor en cada página; con
+                   JavaScript se actualiza cada 30 segundos (common/notifications.js). #}
+                {% set unread = unread_notifications or 0 %}
+                <a
+                    class="topbar-bell"
+                    href="{{ url_for('notifications.list_notifications_page') }}"
+                    data-notifications-bell
+                    data-unread-url="{{ url_for('notifications.unread_count') }}"
+                    data-poll-seconds="30"
+                >
+                    <i
+                        class="bi bi-bell"
+                        aria-hidden="true"
+                    ></i>
+
+                    <span
+                        class="topbar-bell__badge"
+                        data-bell-badge
+                        aria-hidden="true"
+                        {% if not unread %}hidden{% endif %}
+                    >{{ '99+' if unread > 99 else unread }}</span>
+
+                    <span
+                        class="visually-hidden"
+                        data-bell-label
+                    >Notificaciones{% if unread %}: {{ unread }} sin leer{% endif %}</span>
+                </a>
+
                 <div class="dropdown user-menu">
                     <button
                         class="user-menu__button"
@@ -380,6 +409,10 @@
 
     <script
         src="{{ url_for('static', filename='js/common/layout.js') }}"
+    ></script>
+
+    <script
+        src="{{ url_for('static', filename='js/common/notifications.js') }}"
     ></script>
 
     {% block scripts %}{% endblock %}

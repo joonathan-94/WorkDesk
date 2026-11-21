@@ -12,9 +12,11 @@ from .security import (
     validate_password_policy,
 )
 from .seeds import (
+    DemoNotificationsError,
     DemoTicketsError,
     seed_catalogs,
     seed_demo_groups,
+    seed_demo_notifications,
     seed_demo_tickets,
     seed_demo_users,
     seed_roles,
@@ -334,3 +336,36 @@ def register_commands(app: Flask) -> None:
 
         for line in _describe_ticket_sla(ticket):
             click.echo(line)
+
+    @app.cli.command("seed-demo-notifications")
+    @click.option(
+        "--username",
+        "usernames",
+        multiple=True,
+        help="Cuenta que recibe los avisos (se puede repetir). Sin ella, el equipo de seed-demo.",
+    )
+    def seed_demo_notifications_command(usernames: tuple[str, ...]) -> None:
+        """Carga notificaciones de ejemplo para ver el centro de notificaciones.
+
+        Cada aviso apunta a un ticket que esa persona puede ver, así que necesita
+        tickets (por ejemplo, los de seed-demo-tickets). Con --username se cargan
+        para esa cuenta (por ejemplo, la del Administrador). No repite avisos y no
+        se ejecuta con APP_ENV=production.
+        """
+
+        if current_app.config["APP_ENV"] == "production":
+            raise click.ClickException(
+                "Los datos de demostración no se cargan en producción."
+            )
+
+        try:
+            result = seed_demo_notifications(list(usernames) or None)
+        except DemoNotificationsError as error:
+            raise click.ClickException(str(error)) from error
+
+        click.echo(f"Notificaciones demo creadas: {result.created}.")
+
+        for username in result.without_tickets:
+            click.echo(
+                f"Aviso: {username} no ve ningún ticket, así que no se le crearon avisos."
+            )
