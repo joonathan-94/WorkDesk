@@ -1749,7 +1749,27 @@ Los tiempos son **minutos laborales**: se miden con el calendario vigente, no co
 
 **Auditoría.** `CALENDARIO_LABORAL_GUARDADO` (con solo las secciones que cambiaron) y, para las políticas, `POLITICA_SLA_CREADA`, `POLITICA_SLA_MODIFICADA` (solo los campos que cambiaron, con su valor anterior y nuevo; sin cambios no se registra nada), `POLITICA_SLA_DESACTIVADA` y `POLITICA_SLA_ACTIVADA`, con el motivo si se escribió.
 
-**Fuera de esta entrega:** el cálculo del SLA de cada ticket, los períodos y la pausa efectiva (entrega 4), las excepciones de SLA (RF-083, fuera de la fase) y el interruptor general y los avisos configurables de UI-022, que dependen de la tabla `configuracion` de `v0.7.0`.
+**Fuera de esta entrega:** el cálculo del SLA de cada ticket, los períodos y la pausa efectiva (entrega 4, ver RN-166), las excepciones de SLA (RF-083, fuera de la fase) y el interruptor general y los avisos configurables de UI-022, que dependen de la tabla `configuracion` de `v0.7.0`.
+
+---
+
+## RN-166 — Períodos de SLA de un ticket
+
+Aplica y precisa RN-85 a RN-91 en la implementación de `v0.5.0` (entrega 4). Cada ticket con SLA acumula **períodos**: tramos de su vida bajo unas mismas condiciones (la política de su prioridad, con el reloj corriendo o en pausa). Cuando esas condiciones cambian se cierra el período vigente y se abre otro; un período cerrado nunca se sobrescribe. Es un cálculo del sistema, sin intervención del usuario, y lo disparan la creación del ticket, el cambio de prioridad y el cambio de estado.
+
+* **Tiempo laboral.** Todo se mide con el calendario laboral vigente cuando se abre el período, que el período anota (RN-90, RN-165). Las noches, los fines de semana y los feriados no cuentan.
+* **El reloj corre mientras el ticket está en trabajo** (`Nuevo`, `Asignado`, `En progreso`). Se **detiene al pasar a `Resuelto`** —la espera de la validación del solicitante no cuenta contra el técnico— y al cerrarse, y **sigue donde iba si el ticket se reabre**: el consumo ya acumulado se conserva y el vencimiento nuevo es el momento de la reapertura más lo que quedaba del objetivo.
+* **Pausa en espera (RN-89).** Si la política de la prioridad pausa en espera, mientras el ticket está en `En espera` hay un período **pausado**: no consume tiempo y no tiene vencimiento. Al reanudar se abre otro con lo que quedaba. Si la política no pausa, la espera no cambia nada.
+* **Un cambio de prioridad no reinicia el reloj (RN-88).** El período vigente se cierra con lo que consumió y se abre otro con la política de la prioridad nueva. El vencimiento nuevo es el momento del cambio más la diferencia entre el objetivo nuevo y el consumo acumulado; si el consumo ya lo supera, el período **nace vencido**. Si el ticket estaba en una espera con pausa, el período nuevo nace pausado. El período nuevo anota quién cambió la prioridad y el motivo, que son los del evento `PRIORIDAD_CAMBIADA`.
+* **Un incumplimiento no se borra.** Si algún período del ticket llegó a su vencimiento, el ticket sigue vencido aunque después baje de prioridad y el objetivo nuevo sea mayor (RN-88).
+* **Las condiciones se heredan.** Mientras la prioridad no cambie, los períodos nuevos (al reanudar una pausa o reabrir) copian los objetivos del anterior, así que editar una política no altera el SLA que un ticket ya tiene en curso (`docs/09`, 20.1). Solo un cambio de prioridad toma la política vigente de la prioridad nueva.
+* **Sin política activa no hay SLA.** Un ticket cuya prioridad no tiene política activa no tiene períodos. Si más tarde pasa a una prioridad con política, el SLA empieza en ese momento: lo anterior no cuenta.
+* **Primera respuesta** es el primer comentario público del personal que sigue visible. Es un objetivo aparte, con su propio vencimiento, que deja de evaluarse cuando se cumple; una nota interna, un comentario del solicitante o uno eliminado no cuentan.
+* **Estado del SLA.** Dentro de plazo, próximo a vencer (el consumo alcanzó el umbral de aviso de la política), vencido (el consumo alcanzó o superó el objetivo, RN-91) o pausado. Que el SLA venza no impide trabajar, resolver ni cerrar (RN-86).
+
+**Tickets anteriores al SLA y datos de demostración.** El comando `sla-rebuild` calcula los períodos de los tickets que no tienen ninguno repasando su historial (creación, cambios de prioridad y de estado). Es una aproximación: usa la política y el calendario vigentes hoy, porque el historial no guarda cuáles eran entonces. Por eso solo toca los tickets sin períodos y `--all` (que recalcula también los reales) no se ejecuta en producción. `seed-demo-tickets` lo usa para dejar los tickets de demostración en tiempo, por vencer, vencidos y pausados según su historia.
+
+**Fuera de esta entrega:** mostrar el estado del SLA en el listado y el detalle y la advertencia al bajar la prioridad con el SLA en riesgo (entrega 7), las notificaciones de próximo a vencer y vencido y el cierre automático (entregas 6 y 8).
 
 ---
 

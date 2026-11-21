@@ -861,8 +861,10 @@ sla/
 │                      desactivar y reactivar los objetivos
 ├── policy_forms.py    el formulario de los objetivos y las duraciones que escribe el
 │                      Administrador («30 min», «4 h», «1 h 30 min»)
-└── policy_routes.py   definir o editar, desactivar y reactivar los objetivos de una
-                       prioridad (/admin/sla/priorities/<id>/...)
+├── policy_routes.py   definir o editar, desactivar y reactivar los objetivos de una
+│                      prioridad (/admin/sla/priorities/<id>/...)
+└── periods.py         los períodos de SLA de cada ticket: abrirlos y cerrarlos,
+                       evaluarlos y reconstruirlos desde el historial
 ```
 
 - **`resolve_work_calendar()` es la única función que decide cuál es el calendario vigente:** el guardado o, si todavía no hay ninguno, el de por defecto en la zona de `APP_TIMEZONE` (`09_modelo_de_datos.md`, sección 40.8). Devuelve un `ResolvedCalendar` con el reloj listo para usar y la versión de la que sale (0 si es el de por defecto). `clock_for(versión)` construye el reloj de una versión concreta, que es lo que necesitará el SLA para seguir calculando con la versión con la que abrió cada período.
@@ -879,6 +881,18 @@ Una política (`PoliticaSla`) dice cuántos minutos laborales tiene un ticket de
 - **Las operaciones sobre una prioridad se serializan** bloqueando la fila de la prioridad con `FOR NO KEY UPDATE`, el bloqueo más débil que sirve: no frena la creación de tickets de esa prioridad, que solo necesita leer su clave. Bajo el bloqueo, la política se vuelve a leer con `populate_existing`: sin él, la sesión devolvería la copia que cargó la propia petición antes de que la otra transacción confirmara, y el conflicto pasaría inadvertido (hay un test que lo demuestra). El índice único parcial es la última defensa, por si otra vía escribiera sin ese bloqueo.
 - **Los valores se validan en un solo lugar.** `policy_problems` devuelve lo que está mal por campo; lo usa el formulario (para señalar todos los errores a la vez, cada uno junto a su campo) y `save_policy` (que no confía en quien lo llama). Las duraciones se escriben como las diría una persona (`parse_duration`: «30 min», «4 h», «1 h 30 min»; no hay días porque su duración depende del calendario) y se muestran con el filtro `duration` (`format_duration`).
 - **El servicio no hace commit:** el cambio y su evento de auditoría (`POLITICA_SLA_CREADA`, `POLITICA_SLA_MODIFICADA`, `POLITICA_SLA_ACTIVADA` y `POLITICA_SLA_DESACTIVADA`) se confirman juntos desde la ruta.
+
+### Períodos de SLA (`sla/periods.py`)
+
+Es el `SLAService` de las secciones 78 a 82, sin una clase: funciones sobre `PeriodoSla` que no dependen de la interfaz. Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-166) y el modelo en `09_modelo_de_datos.md` (20.3).
+
+- **`reconcile_sla(ticket, actor, reason=)` es el único punto de entrada de los cambios en vivo.** La creación del ticket (`create_ticket`), el cambio de prioridad (`change_priority`) y el cambio de estado (`change_state`) la llaman al terminar. No recibe qué pasó: mira cómo está el ticket (su prioridad y su estado) y deja los períodos como deben estar, así que es **idempotente** y no puede quedar incoherente con el ticket. Las asignaciones (`Nuevo` ↔ `Asignado`) no la llaman porque no cambian el reloj.
+- **Se apoya en las operaciones que ya bloquean y versionan el ticket:** corre dentro de su transacción, sin commit, y se confirma o se revierte con ellas. Un índice único parcial (un período vigente por ticket) es la última defensa.
+- **El reloj de cada período es el de su calendario.** Al abrirlo se resuelve el calendario vigente (`resolve_work_calendar`) y se anota; al cerrarlo o evaluarlo se usa el de ese período (`clock_for`), de modo que guardar un calendario nuevo no cambia lo que un período ya calculó.
+- **La hora es la de la base de datos** (`current_time`, el `now()` de la transacción), la misma que ponen los eventos del historial: un período abre en el mismo instante que el evento que lo provocó. Los tests la fijan para que el tiempo laboral sea determinista.
+- **`evaluate_ticket_sla` calcula el estado** (`DENTRO`, `PROXIMO_A_VENCER`, `VENCIDO` y `PAUSADO`) sin guardar nada: el consumo de un período vigente depende de la hora de la consulta, así que no se almacena. La entrega 7 lo usará para las insignias y la 8, para los avisos.
+- **`rebuild_ticket_periods` reconstruye los períodos repasando el historial** con la misma lógica que el cálculo en vivo (comparten `_reconcile`), y un test comprueba que ambos dan el mismo resultado para un recorrido completo. Lo usan `seed-demo-tickets` y el comando `sla-rebuild`.
+- **Dos comandos de apoyo:** `sla-rebuild` (calcula los períodos de los tickets que no tienen ninguno; `--all` recalcula también los reales y no se ejecuta en producción) y `sla-status <número>` (muestra el estado del SLA de un ticket y sus períodos).
 
 ## 28.2. Evolución objetivo
 

@@ -1031,7 +1031,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 1. **Motor de tiempo laboral compartido** ✓ (PR #36): el motor del seed de demostración pasa a `worktime.py` y gana las dos operaciones que necesita el SLA (medir los segundos laborales entre dos momentos y sumarlos a un momento). Sin migración ni cambio funcional.
 2. **Calendario laboral administrable** ✓ (PR #37): tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), el motor con franjas distintas por día, la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`), la pantalla «SLA» con la de «Configurar calendario» y el seed leyendo el calendario resuelto.
 3. **Políticas de SLA por prioridad** ✓: `politicas_sla` (una por prioridad, editable en el sitio y sin columna de calendario: usa el vigente) y su pantalla (UI-022) dentro de «SLA», con las duraciones escritas como «4 h» o «1 h 30 min», la pausa en espera por política y el control de ediciones simultáneas; los valores iniciales los carga `seed-catalogs` (RN-165).
-4. **Períodos de SLA:** `tickets_sla_periodos`, el cálculo, la pausa en `En espera` y la continuidad ante cambios de prioridad (RN-88).
+4. **Períodos de SLA** ✓: `tickets_sla_periodos`, el cálculo en tiempo laboral, la pausa en `En espera`, la detención al resolver (y la reanudación al reabrir) y la continuidad ante cambios de prioridad (RN-88 y RN-166); el comando `sla-rebuild` para los tickets anteriores y `sla-status` para ver un ticket. El seed de demostración deja los tickets en tiempo, por vencer, vencidos y pausados.
 5. **Notificaciones internas, 1: infraestructura y centro de notificaciones:** tabla, servicio, campana con contador y marcar como leídas.
 6. **Notificaciones internas, 2: eventos:** creación, asignación, cambio de estado, comentarios, resolución y reapertura (incluye RF-068 y RN-96).
 7. **Indicadores de SLA en la interfaz:** insignias en el listado y el detalle (solo para el personal), filtro por estado de SLA y la advertencia al bajar la prioridad con el SLA en riesgo.
@@ -1057,11 +1057,11 @@ Implementar:
 - objetivo de resolución ✓ (entrega 3);
 - porcentaje de aviso ✓ (entrega 3);
 - calendario laboral administrable (ver más abajo) ✓ (entrega 2);
-- pausa en `En espera` (entrega 3: la casilla por política; el comportamiento, entrega 4);
-- reanudación;
-- próximo a vencer;
-- vencido;
-- visualización;
+- pausa en `En espera` ✓ (entregas 3 y 4);
+- reanudación ✓ (entrega 4);
+- próximo a vencer ✓ (entrega 4: el cálculo; los avisos, entregas 6 y 8);
+- vencido ✓ (entrega 4: el cálculo; los avisos, entregas 6 y 8);
+- visualización (entrega 7);
 - configuración básica;
 - política de continuidad ante cambios de prioridad (RN-88): el consumo ya acumulado se conserva, el incumplimiento registrado no se borra, un cambio nunca reinicia el reloj, y la bajada de prioridad con el SLA en riesgo exige motivo y avisa a los Supervisores.
 
