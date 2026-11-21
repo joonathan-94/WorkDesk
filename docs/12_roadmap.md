@@ -1024,6 +1024,30 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 **Semana:** 6  
 **Versión:** `v0.5.0`
 
+**Estado de ejecución:** en curso. Se divide en 9 entregas pequeñas, cada una en su propia rama, con tests y Pull Request, como las fases anteriores. Cada entrega amplía el seed de demostración con lo que aporte.
+
+### Entregas de `v0.5.0`
+
+1. **Motor de tiempo laboral compartido:** el motor del seed de demostración pasa a `worktime.py` y gana las dos operaciones que necesita el SLA (medir los segundos laborales entre dos momentos y sumarlos a un momento). Sin migración ni cambio funcional.
+2. **Calendario laboral administrable:** tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (versionadas), la función que resuelve el calendario vigente (el guardado o `DEMO_CALENDAR`) y la pantalla del Administrador.
+3. **Políticas de SLA por prioridad:** `politicas_sla` y su pantalla (UI-022), con valores iniciales en `seed-catalogs`.
+4. **Períodos de SLA:** `tickets_sla_periodos`, el cálculo, la pausa en `En espera` y la continuidad ante cambios de prioridad (RN-88).
+5. **Notificaciones internas, 1: infraestructura y centro de notificaciones:** tabla, servicio, campana con contador y marcar como leídas.
+6. **Notificaciones internas, 2: eventos:** creación, asignación, cambio de estado, comentarios, resolución y reapertura (incluye RF-068 y RN-96).
+7. **Indicadores de SLA en la interfaz:** insignias en el listado y el detalle (solo para el personal), filtro por estado de SLA y la advertencia al bajar la prioridad con el SLA en riesgo.
+8. **Planificador:** el comando `run-scheduler` con los avisos de SLA y el cierre automático (RN-58 y RN-59).
+9. **Cierre de la versión:** revisión de todo el código de la fase y documentación de cierre.
+
+### Decisiones de la fase
+
+Se tomaron al planificarla y se reflejan en el resto de los documentos cuando cada entrega las implementa.
+
+- **El planificador es un comando propio, sin dependencias nuevas.** `10_arquitectura.md` (secciones 84 y 85) preveía APScheduler. Como las tareas son idempotentes (sección 86), basta un comando (`run-scheduler`: un bucle simple que también puede ejecutarse una sola vez desde el Programador de tareas de Windows o desde `cron`) que se ejecuta como proceso separado del web, con el mismo código. Esas secciones se actualizan en la entrega 8.
+- **«Primera respuesta» es el primer comentario público del personal** (Técnico, Supervisor o Administrador). Asignar el ticket o cambiar su estado no cuenta: no garantizan que el solicitante haya recibido una respuesta. Sigue siendo un objetivo opcional de la política (`09_modelo_de_datos.md`, 20.2, que se completa en la entrega 3).
+- **Las excepciones de SLA (RF-083, `sla_excepciones`) quedan fuera de la fase.** La lista de esta fase no las incluía; se decidirán con los dashboards de `v0.6.0` o con la configuración de `v0.7.0`. Cambiar la prioridad no es una excepción: tiene su propia política de continuidad (RN-88).
+- **La pausa del SLA no necesita columnas nuevas.** Al entrar en `En espera` con una política que pausa, el período se cierra y, al reanudar, se abre otro que arrastra el consumo acumulado: «pausado» significa ticket en `En espera` cuya política pausa. Encaja con que un período cerrado nunca se sobrescribe (`09_modelo_de_datos.md`, 20.3).
+- **El plazo del cierre automático es una variable de entorno** (24 horas por defecto, RN-58) hasta que exista la configuración administrable de `v0.7.0`, como los demás parámetros que dejó `v0.4.0`.
+
 ### SLA
 
 Implementar:
@@ -1046,8 +1070,8 @@ Implementar:
 El SLA se calcula en tiempo laboral, así que el calendario se construye en esta fase como parte del SLA y no como un dato de apoyo:
 
 - tablas `calendarios_laborales`, `horarios_laborales` y `feriados` (`docs/09`, sección 21), con un único calendario global vigente y versionado: guardar un cambio crea una versión nueva y no altera las que ya usan períodos de SLA;
-- **motor de tiempo laboral compartido** (sumar horas laborales, contar días laborales, saltar noches, fines de semana y feriados). Ya existe una versión para el seed `seed-demo-tickets` (`_BusinessClock`): se mueve a un módulo común que usen el SLA y el seed, en lugar de duplicarlo;
-- **pantalla del Administrador** (RF-083; `docs/11`, «Configurar calendario»): días y franjas laborales, feriados, zona horaria y versión vigente, con auditoría de los cambios, enlazada desde la tarjeta «SLA» del hub de administración;
+- **motor de tiempo laboral compartido** (medir y sumar tiempo laboral, contar días laborales, saltar noches, fines de semana y feriados). ✓ Entrega 1: el motor que tenía el seed `seed-demo-tickets` (`_BusinessClock`) pasó a `worktime.py`, con las dos operaciones que necesita el SLA, y lo usarán el SLA y el seed en lugar de duplicarlo (ver `10_arquitectura.md`, «Tiempo laboral»);
+- **pantalla del Administrador** (RF-079; `docs/11`, «Configurar calendario»): días y franjas laborales, feriados, zona horaria y versión vigente, con auditoría de los cambios, enlazada desde la tarjeta «SLA» del hub de administración;
 - **calendario por defecto:** mientras el Administrador no haya guardado ninguno, todo el sistema (el SLA y los datos de demostración) usa `DEMO_CALENDAR` (lunes a viernes de 09:00 a 18:00, sin feriados) y la pantalla lo indica. En cuanto se guarda uno, todos usan el guardado. Una única función resuelve el calendario vigente (`docs/09`, sección 40.8);
 - `seed-demo-tickets` pasa a leer el calendario resuelto (el guardado o el predeterminado): `DEMO_CALENDAR` y la configuración de la interfaz conviven.
 
@@ -1688,7 +1712,7 @@ El siguiente paso del proyecto es `v0.5.0 — SLA y notificaciones internas` (fa
    Pull Request, como se hizo en las fases anteriores.
 ```
 
-`v0.5.0` reutiliza la infraestructura validada en las fases anteriores: las políticas de autorización y su red de seguridad sobre todas las rutas, el historial con su visibilidad por evento, el motor de estados (`change_state` y `apply_derived_transition`, que son por donde pasa todo cambio de estado y, por tanto, donde el SLA tendrá que reaccionar al entrar y salir de `En espera`), el motor de tiempo laboral del seed de demostración, y los patrones de servicio, de confirmación y de administración de catálogos. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
+`v0.5.0` reutiliza la infraestructura validada en las fases anteriores: las políticas de autorización y su red de seguridad sobre todas las rutas, el historial con su visibilidad por evento, el motor de estados (`change_state` y `apply_derived_transition`, que son por donde pasa todo cambio de estado y, por tanto, donde el SLA tendrá que reaccionar al entrar y salir de `En espera`), el motor de tiempo laboral del seed de demostración (que la entrega 1 movió a `worktime.py`), y los patrones de servicio, de confirmación y de administración de catálogos. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
 
 ---
 

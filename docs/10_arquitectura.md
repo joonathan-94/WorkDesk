@@ -787,7 +787,8 @@ src/workdesk/
 ├── cleaning.py     limpieza de textos compartida por servicios y formularios
 ├── formatting.py   fechas en hora local
 ├── navigation.py   navegación por rol
-└── search.py       búsqueda (comodines escapados)
+├── search.py       búsqueda (comodines escapados)
+└── worktime.py     tiempo laboral compartido (v0.5.0): calendario, medir y sumar plazos
 ```
 
 `tickets/` es el módulo más grande, así que lo que ocurre dentro de él es lo que más se ha pensado:
@@ -817,6 +818,29 @@ Dos decisiones se tomaron al cerrar la fase, cuando el tamaño lo justificó, y 
 
 - **`tickets/routes.py` pasó a ser un paquete** al acercarse a las 1850 líneas. Cada módulo registra sus rutas en el mismo blueprint y los nombres de los endpoints son los de siempre (`tickets.detail`, `tickets.edit_ticket`...), así que ninguna URL ni ningún `url_for` cambió. Se comprobó comparando el mapa de rutas antes y después.
 - **El catálogo de acciones de estado salió del motor.** `state_actions.py` declara qué hace cada acción (textos, quién la ejecuta, si es esencial) y `lifecycle.py` solo aplica los cambios. La pantalla de administración de estados lee el mismo catálogo, así que lo que muestra no puede separarse de lo que el código hace; un test lo comprueba.
+
+### Tiempo laboral (`worktime.py`)
+
+Desde `v0.5.0` el cálculo de tiempo laboral vive en un único módulo, pensado para compartirse: hoy lo usan los datos de demostración (`seed-demo-tickets`) y lo usarán el SLA y el planificador. No usa la base de datos: recibe un calendario (`WorkCalendar`: días laborales, jornada y feriados) y una zona horaria, y entrega un `BusinessClock`.
+
+```text
+BusinessClock(calendario, zona)
+├── días        is_workday · previous_workday · next_workday · workdays_before
+├── momentos    into_business · latest_before
+├── medir       business_seconds_between(inicio, fin)  → segundos laborales
+└── avanzar     add_business_seconds(momento, n)       → un vencimiento
+                add_hours(momento, horas)              → un momento de trabajo
+```
+
+Las decisiones del módulo:
+
+- **La jornada incluye la hora de inicio y excluye la de fin.** A las 09:00 ya se trabaja y a las 18:00 ya no.
+- **Hay dos formas de avanzar porque responden a preguntas distintas.** `add_business_seconds` calcula un *vencimiento*: el primer momento en que han corrido los segundos pedidos, así que si se cumplen justo al cerrar el resultado es la hora de cierre (a las 18:00 el plazo se cumplió, aunque a esa hora ya no se trabaje). `add_hours` *planifica*: devuelve siempre un momento en que se trabaja, así que en ese mismo caso pasa a la apertura del día siguiente. El SLA necesita la primera, para que un plazo no parezca vencer «al día siguiente» por un borde; el seed necesita la segunda, para que ningún evento caiga fuera del horario.
+- **Medir y sumar son operaciones inversas.** Medir desde un momento hasta `add_business_seconds(momento, n)` da exactamente `n` segundos, y un segundo antes todavía falta uno. Un test lo comprueba para cientos de momentos y otro compara la medición con un recuento minuto a minuto que no comparte ninguna idea con el motor.
+- **Las fechas llevan zona horaria.** El motor convierte cualquier fecha a la zona del calendario antes de calcular, así que se le pueden pasar tal como salen de la base de datos (en UTC), y rechaza las fechas sin zona (`ValueError`). Se calcula con la hora de pared: se da por hecho que ninguna jornada cruza un cambio de horario de verano (en Chile ocurre a medianoche), y un test comprueba un fin de semana que lo contiene.
+- **Un calendario inválido no llega a construirse.** `calendar_problems` devuelve lo que está mal, con mensajes pensados para mostrarse a quien edita el calendario (los usa el seed y los usará la pantalla del Administrador), y `BusinessClock` lanza `ValueError` si recibe uno: con un calendario sin días laborales, buscar el siguiente día laboral no terminaría nunca.
+- **Por ahora, una sola jornada** igual para todos los días laborales. Las franjas por día de `horarios_laborales` (`09_modelo_de_datos.md`, sección 21.3) llegan con el calendario administrable.
+- **`DEMO_CALENDAR`** (lunes a viernes de 09:00 a 18:00, sin feriados) es el calendario por defecto del proyecto.
 
 ## 28.2. Evolución objetivo
 

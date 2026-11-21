@@ -43,11 +43,11 @@ from src.workdesk.seeds.demo_tickets_data import (
     MARCOLETA,
     MATTA,
     DemoAdjustment,
-    WorkCalendar,
 )
 from src.workdesk.tickets.attachments import attachment_path
 from src.workdesk.tickets.editing import update_ticket
 from src.workdesk.tickets.service import create_ticket
+from src.workdesk.worktime import WorkCalendar
 
 DEMO_PASSWORD = "ClaveDemoSegura2026"
 ZONE = ZoneInfo("America/Santiago")
