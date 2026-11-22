@@ -8,5 +8,9 @@
 # Testing
 pytest==9.1.1
 
+# Ejecución de la suite en paralelo (un esquema de PostgreSQL por proceso;
+# ver README, sección «Tests»).
+pytest-xdist==3.8.0
+
 # Calidad y análisis estático de código
 ruff==0.16.7

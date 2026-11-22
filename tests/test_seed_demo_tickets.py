@@ -1,5 +1,6 @@
 import hashlib
 import re
+import shutil
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -56,6 +57,7 @@ from src.workdesk.tickets.attachments import attachment_path
 from src.workdesk.tickets.editing import update_ticket
 from src.workdesk.tickets.service import create_ticket
 from src.workdesk.worktime import Franja, WorkCalendar, parse_time
+from tests.database import empty_tables, has_snapshot, restore_snapshot, take_snapshot
 
 DEMO_PASSWORD = "ClaveDemoSegura2026"
 ZONE = ZoneInfo("America/Santiago")
@@ -87,15 +89,52 @@ def prepare(app, *, categories=("Redes", "Hardware", "Correo", "Impresoras"),
         db.session.commit()
 
 
+# Cargar los 76 tickets de demostración cuesta unos 2,6 s y casi la mitad de los tests
+# parten de ellos: se cargan una vez por proceso y cada test restaura una copia exacta
+# de la base (ver `tests/database.py`) y de los adjuntos que dejó la carga.
+
+
 @pytest.fixture()
 def prepared(app):
+    """La base como la tendría quien siguió el README hasta antes del seed."""
+    if has_snapshot("demo_prepared"):
+        app.config["APP_TIMEZONE"] = "America/Santiago"
+
+        with app.app_context():
+            restore_snapshot("demo_prepared")
+
+        return
+
     prepare(app)
+
+    with app.app_context():
+        take_snapshot("demo_prepared")
+
+
+@pytest.fixture(scope="session")
+def seeded_uploads(tmp_path_factory):
+    """Los adjuntos que deja la carga de los tickets de demostración."""
+    return tmp_path_factory.mktemp("seeded-uploads")
 
 
 @pytest.fixture()
-def seeded(app, prepared):
+def seeded(app, prepared, seeded_uploads):
+    uploads = Path(app.config["UPLOADS_DIR"])
+
+    if has_snapshot("demo_seeded"):
+        with app.app_context():
+            result = restore_snapshot("demo_seeded")
+
+        shutil.copytree(seeded_uploads, uploads, dirs_exist_ok=True)
+
+        return result
+
     with app.app_context():
         result = seed_demo_tickets(now=NOW)
+        take_snapshot("demo_seeded", extra=result)
+
+    if uploads.exists():
+        shutil.copytree(uploads, seeded_uploads, dirs_exist_ok=True)
 
     return result
 
@@ -879,8 +918,7 @@ def test_refreshing_gives_the_same_dates_as_a_fresh_load_on_the_new_day(app, pre
         fresh = date_snapshot()
 
         db.session.remove()
-        db.drop_all()
-        db.create_all()
+        empty_tables()
 
     prepare(app)
 
@@ -1281,8 +1319,7 @@ def test_refreshing_equals_a_fresh_load_with_a_custom_calendar(app, prepared):
         fresh = date_snapshot()
 
         db.session.remove()
-        db.drop_all()
-        db.create_all()
+        empty_tables()
 
     prepare(app)
 

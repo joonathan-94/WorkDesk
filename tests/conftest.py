@@ -1,56 +1,104 @@
-import os
+import functools
 
 import pytest
-from sqlalchemy.engine import make_url
 
 from src.workdesk import create_app
 from src.workdesk.extensions import db
 from src.workdesk.models import Categoria, Prioridad, Role, Ubicacion, User
 from src.workdesk.security import hash_password
 from src.workdesk.seeds import seed_catalogs, seed_roles
+from tests.areas import AREA_BY_MODULE
+from tests.database import (
+    checked_database_url,
+    create_schema,
+    drop_schema,
+    empty_tables,
+    engine_options,
+)
 
 TEST_PASSWORD = "WorkDeskTest123!"
 
 
-@pytest.fixture()
-def app(tmp_path):
-    test_database_url = os.getenv("TEST_DATABASE_URL")
+@functools.cache
+def _test_password_hash() -> str:
+    """El hash Argon2id de `TEST_PASSWORD`, calculado una sola vez por proceso.
 
-    if not test_database_url:
-        raise RuntimeError(
-            "Falta TEST_DATABASE_URL para ejecutar los tests."
-        )
+    Cada usuario de prueba usa el mismo: calcularlo de nuevo costaría unos 50 ms por
+    usuario. Es un hash real de Argon2id con los parámetros por defecto, así que el
+    login de los tests sigue verificándolo con el código de producción.
+    """
+    return hash_password(TEST_PASSWORD)
 
-    database_name = make_url(test_database_url).database
 
-    if database_name != "workdesk_test":
-        raise RuntimeError(
-            "Los tests solo pueden ejecutarse sobre workdesk_test."
-        )
+def _app_config(uploads_dir) -> dict:
+    # `checked_database_url` es la protección crítica: se llama siempre antes de
+    # construir una aplicación que pueda borrar o crear tablas.
+    config = {
+        "TESTING": True,
+        "APP_ENV": "testing",
+        "SECRET_KEY": "test-secret-key",
+        "SQLALCHEMY_DATABASE_URI": checked_database_url(),
+        "WTF_CSRF_ENABLED": False,
+        "SESSION_COOKIE_SECURE": False,
+        # Los adjuntos de los tests van a un directorio temporal: nunca
+        # tocan `instance/uploads`.
+        "UPLOADS_DIR": str(uploads_dir),
+    }
+    options = engine_options()
 
-    app = create_app(
-        {
-            "TESTING": True,
-            "APP_ENV": "testing",
-            "SECRET_KEY": "test-secret-key",
-            "SQLALCHEMY_DATABASE_URI": test_database_url,
-            "WTF_CSRF_ENABLED": False,
-            "SESSION_COOKIE_SECURE": False,
-            # Los adjuntos de los tests van a un directorio temporal: nunca
-            # tocan `instance/uploads`.
-            "UPLOADS_DIR": str(tmp_path / "uploads"),
-        }
-    )
+    if options:
+        config["SQLALCHEMY_ENGINE_OPTIONS"] = options
+
+    return config
+
+
+def pytest_collection_modifyitems(items):
+    """Marca cada test con su área y, si no usa la base de datos, como `unit`.
+
+    Permite ejecutar solo una parte de la suite (`pytest -m sla`, `pytest -m unit`...).
+    Ver `tests/areas.py`.
+    """
+    for item in items:
+        module = item.path.stem
+        area = AREA_BY_MODULE.get(module)
+
+        if area is None:
+            raise pytest.UsageError(
+                f"El módulo de tests «{module}» no pertenece a ningún área: "
+                "añádelo a AREAS en tests/areas.py."
+            )
+
+        item.add_marker(getattr(pytest.mark, area))
+
+        if "app" not in item.fixturenames:
+            item.add_marker(pytest.mark.unit)
+
+
+@pytest.fixture(scope="session")
+def _schema(tmp_path_factory):
+    """El esquema de la base de pruebas: se crea una vez y se elimina al terminar."""
+    app = create_app(_app_config(tmp_path_factory.mktemp("schema")))
 
     with app.app_context():
-        db.drop_all()
-        db.create_all()
+        create_schema()
+
+    yield
+
+    with app.app_context():
+        drop_schema()
+        db.engine.dispose()
+
+
+@pytest.fixture()
+def app(tmp_path, _schema):
+    app = create_app(_app_config(tmp_path / "uploads"))
 
     yield app
 
     with app.app_context():
         db.session.remove()
-        db.drop_all()
+        # Cada test empieza con la base vacía (ver `tests/database.py`).
+        empty_tables()
 
         # Cada test crea su propia app y su propio engine. Sin cerrar su
         # pool, las conexiones se acumulan hasta agotar max_connections de
@@ -129,7 +177,7 @@ def make_user(app):
                 "apellido": "Pruebas",
                 "username": username,
                 "email": f"{username}@workdesk.local",
-                "password_hash": hash_password(TEST_PASSWORD),
+                "password_hash": _test_password_hash(),
                 "rol_id": role.id,
             }
             values.update(extra)
@@ -165,7 +213,7 @@ def admin_user(app):
             apellido="Pruebas",
             username="admin_test",
             email="admin.test@workdesk.local",
-            password_hash=hash_password(TEST_PASSWORD),
+            password_hash=_test_password_hash(),
             rol_id=admin_role.id,
         )
 

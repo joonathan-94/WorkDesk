@@ -328,7 +328,9 @@ WorkDesk/
 │       └── worktime.py
 │
 ├── tests/
+│   ├── areas.py
 │   ├── conftest.py
+│   ├── database.py
 │   ├── test_account_password.py
 │   ├── test_account_profile.py
 │   ├── test_app.py
@@ -359,6 +361,7 @@ WorkDesk/
 │   ├── test_sla_policy_forms.py
 │   ├── test_state_actions.py
 │   ├── test_states_admin.py
+│   ├── test_suite_infrastructure.py
 │   ├── test_system.py
 │   ├── test_ticket_assignment.py
 │   ├── test_ticket_attachments.py
@@ -395,6 +398,7 @@ WorkDesk/
 ├── CLAUDE.md
 ├── PROJECT_CONTEXT.md
 ├── README.md
+├── pytest.ini
 ├── requirements.txt
 └── requirements-dev.txt
 ```
@@ -1058,7 +1062,9 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | El puerto 5000 está ocupado | Otro programa lo usa (en macOS, AirPlay). | Añade `--port 5001` al comando de arranque. |
 | Tests: "Falta TEST_DATABASE_URL para ejecutar los tests." | `.env` no define `TEST_DATABASE_URL`. | Defínela apuntando a `workdesk_test`. |
 | Tests: "Los tests solo pueden ejecutarse sobre workdesk_test." | `TEST_DATABASE_URL` apunta a otra base. | Corrígela. La protección es intencional: protege `workdesk_dev`. |
-| Tests que fallan al azar con tablas que "no existen" | Hay dos ejecuciones de `pytest` a la vez sobre `workdesk_test`. | Ejecuta una sola cada vez: comparten la misma base y cada una recrea sus tablas. |
+| Tests que fallan al azar con tablas que "no existen" | Hay dos ejecuciones de `pytest` a la vez sobre `workdesk_test`. | Ejecuta una sola cada vez: comparten la misma base y, al terminar, cada una elimina el esquema que usa. |
+| Tests: `unrecognized arguments: -n` | No está instalado `pytest-xdist` (entorno anterior a esta versión). | Ejecuta `python -m pip install -r requirements-dev.txt`, o corre la suite en serie sin `-n`. |
+| Tests: «El módulo de tests ... no pertenece a ningún área» | Se añadió un archivo `tests/test_*.py` sin registrarlo. | Añádelo a `AREAS` en `tests/areas.py`. |
 
 ---
 
@@ -1285,7 +1291,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-2983 tests
+3006 tests
 ```
 
 Los tests cubren principalmente:
@@ -1318,17 +1324,56 @@ Los tests cubren principalmente:
 - notificaciones internas: el vocabulario de eventos (con su nombre y su icono), las restricciones de la base de datos (lectura coherente y un mensaje que no sea solo espacios o saltos de línea), que el contenido no se pueda reescribir pero la lectura sí, que marcar de nuevo no cambie la fecha de la primera lectura (ni con dos pestañas a la vez), que cada consulta devuelva solo las notificaciones de quien las pide (la de otra persona responde 404), que no se notifique a un usuario inactivo ni dos veces a la misma persona, el listado (filtro, orden, paginación y ausencia de consultas por fila), el contador y la campana, los formularios con su token CSRF y que el comando `seed-demo-notifications` solo apunte a tickets que cada persona puede ver;
 - avisos por los eventos de un ticket: a quién avisa cada operación (asignar, escalar, cambiar el estado y comentar), que nunca se avise a quien hizo el cambio, que un Solicitante no reciba nada interno (notas, escalamientos, motivos ni el texto de los comentarios), que los avisos se revierten con la operación y que el seed de tickets de demostración no deje avisos sin leer.
 
-Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas.
+Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas. `requirements-dev.txt` trae lo necesario, incluido `pytest-xdist` para ejecutarla en paralelo.
 
-Ejecutar:
+### Ejecutar los tests
 
-```bash
-python -m pytest -q
-```
+| Qué quieres | Comando |
+| --- | --- |
+| **La suite completa** (antes de un commit o de un Pull Request), en paralelo | `python -m pytest -n 6` |
+| La suite completa, en serie | `python -m pytest` |
+| Solo un área | `python -m pytest -m sla` |
+| Varias áreas | `python -m pytest -m "tickets or notifications"` |
+| Solo los tests que no usan la base de datos (segundos) | `python -m pytest -m unit` |
+| Un archivo o un solo test | `python -m pytest tests/test_worktime.py` · `python -m pytest tests/test_worktime.py::nombre_del_test` |
+| Solo lo que falló la última vez | `python -m pytest --lf` |
+| Los 10 tests más lentos | `python -m pytest --durations=10` |
 
-La suite completa tarda varios minutos (unos 30 en el equipo de desarrollo del proyecto), porque cada test parte de una base recién creada. No es un cuelgue.
+Cada test lleva el marcador de su **área** (la lista de módulos de cada una está en `tests/areas.py`):
 
-Ejecuta **una sola vez a la vez**: todas las ejecuciones comparten `workdesk_test` y cada test recrea las tablas, de modo que dos ejecuciones en paralelo se estorban y fallan de forma aleatoria.
+| Área | Qué cubre |
+| --- | --- |
+| `platform` | La aplicación, las rutas, el layout, el formato, los comandos, la auditoría y la propia suite |
+| `auth` | Autenticación, sesiones, contraseñas, roles y «Mi cuenta» |
+| `users` | Administración de usuarios |
+| `groups` | Grupos, miembros y supervisores responsables |
+| `catalogs` | Catálogos de tickets, motivos de espera, estados y transiciones |
+| `tickets` | El núcleo de tickets y todo su ciclo de vida |
+| `sla` | Tiempo laboral, calendario, políticas y períodos de SLA |
+| `notifications` | Notificaciones internas y los avisos por eventos |
+| `seeds` | Los comandos que cargan datos de demostración |
+| `unit` | Se asigna sola a los tests que no usan la base de datos |
+
+**Qué correr mientras desarrollas.** Las áreas se apoyan unas en otras (los servicios de tickets alimentan al SLA, a los avisos y a los datos de demostración), así que según lo que toques basta con:
+
+| Si tocas | Corre |
+| --- | --- |
+| `tickets/` | `-m "tickets or sla or notifications or seeds"` |
+| `sla/` o `worktime.py` | `-m "sla or tickets or seeds"` |
+| `notifications/` | `-m "notifications or tickets"` |
+| `auth/`, `security/` o `account/` | `-m "auth or platform"` |
+| `users/`, `groups/` o `catalogs/` | `-m "users or groups or catalogs"` |
+| `seeds/` | `-m seeds` |
+| Una plantilla, CSS o JavaScript | El área de esa pantalla y `-m platform` |
+| Modelos o migraciones | La suite completa |
+
+Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
+
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **4 minutos en paralelo** (`-n 6`) y unos **13 en serie**; antes de optimizarla eran unos 34. El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+
+Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
+
+### Cómo se aísla cada test
 
 Los tests utilizan exclusivamente:
 
@@ -1336,7 +1381,17 @@ Los tests utilizan exclusivamente:
 workdesk_test
 ```
 
-La configuración incorpora una protección adicional para evitar que la suite pueda ejecutarse accidentalmente sobre `workdesk_dev`: si la base de `TEST_DATABASE_URL` no se llama `workdesk_test`, la suite se niega a ejecutarse.
+La protección es `checked_database_url` (en `tests/database.py`): si la base de `TEST_DATABASE_URL` no se llama `workdesk_test`, la suite se niega a ejecutarse, y todo lo que crea o vacía tablas la llama antes de tocar nada. `tests/test_suite_infrastructure.py` comprueba que rechaza cualquier otra base (por ejemplo, `workdesk_dev`).
+
+Preparar una base limpia para cada uno de los miles de tests era lo que más tiempo consumía (el 83 % del total en una muestra medida), así que la suite trabaja así:
+
+- **El esquema se crea una vez** por sesión (una vez por proceso al ejecutar en paralelo) y se elimina al terminar.
+- **Entre un test y el siguiente solo se vacían las tablas que quedaron con filas** y se reinician las secuencias: cada test sigue empezando con la base vacía y los identificadores en 1. No se envuelve cada test en una transacción que se deshace, porque la aplicación y los tests dependen de confirmaciones reales (`now()` cambia entre transacciones y los tests con hilos usan conexiones distintas).
+- **Los estados caros de construir se guardan en una instantánea.** Los 76 tickets de demostración se cargan una vez por proceso (unos 2,6 s) y cada test restaura una copia exacta en milisegundos.
+- **En paralelo, cada proceso trabaja en su propio esquema de PostgreSQL** (`wd_test_gw0`, `wd_test_gw1`...) dentro de la misma base `workdesk_test`: no hay que crear bases nuevas y la protección sigue valiendo.
+- **El hash de la contraseña de prueba se calcula una sola vez** por proceso (es un hash real de Argon2id con los parámetros de producción; el login de los tests lo verifica con el código real).
+
+Ejecuta **una sola suite a la vez**: todas comparten `workdesk_test` (y, en paralelo, los mismos nombres de esquema), de modo que dos ejecuciones simultáneas se estorban y fallan de forma aleatoria.
 
 ---
 
@@ -1392,8 +1447,12 @@ python -m flask --app src.workdesk seed-demo-notifications
 # Ver rutas
 python -m flask --app src.workdesk routes
 
-# Ejecutar tests
-python -m pytest -q
+# Ejecutar la suite completa en paralelo (antes de un commit o un Pull Request)
+python -m pytest -n 6
+
+# Ejecutar solo un área (por ejemplo, SLA) o los tests sin base de datos
+python -m pytest -m sla
+python -m pytest -m unit
 
 # Ejecutar Ruff
 ruff check src/workdesk tests
