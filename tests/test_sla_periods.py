@@ -13,7 +13,6 @@ Crítica 30 min / 4 h / 75 %.
 
 import threading
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import update
@@ -24,9 +23,6 @@ from src.workdesk.models import (
     Comment,
     Estado,
     PeriodoSla,
-    PoliticaSla,
-    Prioridad,
-    StateAction,
     Ticket,
     TicketHistory,
     TicketRequester,
@@ -47,32 +43,28 @@ from src.workdesk.sla.periods import (
 from src.workdesk.sla.work_calendar import save_work_calendar
 from src.workdesk.tickets.comments import add_comment, delete_comment
 from src.workdesk.tickets.editing import change_priority
-from src.workdesk.tickets.lifecycle import change_state
 from src.workdesk.tickets.service import TicketRuleError, create_ticket
 from src.workdesk.tickets.versioning import TicketConflictError
 from src.workdesk.worktime import Franja, parse_time
+from tests.sla_helpers import (
+    HOUR,
+    ZONE,
+    FakeClock,
+    at,
+    close,
+    hold,
+    new_ticket,
+    policy_of,
+    priority_id,
+    reopen,
+    resolve,
+    resume,
+    set_priority,
+    work_on,
+)
 from tests.ticket_helpers import person
 
-ZONE = ZoneInfo("America/Santiago")
-HOUR = 3600
-
-
-def at(day, hour=0, minute=0):
-    """Un momento de noviembre de 2026 en Santiago (lun 16 ... vie 20, sáb 21)."""
-    return datetime(2026, 11, day, hour, minute, tzinfo=ZONE)
-
-
 # --- Auxiliares -------------------------------------------------------------
-
-
-class FakeClock:
-    """«La hora» que ven los períodos: se mueve a mano."""
-
-    def __init__(self):
-        self.now = at(16, 10)
-
-    def set(self, moment):
-        self.now = moment
 
 
 @pytest.fixture()
@@ -97,77 +89,6 @@ def other_staff(make_user, staff):
 @pytest.fixture()
 def requester(make_user, catalog):
     return make_user("SOLICITANTE", username="solicitante")
-
-
-def priority_id(code) -> int:
-    return db.session.scalar(db.select(Prioridad.id).where(Prioridad.codigo == code))
-
-
-def policy_of(code) -> PoliticaSla:
-    return db.session.scalar(
-        db.select(PoliticaSla)
-        .join(Prioridad, Prioridad.id == PoliticaSla.prioridad_id)
-        .where(Prioridad.codigo == code)
-    )
-
-
-def new_ticket(catalog, creator_id, code="MEDIA") -> Ticket:
-    ticket = create_ticket(
-        actor=person(creator_id),
-        title="Problema con el correo",
-        description="No puedo enviar mensajes.",
-        category_id=catalog["hardware"],
-        priority_id=priority_id(code),
-    )
-    db.session.commit()
-
-    return ticket
-
-
-def act(ticket, actor_id, action, **extra) -> None:
-    change_state(
-        ticket,
-        actor=person(actor_id),
-        action=action,
-        expected_version=ticket.version,
-        **extra,
-    )
-    db.session.commit()
-
-
-def set_priority(ticket, actor_id, code, reason="Cambia el impacto") -> None:
-    change_priority(
-        ticket,
-        actor=person(actor_id),
-        expected_version=ticket.version,
-        priority_id=priority_id(code),
-        reason=reason,
-    )
-    db.session.commit()
-
-
-def work_on(ticket, actor_id) -> None:
-    act(ticket, actor_id, StateAction.INICIAR)
-
-
-def hold(ticket, actor_id) -> None:
-    act(ticket, actor_id, StateAction.PONER_EN_ESPERA)
-
-
-def resume(ticket, actor_id) -> None:
-    act(ticket, actor_id, StateAction.REACTIVAR)
-
-
-def resolve(ticket, actor_id) -> None:
-    act(ticket, actor_id, StateAction.RESOLVER)
-
-
-def reopen(ticket, actor_id) -> None:
-    act(ticket, actor_id, StateAction.REABRIR)
-
-
-def close(ticket, actor_id) -> None:
-    act(ticket, actor_id, StateAction.CIERRE_DIRECTO)
 
 
 def shape(period: PeriodoSla) -> tuple:

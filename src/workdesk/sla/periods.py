@@ -23,6 +23,11 @@ reglas que lo gobiernan:
   después la política no altera el SLA que un ticket ya tiene en curso. Solo un
   cambio de prioridad toma la política vigente de la prioridad nueva. Una
   prioridad sin política activa no tiene SLA.
+- **El aviso de «próximo a vencer»** también se calcula al abrir el período: se copia
+  el umbral de la política y se guarda el momento (en tiempo laboral) en que el consumo
+  lo alcanza, igual que el vencimiento. Así el estado del SLA se puede filtrar y
+  ordenar en la base de datos (`queries.py`) y se evalúa por lotes sin una consulta por
+  ticket (`evaluate_tickets_sla`).
 - **Primera respuesta** es el primer comentario público del personal.
 
 `reconcile_sla` es el único punto de entrada de los cambios en vivo: la creación
@@ -32,6 +37,8 @@ idempotente. Ninguna función hace commit: los períodos se confirman o se revie
 junto con la operación que los provocó.
 """
 
+from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -81,6 +88,15 @@ class SlaStatus(StrEnum):
     PAUSADO = "PAUSADO"
 
 
+# Nombre visible de cada estado del SLA.
+SLA_STATUS_LABELS = {
+    SlaStatus.DENTRO: "Dentro de SLA",
+    SlaStatus.PROXIMO_A_VENCER: "Próximo a vencer",
+    SlaStatus.VENCIDO: "Vencido",
+    SlaStatus.PAUSADO: "Pausado",
+}
+
+
 @dataclass(frozen=True)
 class _Terms:
     """Las condiciones que se copian a un período nuevo."""
@@ -89,6 +105,7 @@ class _Terms:
     response_minutes: int | None
     resolution_minutes: int
     pause_on_hold: bool
+    warning_percent: int | None
 
     @classmethod
     def of_policy(cls, policy: PoliticaSla) -> "_Terms":
@@ -97,6 +114,7 @@ class _Terms:
             response_minutes=policy.tiempo_objetivo_respuesta_minutos,
             resolution_minutes=policy.tiempo_objetivo_resolucion_minutos,
             pause_on_hold=policy.pausa_en_espera,
+            warning_percent=policy.umbral_aviso_consumo_porcentaje,
         )
 
     @classmethod
@@ -106,7 +124,15 @@ class _Terms:
             response_minutes=period.tiempo_objetivo_respuesta_minutos,
             resolution_minutes=period.tiempo_objetivo_resolucion_minutos,
             pause_on_hold=period.pausa_en_espera,
+            warning_percent=period.umbral_aviso_porcentaje,
         )
+
+
+def warning_seconds(objective_seconds: int, percent: int) -> int:
+    """Los segundos laborales de consumo en que se alcanza el umbral de aviso: el menor
+    consumo `c` tal que `c * 100 // objetivo >= porcentaje`, es decir, el entero
+    siguiente a `objetivo * porcentaje / 100` (si no es exacto)."""
+    return -(-objective_seconds * percent // 100)
 
 
 @dataclass(frozen=True)
@@ -128,6 +154,11 @@ class SlaSnapshot:
     @property
     def remaining_seconds(self) -> int:
         return max(self.objective_seconds - self.consumed_seconds, 0)
+
+    @property
+    def overdue_seconds(self) -> int:
+        """Lo que el consumo pasa del objetivo (0 si todavía no lo alcanza)."""
+        return max(self.consumed_seconds - self.objective_seconds, 0)
 
 
 # --- Consultas ------------------------------------------------------------------
@@ -159,17 +190,25 @@ def first_response_at(ticket_id: int) -> datetime | None:
     Es el primer comentario público del personal que sigue visible. Asignar el
     ticket o cambiar su estado no cuenta (fase 5 del roadmap).
     """
-    return db.session.scalar(
-        db.select(func.min(Comment.fecha_creacion))
+    return _first_responses([ticket_id]).get(ticket_id)
+
+
+def _first_responses(ticket_ids: Iterable[int]) -> dict[int, datetime]:
+    """La primera respuesta de cada ticket que ya la tiene, en una sola consulta."""
+    rows = db.session.execute(
+        db.select(Comment.ticket_id, func.min(Comment.fecha_creacion))
         .join(User, User.id == Comment.autor_usuario_id)
         .join(Role, Role.id == User.rol_id)
         .where(
-            Comment.ticket_id == ticket_id,
+            Comment.ticket_id.in_(list(ticket_ids)),
             Comment.tipo == CommentType.PUBLICO.value,
             Comment.activo.is_(True),
             Role.codigo.in_([role.value for role in STAFF_ROLES]),
         )
-    )
+        .group_by(Comment.ticket_id)
+    ).all()
+
+    return dict(rows)
 
 
 def accumulated_seconds(ticket_id: int) -> int:
@@ -278,13 +317,17 @@ def _open(
     """Abre un período con lo que le queda al ticket de sus objetivos."""
     resolved = resolve_work_calendar()
     consumed = accumulated_seconds(ticket_id)
-    due = response_due = None
+    due = response_due = warning_due = None
 
     if mode is SlaMode.RUNNING:
         clock = resolved.clock
         due = clock.add_business_seconds(
             now, max(terms.resolution_minutes * 60 - consumed, 0)
         )
+
+        if terms.warning_percent is not None:
+            warning = warning_seconds(terms.resolution_minutes * 60, terms.warning_percent)
+            warning_due = clock.add_business_seconds(now, max(warning - consumed, 0))
         responded = first_response_at(ticket_id)
 
         if terms.response_minutes is not None and (
@@ -306,6 +349,8 @@ def _open(
         segundos_consumidos=0,
         fecha_vencimiento_respuesta=response_due,
         fecha_vencimiento_resolucion=due,
+        umbral_aviso_porcentaje=terms.warning_percent,
+        fecha_umbral_aviso=warning_due,
         usuario_cambio_id=actor_id,
         motivo_cambio=reason,
     )
@@ -331,10 +376,27 @@ def _close(period: PeriodoSla, now: datetime) -> None:
 
 def _clock_of(period: PeriodoSla) -> BusinessClock:
     """El reloj del calendario con que se calculó el período."""
-    if period.calendario_laboral_id is None:
-        return BusinessClock(DEMO_CALENDAR, app_zone())
+    return _ClockCache().of(period)
 
-    return clock_for(db.session.get(CalendarioLaboral, period.calendario_laboral_id))
+
+class _ClockCache:
+    """Un reloj por cada calendario distinto: la mayoría de los períodos comparten uno,
+    así que evaluar muchos tickets no construye uno por ticket."""
+
+    def __init__(self) -> None:
+        self._clocks: dict[int | None, BusinessClock] = {}
+
+    def of(self, period: PeriodoSla) -> BusinessClock:
+        key = period.calendario_laboral_id
+
+        if key not in self._clocks:
+            self._clocks[key] = (
+                BusinessClock(DEMO_CALENDAR, app_zone())
+                if key is None
+                else clock_for(db.session.get(CalendarioLaboral, key))
+            )
+
+        return self._clocks[key]
 
 
 def _active_policy(priority_id: int) -> PoliticaSla | None:
@@ -371,34 +433,98 @@ def evaluate_ticket_sla(
     ticket_id: int, now: datetime | None = None
 ) -> SlaSnapshot | None:
     """Cómo está el SLA del ticket en `now` (por defecto, ahora), o None si nunca
-    tuvo SLA.
+    tuvo SLA. Ver `evaluate_tickets_sla`, que hace lo mismo para varios a la vez."""
+    return evaluate_tickets_sla([ticket_id], now).get(ticket_id)
 
-    Mira el período más reciente: vigente (corriendo o pausado) o, si el ticket se
-    resolvió o cerró, el último que tuvo. El consumo suma el de los períodos
-    anteriores. Un incumplimiento ya ocurrido no se borra: si algún período
-    venció, el ticket sigue vencido aunque después baje de prioridad (RN-88).
+
+def evaluate_tickets_sla(
+    ticket_ids: Iterable[int], now: datetime | None = None
+) -> dict[int, SlaSnapshot | None]:
+    """Cómo está el SLA de cada ticket en `now` (por defecto, ahora), con un número
+    fijo de consultas: no una por ticket (es lo que usa el listado).
+
+    Devuelve una entrada por cada ticket pedido: su `SlaSnapshot`, o None si no tiene
+    SLA (nunca tuvo períodos o su prioridad no tiene política). Mira el período más
+    reciente: vigente (corriendo o pausado) o, si el ticket se resolvió o cerró, el
+    último que tuvo. El consumo suma el de los períodos anteriores. Un incumplimiento
+    ya ocurrido no se borra: si algún período venció, el ticket sigue vencido aunque
+    después baje de prioridad (RN-88).
     """
+    ids = list(dict.fromkeys(ticket_ids))
+
+    if not ids:
+        return {}
+
     now = now or current_time()
-    periods = list_periods(ticket_id)
+    periods = _periods_by_ticket(ids)
+    # Un ticket cuyo último período está cerrado solo tiene SLA si terminó (resuelto o
+    # cerrado). Si no, es que su prioridad no tiene política.
+    finished = [tid for tid, rows in periods.items() if rows[-1].fecha_fin is not None]
+    stopped = _stopped_among(finished)
+    answered = _first_responses(periods)
+    clocks = _ClockCache()
 
-    if not periods:
-        return None
+    return {
+        ticket_id: (
+            _snapshot(
+                periods[ticket_id],
+                now,
+                answered.get(ticket_id),
+                clocks,
+                stopped=ticket_id in stopped,
+            )
+            if ticket_id in periods
+            else None
+        )
+        for ticket_id in ids
+    }
 
+
+def _periods_by_ticket(ticket_ids: list[int]) -> dict[int, list[PeriodoSla]]:
+    grouped: dict[int, list[PeriodoSla]] = defaultdict(list)
+
+    for period in db.session.scalars(
+        db.select(PeriodoSla)
+        .where(PeriodoSla.ticket_id.in_(ticket_ids))
+        .order_by(PeriodoSla.ticket_id, PeriodoSla.fecha_inicio, PeriodoSla.id)
+    ):
+        grouped[period.ticket_id].append(period)
+
+    return dict(grouped)
+
+
+def _stopped_among(ticket_ids: list[int]) -> set[int]:
+    """Cuáles de estos tickets están resueltos o cerrados."""
+    if not ticket_ids:
+        return set()
+
+    return set(
+        db.session.scalars(
+            db.select(Ticket.id)
+            .join(Estado, Estado.id == Ticket.estado_id)
+            .where(Ticket.id.in_(ticket_ids), Estado.codigo.in_(sorted(STOPPING_STATES)))
+        )
+    )
+
+
+def _snapshot(
+    periods: list[PeriodoSla],
+    now: datetime,
+    responded_at: datetime | None,
+    clocks: "_ClockCache",
+    *,
+    stopped: bool,
+) -> SlaSnapshot | None:
     period = periods[-1]
 
-    # Sin un período vigente solo hay SLA que mostrar si el ticket terminó (resuelto
-    # o cerrado). Si no, es que su prioridad no tiene política: no tiene SLA.
-    if period.fecha_fin is not None:
-        ticket = db.session.get(Ticket, ticket_id)
-
-        if db.session.get(Estado, ticket.estado_id).codigo not in STOPPING_STATES:
-            return None
+    if period.fecha_fin is not None and not stopped:
+        return None
 
     earlier = periods[:-1]
     running = period.segundos_consumidos
 
     if period.esta_vigente and not period.esta_pausado:
-        running = _clock_of(period).business_seconds_between(
+        running = clocks.of(period).business_seconds_between(
             period.fecha_inicio, max(now, period.fecha_inicio)
         )
 
@@ -410,13 +536,13 @@ def evaluate_ticket_sla(
         and p.fecha_vencimiento_resolucion <= p.fecha_fin
         for p in earlier
     )
-    responded_at = first_response_at(ticket_id)
+    closed = period.fecha_fin is not None
 
     if breached:
         status = SlaStatus.VENCIDO
     elif period.esta_pausado:
         status = SlaStatus.PAUSADO
-    elif _warns(period, percent):
+    elif not closed and _warning_reached(period, now):
         status = SlaStatus.PROXIMO_A_VENCER
     else:
         status = SlaStatus.DENTRO
@@ -432,22 +558,15 @@ def evaluate_ticket_sla(
         responded_at=responded_at,
         response_overdue=_response_overdue(period, responded_at, now),
         breached=breached,
-        closed=period.fecha_fin is not None,
+        closed=closed,
     )
 
 
-def _warns(period: PeriodoSla, percent: int) -> bool:
-    """Si el consumo alcanzó el umbral de aviso de la política de origen."""
-    if period.politica_sla_id is None:
-        return False
-
-    threshold = db.session.scalar(
-        db.select(PoliticaSla.umbral_aviso_consumo_porcentaje).where(
-            PoliticaSla.id == period.politica_sla_id
-        )
-    )
-
-    return threshold is not None and percent >= threshold
+def _warning_reached(period: PeriodoSla, now: datetime) -> bool:
+    """Si ya llegó la fecha de aviso del período (guardada al abrirlo; sin ella, que es
+    lo que tienen los períodos anteriores a esta fecha hasta `sla-rebuild`, no hay
+    aviso)."""
+    return period.fecha_umbral_aviso is not None and now >= period.fecha_umbral_aviso
 
 
 def _response_overdue(
@@ -462,6 +581,39 @@ def _response_overdue(
         return now >= due
 
     return responded_at > due
+
+
+def fill_missing_warning_dates() -> int:
+    """Calcula la fecha de aviso de los períodos en marcha que todavía no la tienen.
+
+    Son los que abrió una versión anterior a la fecha de aviso: la migración les copió
+    el umbral de su política, pero el momento en que el consumo lo alcanza se calcula
+    en tiempo laboral, con el calendario del propio período. Es idempotente y no toca
+    los períodos cerrados ni los pausados. Devuelve cuántos completó. No hace commit.
+    """
+    pending = db.session.scalars(
+        db.select(PeriodoSla).where(
+            PeriodoSla.fecha_fin.is_(None),
+            PeriodoSla.fecha_vencimiento_resolucion.is_not(None),
+            PeriodoSla.umbral_aviso_porcentaje.is_not(None),
+            PeriodoSla.fecha_umbral_aviso.is_(None),
+        )
+    ).all()
+    clocks = _ClockCache()
+
+    for period in pending:
+        warning = warning_seconds(
+            period.tiempo_objetivo_resolucion_minutos * 60,
+            period.umbral_aviso_porcentaje,
+        )
+        consumed = accumulated_seconds(period.ticket_id)
+        period.fecha_umbral_aviso = clocks.of(period).add_business_seconds(
+            period.fecha_inicio, max(warning - consumed, 0)
+        )
+
+    db.session.flush()
+
+    return len(pending)
 
 
 # --- Reconstrucción desde el historial ----------------------------------------------

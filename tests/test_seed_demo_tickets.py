@@ -16,6 +16,7 @@ from src.workdesk.models import (
     Comment,
     Estado,
     Notificacion,
+    PeriodoSla,
     Prioridad,
     Ticket,
     TicketEvent,
@@ -1024,6 +1025,26 @@ def test_adding_a_ticket_to_the_list_creates_only_the_new_one(app, seeded):
         assert result.created == 1
         assert result.refreshed == len(DEMO_TICKETS)
         assert count(Ticket) == len(DEMO_TICKETS) + 1
+
+
+def test_every_running_demo_period_has_its_warning_date(app, seeded):
+    # Los períodos que abre la carga guardan cuándo alcanzan el umbral de aviso: es lo que
+    # permite filtrar por «próximo a vencer» en el listado.
+    with app.app_context():
+        running = db.session.scalars(
+            db.select(PeriodoSla).where(
+                PeriodoSla.fecha_fin.is_(None),
+                PeriodoSla.fecha_vencimiento_resolucion.is_not(None),
+            )
+        ).all()
+
+        assert running
+        assert all(p.umbral_aviso_porcentaje is not None for p in running)
+        assert all(p.fecha_umbral_aviso is not None for p in running)
+        assert all(
+            p.fecha_inicio <= p.fecha_umbral_aviso <= p.fecha_vencimiento_resolucion
+            for p in running
+        )
 
 
 def test_the_demo_tickets_do_not_flood_anyone_with_notifications(app, seeded):

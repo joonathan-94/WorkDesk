@@ -76,6 +76,60 @@
 {% endmacro %}
 
 {# Prioridad de un ticket (docs/11, sección 28). #}
+{# Insignia del SLA de un ticket (docs/11, sección 29). `snapshot` es lo que devuelve
+   `evaluate_tickets_sla` (None si el ticket no tiene SLA). El SLA es solo del personal:
+   quien llama decide si la muestra. Con `show_time` añade, debajo, el tiempo que
+   queda o que se pasó (tiempo laboral). #}
+{% macro sla_badge(snapshot, show_time=True) %}
+    {% if snapshot is none %}
+        <span class="badge badge-soft badge-soft-neutral">Sin SLA</span>
+    {% else %}
+        {% set status = snapshot.status.value %}
+        {% set style = {
+            'DENTRO': 'success',
+            'PROXIMO_A_VENCER': 'warning',
+            'VENCIDO': 'danger',
+            'PAUSADO': 'neutral',
+        }[status] %}
+        {% set icon = {
+            'DENTRO': 'check-circle',
+            'PROXIMO_A_VENCER': 'exclamation-circle',
+            'VENCIDO': 'exclamation-triangle',
+            'PAUSADO': 'pause-circle',
+        }[status] %}
+        {% set label = {
+            'DENTRO': 'Dentro de SLA',
+            'PROXIMO_A_VENCER': 'Próximo a vencer',
+            'VENCIDO': 'Vencido',
+            'PAUSADO': 'Pausado',
+        }[status] %}
+
+        <span class="badge badge-soft badge-soft-{{ style }}">
+            <i
+                class="bi bi-{{ icon }} me-1"
+                aria-hidden="true"
+            ></i>{{ label }}
+        </span>
+
+        {% if show_time %}
+            <span class="d-block small text-secondary">
+                {% if snapshot.closed %}
+                    Detenido
+                {% elif status == 'PAUSADO' %}
+                    En pausa
+                {% elif snapshot.overdue_seconds %}
+                    Excedido en {{ (snapshot.overdue_seconds // 60)|duration }}
+                {% elif snapshot.breached %}
+                    Incumplido
+                {% else %}
+                    Quedan {{ (snapshot.remaining_seconds // 60)|duration }}
+                {% endif %}
+            </span>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+
 {% macro priority_badge(prioridad) %}
     {% set styles = {
         'BAJA': 'neutral',

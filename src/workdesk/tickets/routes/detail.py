@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from flask import current_app, render_template
 from flask_login import current_user, login_required
 
+from ...catalogs.service import list_priorities
 from ...models import StateAction
 from ...models.comment import MAX_COMMENT_LENGTH
 from ...security import (
@@ -29,6 +30,7 @@ from ...security import (
     current_actor,
     has_any_role,
 )
+from ...sla.periods import evaluate_ticket_sla, list_periods
 from .. import bp
 from ..attachments import list_attachments
 from ..comments import list_comments
@@ -106,7 +108,20 @@ def render_detail(ticket, comment_form):
         show_composer=can_comment_publicly(current_user, ticket) and not is_closed,
         can_write_note=can_write_internal_note(current_user),
         max_comment=MAX_COMMENT_LENGTH,
+        # El SLA es solo del personal: el Solicitante no recibe ni la consulta.
+        sla=evaluate_ticket_sla(ticket.id) if is_staff else None,
+        sla_period_rows=_sla_period_rows(ticket) if is_staff else [],
     )
+
+
+def _sla_period_rows(ticket) -> list[dict]:
+    """Los períodos de SLA del ticket con el nombre de su prioridad (solo personal)."""
+    names = {priority.id: priority.nombre for priority in list_priorities("")}
+
+    return [
+        {"period": period, "priority": names.get(period.prioridad_id, "—")}
+        for period in list_periods(ticket.id)
+    ]
 
 
 def _comment_rows(ticket, now) -> list[dict]:

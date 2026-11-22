@@ -9,12 +9,16 @@ from flask_login import current_user, login_required
 
 from ...catalogs.service import list_categories, list_locations, list_priorities
 from ...security import STAFF_ROLES, has_any_role
+from ...sla import periods as sla_periods
+from ...sla.queries import SLA_FILTER_LABELS, parse_filter
 from .. import bp
 from ..service import (
     DEFAULT_SORT,
     DEFAULT_TAB,
     MAX_SEARCH_LENGTH,
     SORT_LABELS,
+    SORT_SLA,
+    SORT_SLA_LABEL,
     VALID_TABS,
     TicketFilters,
     count_tickets_by_tab,
@@ -31,6 +35,7 @@ def list_tickets_page():
     La visibilidad la aplica la propia consulta (`list_tickets`). Los valores
     inválidos de la URL se ignoran en lugar de producir un error.
     """
+    is_staff = has_any_role(current_user, *STAFF_ROLES)
     states = list_states()
     priorities = list_priorities("")
     categories = list_categories("")
@@ -44,6 +49,8 @@ def list_tickets_page():
         location_id=_choice_arg("ubicacion", locations),
         created_from=_date_arg("desde"),
         created_to=_date_arg("hasta"),
+        # El SLA es solo del personal: para un Solicitante el parámetro no existe.
+        sla=parse_filter(request.args.get("sla")) if is_staff else None,
     )
 
     tab = request.args.get("vista", DEFAULT_TAB)
@@ -51,12 +58,20 @@ def list_tickets_page():
     if tab not in VALID_TABS:
         tab = DEFAULT_TAB
 
+    sort_labels = dict(SORT_LABELS)
+
+    if is_staff:
+        sort_labels[SORT_SLA] = SORT_SLA_LABEL
+
     sort = request.args.get("orden", DEFAULT_SORT)
 
-    if sort not in SORT_LABELS:
+    if sort not in sort_labels:
         sort = DEFAULT_SORT
 
     page = max(request.args.get("page", 1, type=int), 1)
+
+    # El mismo instante decide el filtro, las cuentas y las insignias de esta pantalla.
+    now = sla_periods.current_time() if is_staff else None
 
     pagination = list_tickets(
         current_user,
@@ -64,6 +79,13 @@ def list_tickets_page():
         tab=tab,
         sort=sort,
         page=page,
+        now=now,
+    )
+    # El SLA de las filas de la página, en un número fijo de consultas (solo personal).
+    slas = (
+        sla_periods.evaluate_tickets_sla([t.id for t in pagination.items], now)
+        if is_staff
+        else {}
     )
 
     # Lo que deben conservar los enlaces (pestañas, páginas, limpiar...).
@@ -75,16 +97,19 @@ def list_tickets_page():
         "ubicacion": filters.location_id,
         "desde": _iso(filters.created_from),
         "hasta": _iso(filters.created_to),
+        "sla": filters.sla.value if filters.sla else None,
         "orden": None if sort == DEFAULT_SORT else sort,
     }
 
     return render_template(
         "tickets/list.html",
         pagination=pagination,
-        counts=count_tickets_by_tab(current_user, filters),
+        counts=count_tickets_by_tab(current_user, filters, now),
         tab=tab,
         sort=sort,
-        sort_labels=SORT_LABELS,
+        sort_labels=sort_labels,
+        sla_labels=SLA_FILTER_LABELS,
+        slas=slas,
         filters=filters,
         filter_params=filter_params,
         # Hay búsqueda o filtros activos (la pestaña y el orden no cuentan).
@@ -107,7 +132,7 @@ def list_tickets_page():
         priorities=priorities,
         categories=categories,
         locations=locations,
-        is_staff=has_any_role(current_user, *STAFF_ROLES),
+        is_staff=is_staff,
     )
 
 

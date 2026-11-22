@@ -22,6 +22,7 @@ from ...catalogs.service import list_locations, list_priorities
 from ...extensions import db
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ...security import can_change_priority, can_edit_ticket, current_actor
+from ...sla.periods import evaluate_ticket_sla
 from .. import bp
 from ..editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..forms import PriorityChangeForm, TicketEditForm
@@ -215,6 +216,8 @@ def change_ticket_priority(public_id: str):
         ticket=ticket,
         form=form,
         max_reason=MAX_REASON_LENGTH,
+        # Para advertir antes de confirmar si el SLA está en riesgo (RN-88).
+        sla=evaluate_ticket_sla(ticket.id),
         **_lock_context(ticket),
     )
 

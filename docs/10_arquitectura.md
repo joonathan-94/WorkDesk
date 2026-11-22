@@ -897,6 +897,17 @@ Es el `SLAService` de las secciones 78 a 82, sin una clase: funciones sobre `Per
 - **`rebuild_ticket_periods` reconstruye los períodos repasando el historial** con la misma lógica que el cálculo en vivo (comparten `_reconcile`), y un test comprueba que ambos dan el mismo resultado para un recorrido completo. Lo usan `seed-demo-tickets` y el comando `sla-rebuild`.
 - **Dos comandos de apoyo:** `sla-rebuild` (calcula los períodos de los tickets que no tienen ninguno; `--all` recalcula también los reales y no se ejecuta en producción) y `sla-status <número>` (muestra el estado del SLA de un ticket y sus períodos).
 
+### Indicadores de SLA (`sla/queries.py`)
+
+Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-169). El estado del SLA se necesita de dos formas y las dos dan siempre el mismo resultado:
+
+- **Evaluarlo por lotes** (`evaluate_tickets_sla` en `periods.py`): el estado de las filas de una página con un **número fijo de consultas** (períodos, estados, primeras respuestas y un reloj por calendario distinto), no una por ticket. `evaluate_ticket_sla` es el caso de un solo ticket sobre la misma función. Un test comprueba que evaluar 14 tickets no cuesta más consultas que uno.
+- **Filtrar y ordenar antes de paginar** (`sla_condition` y `sla_urgency_order`): no se puede calcular tiempo laboral en SQL, pero cada período guarda sus fechas ya calculadas (vencimiento y fecha de aviso), así que el estado son comparaciones con `now`: *vencido* es que algún período llegó a su vencimiento (hasta su fin, o hasta ahora si sigue vigente) o que el período pausado o cerrado nació con más consumo que su objetivo; *pausado*, un período vigente sin vencimiento; *próximo*, un período vigente cuya fecha de aviso ya llegó; *sin SLA*, sin períodos o con el último cerrado en un ticket en trabajo.
+- **La equivalencia se comprueba, no se supone**: un test crea tickets en catorce situaciones (con pausas, reaperturas, subidas y bajadas de prioridad, sin política, sin períodos...) y compara, en más de 150 momentos —cada media hora durante tres días y un segundo antes y después de cada fecha guardada—, lo que selecciona cada opción del filtro con lo que dice la evaluación. Si se cambia una de las dos hay que cambiar la otra.
+- **El instante es uno solo por pantalla**: el listado lo toma una vez y lo pasa al filtro, a los contadores y a las insignias; así no pueden contradecirse en un borde. El orden por urgencia usa una subconsulta correlacionada sobre el período vigente (índice único parcial por ticket).
+- **El SLA es solo del personal también en el servicio**: `list_tickets` ignora el filtro y el orden por SLA si quien consulta no es del personal, así que ninguna ruta nueva puede filtrar por SLA a un Solicitante por descuido.
+- **Aviso al bajar la prioridad**: `change_priority` evalúa el SLA antes del cambio y, si estaba próximo a vencer o vencido y la prioridad baja, llama a `notify_priority_lowered` (`notifications/events.py`), que decide los destinatarios (Supervisores del grupo; si no hay, todos).
+
 ### Notificaciones internas (`notifications/`)
 
 Es el módulo de la sección 23, con la forma de los demás: rutas finas que orquestan y un servicio con las reglas, sin capas vacías. Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-167) y el modelo en `09_modelo_de_datos.md` (22.1).

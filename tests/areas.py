@@ -80,6 +80,8 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_work_calendar",
         "test_work_calendar_routes",
         "test_sla_periods",
+        "test_sla_indicators",
+        "test_sla_indicators_ui",
         "test_sla_policies",
         "test_sla_policies_routes",
         "test_sla_policy_forms",

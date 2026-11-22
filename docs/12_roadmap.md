@@ -1034,7 +1034,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 4. **Períodos de SLA** ✓ (PR #39): `tickets_sla_periodos`, el cálculo en tiempo laboral, la pausa en `En espera`, la detención al resolver (y la reanudación al reabrir) y la continuidad ante cambios de prioridad (RN-88 y RN-166); el comando `sla-rebuild` para los tickets anteriores y `sla-status` para ver un ticket. El seed de demostración deja los tickets en tiempo, por vencer, vencidos y pausados.
 5. **Notificaciones internas, 1: infraestructura y centro de notificaciones** ✓: la tabla `notificaciones` (contenido inmutable, solo evoluciona la lectura), el servicio (`notify`, `notify_many`, consultar, contar y marcar), el centro (`/notifications`, con «Todas» y «No leídas») y la campana con contador que se actualiza cada 30 segundos (RN-167). Todavía **ningún evento genera avisos** (entrega 6): mientras tanto, el comando `seed-demo-notifications` deja avisos de ejemplo para verlo funcionar.
 6. **Notificaciones internas, 2: eventos** ✓: asignación, cambios de estado (espera, resolución, cierre, rechazo y reapertura) y comentarios avisan a quien corresponde desde las propias operaciones de los tickets, con las reglas de RN-168 (incluye RF-068, RN-95 y RN-96). Crear un ticket no avisa a nadie, por decisión de la fase. Quién recibe cada aviso se decide en `notifications/events.py`.
-7. **Indicadores de SLA en la interfaz:** insignias en el listado y el detalle (solo para el personal), filtro por estado de SLA y la advertencia al bajar la prioridad con el SLA en riesgo.
+7. **Indicadores de SLA en la interfaz** ✓: insignias en el listado y tarjeta en el detalle (solo para el personal), filtro por estado de SLA y orden «SLA más urgente», y la advertencia al bajar la prioridad con el SLA en riesgo, con el aviso a los Supervisores (RN-88 y RN-169). Los períodos guardan ahora cuándo alcanzan el umbral de aviso (una migración), lo que permite filtrar en la base de datos.
 8. **Planificador:** el comando `run-scheduler` con los avisos de SLA y el cierre automático (RN-58 y RN-59).
 9. **Cierre de la versión:** revisión de todo el código de la fase y documentación de cierre.
 
@@ -1061,7 +1061,7 @@ Implementar:
 - reanudación ✓ (entrega 4);
 - próximo a vencer ✓ (entrega 4: el cálculo; los avisos, entregas 6 y 8);
 - vencido ✓ (entrega 4: el cálculo; los avisos, entregas 6 y 8);
-- visualización (entrega 7);
+- visualización ✓ (entrega 7);
 - configuración básica;
 - política de continuidad ante cambios de prioridad (RN-88): el consumo ya acumulado se conserva, el incumplimiento registrado no se borra, un cambio nunca reinicia el reloj, y la bajada de prioridad con el SLA en riesgo exige motivo y avisa a los Supervisores.
 

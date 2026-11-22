@@ -59,6 +59,20 @@ class PeriodoSla(db.Model):
             "OR tiempo_objetivo_respuesta_minutos > 0",
             name="ck_tickets_sla_periodos_respuesta_positiva",
         ),
+        CheckConstraint(
+            "umbral_aviso_porcentaje IS NULL "
+            "OR (umbral_aviso_porcentaje >= 1 AND umbral_aviso_porcentaje <= 100)",
+            name="ck_tickets_sla_periodos_umbral_aviso",
+        ),
+        # La fecha de aviso solo existe con el reloj en marcha y cae entre el inicio y el
+        # vencimiento.
+        CheckConstraint(
+            "fecha_umbral_aviso IS NULL OR ("
+            "fecha_vencimiento_resolucion IS NOT NULL "
+            "AND fecha_umbral_aviso >= fecha_inicio "
+            "AND fecha_umbral_aviso <= fecha_vencimiento_resolucion)",
+            name="ck_tickets_sla_periodos_fecha_umbral_aviso",
+        ),
         # Un ticket tiene como máximo un período vigente (sin fecha de fin).
         Index(
             "uq_tickets_sla_periodos_vigente",
@@ -143,6 +157,20 @@ class PeriodoSla(db.Model):
 
     # NULL significa «pausado» (el reloj no corre).
     fecha_vencimiento_resolucion: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # El umbral de aviso con que se abrió el período (copia del de la política, como
+    # los objetivos) y el momento en que el consumo lo alcanza, calculado en tiempo
+    # laboral al abrirlo. Es lo que permite filtrar y ordenar por «próximo a vencer»
+    # en la base de datos. NULL sin umbral, o con el período pausado.
+    umbral_aviso_porcentaje: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    fecha_umbral_aviso: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

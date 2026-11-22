@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% from "_ui_macros.html" import breadcrumb, state_badge, priority_badge %}
+{% from "_ui_macros.html" import breadcrumb, state_badge, priority_badge, sla_badge %}
 {% from "_form_macros.html" import field_errors, textarea_field %}
 
 {# Lista de adjuntos con su descarga. La descarga y la eliminación comprueban
@@ -762,6 +762,122 @@
                     </dl>
                 </div>
             </section>
+
+            {# El SLA es solo del personal (docs/06, RN-169): el Solicitante no
+               recibe ni la consulta. #}
+            {% if is_staff %}
+                <section
+                    class="card mt-3"
+                    aria-labelledby="sla-title"
+                >
+                    <div class="card-body">
+                        <h2
+                            class="h6 mb-3"
+                            id="sla-title"
+                        >
+                            SLA
+                        </h2>
+
+                        {% if sla is none %}
+                            <p class="small text-secondary mb-0">
+                                Este ticket no tiene SLA: su prioridad no tiene una política activa.
+                            </p>
+                        {% else %}
+                            {% set status = sla.status.value %}
+                            {% set bar = {
+                                'DENTRO': 'success',
+                                'PROXIMO_A_VENCER': 'warning',
+                                'VENCIDO': 'danger',
+                                'PAUSADO': 'secondary',
+                            }[status] %}
+
+                            <p class="mb-2">{{ sla_badge(sla, show_time=False) }}</p>
+
+                            <div
+                                class="progress mb-1"
+                                role="progressbar"
+                                aria-label="Consumo del SLA"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                                aria-valuenow="{{ [sla.percent, 100]|min }}"
+                            >
+                                <div
+                                    class="progress-bar bg-{{ bar }}"
+                                    style="width: {{ [sla.percent, 100]|min }}%"
+                                ></div>
+                            </div>
+
+                            <p class="small mb-3">
+                                {{ (sla.consumed_seconds // 60)|duration }} de
+                                {{ (sla.objective_seconds // 60)|duration }}
+                                ({{ sla.percent }} %)
+                            </p>
+
+                            <dl class="small mb-0">
+                                {% if sla.closed %}
+                                    <dt class="text-secondary fw-normal">Reloj</dt>
+                                    <dd>Detenido: el ticket está resuelto o cerrado.</dd>
+                                {% elif status == 'PAUSADO' %}
+                                    <dt class="text-secondary fw-normal">Reloj</dt>
+                                    <dd>En pausa: no consume tiempo mientras el ticket esté en espera.</dd>
+                                {% else %}
+                                    <dt class="text-secondary fw-normal">Vence</dt>
+                                    <dd>
+                                        {{ sla.due_at|local_datetime }}
+                                        {% if sla.overdue_seconds %}
+                                            <span class="d-block text-secondary">
+                                                Excedido en {{ (sla.overdue_seconds // 60)|duration }}
+                                            </span>
+                                        {% endif %}
+                                    </dd>
+                                {% endif %}
+
+                                {% if sla.period.tiempo_objetivo_respuesta_minutos is not none %}
+                                    <dt class="text-secondary fw-normal">Primera respuesta</dt>
+                                    <dd class="mb-0">
+                                        {% if sla.responded_at %}
+                                            Respondida el {{ sla.responded_at|local_datetime }}
+                                            {% if sla.response_overdue %}
+                                                <span class="d-block text-secondary">Fuera del objetivo</span>
+                                            {% endif %}
+                                        {% elif sla.response_due_at %}
+                                            Pendiente: vence el {{ sla.response_due_at|local_datetime }}
+                                            {% if sla.response_overdue %}
+                                                <span class="d-block text-danger">Vencida</span>
+                                            {% endif %}
+                                        {% else %}
+                                            Sin objetivo vigente
+                                        {% endif %}
+                                    </dd>
+                                {% endif %}
+                            </dl>
+
+                            <details class="mt-3">
+                                <summary class="small fw-semibold">
+                                    Períodos ({{ sla_period_rows|length }})
+                                </summary>
+
+                                <ol class="small ps-3 mt-2 mb-0">
+                                    {% for row in sla_period_rows %}
+                                        <li>
+                                            {{ row.priority }} ·
+                                            {{ row.period.fecha_inicio|local_datetime }} →
+                                            {{ row.period.fecha_fin|local_datetime if row.period.fecha_fin else 'vigente' }}
+                                            {% if row.period.esta_pausado %}· pausado{% endif %}
+                                            · consumió {{ (row.period.segundos_consumidos // 60)|duration }}
+                                            {% if row.period.motivo_cambio %}
+                                                <span class="d-block text-secondary">
+                                                    {{ row.period.motivo_cambio }}
+                                                </span>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ol>
+                            </details>
+                        {% endif %}
+                    </div>
+                </section>
+            {% endif %}
         </div>
     </div>
 {% endblock %}
