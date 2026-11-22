@@ -224,13 +224,21 @@ Nunca ejecutar tests destructivos sobre:
 workdesk_dev
 ```
 
-No debilitar la protección existente en `tests/conftest.py`.
+No eliminar ni debilitar la protección de `workdesk_test`: `checked_database_url` (`tests/database.py`), que `tests/conftest.py` invoca antes de crear o vaciar tablas. `tests/test_suite_infrastructure.py` comprueba que rechaza cualquier otra base.
 
-Después de cambios relevantes ejecutar:
+Cada test lleva el marcador de su área (`tests/areas.py`). Mientras se desarrolla basta con el área que se toca:
+
+```bash
+python -m pytest -m sla
+python -m pytest -m "tickets or notifications"
+python -m pytest -m unit
+```
+
+Después de cambios relevantes, y antes de recomendar un commit o un Pull Request, Ruff y la suite completa (`-n 6` la ejecuta en paralelo, un proceso por núcleo físico):
 
 ```bash
 ruff check src/workdesk tests
-python -m pytest -q
+python -m pytest -n 6
 ```
 
 No modificar un test únicamente para conseguir que pase.

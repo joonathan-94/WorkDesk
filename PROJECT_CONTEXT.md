@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/notification-events
+chore/faster-test-suite
 ```
 
-Entrega 6 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): los eventos de un ticket generan avisos. Asignar un técnico, cambiar el estado (espera, resolución, cierre, rechazo, reapertura) y comentar avisan a quien corresponde, con las reglas de `docs/06` (RN-168, que incluye RF-068, RN-95 y RN-96); quién recibe cada aviso se decide en un único módulo, `notifications/events.py` (ver "Avisos por los eventos de un ticket"). No hay migración ni pantallas nuevas: el centro y la campana son los de la entrega 5. Crear un ticket no avisa a nadie. Los avisos de SLA los genera el planificador (entrega 8).
+Optimización de la suite de tests, entre las entregas 6 y 7 de `v0.5.0 — SLA y notificaciones internas`. **No cambia ninguna funcionalidad**: la suite pasó de unos 34 minutos a unos 13 en serie y unos 4 en paralelo, con los mismos tests más los de su propia infraestructura. El esquema de la base de pruebas se crea una vez por sesión (no por test), entre tests solo se vacían las tablas con filas, los 76 tickets de demostración se restauran desde una instantánea, la suite se puede ejecutar en paralelo (`pytest-xdist`, un esquema de PostgreSQL por proceso) y los tests llevan un marcador por área para ejecutar solo lo que corresponde mientras se desarrolla (ver "23. Testing"). La protección de `workdesk_test` pasó a `tests/database.py` sin debilitarse y tiene tests propios.
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las cuatro primeras entregas de `v0.5.0`: el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38) y los períodos de SLA (PR #39).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las seis primeras entregas de `v0.5.0`: el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38) y los períodos de SLA (PR #39), el centro de notificaciones (PR #40) y los avisos por los eventos de un ticket (PR #41).
 
 `v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -98,7 +98,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Integrada (PR #38) |
 | 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Integrada (PR #39) |
 | 5 | Notificaciones internas: infraestructura y centro de notificaciones | Integrada (PR #40) |
-| 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | En curso |
+| 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Integrada (PR #41) |
 | 7 | Indicadores de SLA en el listado y el detalle | Pendiente |
 | 8 | Planificador: avisos de SLA y cierre automático | Pendiente |
 | 9 | Cierre de la versión: revisión de toda la fase y documentación | Pendiente |
@@ -416,7 +416,9 @@ WorkDesk/
 │       ├── search.py
 │       └── worktime.py
 ├── tests/
+│   ├── areas.py
 │   ├── conftest.py
+│   ├── database.py
 │   ├── test_account_password.py
 │   ├── test_account_profile.py
 │   ├── test_app.py
@@ -447,6 +449,7 @@ WorkDesk/
 │   ├── test_sla_policy_forms.py
 │   ├── test_state_actions.py
 │   ├── test_states_admin.py
+│   ├── test_suite_infrastructure.py
 │   ├── test_system.py
 │   ├── test_ticket_assignment.py
 │   ├── test_ticket_attachments.py
@@ -484,6 +487,7 @@ WorkDesk/
 ├── CLAUDE.md
 ├── PROJECT_CONTEXT.md
 ├── README.md
+├── pytest.ini
 ├── requirements.txt
 └── requirements-dev.txt
 ```
@@ -1888,6 +1892,17 @@ Se utiliza:
 pytest
 ```
 
+## Cómo se ejecutan y se aíslan los tests
+
+Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisiones, tomadas al medir que el 83 % del tiempo de la suite se iba en preparar y limpiar fixtures y solo el 17 % en los tests:
+
+- **Un esquema por sesión, no por test** (`tests/database.py`, `tests/conftest.py`): el esquema se crea una vez y entre tests solo se vacían las tablas con filas (`empty_tables`, con `DELETE` y reinicio de las secuencias: `TRUNCATE` cuesta más que recrear el esquema en esta base). Se descartó envolver cada test en una transacción que se deshace porque la aplicación y los tests dependen de confirmaciones reales (`now()` cambia entre transacciones; los tests con hilos usan otras conexiones).
+- **Instantáneas** (`take_snapshot` y `restore_snapshot`): los estados caros de construir (los 76 tickets de demostración, 2,6 s) se construyen una vez por proceso y cada test restaura una copia exacta de la base (y de los adjuntos que dejó la carga) en milisegundos.
+- **Paralelo con `pytest-xdist`** (`-n 6`, un proceso por núcleo físico): cada proceso usa su propio esquema de PostgreSQL (`wd_test_gw0`...) dentro de `workdesk_test`, así que no hay bases nuevas y la protección sigue valiendo.
+- **Áreas** (`tests/areas.py`): cada módulo de tests pertenece a un área y su marcador se asigna solo (`pytest -m sla`, `-m "tickets or notifications"`); `unit` marca a los que no usan la base. Un módulo sin área hace fallar la recolección, así que ninguno queda fuera. Los marcadores están declarados en `pytest.ini` (`--strict-markers`).
+- **Hash de la contraseña de prueba:** se calcula una vez por proceso (hash real de Argon2id con los parámetros de producción).
+- Mientras se desarrolla basta con el área que se toca; **antes de un commit o un Pull Request se ejecuta siempre la suite completa**.
+
 Estado al cerrar `v0.1.0`:
 
 ```text
@@ -1912,6 +1927,16 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la optimización de la suite (entre las entregas 6 y 7 de `v0.5.0`):
+
+```text
+3006 tests passing
+```
+
+Los 23 tests nuevos están en `tests/test_suite_infrastructure.py` y cubren: **la protección de `workdesk_test`** (rechaza `workdesk_dev`, `workdesk`, `postgres`, nombres parecidos como `workdesk_test2` o `workdesk_testing`, otra capitalización y una URL que contiene `workdesk_test` solo en el usuario o el servidor; exige la variable y devuelve la URL sin cambios cuando es la correcta); **el esquema por proceso** (sin paralelismo se usa el de por defecto; cada worker de `pytest-xdist` el suyo); **la limpieza entre tests** (`empty_tables` deja todas las tablas sin filas y las secuencias en 1, también si ya estaba vacía); **las instantáneas** (restauran filas y secuencias exactamente, devuelven lo que se guardó con ellas y se pueden restaurar dos veces); y **las áreas** (todo módulo de tests pertenece a una, ninguna lista un módulo que no existe, ninguno está en dos, todas están declaradas como marcador en `pytest.ini` y cada test recibe el suyo, y `unit` solo si no usa la base).
+
+Medido: la suite completa tarda unos 13 minutos en serie y unos 4 en paralelo (`-n 6`), frente a unos 34 antes. En una muestra de 237 tests, el 83 % del tiempo era preparar y limpiar fixtures y solo el 17 % los tests; ahora la preparación y la limpieza son unos 200 ms por test (antes 665 ms) y el seed de tickets de demostración, que era la mitad del tiempo restante, bajó de unos 10 minutos a 2. No hay cambios de comportamiento: los mismos tests pasan sin modificar lo que comprueban (solo `tests/test_seed_demo_tickets.py` cambia sus fixtures y dos tests, que recreaban el esquema a mitad del test, usan ahora la limpieza rápida).
 
 Estado tras la entrega 6 de `v0.5.0` (avisos por los eventos de un ticket):
 
@@ -2332,11 +2357,13 @@ Los 12 tests nuevos (`tests/test_authorization.py`) cubren: anónimo redirigido 
 
 ## Protección crítica de testing
 
-`tests/conftest.py` valida explícitamente que la base utilizada sea:
+`checked_database_url` (en `tests/database.py`) valida explícitamente que la base utilizada sea:
 
 ```text
 workdesk_test
 ```
+
+`tests/conftest.py` la llama antes de construir cualquier aplicación que pueda crear o vaciar tablas, y `tests/test_suite_infrastructure.py` comprueba que rechaza cualquier otra base (`workdesk_dev`, `postgres`, nombres parecidos, una URL con `workdesk_test` solo en el usuario o el servidor...).
 
 Esto protege `workdesk_dev` frente a operaciones destructivas ejecutadas por pytest.
 
@@ -2411,7 +2438,12 @@ python -m flask --app src.workdesk create-admin
 ## Tests
 
 ```bash
-python -m pytest -q
+# La suite completa, en paralelo (antes de un commit o un Pull Request)
+python -m pytest -n 6
+
+# Solo un área, o solo los tests que no usan la base de datos
+python -m pytest -m sla
+python -m pytest -m unit
 ```
 
 ## Ruff
