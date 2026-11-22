@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/notifications-center
+feature/notification-events
 ```
 
-Entrega 5 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): la infraestructura de las notificaciones internas y el centro de notificaciones. Una tabla nueva (`notificaciones`) guarda los avisos de cada usuario; un servicio los crea, consulta y marca como leídos; el centro (`/notifications`) los muestra con las pestañas «Todas» y «No leídas», y la campana de la barra superior cuenta las no leídas y se actualiza cada 30 segundos (ver "Notificaciones internas"). Incluye una migración y el comando `seed-demo-notifications`. Todavía **ningún evento del sistema genera avisos**: eso llega con la entrega 6 (y los de SLA, con la 8); mientras tanto, el seed deja avisos de ejemplo para verlo funcionar.
+Entrega 6 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): los eventos de un ticket generan avisos. Asignar un técnico, cambiar el estado (espera, resolución, cierre, rechazo, reapertura) y comentar avisan a quien corresponde, con las reglas de `docs/06` (RN-168, que incluye RF-068, RN-95 y RN-96); quién recibe cada aviso se decide en un único módulo, `notifications/events.py` (ver "Avisos por los eventos de un ticket"). No hay migración ni pantallas nuevas: el centro y la campana son los de la entrega 5. Crear un ticket no avisa a nadie. Los avisos de SLA los genera el planificador (entrega 8).
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las cuatro primeras entregas de `v0.5.0`: el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38) y los períodos de SLA (PR #39).
 
@@ -97,8 +97,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | Integrada (PR #37) |
 | 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Integrada (PR #38) |
 | 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Integrada (PR #39) |
-| 5 | Notificaciones internas: infraestructura y centro de notificaciones | En curso |
-| 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Pendiente |
+| 5 | Notificaciones internas: infraestructura y centro de notificaciones | Integrada (PR #40) |
+| 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | En curso |
 | 7 | Indicadores de SLA en el listado y el detalle | Pendiente |
 | 8 | Planificador: avisos de SLA y cierre automático | Pendiente |
 | 9 | Cierre de la versión: revisión de toda la fase y documentación | Pendiente |
@@ -1288,13 +1288,13 @@ Entrega 4 de `v0.5.0`, en el paquete `src/workdesk/sla/` (módulo `periods.py`).
 
 **Seed de demostración.** `seed_demo_tickets` recalcula los períodos de todos sus tickets (`rebuild_ticket_periods`) al terminar, cuando el historial ya está en fechas pasadas: los servicios abren los períodos con la hora real de la carga y ese cálculo se descarta. Así los tickets quedan en tiempo, próximos a vencer, vencidos y pausados según su historia. Es idempotente y los períodos siguen a las fechas al refrescar otro día.
 
-**Pendiente de la fase:** mostrar el estado del SLA en el listado y el detalle y la advertencia al bajar la prioridad con el SLA en riesgo (entrega 7), las notificaciones por eventos (entrega 6) y el planificador con los avisos y el cierre automático (entrega 8). Los tickets anteriores al SLA no tienen períodos hasta que se ejecuta `sla-rebuild`.
+**Pendiente de la fase:** mostrar el estado del SLA en el listado y el detalle y la advertencia al bajar la prioridad con el SLA en riesgo (entrega 7), y el planificador con los avisos de SLA y el cierre automático (entrega 8). Los tickets anteriores al SLA no tienen períodos hasta que se ejecuta `sla-rebuild`.
 
 ---
 
 # 11 octies. Notificaciones internas
 
-Entrega 5 de `v0.5.0`, en el paquete `src/workdesk/notifications/` (blueprint `notifications`, prefijo `/notifications`). Reglas completas en `docs/06` (RN-167, que precisa RN-93), `docs/09` (22.1), `docs/10` (secciones 23, 28.1 y 89) y `docs/11` (sección 30 y UI-008). **Incluye una migración** (`create_notifications_table`). Es la infraestructura y la pantalla: **todavía ningún evento del sistema crea avisos** (los eventos son la entrega 6 y los avisos de SLA, la 8).
+Entrega 5 de `v0.5.0`, en el paquete `src/workdesk/notifications/` (blueprint `notifications`, prefijo `/notifications`). Reglas completas en `docs/06` (RN-167, que precisa RN-93), `docs/09` (22.1), `docs/10` (secciones 23, 28.1 y 89) y `docs/11` (sección 30 y UI-008). **Incluye una migración** (`create_notifications_table`). Es la infraestructura y la pantalla: los eventos de un ticket los crean desde la entrega 6 (ver "Avisos por los eventos de un ticket") y los avisos de SLA los creará el planificador (entrega 8).
 
 **Modelo** (`models/notificacion.py`, `Notificacion`, tabla `notificaciones`): `usuario_id` (el destinatario), `ticket_id` (opcional: sin ticket es un aviso general), `tipo_evento`, `titulo` (opcional), `mensaje`, `leida`, `fecha_creacion` (la pone la base de datos) y `fecha_lectura`. Restricciones: `leida` y `fecha_lectura` siempre juntas, mensaje con al menos un carácter que no sea un espacio ni un salto de línea (`mensaje ~ '\S'`, porque `btrim` solo recorta espacios), claves foráneas `ON DELETE RESTRICT` e índice `(usuario_id, leida, fecha_creacion)` para el contador y el listado. **El contenido no se reescribe:** el ORM rechaza modificar el destinatario, el ticket, el evento, el título, el mensaje y la fecha de creación (`NotificationContentImmutableError`); solo cambian `leida` y `fecha_lectura`. Propiedades `etiqueta` y `icono` (con respaldo si el vocabulario cambió).
 
@@ -1303,7 +1303,7 @@ Entrega 5 de `v0.5.0`, en el paquete `src/workdesk/notifications/` (blueprint `n
 **Servicio** (`notifications/service.py`):
 
 - `notify(destinatario, evento, *, message, title=None, ticket=None)` y `notify_many(destinatarios, evento, ...)`: **no hacen commit** (el aviso se confirma o se revierte con la operación que lo provoca). Validan el evento contra el vocabulario, recortan el mensaje (obligatorio, hasta 1000 caracteres) y el título (hasta 150) y lanzan `NotificationRuleError` sin dejar nada pendiente. Un destinatario inactivo no recibe nada (devuelven `None` o lo omiten) y `notify_many` no repite destinatarios.
-- **Quién recibe un aviso lo decide quien lo genera**, no el servicio: no comprueba si el destinatario puede ver el ticket ni si el evento es interno. Quien produzca avisos (entregas 6 y 8) debe seguir la visibilidad del historial; el servicio solo exige un destinatario activo.
+- **Quién recibe un aviso lo decide quien lo genera**, no el servicio: no comprueba si el destinatario puede ver el ticket ni si el evento es interno. Quien produzca avisos (`notifications/events.py` desde la entrega 6, y el planificador en la 8) debe seguir la visibilidad del historial; el servicio solo exige un destinatario activo.
 - `count_unread(usuario)` (la campana), `count_notifications(usuario)` (total y no leídas en una consulta), `list_notifications(usuario, view=, page=)` (20 por página, de la más reciente a la más antigua, con el ticket cargado en la misma consulta) y `get_notification(usuario, id)`. **Todas filtran por el usuario**: la de otra persona devuelve `None`.
 - `mark_as_read(usuario, id)` y `mark_all_as_read(usuario)`: un solo `UPDATE ... WHERE leida = FALSE`, así que son idempotentes, conservan la **primera** lectura y, con dos pestañas a la vez, una sola escribe.
 
@@ -1316,6 +1316,16 @@ Entrega 5 de `v0.5.0`, en el paquete `src/workdesk/notifications/` (blueprint `n
 **La campana** (`layouts/app.html`, a la izquierda del menú del usuario) es un enlace al centro con el contador de no leídas (sin número si no hay; «99+» desde 100). `layout_context` (`navigation.py`) calcula el número en cada página autenticada y `static/js/common/notifications.js` (mejora progresiva) lo actualiza cada 30 segundos mientras la pestaña está visible y al volver a ella; se detiene si el servidor deja de responder JSON (sesión caducada). Es un polling simple, sin WebSockets (`docs/12`, sección 32, los deja para después del MVP).
 
 **Seed de demostración** (`seeds/demo_notifications.py`): `seed-demo-notifications [--username ...]` (ver "22. CLI"). Mientras nada genera avisos, deja cinco notificaciones de ejemplo por persona, escritas para su rol: el personal recibe asignaciones, respuestas, SLA próximo a vencer, SLA vencido y reaperturas; el Solicitante, cambios de estado, respuestas, la revisión de la solución, el cierre y la creación (el SLA es solo para el personal). Cada aviso apunta a un ticket **que esa persona puede ver** (el mismo criterio que el listado de tickets), unos están leídos y otros no, y su antigüedad va de minutos a días. Es idempotente por (persona, ticket, evento, mensaje).
+
+## Avisos por los eventos de un ticket (entrega 6 de `v0.5.0`)
+
+Reglas completas en `docs/06` (RN-168) y `docs/10` (28.1, «Notificaciones internas»). **Sin migración ni pantallas nuevas.** Quién recibe cada aviso se decide en `notifications/events.py`, que las operaciones de los tickets llaman al terminar, dentro de su propia transacción (sin commit: el aviso se confirma o se revierte con la operación):
+
+- `change_state` → `notify_state_change`; `assign_technician` → `notify_assignment`; `unassign_technician` → `notify_unassignment`; `escalate_ticket` → `notify_escalation`; `add_comment` → `notify_comment`. Al estar en los servicios, los cubren también el seed y cualquier otra vía.
+- **Reglas comunes:** nunca se avisa a quien hizo el cambio; solo a solicitantes no retirados y técnicos que siguen asignados; un Solicitante solo recibe lo que vería en el historial (nada de notas internas, escalamientos, grupo, motivos ni texto de comentarios o de la solución: los avisos dicen qué pasó y en qué ticket, nunca copian el contenido).
+- **Quién recibe qué** (tabla completa en RN-168): asignar avisa al técnico y a los solicitantes; los cambios de estado, a solicitantes y técnicos asignados (resolver pide al solicitante revisar la solución, RN-95; reabrir avisa a los técnicos, RN-96); un comentario público del personal avisa a los solicitantes y el de un solicitante a los técnicos asignados (RF-068); una nota interna, a los demás técnicos asignados; escalar, a los técnicos que entran y salen. **Crear un ticket no avisa a nadie.** Las asignaciones derivadas de estado (`Nuevo` ↔ `Asignado`) no se avisan aparte.
+- **`STATE_NOTICES`** (por acción de estado, el aviso a los solicitantes y el de los técnicos) y un test exige que toda acción de `STATE_ACTIONS` figure en ella, así que una acción nueva obliga a decidir a quién avisa.
+- **Seed de tickets de demostración:** `seed-demo-tickets` ejecuta los servicios reales, que ahora avisan; al terminar elimina los avisos de los tickets que creó (solo esos) para que su historia, que es del pasado, no llene a nadie de avisos sin leer. Los avisos de ejemplo se cargan con `seed-demo-notifications`.
 
 ---
 
@@ -1821,7 +1831,7 @@ python -m flask --app src.workdesk seed-demo-notifications [--username <usuario>
 
 `sla-rebuild` y `sla-status` calculan y muestran los períodos de SLA de los tickets (ver "Períodos de SLA").
 
-`seed-demo-notifications` (`src/workdesk/seeds/demo_notifications.py`, entrega 5 de `v0.5.0`): deja cinco notificaciones de ejemplo por persona para ver el centro de notificaciones y la campana, ya que todavía ningún evento del sistema las genera (ver "Notificaciones internas").
+`seed-demo-notifications` (`src/workdesk/seeds/demo_notifications.py`, entrega 5 de `v0.5.0`): deja cinco notificaciones de ejemplo por persona para ver el centro de notificaciones y la campana, para ver el centro con datos sin tener que provocar eventos (ver "Notificaciones internas").
 
 - sin opciones, las crea para el equipo de `seed-demo`; con `--username` (se puede repetir), para esas cuentas, por ejemplo la del Administrador real, que `seed-demo` no crea;
 - necesita tickets que la persona pueda ver (por ejemplo, los de `seed-demo-tickets`): cada aviso apunta a uno de ellos, con el mismo criterio de visibilidad que el listado. Quien no ve ningún ticket queda sin avisos y el comando lo informa con un `Aviso:`;
@@ -1902,6 +1912,18 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 6 de `v0.5.0` (avisos por los eventos de un ticket):
+
+```text
+2983 tests passing
+```
+
+Los 28 tests nuevos cubren:
+
+- `tests/test_notification_events.py` (26): **crear un ticket no avisa a nadie**; **asignar** (avisa al técnico y a los solicitantes, nombra al técnico, el técnico que se autoasigna no se avisa a sí mismo, el aviso apunta al ticket); **quitar a un técnico** (lo avisa salvo que se vaya él mismo, y un técnico quitado no recibe más avisos de estado); **escalar** (avisa al técnico que entra y al que sale, nunca a los solicitantes y sin copiar el motivo); **cambios de estado** (iniciar, esperar, reactivar, resolver —el solicitante recibe la petición de revisar, los técnicos el aviso de resuelto—, confirmar, rechazar, reabrir por un solicitante, cierre directo, un ticket sin técnicos, que el actor nunca se avise y que las asignaciones derivadas no avisen dos veces); que toda acción de estado figure en la tabla de avisos; **comentarios** (público del personal a los solicitantes, de un solicitante a los técnicos asignados, nota interna solo a los demás técnicos y sin copiar nunca el texto); un solicitante retirado no recibe nada; **un Solicitante nunca recibe actividad interna** (nota interna, escalamiento ni sus motivos); los avisos se revierten con la operación; y un título muy largo cabe en el aviso.
+- `tests/test_seed_demo_tickets.py` (+2): `seed-demo-tickets` no deja avisos de la carga y no borra los de tickets que no creó.
+- **Prueba de mutación** (script desechable): 26 mutaciones de `events.py`, los cuatro enganches y el seed (a quién se avisa, el actor, retirados y desasignados, la visibilidad de las notas, cada evento de la tabla, el recorte del título...). 24 se detectaron a la primera; las 2 que sobrevivían (un técnico desasignado que seguía recibiendo avisos y un seed que borraba avisos ajenos) señalaron huecos reales y se añadió su test.
 
 Estado tras la entrega 5 de `v0.5.0` (centro de notificaciones):
 
@@ -2730,7 +2752,7 @@ Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases poste
 - `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.5.0`: el motor de tiempo laboral, el calendario laboral administrable, las políticas de SLA por prioridad, los períodos de SLA y el centro de notificaciones ya existen (entregas 1 a 5: `worktime.py`, el paquete `sla/` y el paquete `notifications/`); faltan las notificaciones por eventos, el estado del SLA en la interfaz y el planificador (entregas 6 a 8);
+- `v0.5.0`: el motor de tiempo laboral, el calendario laboral administrable, las políticas de SLA por prioridad, los períodos de SLA y el centro de notificaciones ya existen (entregas 1 a 5: `worktime.py`, el paquete `sla/` y el paquete `notifications/`); las notificaciones por eventos de un ticket ya existen (entrega 6); faltan el estado del SLA en la interfaz y el planificador (entregas 7 y 8);
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

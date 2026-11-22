@@ -905,9 +905,14 @@ Es el módulo de la sección 23, con la forma de los demás: rutas finas que orq
 notifications/
 ├── service.py   las reglas: crear (notify y notify_many), consultar, contar y marcar
 │                como leída
+├── events.py    quién recibe el aviso de cada cosa que ocurre en un ticket (entrega 6)
 └── routes.py    el centro (/notifications), marcar, abrir, marcar todas y el contador
                  (/notifications/unread-count)
 ```
+
+- **`events.py` es el único lugar donde se decide a quién avisar** (RN-168). Las operaciones de los tickets lo llaman al terminar: `change_state` (`notify_state_change`), `assign_technician` (`notify_assignment`), `unassign_technician`, `escalate_ticket` y `add_comment`. Así ninguna pantalla, comando ni seed puede olvidarlo, y el servicio de notificaciones sigue sin saber de tickets. El módulo no importa el paquete `tickets` (que lo usa a él) para evitar una dependencia circular: trabaja sobre el ticket y los usuarios que recibe.
+- **Una tabla decide los avisos de estado** (`STATE_NOTICES`: por acción, el aviso para los solicitantes y el de los técnicos) y un test exige que toda acción de estado figure en ella, de modo que añadir una acción obliga a decidir a quién avisa.
+- **Los avisos no copian texto** (comentarios, soluciones, motivos): dicen qué pasó y en qué ticket, y el contenido se lee en el ticket, donde ya se decide quién lo ve. Es la forma de que un aviso no pueda filtrar nada interno a un Solicitante.
 
 - **Dos formas de entrar al servicio, una de salida.** Los productores de avisos (entregas 6 y 8) llamarán a `notify` o `notify_many` dentro de la transacción del cambio que los provoca, como pide la sección 88: el aviso se confirma o se revierte con la operación, y el servicio **no hace commit**. Las pantallas leen con `list_notifications`, `count_unread` y `count_notifications` y escriben con `mark_as_read` y `mark_all_as_read`; el commit lo hace la ruta.
 - **Quién recibe un aviso lo decide el productor, no el servicio.** `notify` no sabe de visibilidad de tickets: el productor debe aplicar las mismas reglas que el historial (nada interno a un Solicitante) y el servicio solo impone un destinatario activo. Así el servicio no se acopla a las reglas de cada evento y esas reglas se prueban donde nacen.

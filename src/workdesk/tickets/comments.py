@@ -39,6 +39,7 @@ from ..models import (
     User,
 )
 from ..models.comment import MAX_COMMENT_LENGTH
+from ..notifications.events import notify_comment
 from ..security import RoleCode, can_view_internal_activity, has_any_role
 from .service import TicketRuleError, record_ticket_event
 from .versioning import begin_ticket_operation
@@ -152,6 +153,8 @@ def add_comment(
         context={"comentario_id": comment.id},
         visibility=_event_visibility(kind),
     )
+
+    notify_comment(ticket, actor, internal=kind is CommentType.INTERNO)
 
     return comment
 

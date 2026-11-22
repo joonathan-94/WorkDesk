@@ -48,6 +48,7 @@ from ..models import (
     Validation,
     ValidationType,
 )
+from ..notifications.events import notify_state_change
 from ..sla.periods import reconcile_sla
 from .service import CLOSED_STATE_CODE, TicketRuleError, record_ticket_event
 from .state_actions import (
@@ -253,6 +254,9 @@ def change_state(
     # El reloj del SLA sigue al estado: se pausa en espera, se detiene al
     # resolver o cerrar y se reanuda al volver al trabajo (RN-89 y RN-166).
     reconcile_sla(ticket, actor)
+
+    # Los solicitantes y los técnicos asignados se enteran (RN-95 y RN-96).
+    notify_state_change(ticket, actor, action)
 
     return new_state
 
