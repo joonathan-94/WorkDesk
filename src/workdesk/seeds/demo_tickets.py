@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from io import BytesIO
 
-from sqlalchemy import update
+from sqlalchemy import delete, update
 from werkzeug.datastructures import FileStorage
 
 from ..extensions import db
@@ -67,6 +67,7 @@ from ..models import (
     Grupo,
     MotivoCierre,
     MotivoEspera,
+    Notificacion,
     Prioridad,
     StateAction,
     Ticket,
@@ -734,6 +735,7 @@ def seed_demo_tickets(
 
     created = 0
     refreshed = 0
+    new_ticket_ids: list[int] = []
 
     try:
         for demo in tickets:
@@ -742,6 +744,7 @@ def seed_demo_tickets(
 
             if ticket is None:
                 _create(demo, catalogs, times)
+                new_ticket_ids.append(_find_ticket(demo.clave).id)
                 created += 1
             else:
                 _refresh(ticket, demo, times, limit)
@@ -753,6 +756,15 @@ def seed_demo_tickets(
         # vencidos o pausados según su historia.
         for demo in tickets:
             rebuild_ticket_periods(_find_ticket(demo.clave))
+
+        # Los servicios también avisaron a las personas de cada ticket, con la hora de
+        # la carga y sin leer: la historia de un ticket demo es del pasado y no debe
+        # llenar a nadie de avisos nuevos. Los avisos de ejemplo tienen su propio
+        # comando (`seed-demo-notifications`).
+        if new_ticket_ids:
+            db.session.execute(
+                delete(Notificacion).where(Notificacion.ticket_id.in_(new_ticket_ids))
+            )
 
         db.session.commit()
     except TicketRuleError as error:

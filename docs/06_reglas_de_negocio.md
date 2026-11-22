@@ -1793,6 +1793,34 @@ Aplica y precisa RN-93 en la implementación de `v0.5.0` (entrega 5): la infraes
 
 ---
 
+## RN-168 — Avisos por los eventos de un ticket
+
+Aplica y precisa RN-94 a RN-96 y RF-068 en la implementación de `v0.5.0` (entrega 6): qué eventos de un ticket generan una notificación interna y a quién. Los avisos nacen dentro de la operación que los provoca y se confirman o se revierten con ella. Los de SLA (próximo a vencer y vencido) los genera el planificador (entrega 8).
+
+* **Nunca se avisa a quien hizo el cambio.** Ya lo sabe.
+* **Se avisa a las personas vigentes:** los solicitantes que no fueron retirados y los técnicos que siguen asignados. Un usuario inactivo no recibe nada (RN-167).
+* **Un Solicitante solo recibe avisos de lo que también ve en el historial.** Una nota interna, un escalamiento, el grupo, el motivo de una espera o de un cierre, el texto de un comentario o de la solución y el ticket principal de un duplicado no llegan nunca a un Solicitante, ni en el título ni en el mensaje. Los avisos no copian el texto de los comentarios: dicen quién escribió y en qué ticket.
+
+| Evento | Quién recibe el aviso |
+| --- | --- |
+| Crear un ticket | Nadie. Quien lo crea ya lo ve y el reparto del trabajo es de la asignación. |
+| Asignar un técnico | El técnico asignado y los solicitantes (que saben quién los atiende). |
+| Quitar a un técnico | El técnico que sale, si no se quitó él mismo. |
+| Escalar (técnico nuevo) | El técnico nuevo y los que dejan el ticket. Los solicitantes no: es un evento interno. Escalar solo de grupo no avisa a nadie. |
+| Iniciar, esperar, reactivar y cerrar (directo, confirmado o excepcional) | Los solicitantes y los técnicos asignados. |
+| Resolver | Los solicitantes reciben una petición de revisar la solución (RN-95); los técnicos, el aviso de que se resolvió. |
+| Rechazar la solución | Los técnicos, para retomar el trabajo; los demás solicitantes saben que sigue en progreso. |
+| Reabrir | Los técnicos (RN-96) y los demás solicitantes. |
+| Comentario público del personal | Los solicitantes. |
+| Comentario público de un solicitante (RF-068) | Los técnicos asignados. |
+| Nota interna | Los demás técnicos asignados. |
+
+Asignar o desasignar pueden cambiar el estado entre `Nuevo` y `Asignado`: esos cambios derivados no se avisan aparte (los cubre el aviso de asignación). Editar el ticket, cambiar su prioridad o el grupo, las relaciones, los adjuntos y los cambios de solicitantes no generan avisos en esta entrega.
+
+**Datos de demostración.** `seed-demo-tickets` ejecuta las operaciones reales, así que sus servicios también crean avisos; el comando los elimina al terminar, solo los de los tickets que creó, para que la historia de la demostración (que es del pasado) no llene a nadie de avisos nuevos. Los avisos de ejemplo se cargan con `seed-demo-notifications`.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

@@ -14,6 +14,7 @@ from src.workdesk.models import (
     Categoria,
     Comment,
     Estado,
+    Notificacion,
     Prioridad,
     Ticket,
     TicketEvent,
@@ -985,6 +986,46 @@ def test_adding_a_ticket_to_the_list_creates_only_the_new_one(app, seeded):
         assert result.created == 1
         assert result.refreshed == len(DEMO_TICKETS)
         assert count(Ticket) == len(DEMO_TICKETS) + 1
+
+
+def test_the_demo_tickets_do_not_flood_anyone_with_notifications(app, seeded):
+    # Los servicios avisan al operar, pero la historia de un ticket demo es del pasado:
+    # no deja avisos (los de ejemplo tienen su propio comando).
+    with app.app_context():
+        assert count(Notificacion) == 0
+
+        extra = replace(
+            DEMO_TICKETS[0],
+            clave="ticket-nuevo-de-prueba",
+            titulo="Un ticket que se agregó después a la lista",
+        )
+        seed_demo_tickets(now=NOW, tickets=(*DEMO_TICKETS, extra))
+
+        assert count(Notificacion) == 0
+
+
+def test_the_seed_keeps_the_notifications_of_tickets_it_did_not_create(app, seeded):
+    with app.app_context():
+        ticket = by_clave("mouse-malo")
+        user = db.session.scalar(db.select(User).limit(1))
+        db.session.add(
+            Notificacion(
+                usuario_id=user.id,
+                ticket_id=ticket.id,
+                tipo_evento="TICKET_ASIGNADO",
+                mensaje="Aviso que ya existía",
+            )
+        )
+        db.session.commit()
+
+        extra = replace(
+            DEMO_TICKETS[0],
+            clave="ticket-nuevo-de-prueba",
+            titulo="Un ticket que se agregó después a la lista",
+        )
+        seed_demo_tickets(now=NOW, tickets=(*DEMO_TICKETS, extra))
+
+        assert count(Notificacion) == 1
 
 
 def test_changing_the_age_in_the_list_moves_the_ticket(app, seeded):

@@ -30,6 +30,11 @@ from ..models import (
     TicketTechnician,
     User,
 )
+from ..notifications.events import (
+    notify_assignment,
+    notify_escalation,
+    notify_unassignment,
+)
 from ..security import RoleCode
 from .lifecycle import apply_derived_transition
 from .service import (
@@ -127,6 +132,8 @@ def assign_technician(
         from_state_code="NUEVO",
     )
 
+    notify_assignment(ticket, actor, technician)
+
     return assignment
 
 
@@ -181,6 +188,8 @@ def unassign_technician(
             action=StateAction.DESASIGNACION,
             from_state_code="ASIGNADO",
         )
+
+    notify_unassignment(ticket, actor, technician)
 
 
 # --- Grupo ------------------------------------------------------------
@@ -279,6 +288,7 @@ def escalate_ticket(
         )
 
     before = _escalation_snapshot(old_group, current)
+    previous_technicians = [a.tecnico for a in current]
 
     changes = {"grupo_id": new_group.id} if group_changes else {}
     apply_ticket_changes(ticket, actor, expected_version, changes)
@@ -312,6 +322,13 @@ def escalate_ticket(
             actor=actor,
             action=StateAction.ASIGNAR,
             from_state_code="NUEVO",
+        )
+
+        notify_escalation(
+            ticket,
+            actor,
+            previous_technicians,
+            [a.tecnico for a in ticket.tecnicos_vigentes],
         )
 
 
