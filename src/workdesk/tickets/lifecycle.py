@@ -16,7 +16,9 @@ Todas las acciones de estado pasan por `change_state`:
 
 La asignación de técnicos tiene sus propias transiciones derivadas
 (`apply_derived_transition`). El cierre automático por inactividad
-(`AUTO_CIERRE`) llega con el planificador de `v0.5.0`.
+(`AUTO_CIERRE`, RN-58) lo ejecuta el planificador con `close_automatically`: es
+el mismo cierre, pero lo hace el sistema (sin usuario) y comprueba su plazo dentro
+de la transacción.
 
 **Regla del cierre.** Un ticket en estado `CERRADO` siempre tiene fecha de
 cierre y motivo de cierre. La base solo puede garantizar que van juntos (el
@@ -31,6 +33,7 @@ se revierten juntos, y el commit lo realiza quien llama.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import func
 
@@ -49,9 +52,11 @@ from ..models import (
     ValidationType,
 )
 from ..notifications.events import notify_state_change
+from ..security.authorization import RESOLVED_STATE
 from ..sla.periods import reconcile_sla
 from .service import CLOSED_STATE_CODE, TicketRuleError, record_ticket_event
 from .state_actions import (
+    AUTO_CLOSE_REASON,
     CLOSING_ACTIONS,
     DIRECT_CLOSE_DEFAULT_REASON,
     EXCEPTIONAL_CLOSE_REASON,
@@ -261,6 +266,77 @@ def change_state(
     return new_state
 
 
+def close_automatically(ticket: Ticket, *, resolved_before: datetime) -> bool:
+    """Cierra un ticket `Resuelto` que nadie validó a tiempo (RN-58 y RN-59).
+
+    Lo llama el planificador. Es el mismo cierre que hacen las personas
+    (`AUTO_CIERRE` es una transición de la tabla y el estado, la fecha y el motivo
+    los escribe `_closing_changes`), con tres diferencias: el actor es el sistema
+    (sin usuario; el ticket queda con `cerrado_automaticamente`), el motivo es
+    `INACTIVIDAD` y **el plazo se comprueba aquí, dentro de la transacción y con el
+    ticket bloqueado**, no solo en la consulta que lo encontró: si mientras tanto
+    el solicitante lo validó o lo rechazó, o el ticket se reabrió y se resolvió de
+    nuevo, no se cierra.
+
+    `resolved_before` es el límite: solo se cierra si se resolvió en ese instante o
+    antes. Devuelve True si lo cerró y False si ya no correspondía. Sube la versión,
+    registra `TICKET_CERRADO` y avisa a solicitantes y técnicos. No hace commit.
+    """
+    lock_ticket(ticket)
+    # Los solicitantes y técnicos pudieron cambiar mientras esperaba el bloqueo.
+    db.session.expire(ticket, ["solicitantes", "tecnicos"])
+
+    old_state = db.session.get(Estado, ticket.estado_id)
+
+    if (
+        old_state.codigo != RESOLVED_STATE
+        or ticket.fecha_resolucion is None
+        or ticket.fecha_resolucion > resolved_before
+    ):
+        return False
+
+    transition = db.session.scalar(
+        db.select(TransicionEstado).where(
+            TransicionEstado.estado_origen_id == old_state.id,
+            TransicionEstado.accion == StateAction.AUTO_CIERRE.value,
+            TransicionEstado.activa.is_(True),
+        )
+    )
+
+    if transition is None:
+        return False
+
+    new_state = transition.estado_destino
+    reason = _reason_by_code(AUTO_CLOSE_REASON)
+
+    apply_ticket_changes(
+        ticket,
+        None,
+        ticket.version,
+        {"estado_id": new_state.id} | _closing_changes(None, reason),
+    )
+    record_ticket_event(
+        ticket,
+        TicketEvent.TICKET_CERRADO,
+        actor=None,
+        detail=_state_detail(old_state, new_state),
+        old_state=old_state,
+        new_state=new_state,
+        old_value=_state_snapshot(old_state),
+        new_value=_state_snapshot(new_state)
+        | {"motivo_cierre": {"codigo": reason.codigo, "nombre": reason.nombre}},
+        context={
+            "accion": StateAction.AUTO_CIERRE.value,
+            "motivo_cierre": reason.codigo,
+        },
+    )
+
+    reconcile_sla(ticket, None)
+    notify_state_change(ticket, None, StateAction.AUTO_CIERRE)
+
+    return True
+
+
 def apply_derived_transition(
     ticket: Ticket,
     *,
@@ -448,8 +524,9 @@ def _reason_by_code(code: str, *, active_only: bool = False) -> MotivoCierre:
     return reason
 
 
-def _closing_changes(actor: User, reason: MotivoCierre) -> dict:
-    """Los campos que fijan un cierre: fecha, motivo y quién cerró.
+def _closing_changes(actor: User | None, reason: MotivoCierre) -> dict:
+    """Los campos que fijan un cierre: fecha, motivo y quién cerró (`actor` es
+    None en el cierre automático, que queda marcado como tal).
 
     Es el único lugar que escribe el cierre de un ticket (ver el docstring del
     módulo), de modo que un ticket `CERRADO` nunca queda sin fecha ni motivo.
@@ -457,8 +534,8 @@ def _closing_changes(actor: User, reason: MotivoCierre) -> dict:
     return {
         "fecha_cierre": func.now(),
         "motivo_cierre_id": reason.id,
-        "cerrado_por_usuario_id": actor.id,
-        "cerrado_automaticamente": False,
+        "cerrado_por_usuario_id": None if actor is None else actor.id,
+        "cerrado_automaticamente": actor is None,
     }
 
 

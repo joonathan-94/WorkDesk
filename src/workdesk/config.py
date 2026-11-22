@@ -61,6 +61,21 @@ class Config:
         os.getenv("REOPEN_WINDOW_DAYS", "30")
     )
 
+    # Horas que un ticket puede estar en `Resuelto` sin que ningún solicitante
+    # lo valide antes de que el planificador lo cierre solo (docs/06, RN-58 y
+    # RN-59: también aplica a los tickets sin solicitante). Se cuentan en horas
+    # corridas desde la resolución. Pasará a la tabla `configuracion` cuando
+    # exista la administración (`v0.7.0`).
+    AUTO_CLOSE_HOURS = int(
+        os.getenv("AUTO_CLOSE_HOURS", "24")
+    )
+
+    # Cada cuántos segundos revisa el planificador (`run-scheduler`) los avisos
+    # de SLA y los cierres automáticos cuando se deja en marcha como bucle.
+    SCHEDULER_INTERVAL_SECONDS = int(
+        os.getenv("SCHEDULER_INTERVAL_SECONDS", "60")
+    )
+
     # Bloqueo temporal de edición (docs/10, secciones 71 a 74). Segundos que
     # dura un bloqueo sin renovarse y cada cuánto lo renueva la pantalla de
     # edición mientras está abierta; el latido debe ser menor que la duración.

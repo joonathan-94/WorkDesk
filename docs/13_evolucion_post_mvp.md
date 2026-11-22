@@ -152,7 +152,7 @@ Las olas no llevan número de versión: la numeración se definirá cuando exist
 - Orden explícito y evaluación determinista: una sola acción de asignación por evento y un límite de ejecuciones, para evitar contradicciones y bucles.
 - Cada ejecución queda en el historial del ticket con actor SISTEMA y la regla que la originó.
 - Modo de prueba que muestra qué haría una regla sin ejecutarla.
-- Las reglas por tiempo usan el scheduler (APScheduler, proceso separado, `10_arquitectura.md`, sección 85) y el calendario laboral (`v0.5.0`).
+- Las reglas por tiempo usan el scheduler (`run-scheduler`, proceso separado, `10_arquitectura.md`, sección 85) y el calendario laboral (`v0.5.0`).
 
 **Dependencias.** Grupos y asignación (`v0.4.0`), notificaciones y calendario (`v0.5.0`), tabla `configuracion` (`v0.7.0`). **Esfuerzo:** alto. La asignación automática avanzada figuraba fuera del MVP (`04_requisitos_funcionales.md`, sección 33).
 

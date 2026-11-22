@@ -175,6 +175,21 @@ class PeriodoSla(db.Model):
         nullable=True,
     )
 
+    # Cuándo el planificador avisó de que el consumo alcanzó el umbral y de que el
+    # ticket venció (`run-scheduler`). Son la marca de idempotencia: un aviso se
+    # envía una sola vez. Un período nuevo con la misma prioridad las hereda (el
+    # consumo nunca baja, así que no se vuelve a avisar de lo mismo); un cambio de
+    # prioridad abre un SLA distinto y empieza sin ellas.
+    fecha_aviso_umbral_enviado: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    fecha_aviso_vencimiento_enviado: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     # Quién provocó el cambio que abrió este período (el que cambió la prioridad
     # o el estado) y por qué. NULL en el período que abre la creación del ticket.
     usuario_cambio_id: Mapped[int | None] = mapped_column(

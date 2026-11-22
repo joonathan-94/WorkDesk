@@ -222,8 +222,7 @@ INITIAL_RELATION_TYPES = (
 #
 # `DESASIGNACION` (quitar al último técnico de un ticket `Asignado` lo deja en
 # `Nuevo`) no figura en docs/08: se añade porque `Asignado` significa tener
-# responsables. `AUTO_CIERRE` se carga ya, pero nada la usa hasta el cierre
-# automático (v0.5.0).
+# responsables. `AUTO_CIERRE` la ejecuta el planificador (cierre automático, v0.5.0).
 S = StateAction
 INITIAL_TRANSITIONS = (
     ("NUEVO", "ASIGNADO", S.ASIGNAR, "Se asigna un técnico."),

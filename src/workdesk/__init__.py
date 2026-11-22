@@ -38,6 +38,7 @@ def create_app(
     _validate_session_limits(app)
     _validate_comment_edit_window(app)
     _validate_reopen_window(app)
+    _validate_scheduler(app)
     _validate_edit_lock(app)
     _configure_uploads(app)
     _validate_password_policy(app)
@@ -144,6 +145,14 @@ def _validate_reopen_window(app: Flask) -> None:
         raise RuntimeError(
             "REOPEN_WINDOW_DAYS debe ser un entero mayor que cero."
         )
+
+
+def _validate_scheduler(app: Flask) -> None:
+    # Con 0 o menos el cierre automático cerraría todo al instante o el bucle
+    # no esperaría nada entre una revisión y otra.
+    for name in ("AUTO_CLOSE_HOURS", "SCHEDULER_INTERVAL_SECONDS"):
+        if app.config[name] <= 0:
+            raise RuntimeError(f"{name} debe ser un entero mayor que cero.")
 
 
 def _validate_edit_lock(app: Flask) -> None:

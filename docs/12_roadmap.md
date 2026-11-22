@@ -1009,7 +1009,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 
 ### Lo que `v0.4.0` deja para las fases siguientes
 
-- **`v0.5.0`:** el cierre automático por inactividad (la transición `AUTO_CIERRE` y el motivo `INACTIVIDAD` ya existen, pero nada los usa), el SLA con su calendario laboral y las notificaciones internas, entre ellas las que avisan a los técnicos cuando el Solicitante comenta (RF-068). Mientras tanto, un ticket resuelto sin solicitante solo lo cierra el Supervisor o el Administrador (cierre excepcional).
+- **`v0.5.0`:** el cierre automático por inactividad (la transición `AUTO_CIERRE` y el motivo `INACTIVIDAD` existían desde `v0.4.0` y el planificador de la entrega 8 los usa), el SLA con su calendario laboral y las notificaciones internas, entre ellas las que avisan a los técnicos cuando el Solicitante comenta (RF-068). Mientras tanto, un ticket resuelto sin solicitante solo lo cierra el Supervisor o el Administrador (cierre excepcional).
 - **`v0.6.0`:** la reasignación masiva y la carga de trabajo.
 - **`v0.7.0`:** los parámetros que hoy son variables de entorno (plazo de edición de comentarios, plazo de reapertura, límites de los adjuntos y tiempos del bloqueo de edición) pasan a la configuración administrable.
 - **`v0.9.0`:** las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), los modales y paneles laterales como mejora progresiva, y el color y el orden de los estados (RF-118).
@@ -1035,14 +1035,14 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 5. **Notificaciones internas, 1: infraestructura y centro de notificaciones** ✓: la tabla `notificaciones` (contenido inmutable, solo evoluciona la lectura), el servicio (`notify`, `notify_many`, consultar, contar y marcar), el centro (`/notifications`, con «Todas» y «No leídas») y la campana con contador que se actualiza cada 30 segundos (RN-167). Todavía **ningún evento genera avisos** (entrega 6): mientras tanto, el comando `seed-demo-notifications` deja avisos de ejemplo para verlo funcionar.
 6. **Notificaciones internas, 2: eventos** ✓: asignación, cambios de estado (espera, resolución, cierre, rechazo y reapertura) y comentarios avisan a quien corresponde desde las propias operaciones de los tickets, con las reglas de RN-168 (incluye RF-068, RN-95 y RN-96). Crear un ticket no avisa a nadie, por decisión de la fase. Quién recibe cada aviso se decide en `notifications/events.py`.
 7. **Indicadores de SLA en la interfaz** ✓: insignias en el listado y tarjeta en el detalle (solo para el personal), filtro por estado de SLA y orden «SLA más urgente», y la advertencia al bajar la prioridad con el SLA en riesgo, con el aviso a los Supervisores (RN-88 y RN-169). Los períodos guardan ahora cuándo alcanzan el umbral de aviso (una migración), lo que permite filtrar en la base de datos.
-8. **Planificador:** el comando `run-scheduler` con los avisos de SLA y el cierre automático (RN-58 y RN-59).
+8. **Planificador** ✓: el comando `run-scheduler` (bucle o `--once`, sin dependencias nuevas) con los avisos de SLA (*próximo a vencer* y *vencido*, una sola vez por período) y el cierre automático de los tickets `Resuelto` sin validar (RN-58, RN-59 y RN-170). Una migración añade a los períodos las marcas de aviso enviado.
 9. **Cierre de la versión:** revisión de todo el código de la fase y documentación de cierre.
 
 ### Decisiones de la fase
 
 Se tomaron al planificarla y se reflejan en el resto de los documentos cuando cada entrega las implementa.
 
-- **El planificador es un comando propio, sin dependencias nuevas.** `10_arquitectura.md` (secciones 84 y 85) preveía APScheduler. Como las tareas son idempotentes (sección 86), basta un comando (`run-scheduler`: un bucle simple que también puede ejecutarse una sola vez desde el Programador de tareas de Windows o desde `cron`) que se ejecuta como proceso separado del web, con el mismo código. Esas secciones se actualizan en la entrega 8.
+- **El planificador es un comando propio, sin dependencias nuevas.** `10_arquitectura.md` (secciones 84 y 85) preveía APScheduler. Como las tareas son idempotentes (sección 86), basta un comando (`run-scheduler`: un bucle simple que también puede ejecutarse una sola vez desde el Programador de tareas de Windows o desde `cron`) que se ejecuta como proceso separado del web, con el mismo código. Esas secciones se actualizaron en la entrega 8.
 - **«Primera respuesta» es el primer comentario público del personal** (Técnico, Supervisor o Administrador). Asignar el ticket o cambiar su estado no cuenta: no garantizan que el solicitante haya recibido una respuesta. Sigue siendo un objetivo opcional de la política (`09_modelo_de_datos.md`, 20.2, que se completa en la entrega 3).
 - **Las excepciones de SLA (RF-083, `sla_excepciones`) quedan fuera de la fase.** La lista de esta fase no las incluía; se decidirán con los dashboards de `v0.6.0` o con la configuración de `v0.7.0`. Cambiar la prioridad no es una excepción: tiene su propia política de continuidad (RN-88).
 - **La pausa del SLA no necesita columnas nuevas.** Al entrar en `En espera` con una política que pausa, el período se cierra y, al reanudar, se abre otro que arrastra el consumo acumulado: «pausado» significa ticket en `En espera` cuya política pausa. Encaja con que un período cerrado nunca se sobrescribe (`09_modelo_de_datos.md`, 20.3).
@@ -1079,6 +1079,8 @@ El SLA se calcula en tiempo laboral, así que el calendario se construye en esta
 
 El planificador que dispara los avisos de SLA (`docs/10`, secciones 84 a 87) ejecuta también el cierre automático de los tickets `Resuelto` que el solicitante no valida (RN-58) y de los resueltos sin solicitante (RN-59). Reutiliza lo que `v0.4.0` dejó preparado: la transición `AUTO_CIERRE` (cargada y marcada como esencial, pero que nada ejecuta todavía), el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente`. Debe cerrar por el mismo camino que las demás acciones (`change_state`), de modo que el ticket quede con fecha y motivo de cierre como siempre, y el plazo debe ser configurable.
 
+**Avance (entrega 8).** Hecho: `close_automatically` (`tickets/lifecycle.py`) cierra con la transición `AUTO_CIERRE`, el motivo `INACTIVIDAD` y `cerrado_automaticamente`, con el Sistema como actor; el plazo es `AUTO_CLOSE_HOURS` (24 por defecto) y se vuelve a comprobar con el ticket bloqueado (RN-170).
+
 ### Notificaciones internas
 
 Eventos iniciales recomendados:
@@ -1095,7 +1097,7 @@ Eventos iniciales recomendados:
 
 No implementar correo.
 
-**Avance (entrega 6).** Los eventos de ticket ya generan avisos (RN-168); quedan los de SLA, que genera el planificador de la entrega 8. **Entrega 5:** dejó el vocabulario de eventos (`NotificationEvent`, los nueve de la lista más reasignación, nota interna, espera y cierre), el servicio y el centro con la campana. La generación por eventos (entrega 6) y los avisos de SLA (entrega 8) las producirán con `notify` y `notify_many`; el servicio no decide a quién avisar (esa regla es de quien genera el aviso y sigue la visibilidad del historial; ver `10_arquitectura.md`, «Notificaciones internas»). La configuración de eventos y destinatarios (RN-97) llega con `v0.7.0`.
+**Avance (entrega 8).** Los avisos de SLA ya los genera el planificador (RN-170). **Avance (entrega 6).** Los eventos de ticket ya generan avisos (RN-168); los de SLA llegaron con el planificador (entrega 8). **Entrega 5:** dejó el vocabulario de eventos (`NotificationEvent`, los nueve de la lista más reasignación, nota interna, espera y cierre), el servicio y el centro con la campana. La generación por eventos (entrega 6) y los avisos de SLA (entrega 8) las producirán con `notify` y `notify_many`; el servicio no decide a quién avisar (esa regla es de quien genera el aviso y sigue la visibilidad del historial; ver `10_arquitectura.md`, «Notificaciones internas»). La configuración de eventos y destinatarios (RN-97) llega con `v0.7.0`.
 
 ### Criterio de salida
 
@@ -1663,7 +1665,7 @@ El MVP no utiliza WebSockets (RNF-095 y ARQ-022): las notificaciones se actualiz
 Lo que cualquiera de las dos exigiría, y por eso se pospone:
 
 - **Un servidor con soporte para conexiones largas.** Waitress, el servidor previsto (ARQ-028), ejecuta cada petición en un hilo de un grupo reducido (4 por defecto), de modo que unas pocas conexiones abiertas lo agotarían.
-- **Un canal entre procesos.** El scheduler (APScheduler) corre en un proceso separado del web (`docs/10`, sección 85): para que un evento generado por él llegue a las conexiones abiertas haría falta un intermediario. Redis está excluido del MVP; `LISTEN/NOTIFY` de PostgreSQL es una alternativa a evaluar que no añade tecnologías.
+- **Un canal entre procesos.** El scheduler (`run-scheduler`) corre en un proceso separado del web (`docs/10`, sección 85): para que un evento generado por él llegue a las conexiones abiertas haría falta un intermediario. Redis está excluido del MVP; `LISTEN/NOTIFY` de PostgreSQL es una alternativa a evaluar que no añade tecnologías.
 - **Autorización por evento.** Autenticar la conexión no basta: cada evento debe comprobarse contra su destinatario (una nota interna nunca debe llegar a un Solicitante).
 - **Cortar la conexión cuando cambia el contexto de seguridad**, por ejemplo al cambiar el rol o desactivar a la persona (`token_version`).
 

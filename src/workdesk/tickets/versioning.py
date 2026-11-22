@@ -29,7 +29,7 @@ class TicketConflictError(TicketRuleError):
 
 def apply_ticket_changes(
     ticket: Ticket,
-    actor: User,
+    actor: User | None,
     expected_version: int,
     changes: dict,
 ) -> None:
@@ -40,7 +40,8 @@ def apply_ticket_changes(
     dos guardados llegan a la vez, el segundo espera al primero y, al volver
     a evaluar la condición, ya no encuentra la versión que esperaba.
 
-    Sube la versión en uno y registra quién y cuándo modificó el ticket.
+    Sube la versión en uno y registra quién y cuándo modificó el ticket (`actor` es
+    None cuando lo hace el sistema, por ejemplo el cierre automático).
     """
     result = db.session.execute(
         update(Ticket)
@@ -52,7 +53,7 @@ def apply_ticket_changes(
             **changes,
             version=Ticket.version + 1,
             fecha_modificacion=func.now(),
-            usuario_modificacion_id=actor.id,
+            usuario_modificacion_id=None if actor is None else actor.id,
         )
         .execution_options(synchronize_session=False)
     )
