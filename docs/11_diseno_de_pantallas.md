@@ -1896,6 +1896,13 @@ Resumen simplificado:
 - **Relaciones (`v0.4.0`, entrega 10).** Solo el personal ve una tarjeta **Relaciones (n)** con los tickets relacionados, sus duplicados o aquel del que el ticket es duplicado (con número enlazado, título y estado) y el enlace **Gestionar**, que abre la pantalla de relaciones: la lista con **Quitar**, el formulario para relacionar con otro ticket por su número y el acceso a **Marcar como duplicado**, una pantalla de confirmación que explica que el ticket se cerrará con el motivo «Duplicado». El Solicitante no ve ni la tarjeta ni las pantallas; solo ve que su ticket se cerró como duplicado. La pestaña Relaciones del diseño sigue pendiente (hoy es una tarjeta).
 - **Bloqueo de edición (`v0.4.0`, entrega 11).** Las pantallas de editar y de cambiar la prioridad avisan, bajo el encabezado, de que el ticket queda reservado mientras están abiertas. Si otra persona está editando, en su lugar se muestra una pantalla de solo lectura con un aviso azul («X está editando este ticket»), desde cuándo y hasta cuándo como máximo, los datos actuales y los botones «Volver a intentar» y «Volver al ticket». El detalle muestra ese mismo aviso al personal que podría editar. Si el bloqueo se pierde con la pantalla abierta, un aviso rojo explica que no podrá guardar y desactiva el botón de guardar.
 
+**SLA en el listado y el detalle (`v0.5.0`, entrega 7; reglas en `docs/06`, RN-169).** Solo para el personal:
+
+- **Listado:** columna «SLA» entre la prioridad y la categoría, con la insignia (sección 29: verde, ámbar, rojo, gris y neutro, siempre con su nombre y un icono) y debajo el tiempo laboral que queda («Quedan 30 min»), que se pasó («Excedido en 1 h») o «En pausa» / «Detenido». En móvil, la insignia en la tarjeta. El filtro «SLA» (Dentro de plazo, Próximo a vencer, Vencido, Pausado y Sin SLA) está junto a Estado y Prioridad, y «SLA más urgente» se suma a los órdenes. «Sin SLA» es una insignia neutra.
+- **Detalle:** tarjeta «SLA» bajo el resumen, con la insignia, la barra de consumo, «5 h 30 min de 6 h (91 %)», cuándo vence (o «Detenido» / «En pausa»), la primera respuesta y, plegada, la lista de períodos con el motivo de cada cambio de prioridad.
+- **Cambiar prioridad:** si el SLA está próximo a vencer o vencido, una alerta (ámbar o roja) advierte, antes de confirmar, que el tiempo consumido se conserva, que el incumplimiento no se borra y que se avisará a los Supervisores.
+- El Solicitante no ve nada de esto, ni el filtro ni el orden.
+
 ---
 
 ## UI-005A — Resuelto pendiente de validación

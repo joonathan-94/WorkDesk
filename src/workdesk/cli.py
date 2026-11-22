@@ -24,6 +24,7 @@ from .seeds import (
 from .sla.periods import (
     SlaStatus,
     evaluate_ticket_sla,
+    fill_missing_warning_dates,
     list_periods,
     rebuild_periods,
 )
@@ -62,6 +63,12 @@ def _describe_ticket_sla(ticket: Ticket) -> list[str]:
 
     if snapshot.due_at is not None:
         lines.append(f"Vence: {local_datetime(snapshot.due_at)}")
+
+    if snapshot.period.fecha_umbral_aviso is not None:
+        lines.append(
+            f"Aviso al {snapshot.period.umbral_aviso_porcentaje} %: "
+            f"{local_datetime(snapshot.period.fecha_umbral_aviso)}"
+        )
 
     if snapshot.period.tiempo_objetivo_respuesta_minutos is None:
         lines.append("Primera respuesta: sin objetivo")
@@ -315,11 +322,14 @@ def register_commands(app: Flask) -> None:
             only_missing=not rebuild_all,
             public_id=None if public_id is None else public_id.lstrip("#"),
         )
+        # Los períodos abiertos antes de la fecha de aviso la reciben ahora (RN-169).
+        completed = fill_missing_warning_dates()
         db.session.commit()
 
         click.echo(
             f"Tickets recalculados: {result.tickets}. "
-            f"Períodos de SLA: {result.periods}."
+            f"Períodos de SLA: {result.periods}. "
+            f"Fechas de aviso completadas: {completed}."
         )
 
     @app.cli.command("sla-status")

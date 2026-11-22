@@ -34,7 +34,9 @@ from ..security import (
     can_view_internal_activity,
     has_any_role,
 )
+from ..sla import periods as sla_periods
 from ..sla.periods import reconcile_sla
+from ..sla.queries import SlaFilter, sla_condition, sla_urgency_order
 
 INITIAL_STATE_CODE = "NUEVO"
 CLOSED_STATE_CODE = "CERRADO"
@@ -60,6 +62,8 @@ SORT_RECENT = "recientes"
 SORT_OLDEST = "antiguos"
 SORT_PRIORITY = "prioridad"
 SORT_UPDATED = "actualizados"
+# Solo el personal ve y usa el SLA (docs/06, RN-169).
+SORT_SLA = "sla"
 DEFAULT_SORT = SORT_RECENT
 
 # Nombre visible de cada orden, en el orden en que se ofrecen.
@@ -69,6 +73,8 @@ SORT_LABELS = {
     SORT_PRIORITY: "Mayor prioridad primero",
     SORT_UPDATED: "Recién actualizados",
 }
+
+SORT_SLA_LABEL = "SLA más urgente"
 
 _ORDERINGS = {
     SORT_RECENT: (Ticket.fecha_creacion.desc(), Ticket.id.desc()),
@@ -96,6 +102,8 @@ class TicketFilters:
     location_id: int | None = None
     created_from: date | None = None
     created_to: date | None = None
+    # Solo el personal puede filtrar por SLA: para un Solicitante se ignora.
+    sla: SlaFilter | None = None
 
 
 class TicketRuleError(ValueError):
@@ -260,6 +268,7 @@ def list_tickets(
     tab: str = DEFAULT_TAB,
     sort: str = DEFAULT_SORT,
     page: int = 1,
+    now=None,
 ):
     """Devuelve una página de los tickets que `user` puede ver.
 
@@ -267,8 +276,16 @@ def list_tickets(
     ahí mismo. Estado y prioridad se cargan con el mismo JOIN del filtro y
     la categoría y los solicitantes con consultas por lote, así que mostrar
     una fila no genera consultas adicionales.
+
+    El filtro y el orden por SLA son solo para el personal (para un Solicitante se
+    ignoran) y usan `now` (por defecto, ahora) para decidir quién está vencido o
+    próximo a vencer: la pantalla pasa el mismo que usa para mostrar las insignias.
     """
     filters = filters or TicketFilters()
+    staff = has_any_role(user, *STAFF_ROLES)
+
+    if sort == SORT_SLA and not staff:
+        sort = DEFAULT_SORT
 
     statement = (
         db.select(Ticket)
@@ -282,8 +299,14 @@ def list_tickets(
                 TicketRequester.solicitante
             ),
         )
-        .where(*_listing_conditions(user, filters))
-        .order_by(*_ORDERINGS.get(sort, _ORDERINGS[DEFAULT_SORT]))
+        .where(*_listing_conditions(user, filters, now))
+        .order_by(
+            *(
+                sla_urgency_order()
+                if sort == SORT_SLA
+                else _ORDERINGS.get(sort, _ORDERINGS[DEFAULT_SORT])
+            )
+        )
     )
 
     if tab == TAB_OPEN:
@@ -303,6 +326,7 @@ def list_tickets(
 def count_tickets_by_tab(
     user,
     filters: TicketFilters | None = None,
+    now=None,
 ) -> dict[str, int]:
     """Cuántos tickets hay en cada pestaña, con la búsqueda y los filtros
     aplicados (la pestaña en sí no se aplica) y solo entre los visibles.
@@ -317,7 +341,7 @@ def count_tickets_by_tab(
         )
         .select_from(Ticket)
         .join(Ticket.estado)
-        .where(*_listing_conditions(user, filters or TicketFilters()))
+        .where(*_listing_conditions(user, filters or TicketFilters(), now))
     ).one()
 
     return {TAB_ALL: row[0], TAB_OPEN: row[1], TAB_CLOSED: row[2]}
@@ -328,13 +352,16 @@ def list_states() -> list[Estado]:
     return list(db.session.scalars(db.select(Estado).order_by(Estado.orden)))
 
 
-def _listing_conditions(user, filters: TicketFilters) -> list:
+def _listing_conditions(user, filters: TicketFilters, now=None) -> list:
     conditions = [visible_tickets_condition(user)]
 
     query_text = filters.query_text.strip()[:MAX_SEARCH_LENGTH]
 
     if query_text:
         conditions.append(_search_condition(user, query_text))
+
+    if filters.sla is not None and has_any_role(user, *STAFF_ROLES):
+        conditions.append(sla_condition(filters.sla, now or sla_periods.current_time()))
 
     if filters.state_id is not None:
         conditions.append(Ticket.estado_id == filters.state_id)

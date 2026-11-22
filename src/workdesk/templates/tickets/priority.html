@@ -46,6 +46,24 @@
                 </div>
             {% endif %}
 
+            {# Bajar la prioridad no reinicia el reloj ni borra un incumplimiento (RN-88):
+               si el SLA está en riesgo se advierte antes de confirmar. #}
+            {% if sla is not none and sla.status.value in ('PROXIMO_A_VENCER', 'VENCIDO') %}
+                <div
+                    class="alert alert-{{ 'danger' if sla.status.value == 'VENCIDO' else 'warning' }}"
+                    role="alert"
+                    data-sla-warning
+                >
+                    <strong>
+                        El SLA de este ticket está
+                        {{ 'vencido' if sla.status.value == 'VENCIDO' else 'próximo a vencer' }}
+                        ({{ sla.percent }} % consumido).
+                    </strong>
+                    Si eliges una prioridad menor, el tiempo ya consumido se conserva y un
+                    incumplimiento no se borra. Se avisará a los Supervisores.
+                </div>
+            {% endif %}
+
             <p class="mb-3">
                 Prioridad actual: {{ priority_badge(ticket.prioridad) }}
             </p>

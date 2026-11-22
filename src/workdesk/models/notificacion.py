@@ -42,6 +42,7 @@ class NotificationEvent(StrEnum):
     TICKET_REABIERTO = "TICKET_REABIERTO"
     SLA_PROXIMO_A_VENCER = "SLA_PROXIMO_A_VENCER"
     SLA_VENCIDO = "SLA_VENCIDO"
+    SLA_PRIORIDAD_BAJADA = "SLA_PRIORIDAD_BAJADA"
 
 
 NOTIFICATION_EVENT_LABELS = {
@@ -58,6 +59,7 @@ NOTIFICATION_EVENT_LABELS = {
     NotificationEvent.TICKET_REABIERTO: "Ticket reabierto",
     NotificationEvent.SLA_PROXIMO_A_VENCER: "SLA próximo a vencer",
     NotificationEvent.SLA_VENCIDO: "SLA vencido",
+    NotificationEvent.SLA_PRIORIDAD_BAJADA: "Prioridad bajada con el SLA en riesgo",
 }
 
 # Icono de Bootstrap Icons de cada evento (docs/11, sección 12).
@@ -75,6 +77,7 @@ NOTIFICATION_EVENT_ICONS = {
     NotificationEvent.TICKET_REABIERTO: "arrow-counterclockwise",
     NotificationEvent.SLA_PROXIMO_A_VENCER: "hourglass-split",
     NotificationEvent.SLA_VENCIDO: "exclamation-triangle",
+    NotificationEvent.SLA_PRIORIDAD_BAJADA: "arrow-down-circle",
 }
 
 

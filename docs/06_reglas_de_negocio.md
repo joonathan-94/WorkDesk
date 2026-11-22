@@ -1821,6 +1821,21 @@ Asignar o desasignar pueden cambiar el estado entre `Nuevo` y `Asignado`: esos c
 
 ---
 
+## RN-169 — Indicadores de SLA
+
+Aplica RN-91 y precisa RN-88 en la implementación de `v0.5.0` (entrega 7): cómo se muestra el estado del SLA y cómo se advierte al bajar la prioridad. El SLA es informativo y no bloquea ninguna operación (RN-86).
+
+* **Solo lo ve el personal.** El Solicitante no ve el SLA en ningún sitio: ni la insignia, ni la tarjeta, ni el filtro y el orden del listado. Esos parámetros no existen para él: si los escribe en la dirección se ignoran, de modo que no puede deducir el SLA de un ticket probando filtros.
+* **Estados** (docs/11, sección 29): *dentro de plazo*, *próximo a vencer* (el consumo alcanzó el umbral de aviso de la política), *vencido* (alcanzó o superó el objetivo, o venció alguna vez: un incumplimiento no se borra, RN-88), *pausado* (el reloj no corre por `En espera`) y *sin SLA* (nunca tuvo períodos o su prioridad no tiene una política activa). Un ticket resuelto o cerrado tiene el reloj detenido: queda *dentro de plazo* o *vencido* según cumplió, y nunca *próximo a vencer*.
+* **El umbral de aviso se copia al período y se guarda cuándo se alcanza**, igual que el vencimiento, en tiempo laboral. Editar después el umbral de la política no altera el SLA que un ticket ya tiene en curso (RN-166).
+* **Listado.** El personal ve una columna «SLA» con la insignia y el tiempo laboral que queda o que se pasó; en móvil, la insignia en la tarjeta. Puede **filtrar** por estado (dentro de plazo, próximo a vencer, vencido, pausado o sin SLA) y **ordenar por «SLA más urgente»**: primero el que vence antes (los ya vencidos, con su vencimiento en el pasado, van delante) y al final los que no tienen un reloj en marcha. El filtro y los contadores de las pestañas usan el mismo instante que las insignias.
+* **Detalle.** El personal ve la tarjeta «SLA»: la insignia, el consumo («5 h 30 min de 6 h (91 %)») con su barra, cuándo vence (o que está detenido o en pausa), el estado de la primera respuesta y la lista de períodos con el motivo de cada cambio de prioridad.
+* **Bajar la prioridad con el SLA en riesgo (RN-88).** Si el SLA está *próximo a vencer* o *vencido*, la pantalla de cambio de prioridad advierte antes de confirmar que el tiempo consumido se conserva y que el incumplimiento no se borra. Si de verdad se baja la prioridad (la nueva tiene un nivel menor), se avisa a los **Supervisores responsables del grupo del ticket**; si el ticket no tiene grupo, o ninguno de sus responsables está activo, a **todos los Supervisores activos**. No se avisa a quien hizo el cambio, ni cuando la prioridad sube, ni cuando el SLA está dentro de plazo, pausado o no existe. El aviso dice quién la bajó, de qué prioridad a cuál y en qué estado estaba el SLA, sin copiar el motivo (se lee en el historial). Evento: `SLA_PRIORIDAD_BAJADA`.
+
+**Fuera de esta entrega:** los avisos de «próximo a vencer» y «vencido» que genera el planificador y el cierre automático (entrega 8) y el dashboard de «fuera de SLA» (`v0.6.0`).
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

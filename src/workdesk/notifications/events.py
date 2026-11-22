@@ -21,8 +21,9 @@ Este módulo no importa el paquete `tickets` (que es quien lo usa): trabaja sobr
 ticket y los usuarios que recibe.
 """
 
-from ..models import NotificationEvent, StateAction, Ticket, User
-from ..security import STAFF_ROLES
+from ..extensions import db
+from ..models import NotificationEvent, Role, StateAction, Ticket, User
+from ..security import STAFF_ROLES, RoleCode
 from .service import notify_many
 
 E = NotificationEvent
@@ -165,6 +166,25 @@ def notify_escalation(
     )
 
 
+def notify_priority_lowered(
+    ticket: Ticket, actor: User, old_priority, new_priority, sla_label: str
+) -> None:
+    """Avisa a los Supervisores de que se bajó la prioridad con el SLA en riesgo
+    (RN-88): los responsables del grupo del ticket y, si no tiene grupo o ninguno
+    está activo, todos los Supervisores activos. `sla_label` es «próximo a vencer»
+    o «vencido». No se copia el motivo: se lee en el historial."""
+    notify_many(
+        _others(_supervisors_of(ticket), actor),
+        E.SLA_PRIORIDAD_BAJADA,
+        title="Prioridad bajada con el SLA en riesgo",
+        message=(
+            f"{_name(actor)} bajó la prioridad del ticket {_label(ticket)} de "
+            f"{old_priority.nombre} a {new_priority.nombre} con el SLA {sla_label}."
+        ),
+        ticket=ticket,
+    )
+
+
 def notify_comment(ticket: Ticket, actor: User, *, internal: bool) -> None:
     """Avisa de un comentario nuevo (RF-068), sin copiar su texto.
 
@@ -209,6 +229,29 @@ def _requesters(ticket: Ticket) -> list[User]:
 
 def _technicians(ticket: Ticket) -> list[User]:
     return [assignment.tecnico for assignment in ticket.tecnicos_vigentes]
+
+
+def _supervisors_of(ticket: Ticket) -> list[User]:
+    """Los Supervisores responsables del grupo del ticket que están activos; si no hay
+    ninguno (o el ticket no tiene grupo), todos los Supervisores activos."""
+    if ticket.grupo is not None:
+        responsible = [
+            designation.supervisor
+            for designation in ticket.grupo.supervisores_vigentes
+            if designation.supervisor.is_active
+        ]
+
+        if responsible:
+            return responsible
+
+    return list(
+        db.session.scalars(
+            db.select(User)
+            .join(Role, Role.id == User.rol_id)
+            .where(Role.codigo == RoleCode.SUPERVISOR.value, User.activo.is_(True))
+            .order_by(User.id)
+        )
+    )
 
 
 def _others(people: list[User], actor: User) -> list[User]:

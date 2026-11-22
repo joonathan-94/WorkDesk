@@ -19,7 +19,13 @@ from ..models import (
     Ubicacion,
     User,
 )
-from ..sla.periods import reconcile_sla
+from ..notifications.events import notify_priority_lowered
+from ..sla.periods import (
+    SLA_STATUS_LABELS,
+    SlaStatus,
+    evaluate_ticket_sla,
+    reconcile_sla,
+)
 from .service import (
     CLOSED_STATE_CODE,
     MAX_REASON_LENGTH,
@@ -134,6 +140,10 @@ def update_ticket(
     return True
 
 
+# Los estados del SLA en que bajar la prioridad se avisa a los Supervisores.
+_AT_RISK = frozenset({SlaStatus.PROXIMO_A_VENCER, SlaStatus.VENCIDO})
+
+
 def change_priority(
     ticket: Ticket,
     *,
@@ -175,6 +185,9 @@ def change_priority(
         )
 
     old_priority = ticket.prioridad
+    # Cómo estaba el SLA antes del cambio: bajar la prioridad con el SLA en riesgo
+    # avisa a los Supervisores (RN-88).
+    sla_before = evaluate_ticket_sla(ticket.id)
 
     apply_ticket_changes(ticket, actor, expected_version, {"prioridad_id": priority.id})
 
@@ -195,6 +208,19 @@ def change_priority(
     # prioridad nueva, conservando lo ya consumido (RN-88). El motivo y quien
     # cambió la prioridad quedan en el período nuevo.
     reconcile_sla(ticket, actor, reason=reason)
+
+    if (
+        sla_before is not None
+        and sla_before.status in _AT_RISK
+        and priority.nivel < old_priority.nivel
+    ):
+        notify_priority_lowered(
+            ticket,
+            actor,
+            old_priority,
+            priority,
+            SLA_STATUS_LABELS[sla_before.status].lower(),
+        )
 
     return True
 

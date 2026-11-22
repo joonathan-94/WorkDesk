@@ -331,6 +331,7 @@ WorkDesk/
 │   ├── areas.py
 │   ├── conftest.py
 │   ├── database.py
+│   ├── sla_helpers.py
 │   ├── test_account_password.py
 │   ├── test_account_profile.py
 │   ├── test_app.py
@@ -355,6 +356,8 @@ WorkDesk/
 │   ├── test_seed_demo_notifications.py
 │   ├── test_seed_demo_tickets.py
 │   ├── test_session_limits.py
+│   ├── test_sla_indicators.py
+│   ├── test_sla_indicators_ui.py
 │   ├── test_sla_periods.py
 │   ├── test_sla_policies.py
 │   ├── test_sla_policies_routes.py
@@ -653,7 +656,7 @@ Las migraciones actuales crean estas tablas:
 - `bloqueos_edicion_tickets`: el bloqueo temporal de edición de un ticket (quién lo edita ahora y hasta cuándo).
 - `calendarios_laborales`, `horarios_laborales` y `feriados`: las versiones del calendario laboral, sus franjas por día y sus feriados.
 - `politicas_sla`: los objetivos de SLA de cada prioridad (primera respuesta, resolución, umbral de aviso y pausa en espera).
-- `tickets_sla_periodos`: los períodos de SLA de cada ticket (los tramos de su vida bajo unas mismas condiciones de SLA, con lo consumido y los vencimientos).
+- `tickets_sla_periodos`: los períodos de SLA de cada ticket (los tramos de su vida bajo unas mismas condiciones de SLA, con lo consumido, los vencimientos y cuándo se alcanza el umbral de aviso).
 - `notificaciones`: los avisos internos de cada usuario (su contenido no se reescribe; solo cambia si ya los leyó).
 
 Para comprobar que se aplicaron:
@@ -754,7 +757,7 @@ Si ya tenías WorkDesk funcionando con una versión anterior (por ejemplo, `v0.3
 | 1 | `python -m pip install -r requirements-dev.txt` | Instala las dependencias si cambiaron (si no cambiaron, no hace nada). |
 | 2 | `python -m flask --app src.workdesk db upgrade` | Aplica las migraciones nuevas. |
 | 3 | `python -m flask --app src.workdesk seed-catalogs` | Carga lo estructural que las versiones nuevas necesitan: las transiciones entre estados, los motivos de espera, los tipos de relación entre tickets y los objetivos de SLA de cada prioridad. No duplica nada ni pisa lo que hayas renombrado, editado o desactivado. |
-| 4 | `python -m flask --app src.workdesk sla-rebuild` | Calcula el SLA de los tickets que ya tenías (los anteriores al SLA no lo tienen). Solo toca los que no tienen ninguno y se puede repetir sin riesgo. |
+| 4 | `python -m flask --app src.workdesk sla-rebuild` | Calcula el SLA de los tickets que ya tenías (los anteriores al SLA no lo tienen) y completa la fecha de aviso («próximo a vencer») de los períodos que ya estaban en marcha. Solo toca lo que falta y se puede repetir sin riesgo. |
 | 5 | `python -m flask --app src.workdesk run --debug` | Reinicia WorkDesk. |
 
 Para comprobarlo, `db current` debe terminar en `(head)` y `db check` no debe encontrar cambios pendientes.
@@ -966,6 +969,8 @@ Tu cuenta de Administrador es la que creaste con `create-admin`. Para cambiar de
 16. **Notificaciones:** en la barra superior, a la izquierda de tu nombre, hay una **campana**. Los avisos reales los generan los eventos de un ticket (ver el paso 17); para ver el centro sin provocar nada, carga avisos de ejemplo: con tickets ya cargados, ejecuta en la terminal `python -m flask --app src.workdesk seed-demo-notifications --username TU_USUARIO` (cambia `TU_USUARIO` por el usuario con el que entraste) y recarga la página: la campana muestra un **número azul** con los avisos sin leer. Púlsala: abre **Notificaciones** (también está en el menú lateral). Las no leídas tienen un punto y un fondo azul suave. Prueba **No leídas** (solo esas), **Marcar como leída** en una (el número baja), el título de una que tenga ticket (la marca como leída y abre el ticket) y **Marcar todas como leídas** (el número desaparece). Con la página abierta el número se actualiza solo cada 30 segundos. Cada persona ve solo los suyos: los avisos de ejemplo se crean por persona y el contador de cada una es independiente (los del personal hablan de asignaciones y SLA; los de un Solicitante, de cambios de estado y de la solución de su ticket).
 17. **Avisos reales:** necesitas dos personas a la vez (un navegador normal y una ventana de incógnito). Como Administrador (o Supervisor), abre un ticket de `paula.contreras` y pulsa **Asignar**: asígnalo a `diego.soto`. En la otra ventana, entra como `paula.contreras`: la campana muestra un **1** y el aviso dice que el ticket ya tiene técnico. Entra como `diego.soto`: tiene el aviso «Ticket asignado». Ahora, como `diego.soto`, pulsa **Iniciar trabajo** y **Resolver**: `paula.contreras` recibe «Ticket en progreso» y después «Revisa la solución»; tú, que no hiciste esos cambios, ya no recibes nada. Como `paula.contreras`, comenta en el ticket: `diego.soto` recibe «Respuesta del solicitante». Escribe una **nota interna** como Administrador: la recibe `diego.soto` y `paula.contreras` no recibe nada (ni el texto de la nota). Los avisos nunca copian el contenido de los comentarios: dicen quién escribió y en qué ticket.
 
+18. **Indicadores de SLA:** abre **Tickets**. Junto a Estado y Prioridad hay un filtro **SLA** y la tabla tiene una columna **SLA** con una insignia por ticket (verde «Dentro de SLA», ámbar «Próximo a vencer», roja «Vencido», gris «Pausado» o «Sin SLA») y, debajo, el tiempo laboral que queda o que se pasó. Elige **Vencido** en el filtro y pulsa **Filtrar**: quedan solo los vencidos y los contadores de las pestañas cambian con ellos. En **Ordenar por** elige **SLA más urgente**: primero los que vencen antes. Abre un ticket: bajo el **Resumen** hay una tarjeta **SLA** con la barra de consumo, cuándo vence y, plegados, sus **Períodos**. Ahora **Cambiar prioridad** en uno con el SLA vencido o próximo a vencer: arriba aparece una **alerta** que avisa antes de confirmar. Bájale la prioridad (con un motivo): los Supervisores del grupo del ticket (o todos, si no tiene grupo) reciben el aviso «Prioridad bajada con el SLA en riesgo». Si tus tickets de ejemplo son anteriores a esta versión y no ves «Próximo a vencer», ejecuta antes `sla-rebuild`.
+
 ### 2. Como Solicitante
 
 Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
@@ -982,7 +987,8 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 10. **Adjuntar:** en tu ticket puedes subir archivos (tarjeta **Archivos**) o adjuntarlos a un comentario (**Adjuntar archivos (opcional)**). Ves y descargas los tuyos y los del equipo en comentarios públicos, pero no los de una nota interna.
 11. **Validar una solución:** abre `el lector de huella de la entrada no me reconoce` (es de `paula.contreras`, está Resuelto). Arriba aparece **«¿Tu solicitud quedó resuelta?»** y, en la tarjeta **Resolución**, lo que escribió el técnico. Pulsa **No, necesito más ayuda**: te pide explicar qué falta (sin texto no avanza); al enviar, el ticket vuelve a **En progreso** y el historial muestra tu motivo. Como técnico, vuelve a resolverlo; entra otra vez como `paula.contreras` y pulsa **Sí, está resuelto**: el ticket queda **Cerrado**, el resumen indica la fecha y el motivo «Resolución validada», y aparece **Reabrir ticket** (lo tienes disponible durante `REOPEN_WINDOW_DAYS` días desde el cierre; después, `/tickets/N/status/reopen` responde **Acceso denegado**). Tampoco puedes resolver ni cerrar tickets: `/tickets/N/status/resolve` y `/tickets/N/status/close` responden 403.
 12. **Relaciones:** abre `otra vez sin wifi en la bodega` (`ignacio.molina`): está Cerrado con el motivo «Duplicado», pero no ves de qué ticket es duplicado ni hay tarjeta de **Relaciones**. `/tickets/N/relations` y `/tickets/N/duplicate` responden **Acceso denegado** (403): las relaciones las gestiona el personal.
-13. **Notificaciones:** la barra lateral incluye **Notificaciones** y, arriba, la campana. Si cargaste avisos de ejemplo para esta persona (`seed-demo-notifications --username paula.contreras`, ver el paso 16 del Administrador), ves los suyos: un cambio de estado, una respuesta del equipo, la revisión de la solución de un ticket, un cierre y la creación de un ticket. No hay avisos de SLA ni de notas internas: eso es solo del personal.
+13. **SLA:** no hay columna, filtro ni orden de SLA, y el detalle no tiene la tarjeta: el SLA es solo del personal. Si escribes `?sla=vencido` en la dirección del listado, se ignora.
+14. **Notificaciones:** la barra lateral incluye **Notificaciones** y, arriba, la campana. Si cargaste avisos de ejemplo para esta persona (`seed-demo-notifications --username paula.contreras`, ver el paso 16 del Administrador), ves los suyos: un cambio de estado, una respuesta del equipo, la revisión de la solución de un ticket, un cierre y la creación de un ticket. No hay avisos de SLA ni de notas internas: eso es solo del personal.
 
 ### 3. Como Técnico
 
@@ -1291,7 +1297,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-3006 tests
+3875 tests
 ```
 
 Los tests cubren principalmente:
@@ -1321,6 +1327,7 @@ Los tests cubren principalmente:
 - políticas de SLA: las restricciones de la base de datos (una sola política activa por prioridad, la primera respuesta que no supera la resolución, el umbral entre 1 y 100), las reglas de los valores y sus límites exactos, la lectura de las duraciones («30 min», «4 h», «1 h 30 min») con sus formas válidas, las inválidas y que escribirlas y leerlas sean operaciones inversas, los valores iniciales del seed (y que no pise lo que el Administrador cambió), qué se audita, desactivar y reactivar, los conflictos entre dos Administradores (con dos hilos a la vez, y con una política que la sesión ya había cargado cuando otra transacción la cambió) y las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito y la comprobación de que la pantalla estaba desactualizada).
 
 - períodos de SLA: abrir un período al crear el ticket, la pausa en espera y su reanudación, detener el reloj al resolver y cerrar y seguir donde iba al reabrir, que un cambio de prioridad conserve lo consumido (nacer vencido, bajar la prioridad sin borrar un incumplimiento, nacer pausado), que las condiciones se hereden aunque se edite la política, el tiempo laboral (noches, fines de semana y el calendario con que se calculó cada período), la primera respuesta, el estado del SLA con sus límites exactos, que reconstruir desde el historial dé lo mismo que el cálculo en vivo, las restricciones de la base de datos, dos cambios de prioridad a la vez, los comandos `sla-rebuild` y `sla-status` y que el seed de demostración deje los períodos de todos sus tickets;
+- indicadores de SLA: la fecha de aviso de cada período (el primer segundo que alcanza el porcentaje, heredada, y sus restricciones de base de datos), la evaluación por lotes con un número fijo de consultas, que las condiciones SQL del filtro y del orden coinciden **exactamente** con la evaluación en catorce tipos de ticket y más de 150 momentos (con los bordes de un segundo), que el Solicitante no ve ni puede usar el SLA, la tarjeta del detalle, la advertencia al bajar la prioridad y el aviso a los Supervisores (los del grupo o todos, nunca quien lo hizo);
 - notificaciones internas: el vocabulario de eventos (con su nombre y su icono), las restricciones de la base de datos (lectura coherente y un mensaje que no sea solo espacios o saltos de línea), que el contenido no se pueda reescribir pero la lectura sí, que marcar de nuevo no cambie la fecha de la primera lectura (ni con dos pestañas a la vez), que cada consulta devuelva solo las notificaciones de quien las pide (la de otra persona responde 404), que no se notifique a un usuario inactivo ni dos veces a la misma persona, el listado (filtro, orden, paginación y ausencia de consultas por fila), el contador y la campana, los formularios con su token CSRF y que el comando `seed-demo-notifications` solo apunte a tickets que cada persona puede ver;
 - avisos por los eventos de un ticket: a quién avisa cada operación (asignar, escalar, cambiar el estado y comentar), que nunca se avise a quien hizo el cambio, que un Solicitante no reciba nada interno (notas, escalamientos, motivos ni el texto de los comentarios), que los avisos se revierten con la operación y que el seed de tickets de demostración no deje avisos sin leer.
 
