@@ -74,7 +74,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_tickets_routes",
         "test_tickets_service",
     ),
-    # Tiempo laboral, calendario, políticas y períodos de SLA.
+    # Tiempo laboral, calendario, políticas y períodos de SLA, y el planificador.
     "sla": (
         "test_worktime",
         "test_work_calendar",
@@ -85,6 +85,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_sla_policies",
         "test_sla_policies_routes",
         "test_sla_policy_forms",
+        "test_scheduler",
     ),
     "notifications": (
         "test_notifications",

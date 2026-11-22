@@ -36,13 +36,18 @@ _TITLE_LENGTH = 80
 # Por acción de estado: el aviso para los solicitantes y el aviso para los técnicos
 # asignados, cada uno (evento, título, mensaje); `{t}` es el ticket. Una acción que no
 # está aquí no avisa a nadie: la asignación y la desasignación derivadas se avisan en
-# su propia operación y el cierre automático llega con el planificador.
+# su propia operación.
 _Notice = tuple[NotificationEvent, str, str]
 
 _IN_PROGRESS: _Notice = (E.ESTADO_CAMBIADO, "Ticket en progreso", "Se empezó a trabajar en el ticket {t}.")
 _ON_HOLD: _Notice = (E.TICKET_EN_ESPERA, "Ticket en espera", "El ticket {t} quedó en espera.")
 _RESUMED: _Notice = (E.ESTADO_CAMBIADO, "Ticket reactivado", "Se retomó el trabajo en el ticket {t}.")
 _CLOSED: _Notice = (E.TICKET_CERRADO, "Ticket cerrado", "Se cerró el ticket {t}.")
+_AUTO_CLOSED: _Notice = (
+    E.TICKET_CERRADO,
+    "Ticket cerrado automáticamente",
+    "El ticket {t} se cerró solo porque nadie confirmó la solución a tiempo.",
+)
 
 STATE_NOTICES: dict[StateAction, tuple[_Notice, _Notice]] = {
     StateAction.INICIAR: (_IN_PROGRESS, _IN_PROGRESS),
@@ -60,6 +65,9 @@ STATE_NOTICES: dict[StateAction, tuple[_Notice, _Notice]] = {
     StateAction.CIERRE_DIRECTO: (_CLOSED, _CLOSED),
     StateAction.CONFIRMAR: (_CLOSED, _CLOSED),
     StateAction.CIERRE_EXCEPCIONAL: (_CLOSED, _CLOSED),
+    # RN-58: lo cierra el planificador cuando nadie validó la solución a tiempo. El
+    # aviso no nombra a nadie: no hay persona que lo hiciera.
+    StateAction.AUTO_CIERRE: (_AUTO_CLOSED, _AUTO_CLOSED),
     StateAction.RECHAZAR: (
         (
             E.ESTADO_CAMBIADO,
@@ -91,9 +99,11 @@ STATE_NOTICES: dict[StateAction, tuple[_Notice, _Notice]] = {
 # --- Operaciones de los tickets -----------------------------------------------
 
 
-def notify_state_change(ticket: Ticket, actor: User, action: StateAction) -> None:
-    """Avisa a los solicitantes y a los técnicos asignados (menos a `actor`) de una
-    acción de estado."""
+def notify_state_change(
+    ticket: Ticket, actor: User | None, action: StateAction
+) -> None:
+    """Avisa a los solicitantes y a los técnicos asignados (menos a `actor`, que es
+    None cuando lo hace el sistema) de una acción de estado."""
     notices = STATE_NOTICES.get(StateAction(action))
 
     if notices is None:
@@ -185,6 +195,31 @@ def notify_priority_lowered(
     )
 
 
+def notify_sla_warning(ticket: Ticket) -> None:
+    """Avisa de que el ticket está próximo a vencer su SLA (RN-91): a los técnicos
+    asignados y, si no tiene ninguno, a los Supervisores responsables del grupo (o a
+    todos). El SLA es interno: los solicitantes nunca lo reciben."""
+    notify_many(
+        _technicians(ticket) or _supervisors_of(ticket),
+        E.SLA_PROXIMO_A_VENCER,
+        title="SLA próximo a vencer",
+        message=f"El ticket {_label(ticket)} está próximo a vencer su SLA.",
+        ticket=ticket,
+    )
+
+
+def notify_sla_breach(ticket: Ticket) -> None:
+    """Avisa de que el ticket venció su SLA (RN-91): a los técnicos asignados y a los
+    Supervisores responsables del grupo (o a todos si no hay ninguno)."""
+    notify_many(
+        [*_technicians(ticket), *_supervisors_of(ticket)],
+        E.SLA_VENCIDO,
+        title="SLA vencido",
+        message=f"El SLA del ticket {_label(ticket)} venció.",
+        ticket=ticket,
+    )
+
+
 def notify_comment(ticket: Ticket, actor: User, *, internal: bool) -> None:
     """Avisa de un comentario nuevo (RF-068), sin copiar su texto.
 
@@ -254,8 +289,10 @@ def _supervisors_of(ticket: Ticket) -> list[User]:
     )
 
 
-def _others(people: list[User], actor: User) -> list[User]:
-    return [person for person in people if person.id != actor.id]
+def _others(people: list[User], actor: User | None) -> list[User]:
+    """Las personas menos quien hizo el cambio (`actor` es None si fue el sistema:
+    entonces nadie se excluye)."""
+    return [person for person in people if actor is None or person.id != actor.id]
 
 
 def _is_staff(user: User) -> bool:

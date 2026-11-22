@@ -53,6 +53,7 @@ MAX_RESOLUTION_LENGTH = 2000
 # flujo sigue funcionando.
 VALIDATED_CLOSE_REASON = "RESOLUCION_VALIDADA"
 EXCEPTIONAL_CLOSE_REASON = "CIERRE_EXCEPCIONAL"
+AUTO_CLOSE_REASON = "INACTIVIDAD"
 
 # Motivos que el personal elige al cerrar directamente. `DUPLICADO` lo fija el
 # flujo de duplicados; `INACTIVIDAD`, el cierre automático.
@@ -277,8 +278,8 @@ AUTOMATIC_ACTIONS = {
         "Automática: al quitar al último técnico del ticket."
     ),
     StateAction.AUTO_CIERRE: (
-        "El sistema, por falta de respuesta del solicitante (llega con el "
-        "planificador de la versión 0.5.0)."
+        "El sistema, cuando nadie valida la solución en el plazo "
+        "configurado (lo ejecuta el planificador)."
     ),
 }
 
@@ -309,8 +310,8 @@ ESSENTIAL_REASONS = {
         "validación cuando el solicitante no responde o no existe (RF-054)."
     ),
     StateAction.AUTO_CIERRE: (
-        "La usa el cierre automático por inactividad (RN-58); su plazo se "
-        "configurará aparte."
+        "La usa el cierre automático por inactividad (RN-58); su plazo es "
+        "AUTO_CLOSE_HOURS."
     ),
     StateAction.REABRIR: (
         "Sin ella, un ticket cerrado, o resuelto por error, no podría volver "

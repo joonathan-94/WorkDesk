@@ -1603,7 +1603,7 @@ El personal nunca confirma ni rechaza por el solicitante, y el Solicitante nunca
 
 **Reapertura.** Siempre vuelve a **En progreso**, conservando a los técnicos que participaron (la asignación se puede cambiar después). El comentario que explica la situación es un comentario público normal, posterior a la reapertura; reabrir no pide texto. Un ticket cerrado sigue siendo de solo lectura hasta que se reabre: la reapertura es la única acción de estado que admite.
 
-**Ticket resuelto sin solicitante.** Nadie puede confirmar; solo el Supervisor y el Administrador pueden cerrarlo mediante el cierre excepcional. El cierre automático por inactividad (RN-58 y RN-59) llega con el planificador de `v0.5.0`.
+**Ticket resuelto sin solicitante.** Nadie puede confirmar; solo el Supervisor y el Administrador pueden cerrarlo mediante el cierre excepcional. El cierre automático por inactividad (RN-58 y RN-59) lo ejecuta el planificador desde `v0.5.0` (RN-170).
 
 **Historial.** Cada acción deja su evento propio, con el estado anterior y el nuevo: `TICKET_RESUELTO` (con `ciclo` y la explicación), `VALIDACION_ACEPTADA` y `VALIDACION_RECHAZADA` (con `validacion_id`), `TICKET_CERRADO` (con el motivo de cierre y la acción) y `TICKET_REABIERTO` (con la acción y el estado del que viene). Confirmar deja `VALIDACION_ACEPTADA` y después `TICKET_CERRADO`; rechazar, `VALIDACION_RECHAZADA` y después `TICKET_REABIERTO`. Los cinco son públicos; los textos del personal viajan en `contexto["motivo"]`, que solo ve el personal.
 
@@ -1832,7 +1832,24 @@ Aplica RN-91 y precisa RN-88 en la implementación de `v0.5.0` (entrega 7): cóm
 * **Detalle.** El personal ve la tarjeta «SLA»: la insignia, el consumo («5 h 30 min de 6 h (91 %)») con su barra, cuándo vence (o que está detenido o en pausa), el estado de la primera respuesta y la lista de períodos con el motivo de cada cambio de prioridad.
 * **Bajar la prioridad con el SLA en riesgo (RN-88).** Si el SLA está *próximo a vencer* o *vencido*, la pantalla de cambio de prioridad advierte antes de confirmar que el tiempo consumido se conserva y que el incumplimiento no se borra. Si de verdad se baja la prioridad (la nueva tiene un nivel menor), se avisa a los **Supervisores responsables del grupo del ticket**; si el ticket no tiene grupo, o ninguno de sus responsables está activo, a **todos los Supervisores activos**. No se avisa a quien hizo el cambio, ni cuando la prioridad sube, ni cuando el SLA está dentro de plazo, pausado o no existe. El aviso dice quién la bajó, de qué prioridad a cuál y en qué estado estaba el SLA, sin copiar el motivo (se lee en el historial). Evento: `SLA_PRIORIDAD_BAJADA`.
 
-**Fuera de esta entrega:** los avisos de «próximo a vencer» y «vencido» que genera el planificador y el cierre automático (entrega 8) y el dashboard de «fuera de SLA» (`v0.6.0`).
+**Fuera de esta entrega:** los avisos de «próximo a vencer» y «vencido» que genera el planificador y el cierre automático (entrega 8, RN-170) y el dashboard de «fuera de SLA» (`v0.6.0`).
+
+---
+
+## RN-170 — Planificador: avisos de SLA y cierre automático
+
+Aplica RN-58, RN-59 y RN-91 en la implementación de `v0.5.0` (entrega 8). Lo ejecuta el comando `run-scheduler` (docs/10, secciones 84 a 87); sus tareas se pueden repetir sin riesgo.
+
+* **Avisos de SLA (RN-91).** Cuando el consumo de un período de SLA en marcha alcanza su umbral de aviso, se avisa **una sola vez** de que el ticket está *próximo a vencer*; cuando vence, una sola vez de que está *vencido*. Un ticket en pausa, resuelto o cerrado no avisa (no tiene reloj en marcha). Eventos: `SLA_PROXIMO_A_VENCER` y `SLA_VENCIDO`.
+* **A quién se avisa.** *Próximo a vencer*: a los técnicos asignados y, si el ticket no tiene ninguno, a los Supervisores responsables del grupo del ticket (o a todos los Supervisores activos si no tiene grupo o ninguno está activo). *Vencido*: a los técnicos asignados **y** a esos Supervisores. **Nunca a los solicitantes:** el SLA es solo del personal (RN-169). El aviso nombra el ticket y no copia ningún texto.
+* **Si se encuentra tarde.** Si cuando el planificador revisa el ticket ya venció (estuvo detenido o se creó vencido), solo se envía el aviso de *vencido*: el de *próximo a vencer* ya no tiene sentido.
+* **Un aviso, una vez.** Cada período anota cuándo se enviaron los dos avisos. Un período nuevo de la misma prioridad (al reanudar tras una espera o reabrir) hereda esas marcas, porque el consumo nunca baja y no se repite lo ya avisado; un cambio de prioridad abre un SLA distinto (RN-88) y sus avisos empiezan de nuevo. Los períodos que ya habían alcanzado su umbral o vencido al instalar esta versión se dan por avisados: la primera ejecución no inunda a nadie. Los períodos que se crean después con `sla-rebuild` o con el seed de demostración empiezan sin marcas: el planificador avisa una vez de lo que ya esté vencido.
+* **Cierre automático (RN-58 y RN-59).** Un ticket `Resuelto` que nadie valida en `AUTO_CLOSE_HOURS` horas (24 por defecto, horas corridas desde la resolución) se cierra solo, **tenga o no solicitantes**. Es la transición `AUTO_CIERRE`, con el motivo de cierre `INACTIVIDAD`, `cerrado_automaticamente` verdadero y sin usuario que cierra; en el historial el actor es el **Sistema** (el evento es público, como cualquier cierre). Pasa por el mismo camino de cierre que las personas, así que el ticket queda con fecha y motivo de cierre como siempre, sube su versión, detiene el SLA y se puede reabrir (el personal siempre; el solicitante dentro del plazo de reapertura, contado desde ese cierre).
+* **El plazo se vuelve a comprobar al cerrar.** Entre que el planificador encuentra el ticket y lo cierra, el solicitante puede haberlo validado o rechazado, o el ticket haber sido reabierto y resuelto otra vez (la resolución nueva reinicia la espera): en la transacción del cierre se bloquea el ticket y se comprueban de nuevo el estado, el plazo y que la transición siga activa.
+* **A quién se avisa del cierre.** A los solicitantes vigentes y a los técnicos asignados («Ticket cerrado automáticamente»), sin nombrar a nadie ni el motivo interno.
+* **Configuración.** `AUTO_CLOSE_HOURS` y `SCHEDULER_INTERVAL_SECONDS` son variables de entorno (enteros mayores que cero; la aplicación no arranca con otro valor) hasta que la configuración administrable de `v0.7.0` (RN-58) las reemplace.
+
+**Fuera de esta entrega:** las excepciones de SLA (RF-083) y los avisos de la *primera respuesta* vencida.
 
 ---
 

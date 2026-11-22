@@ -2215,9 +2215,16 @@ Estas operaciones no deberán implementarse mediante JavaScript del navegador.
 
 # 84. Scheduler
 
-Para el MVP se utilizará un programador de tareas liviano basado en:
+Para el MVP se utiliza un **comando propio**, sin dependencias nuevas:
 
-> **APScheduler**
+> **`run-scheduler`** (`src/workdesk/scheduler.py`)
+
+Se evaluó APScheduler y se descartó: las tareas del MVP son consultas a la base de datos que ya son idempotentes (sección 86), así que un bucle simple, o una ejecución única lanzada por el Programador de tareas de Windows o por `cron`, hace lo mismo sin otra dependencia que mantener.
+
+```bash
+python -m flask --app src.workdesk run-scheduler           # bucle: cada SCHEDULER_INTERVAL_SECONDS
+python -m flask --app src.workdesk run-scheduler --once    # una pasada (cron / Programador de tareas)
+```
 
 No se utilizará Celery para el MVP.
 
@@ -2240,7 +2247,7 @@ Las tareas programadas deberán ejecutarse preferentemente mediante un proceso s
         │                           │
         ▼                           ▼
    Web Process                Scheduler Process
-     Flask                       APScheduler
+     Flask                       run-scheduler
         │                           │
         └─────────────┬─────────────┘
                       ▼
@@ -2277,9 +2284,13 @@ volver a comprobar estado
 
 Una tarea no deberá confiar exclusivamente en información obtenida antes de iniciar su transacción.
 
+**Orden de bloqueo (`v0.5.0`).** Las tareas bloquean **siempre el ticket primero** y sus períodos o notificaciones después, que es el orden de los cambios de estado y de prioridad. En el orden contrario, un aviso y un cambio de estado simultáneos sobre el mismo ticket podían esperarse mutuamente (guardar una notificación pide el ticket por su clave foránea) y PostgreSQL abortaba a uno de los dos; un test con hilos lo comprueba.
+
 ---
 
 # 87. Cierre automático
+
+(Implementado en `v0.5.0`, entrega 8: `scheduler.run_auto_close` y `tickets/lifecycle.py`, `close_automatically`; reglas en `docs/06`, RN-170.)
 
 El proceso programado buscará tickets:
 
@@ -2959,7 +2970,7 @@ La ejecución local podrá representarse así:
 
          ┌──────────────────┐
          │ Scheduler        │
-         │ APScheduler      │
+         │ run-scheduler    │
          └────────┬─────────┘
                   │
                   ▼
@@ -3016,7 +3027,6 @@ ruff
 Podrán incorporarse cuando la funcionalidad correspondiente sea implementada:
 
 ```text
-APScheduler
 openpyxl
 Waitress
 ```
@@ -3700,7 +3710,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
 
-    TIMER[APScheduler]
+    TIMER[run-scheduler]
        |
        v
     QUERY[Buscar trabajo pendiente]
@@ -3764,7 +3774,7 @@ Durante el desarrollo deberán mantenerse las siguientes reglas:
 | ARQ-017 | Integridad de archivos | SHA-256 |
 | ARQ-018 | Identificador ticket | Secuencia PostgreSQL |
 | ARQ-019 | Concurrencia | Lock temporal + versión optimista |
-| ARQ-020 | Procesos automáticos | APScheduler |
+| ARQ-020 | Procesos automáticos | Comando propio `run-scheduler` |
 | ARQ-021 | Mensajería distribuida | No requerida |
 | ARQ-022 | Notificaciones UI | Polling |
 | ARQ-023 | Búsqueda | PostgreSQL |

@@ -266,9 +266,12 @@ def _reconcile(
     open_period = _open_period(ticket_id)
     last = open_period or _last_period(ticket_id)
 
+    notified: tuple[datetime | None, datetime | None] = (None, None)
+
     if last is not None and last.prioridad_id == priority_id:
-        # Misma prioridad: las condiciones no cambian.
+        # Misma prioridad: las condiciones no cambian, ni lo ya avisado.
         terms = _Terms.of_period(last)
+        notified = (last.fecha_aviso_umbral_enviado, last.fecha_aviso_vencimiento_enviado)
     else:
         policy = _active_policy(priority_id)
         terms = None if policy is None else _Terms.of_policy(policy)
@@ -288,7 +291,7 @@ def _reconcile(
     if mode is SlaMode.STOPPED:
         return None
 
-    return _open(ticket_id, priority_id, terms, mode, now, actor_id, reason)
+    return _open(ticket_id, priority_id, terms, mode, now, actor_id, reason, notified)
 
 
 def _mode_for(state_code: str, terms: _Terms | None) -> SlaMode:
@@ -313,8 +316,13 @@ def _open(
     now: datetime,
     actor_id: int | None,
     reason: str | None,
+    notified: tuple[datetime | None, datetime | None] = (None, None),
 ) -> PeriodoSla:
-    """Abre un período con lo que le queda al ticket de sus objetivos."""
+    """Abre un período con lo que le queda al ticket de sus objetivos.
+
+    `notified` son los avisos de umbral y de vencimiento que el planificador ya
+    envió con las mismas condiciones (ver `PeriodoSla.fecha_aviso_umbral_enviado`).
+    """
     resolved = resolve_work_calendar()
     consumed = accumulated_seconds(ticket_id)
     due = response_due = warning_due = None
@@ -351,6 +359,8 @@ def _open(
         fecha_vencimiento_resolucion=due,
         umbral_aviso_porcentaje=terms.warning_percent,
         fecha_umbral_aviso=warning_due,
+        fecha_aviso_umbral_enviado=notified[0],
+        fecha_aviso_vencimiento_enviado=notified[1],
         usuario_cambio_id=actor_id,
         motivo_cambio=reason,
     )
