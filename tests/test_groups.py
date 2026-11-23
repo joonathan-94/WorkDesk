@@ -44,7 +44,7 @@ from src.workdesk.security import (
     is_responsible_supervisor,
 )
 from src.workdesk.users.service import change_role, deactivate_user
-from tests.ticket_helpers import login, plain_text, text
+from tests.ticket_helpers import audit_entries, login, plain_text, text
 
 ALL_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR", "ADMINISTRADOR")
 
@@ -67,12 +67,6 @@ def people(make_user):
 
 def user(people, key) -> User:
     return db.session.get(User, people[key]["id"])
-
-
-def audit_entries() -> list[AdminAuditLog]:
-    return list(
-        db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id))
-    )
 
 
 def group_audit() -> list[AdminAuditLog]:

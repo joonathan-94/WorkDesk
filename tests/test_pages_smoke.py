@@ -22,7 +22,14 @@ import pytest
 from sqlalchemy import event
 
 from src.workdesk.extensions import db
-from src.workdesk.models import Attachment, Ticket, TicketRequester, User
+from src.workdesk.models import (
+    Attachment,
+    Grupo,
+    Prioridad,
+    Ticket,
+    TicketRequester,
+    User,
+)
 from tests.demo_data import DEMO_PASSWORD
 from tests.ticket_helpers import login
 
@@ -57,6 +64,10 @@ ADMIN_PAGES = [
     "/admin/sla",
     "/admin/sla/calendar",
     "/admin/states",
+    "/admin/categories",
+    "/admin/priorities",
+    "/admin/locations",
+    "/admin/wait-reasons",
 ]
 
 # Quién entra en qué pantallas: 200 si puede, 403 si no.
@@ -254,3 +265,31 @@ def test_every_attachment_downloads_as_a_file(seeded, client, make_user):
         assert response.status_code == 200
         assert response.headers["Content-Disposition"].startswith("attachment")
         assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+
+# --- Pantallas de detalle de la administración -------------------------------------------------
+
+
+def test_the_administration_detail_screens_open_with_bounded_queries(
+    seeded, client, make_user
+):
+    sign_in(client, "ADMINISTRADOR", make_user)
+
+    with client.application.app_context():
+        urls = [f"/groups/{group_id}" for group_id in db.session.scalars(db.select(Grupo.id))]
+
+        for user_id in db.session.scalars(db.select(User.id)):
+            urls += [f"/users/{user_id}", f"/users/{user_id}/edit"]
+
+        urls += [
+            f"/admin/sla/priorities/{priority_id}/edit"
+            for priority_id in db.session.scalars(db.select(Prioridad.id))
+        ]
+
+    assert len(urls) > 20
+
+    for url in urls:
+        response, queries = get(client, url)
+
+        assert response.status_code == 200, url
+        assert queries <= BUDGET_SCREEN, f"{url} hizo {queries} consultas"

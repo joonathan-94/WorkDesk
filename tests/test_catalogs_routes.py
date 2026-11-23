@@ -15,6 +15,7 @@ from src.workdesk.models import (
     Ubicacion,
     User,
 )
+from tests.ticket_helpers import login, text
 
 NON_ADMIN_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR")
 
@@ -43,25 +44,11 @@ ACTION_ROUTES = ID_ROUTES + (
 )
 
 
-def login(client, user_data):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": user_data["password"],
-        },
-    )
-
-
 def admin_session(client, make_user):
     admin_data = make_user("ADMINISTRADOR")
     login(client, admin_data)
 
     return admin_data
-
-
-def text(response) -> str:
-    return " ".join(response.get_data(as_text=True).split())
 
 
 def audit(app) -> list[AdminAuditLog]:

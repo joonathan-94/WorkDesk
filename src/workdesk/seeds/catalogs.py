@@ -277,12 +277,7 @@ def _seed_transitions() -> int:
     # poder consultar sus ids.
     db.session.flush()
 
-    state_ids = {
-        code: state_id
-        for code, state_id in db.session.execute(
-            db.select(Estado.codigo, Estado.id)
-        )
-    }
+    state_ids = dict(db.session.execute(db.select(Estado.codigo, Estado.id)).all())
     existing = set(
         db.session.execute(
             db.select(
@@ -325,12 +320,9 @@ def _seed_sla_policies() -> int:
     # poder consultar sus ids.
     db.session.flush()
 
-    priority_ids = {
-        code: priority_id
-        for code, priority_id in db.session.execute(
-            db.select(Prioridad.codigo, Prioridad.id)
-        )
-    }
+    priority_ids = dict(
+        db.session.execute(db.select(Prioridad.codigo, Prioridad.id)).all()
+    )
     with_policy = set(db.session.scalars(db.select(PoliticaSla.prioridad_id)))
     created = 0
 

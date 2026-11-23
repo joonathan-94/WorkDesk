@@ -233,7 +233,11 @@ def test_a_tab_left_open_cannot_keep_the_session_alive_with_the_bell(
     expired = client.get(BELL_POLL)
 
     assert expired.status_code == 401
-    assert expired.get_json() == {"error": "session_expired"}
+    assert expired.get_json() == {
+        "ok": False,
+        "error": "session_expired",
+        "message": "Tu sesión expiró. Inicia sesión nuevamente.",
+    }
     assert expired.headers["Cache-Control"] == "no-store"
 
     # La consulta automática no cerró la sesión ni gastó el aviso: la siguiente acción

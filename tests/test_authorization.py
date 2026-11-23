@@ -9,18 +9,9 @@ from src.workdesk.security import (
     can_view_audit,
     has_any_role,
 )
+from tests.ticket_helpers import login
 
 NON_ADMIN_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR")
-
-
-def login(client, user_data):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": user_data["password"],
-        },
-    )
 
 
 def test_admin_area_redirects_anonymous_user_to_login(client):

@@ -12,7 +12,7 @@ from ...security import STAFF_ROLES, has_any_role
 from ...sla import periods as sla_periods
 from ...sla.queries import SLA_FILTER_LABELS, parse_filter
 from .. import bp
-from ..service import (
+from ..queries import (
     DEFAULT_SORT,
     DEFAULT_TAB,
     MAX_SEARCH_LENGTH,

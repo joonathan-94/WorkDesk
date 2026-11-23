@@ -18,7 +18,6 @@ from src.workdesk.catalogs.service import (
 )
 from src.workdesk.extensions import db
 from src.workdesk.models import (
-    AdminAuditLog,
     MotivoEspera,
     Ticket,
     TicketEvent,
@@ -28,7 +27,7 @@ from src.workdesk.models import (
 from src.workdesk.seeds import seed_catalogs
 from src.workdesk.seeds.catalogs import INITIAL_WAIT_REASONS
 from src.workdesk.tickets.service import record_ticket_event
-from tests.ticket_helpers import login, make_ticket, text
+from tests.ticket_helpers import audit_entries, login, make_ticket, text
 
 NON_ADMIN_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR")
 
@@ -41,12 +40,6 @@ def admin_id(make_user, seeded_roles, seeded_catalogs):
 def by_code(code):
     return db.session.scalar(
         db.select(MotivoEspera).where(MotivoEspera.codigo == code)
-    )
-
-
-def audit_entries() -> list[AdminAuditLog]:
-    return list(
-        db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id))
     )
 
 

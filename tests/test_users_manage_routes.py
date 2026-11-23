@@ -5,6 +5,7 @@ import pytest
 from src.workdesk.extensions import db
 from src.workdesk.models import AdminAuditLog, User
 from src.workdesk.security import verify_password
+from tests.ticket_helpers import login, text
 
 NON_ADMIN_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR")
 SUBPATHS = ("", "/edit", "/role", "/deactivate", "/activate", "/reset-password")
@@ -14,25 +15,11 @@ GENERATED_PASSWORD = re.compile(
 )
 
 
-def login(client, user_data, password=None):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": password or user_data["password"],
-        },
-    )
-
-
 def admin_session(client, make_user):
     admin_data = make_user("ADMINISTRADOR")
     login(client, admin_data)
 
     return admin_data
-
-
-def text(response) -> str:
-    return " ".join(response.get_data(as_text=True).split())
 
 
 def state(app, user_data):

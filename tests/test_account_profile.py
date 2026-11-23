@@ -4,18 +4,9 @@ import pytest
 
 from src.workdesk.extensions import db
 from src.workdesk.models import AdminAuditLog, User
+from tests.ticket_helpers import login, text
 
 ALL_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR", "ADMINISTRADOR")
-
-
-def login(client, user_data):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": user_data["password"],
-        },
-    )
 
 
 def logged_in(client, make_user, role="TECNICO", **kwargs):
@@ -23,10 +14,6 @@ def logged_in(client, make_user, role="TECNICO", **kwargs):
     login(client, user_data)
 
     return user_data
-
-
-def text(response) -> str:
-    return " ".join(response.get_data(as_text=True).split())
 
 
 def snapshot(app, user_data):

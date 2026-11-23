@@ -874,6 +874,7 @@ def test_renewing_while_someone_else_holds_it_is_a_conflict(
     assert response.status_code == 409
     assert response.get_json() == {
         "ok": False,
+        "error": "lock_held",
         "message": "Alicia Mora está editando este ticket.",
     }
     assert lock_state(app, ticket_id) == (alice["id"], 1)
@@ -902,7 +903,11 @@ def test_renewing_a_closed_ticket_is_a_conflict(client, app, alice, ticket_id):
     response = client.post(renew_url(ticket_id))
 
     assert response.status_code == 409
-    assert response.get_json()["ok"] is False
+    assert response.get_json() == {
+        "ok": False,
+        "error": "ticket_closed",
+        "message": "El ticket está cerrado.",
+    }
     assert lock_state(app, ticket_id) == (None, 0)
 
 

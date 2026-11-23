@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/sla-notifications-close-v0-5-0
+chore/review-backend-and-tests
 ```
 
-Entrega 9 de `v0.5.0 — SLA y notificaciones internas`: el cierre de la versión (ver "Hito completado: v0.5.0"). Una revisión de toda la fase, medida antes de tocar nada: `cli.py` pasa a un paquete, el incumplimiento del SLA queda registrado en el historial (`SLA_VENCIDO`, RN-91), la campana deja de mantener viva una sesión abandonada, la suite gana pruebas de pantallas con datos reales, de migraciones, de una instalación limpia, de las reglas RN-85 a RN-87 y de coherencia con los documentos, y la documentación queda al día (con una matriz de trazabilidad de los requisitos de la fase en `docs/12`). **Sin migraciones.**
+Entrega 1 de `v0.6.0 — Dashboards y carga de trabajo`: una revisión de todo lo construido hasta `v0.5.0` (backend, API interna y tests), medida antes de tocar nada. Cambios sin funcionalidad nueva: el seed de tickets de demostración pasa a un paquete y sus funciones complejas se descomponen; las consultas del listado salen de `tickets/service.py` a `tickets/queries.py`; los endpoints JSON comparten forma de error; todas las respuestas llevan cabeceras de seguridad; `ruff.toml` fija un límite de complejidad; y los tests se ordenan (el archivo de 3417 líneas del seed se parte por tema y los ayudantes idénticos se consolidan). **Sin migraciones.** Ver "Revisión de lo construido (entrega 1 de `v0.6.0`)".
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -229,11 +229,39 @@ Cierre de la versión (entrega 9). Se midió antes de cambiar nada (tamaño y co
 - **Medido y dejado como está,** con su porqué: no hay código muerto real (los candidatos eran un registro de secuencia en el metadata y el «oráculo» en Python del test que compara SQL y Python); las consultas por pantalla están acotadas (listado 14 o 15, detalle hasta 22 para el personal y 12 para el Solicitante, pantallas de acción hasta 23) y no hay N+1; con casi 20 000 tickets (23 000 períodos de SLA, 54 000 eventos de historial y 12 000 notificaciones, medido en un esquema desechable de la base de pruebas) el número de consultas no cambia, el listado responde en unos 30 ms (entre 80 y 230 ms con el filtro y el orden por SLA), el centro de notificaciones en 17 ms, la campana en 3 ms y el planificador envía cada aviso en unos 6 ms; `seeds/demo_tickets.py::_refresh` (complejidad 52) es una herramienta de desarrollo cubierta por 259 tests de seeds, y dividirla arriesga el comportamiento sin beneficio para el producto: queda anotada como deuda técnica; las funciones con muchos argumentos (18) son la API de palabras clave del proyecto, una decisión deliberada.
 - **Documentación:** se corrigieron comentarios y textos que hablaban de lo ya hecho como futuro, se completaron las cinco rutas de «SLA» que faltaban en el README y las cuatro columnas de `tickets_sla_periodos` que faltaban en `docs/09`, se añadieron los guardianes de coherencia con el README y `docs/12` incorpora la matriz de trazabilidad (cada requisito de la fase con su código y sus pruebas).
 
+## Revisión de lo construido (entrega 1 de `v0.6.0`)
+
+Primera entrega de la fase: revisar todo lo hecho hasta `v0.5.0` antes de construir encima. Se midió antes de cambiar y se actuó donde la medida lo justificaba. **Sin migraciones y sin cambios de comportamiento** salvo los dos que se indican (cabeceras y forma de los errores JSON). El mapa de rutas (88 líneas) es idéntico antes y después.
+
+- **El seed de tickets pasó a un paquete** (`seeds/demo_tickets/`: `common`, `validation`, `catalogs`, `dates` y `loader`; la API pública no cambió: `seed_demo_tickets`, `validate_demo_tickets`, `DemoTicketsError`). Las seis únicas funciones de todo `src` por encima de complejidad 12 vivían ahí (`_refresh` 52, `_check_adjustment` 29, `_write_new_dates` 24, `_apply_adjustment` 19, `_check_state_steps` 17 y `validate_demo_tickets` 13) y se descompusieron en piezas con nombre. La carga y el refresco de fechas comparten ahora la misma idea (cada fila «sigue» al evento del historial que la originó) en lugar de dos cadenas de condiciones. Los 259 tests del área del seed pasaron sin tocarlos, incluidos los que comprueban que refrescar equivale a cargar de nuevo.
+- **`tickets/queries.py`** recoge desde `tickets/service.py` la visibilidad (`visible_tickets_condition`), las condiciones del listado (`listing_conditions`, antes privada), `list_tickets`, `count_tickets_by_tab` y `TicketFilters`. `service.py` queda con la creación, el historial y los ayudantes (de 670 a 402 líneas). Es la pieza que reutilizarán los dashboards, la carga de trabajo y la reasignación.
+- **Una forma de error JSON** (`responses.py`) y **cabeceras de seguridad en todas las respuestas** (`security/headers.py`): ver "Respuestas JSON y cabeceras de seguridad". Dos aserciones que fijaban la forma antigua del error (`test_session_limits.py` y `test_ticket_edit_lock.py`) se actualizaron a propósito.
+- **`ruff.toml`** conserva las reglas por defecto y añade un límite de complejidad (12, 12 ramas y 50 sentencias) para `src/workdesk`: hoy no hay ninguna función por encima. Se comprobó que el guardián salta con una función de prueba de complejidad 15.
+- **Tests:** `test_seed_demo_tickets.py` (3417 líneas) se partió por tema en seis módulos (`data`, `load`, `dates`, `steps`, `people` y `lifecycle`) con sus ayudantes en `tests/seed_helpers.py`; las copias idénticas de `login`, `text`, `audit_entries` y `_run_in_threads` pasaron a `tests/ticket_helpers.py`; `test_pages_smoke` cubre ahora también las pantallas de categorías, prioridades, ubicaciones y motivos de espera y el detalle de cada grupo, usuario y política de SLA, con su presupuesto de consultas; y `test_security_headers.py` (9 tests) vigila las cabeceras y la forma de los errores JSON.
+- **Pequeños arreglos** que señaló la auditoría con reglas de Ruff adicionales: cuatro comprensiones innecesarias, un `return` implícito al final de `add_business_seconds` (ahora falla con un mensaje si algún día se llegara a él) y el bloque duplicado de `/health`.
+- **Medido y dejado como está:** 3975 tests en 4 min 51 s con `-n 6` (3965 en 4 min 53 s antes). Los más largos son de infraestructura (las dos pruebas de migraciones, 34 s y 23 s, y las 1064 pantallas de acción, 26 s) y 27 de los 40 más lentos son del seed, porque cada uno ejecuta la carga real (de 4 a 14 s): es el coste de probar la carga y no de un fixture mal montado, y solo seis tests la ejecutan dos veces. Los 800 tests del umbral de SLA ya eran unitarios (sin base de datos). Los fixtures con el mismo nombre no eran copias: `login` tiene cuatro variantes distintas, así que solo se consolidó lo idéntico (comparado por AST).
+
 ## Próximo hito
 
 ```text
 v0.6.0 — Dashboards y carga de trabajo
 ```
+
+`v0.6.0` se divide en 10 entregas, cada una con su rama, tests y Pull Request (planificadas al empezar la fase):
+
+| # | Entrega | Estado |
+| --- | --- | --- |
+| 1 | Revisión de lo construido: backend/API y tests | En curso (`chore/review-backend-and-tests`) |
+| 2 | Revisión: README, PROJECT_CONTEXT y docs | Pendiente |
+| 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | Pendiente |
+| 4 | Dashboard del Solicitante | Pendiente |
+| 5 | Carga de trabajo: consultas | Pendiente |
+| 6 | Carga de trabajo: pantalla | Pendiente |
+| 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Pendiente |
+| 8 | Reasignación masiva: servicio | Pendiente |
+| 9 | Reasignación masiva: pantalla | Pendiente |
+| 10 | Cierre de la fase | Pendiente |
+
 
 Su alcance está en `docs/12_roadmap.md` (fase 6): el dashboard del Solicitante (abiertos, en progreso, requiere revisión, cerrados recientes, tickets recientes y notificaciones), el dashboard operacional (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer, en espera, prioritarios, carga de trabajo y actividad reciente) y la carga de trabajo (tickets activos por técnico, por grupo, críticos, con SLA en riesgo y sin asignar), con navegación hacia los listados relacionados. Un ticket puede tener varios técnicos, así que la suma de la carga por técnico no tiene por qué coincidir con el total de tickets únicos. `v0.5.0` deja preparado:
 
@@ -449,6 +477,7 @@ WorkDesk/
 │       ├── formatting.py
 │       ├── logging_config.py
 │       ├── navigation.py
+│       ├── responses.py
 │       ├── scheduler.py
 │       ├── search.py
 │       └── worktime.py
@@ -457,6 +486,7 @@ WorkDesk/
 │   ├── conftest.py
 │   ├── database.py
 │   ├── demo_data.py
+│   ├── seed_helpers.py
 │   ├── sla_helpers.py
 │   ├── test_account_password.py
 │   ├── test_account_profile.py
@@ -483,9 +513,15 @@ WorkDesk/
 │   ├── test_route_authorization.py
 │   ├── test_route_protection.py
 │   ├── test_scheduler.py
+│   ├── test_security_headers.py
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_notifications.py
-│   ├── test_seed_demo_tickets.py
+│   ├── test_seed_demo_tickets_data.py
+│   ├── test_seed_demo_tickets_dates.py
+│   ├── test_seed_demo_tickets_lifecycle.py
+│   ├── test_seed_demo_tickets_load.py
+│   ├── test_seed_demo_tickets_people.py
+│   ├── test_seed_demo_tickets_steps.py
 │   ├── test_session_limits.py
 │   ├── test_sla_indicators.py
 │   ├── test_sla_indicators_ui.py
@@ -535,7 +571,8 @@ WorkDesk/
 ├── README.md
 ├── pytest.ini
 ├── requirements.txt
-└── requirements-dev.txt
+├── requirements-dev.txt
+└── ruff.toml
 ```
 
 No deben versionarse:
@@ -984,7 +1021,7 @@ Reglas completas en `docs/06` (RN-163), `docs/09` (28.2) y `docs/10` (secciones 
 - `current_edit_lock(ticket)`: el bloqueo vigente (de quien sea) con la persona cargada, sin modificar nada; sirve para el aviso del detalle.
 - Los tiempos salen de `clock_timestamp()` de la base de datos, no del reloj del servidor web.
 
-**Rutas.** `edit_ticket` y `change_ticket_priority` adquieren el bloqueo al empezar (`_hold_edit_lock`, que confirma en ese momento): si es de otra persona, responden con la pantalla de solo lectura `edit_locked.html` (200; un POST añade «No se guardó nada: otra persona está editando este ticket.» y no guarda); al guardar con éxito liberan el bloqueo en la misma transacción. Un error de validación o un conflicto de versión no lo liberan. Dos rutas JSON, solo POST y con CSRF (cabecera `X-CSRFToken` o campo `csrf_token`): `POST /tickets/<n>/lock/renew` (200 `{"ok": true}`; 409 con el mensaje «X está editando este ticket.», o si el ticket está cerrado) y `POST /tickets/<n>/lock/release` (`{"ok": true, "released": bool}`). Ambas: 404 si no se ve el ticket, 403 si no puede editarlo (el Solicitante).
+**Rutas.** `edit_ticket` y `change_ticket_priority` adquieren el bloqueo al empezar (`_hold_edit_lock`, que confirma en ese momento): si es de otra persona, responden con la pantalla de solo lectura `edit_locked.html` (200; un POST añade «No se guardó nada: otra persona está editando este ticket.» y no guarda); al guardar con éxito liberan el bloqueo en la misma transacción. Un error de validación o un conflicto de versión no lo liberan. Dos rutas JSON, solo POST y con CSRF (cabecera `X-CSRFToken` o campo `csrf_token`): `POST /tickets/<n>/lock/renew` (200 `{"ok": true}`; 409 con la forma común de error: `lock_held` y el mensaje «X está editando este ticket.», o `ticket_closed` si el ticket está cerrado; ver "Respuestas JSON y cabeceras de seguridad") y `POST /tickets/<n>/lock/release` (`{"ok": true, "released": bool}`). Ambas: 404 si no se ve el ticket, 403 si no puede editarlo (el Solicitante).
 
 **Pantalla.** `edit.html` y `priority.html` llevan en el formulario `data-edit-lock` y las URL, el token y el latido; el parcial `_edit_lock_notice.html` explica que el ticket queda reservado y trae el aviso rojo (oculto) del bloqueo perdido. `static/js/tickets/edit-lock.js` (mejora progresiva, sin dependencias externas) renueva cada `data-lock-heartbeat` segundos, libera al salir con `sendBeacon` salvo que se esté enviando el formulario y, si el servidor responde 409, avisa y desactiva el botón de guardar. El detalle muestra «X está editando este ticket» solo al personal que podría editar y nunca a quien tiene el bloqueo.
 
@@ -1864,6 +1901,14 @@ No mostrar al usuario:
 
 ---
 
+## Respuestas JSON y cabeceras de seguridad
+
+WorkDesk no tiene API pública. Las cuatro rutas JSON (`GET /health`, `GET /notifications/unread-count`, `POST /tickets/<n>/lock/renew` y `POST /tickets/<n>/lock/release`) y el `401` de la sesión expirada son consultas que hace su propio JavaScript. `docs/10` (secciones 33 y 34) preveía un prefijo `/api/v1/` para cuando formen una interfaz reutilizable; hoy no lo usan y no se renombraron.
+
+- **Una forma de error** (`responses.py`, `json_error`): `{"ok": false, "error": "<código>", "message": "<texto>"}`, con códigos estables (`session_expired`, `lock_held`, `ticket_closed`) y sin caché. Las respuestas correctas conservan su forma (`{"ok": true}`, `{"ok": true, "released": bool}`, `{"unread": N}` y la de `/health`).
+- **Cabeceras en todas las respuestas** (`security/headers.py`, un único `after_request`; `setdefault`, así que una ruta que fija la suya, como la descarga de un adjunto, manda): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Content-Security-Policy` y `Cache-Control: no-store` en todo lo que no sea un archivo estático. `Strict-Transport-Security` solo con `SESSION_COOKIE_SECURE=true`.
+- **La política de contenido** (`default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data:`, `frame-ancestors 'none'`...) se apoya en dos hechos medidos: las 24 etiquetas `<script>` de las plantillas llevan `src` (no hay JavaScript en línea ni manejadores `on...=`) y solo quedan 3 atributos `style=` en línea, de datos (el ancho de la barra de SLA y el color de una prioridad), por eso los estilos admiten `'unsafe-inline'` y los scripts no.
+
 # 21. Logging
 
 Se utiliza:
@@ -1959,7 +2004,7 @@ Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`set
 - se niega a ejecutarse con `APP_ENV=production`;
 - los usuarios quedan activos y sin cambio de contraseña obligatorio, y cada creación (de un usuario o de un grupo) se audita como acción del sistema.
 
-`seed-demo-tickets` (`src/workdesk/seeds/demo_tickets.py` y `demo_tickets_data.py`):
+`seed-demo-tickets` (`src/workdesk/seeds/demo_tickets/` (un paquete) y `demo_tickets_data.py`):
 
 - carga 76 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
 - **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario`, `nota_interna` y `adjunto`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;

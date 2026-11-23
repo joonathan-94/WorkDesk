@@ -24,6 +24,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_audit",
         "test_route_protection",
         "test_route_authorization",
+        "test_security_headers",
         "test_pages_smoke",
         "test_migrations",
         "test_docs_coherence",
@@ -99,7 +100,12 @@ AREAS: dict[str, tuple[str, ...]] = {
     # Los comandos que cargan datos de demostración.
     "seeds": (
         "test_seed_demo",
-        "test_seed_demo_tickets",
+        "test_seed_demo_tickets_data",
+        "test_seed_demo_tickets_load",
+        "test_seed_demo_tickets_dates",
+        "test_seed_demo_tickets_steps",
+        "test_seed_demo_tickets_people",
+        "test_seed_demo_tickets_lifecycle",
         "test_seed_demo_notifications",
     ),
 }

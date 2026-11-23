@@ -27,7 +27,8 @@ from src.workdesk.seeds.demo_notifications import (
     REQUESTER_SAMPLES,
     STAFF_SAMPLES,
 )
-from src.workdesk.tickets.service import create_ticket, visible_tickets_condition
+from src.workdesk.tickets.queries import visible_tickets_condition
+from src.workdesk.tickets.service import create_ticket
 from tests.ticket_helpers import login
 
 PASSWORD = "ClaveDemoSegura2026"

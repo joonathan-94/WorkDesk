@@ -3,19 +3,10 @@ from datetime import UTC, datetime, timedelta
 from src.workdesk.extensions import db
 from src.workdesk.models import AdminAuditLog, User
 from src.workdesk.security import verify_password
+from tests.ticket_helpers import login
 
 NEW_PASSWORD = "NuevaClaveSegura456!"
 STARTED_KEY = "session_started_at"
-
-
-def login(client, user_data, password=None):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": password or user_data["password"],
-        },
-    )
 
 
 def submit_change(client, user_data, *, new=NEW_PASSWORD, confirm=None):

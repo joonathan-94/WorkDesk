@@ -4,7 +4,6 @@ Cubre el servicio (`tickets/requesters.py`), el historial que genera, quién
 ve el ticket cuando cambian los solicitantes y las pantallas.
 """
 
-import threading
 
 import pytest
 
@@ -24,23 +23,19 @@ from src.workdesk.models.ticket_history import (
 from src.workdesk.security import can_view_ticket
 from src.workdesk.tickets.editing import update_ticket
 from src.workdesk.tickets.history import describe_history_changes
+from src.workdesk.tickets.queries import TAB_ALL, TicketFilters, list_tickets
 from src.workdesk.tickets.requesters import (
     add_requester,
     list_addable_requesters,
     remove_requester,
 )
-from src.workdesk.tickets.service import (
-    TAB_ALL,
-    TicketFilters,
-    TicketRuleError,
-    list_ticket_history,
-    list_tickets,
-)
+from src.workdesk.tickets.service import TicketRuleError, list_ticket_history
 from src.workdesk.tickets.versioning import TicketClosedError
 from tests.ticket_helpers import (
     login,
     make_ticket,
     plain_text,
+    run_in_threads,
     set_state,
     ticket_by_public_id,
 )
@@ -508,35 +503,6 @@ def test_remove_rejects_a_long_reason(app, catalog, team):
 # --- Concurrencia -----------------------------------------------------
 
 
-def _run_in_threads(app, tasks):
-    barrier = threading.Barrier(len(tasks))
-    outcomes = []
-
-    def run(task):
-        with app.app_context():
-            barrier.wait(timeout=10)
-
-            try:
-                task()
-                db.session.commit()
-                outcomes.append("ok")
-            except TicketRuleError as error:
-                db.session.rollback()
-                outcomes.append(str(error))
-            finally:
-                db.session.remove()
-
-    threads = [threading.Thread(target=run, args=(task,)) for task in tasks]
-
-    for thread in threads:
-        thread.start()
-
-    for thread in threads:
-        thread.join(timeout=30)
-
-    return outcomes
-
-
 def test_two_simultaneous_additions_of_the_same_requester(app, catalog, team):
     public_id = staff_ticket(app, catalog, team)
 
@@ -550,7 +516,7 @@ def test_two_simultaneous_additions_of_the_same_requester(app, catalog, team):
 
         return task
 
-    outcomes = _run_in_threads(app, [attempt("sup"), attempt("tec")])
+    outcomes = run_in_threads(app, [attempt("sup"), attempt("tec")])
 
     assert sorted(outcomes) == ["Esa persona ya es solicitante del ticket.", "ok"]
 
@@ -575,7 +541,7 @@ def test_two_simultaneous_removals_of_the_same_participation(app, catalog, team)
 
         return task
 
-    outcomes = _run_in_threads(app, [attempt("sup"), attempt("tec")])
+    outcomes = run_in_threads(app, [attempt("sup"), attempt("tec")])
 
     assert sorted(outcomes) == ["Esa persona ya no es solicitante del ticket.", "ok"]
 

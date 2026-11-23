@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from flask import (
     current_app,
     flash,
-    jsonify,
     redirect,
     render_template,
     request,
@@ -19,6 +18,7 @@ from flask_login import (
 
 from ..extensions import db
 from ..models import User
+from ..responses import json_error
 from ..security import (
     hash_password,
     password_needs_rehash,
@@ -59,11 +59,9 @@ def enforce_session_limits():
             # Una consulta automática no cierra la sesión ni gasta el aviso «Tu sesión
             # expiró»: solo le dice al script que pare. La siguiente acción de la persona
             # la cierra, con su mensaje.
-            response = jsonify(error="session_expired")
-            response.status_code = 401
-            response.headers["Cache-Control"] = "no-store"
-
-            return response
+            return json_error(
+                "session_expired", "Tu sesión expiró. Inicia sesión nuevamente.", 401
+            )
 
         current_app.logger.info(
             "Sesión expirada: usuario_id=%s",

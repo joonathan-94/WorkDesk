@@ -14,6 +14,7 @@ from src.workdesk.navigation import (
     build_links,
     user_initials,
 )
+from tests.ticket_helpers import login
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1] / "src" / "workdesk"
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
@@ -52,16 +53,6 @@ def stub(role_code: str, **kwargs) -> StubUser:
 
 def labels(user, items=MAIN_NAVIGATION, endpoint=None):
     return [link.label for link in build_links(user, items, endpoint)]
-
-
-def login(client, user_data):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": user_data["password"],
-        },
-    )
 
 
 def page(client, make_user, role_code, path="/dashboard"):
