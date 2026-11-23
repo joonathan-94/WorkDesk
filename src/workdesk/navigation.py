@@ -45,7 +45,8 @@ class NavLink:
 
 
 # Solo las pantallas que existen hoy. El resto de opciones previstas en
-# docs/11 (tickets, carga de trabajo, reportes...) se añadirán con su módulo.
+# docs/11 (carga de trabajo, reportes, base de conocimiento...) se añadirán con
+# su módulo.
 # Pantallas que cuentan como parte de "Tickets" / "Mis tickets": el listado,
 # el detalle y las acciones sobre un ticket. "Crear ticket" tiene su propia
 # opción y no está aquí.

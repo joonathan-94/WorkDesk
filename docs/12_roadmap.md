@@ -1024,7 +1024,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 **Semana:** 6  
 **Versión:** `v0.5.0`
 
-**Estado de ejecución:** en curso. Se divide en 9 entregas pequeñas, cada una en su propia rama, con tests y Pull Request, como las fases anteriores. Cada entrega amplía el seed de demostración con lo que aporte.
+**Estado de ejecución:** implementada, validada e integrada en `main` (PR #36 a #45). 3965 tests automatizados (2201 al empezar la fase). Se implementó en 9 entregas pequeñas, cada una en su propia rama, con tests y Pull Request, como las fases anteriores (más una optimización de la suite de tests, PR #42); la novena fue una revisión de toda la fase.
 
 ### Entregas de `v0.5.0`
 
@@ -1036,7 +1036,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 6. **Notificaciones internas, 2: eventos** ✓: asignación, cambios de estado (espera, resolución, cierre, rechazo y reapertura) y comentarios avisan a quien corresponde desde las propias operaciones de los tickets, con las reglas de RN-168 (incluye RF-068, RN-95 y RN-96). Crear un ticket no avisa a nadie, por decisión de la fase. Quién recibe cada aviso se decide en `notifications/events.py`.
 7. **Indicadores de SLA en la interfaz** ✓: insignias en el listado y tarjeta en el detalle (solo para el personal), filtro por estado de SLA y orden «SLA más urgente», y la advertencia al bajar la prioridad con el SLA en riesgo, con el aviso a los Supervisores (RN-88 y RN-169). Los períodos guardan ahora cuándo alcanzan el umbral de aviso (una migración), lo que permite filtrar en la base de datos.
 8. **Planificador** ✓: el comando `run-scheduler` (bucle o `--once`, sin dependencias nuevas) con los avisos de SLA (*próximo a vencer* y *vencido*, una sola vez por período) y el cierre automático de los tickets `Resuelto` sin validar (RN-58, RN-59 y RN-170). Una migración añade a los períodos las marcas de aviso enviado.
-9. **Cierre de la versión:** revisión de todo el código de la fase y documentación de cierre.
+9. **Cierre de la versión** ✓: revisión de todo el código de la fase y documentación de cierre (ver «Cierre de la fase»).
 
 ### Decisiones de la fase
 
@@ -1062,7 +1062,7 @@ Implementar:
 - próximo a vencer ✓ (entrega 4: el cálculo; los avisos, entregas 6 y 8);
 - vencido ✓ (entrega 4: el cálculo; los avisos, entregas 6 y 8);
 - visualización ✓ (entrega 7);
-- configuración básica;
+- configuración básica (el interruptor general «Aplicar SLA a los tickets» y los avisos configurables dependen de la tabla `configuracion`: `v0.7.0`, RN-165);
 - política de continuidad ante cambios de prioridad (RN-88): el consumo ya acumulado se conserva, el incumplimiento registrado no se borra, un cambio nunca reinicia el reloj, y la bajada de prioridad con el SLA en riesgo exige motivo y avisa a los Supervisores.
 
 ### Calendario laboral administrable
@@ -1098,6 +1098,43 @@ Eventos iniciales recomendados:
 No implementar correo.
 
 **Avance (entrega 8).** Los avisos de SLA ya los genera el planificador (RN-170). **Avance (entrega 6).** Los eventos de ticket ya generan avisos (RN-168); los de SLA llegaron con el planificador (entrega 8). **Entrega 5:** dejó el vocabulario de eventos (`NotificationEvent`, los nueve de la lista más reasignación, nota interna, espera y cierre), el servicio y el centro con la campana. La generación por eventos (entrega 6) y los avisos de SLA (entrega 8) las producirán con `notify` y `notify_many`; el servicio no decide a quién avisar (esa regla es de quien genera el aviso y sigue la visibilidad del historial; ver `10_arquitectura.md`, «Notificaciones internas»). La configuración de eventos y destinatarios (RN-97) llega con `v0.7.0`.
+
+### Cierre de la fase
+
+La última entrega no añadió una pantalla: revisó **toda** la fase, y empezó por medir en lugar de suponer (tamaño y complejidad de los módulos, código sin uso, comentarios que hablaban de lo hecho como futuro, consultas por pantalla y tiempos de la suite).
+
+**Lo que cambió, y por qué:**
+
+- **`cli.py` pasó a un paquete** (`src/workdesk/cli/`, con `setup`, `demo`, `sla` y `scheduling`): era una sola función con complejidad 33 y 105 sentencias donde se habían apilado los comandos de tres fases. Los comandos no cambiaron.
+- **El incumplimiento del SLA queda registrado** (RN-91 pedía informarlo, avisar y registrarlo): el planificador deja el evento interno `SLA_VENCIDO` en el historial al avisar del vencimiento. Es el único cambio de comportamiento.
+- **Un bloqueo mutuo** entre el planificador y un cambio de estado simultáneo sobre el mismo ticket (el planificador bloqueaba primero el período y los cambios de estado, el ticket): se reprodujo con un test de hilos y se corrigió bloqueando siempre el ticket primero.
+- **La campana mantenía viva una sesión abandonada.** Su consulta automática cada 30 segundos pasaba por los límites de sesión como una petición más y renovaba la última actividad: una pestaña olvidada con la campana visible nunca expiraba por inactividad (solo por las 8 horas de duración máxima). Ninguna prueba lo veía, porque cada una comprobaba una cosa a la vez (la campana por un lado y la expiración por otro). Ahora las consultas pasivas se comprueban igual que cualquier petición (con la sesión expirada responden `401`) pero no cuentan como actividad (`auth/session.py`, `PASSIVE_ENDPOINTS`).
+- **Pruebas nuevas:** las pantallas con los 76 tickets de demostración, con un presupuesto de consultas por petición; las migraciones (suben, coinciden con los modelos, bajan y vuelven a subir), que ninguna otra prueba comprobaba porque el esquema de la suite sale de los modelos; una **instalación limpia** que sigue los pasos del README sobre un esquema creado solo por las migraciones y revisa lo que deja en la base de datos (lo que `db check` no ve: secuencias, valores por defecto y restricciones; se comprobó quitando un valor por defecto de una migración: `db check` seguía pasando y esta prueba falló con el error real); la coherencia de los documentos con las variables de entorno, los comandos, las migraciones y la lista de rutas (el README no listaba cinco rutas de «SLA» y nadie lo había notado); las reglas RN-85, RN-86 y RN-87, que se cumplían por construcción pero no tenían una prueba que las defendiera (`test_sla_business_rules.py`); y que la consulta de la campana no renueve la sesión (con un reloj que se mueve a mano, sin esperar minutos). Los datos de demostración compartidos y la hora de las pruebas de SLA pasaron a `conftest.py` y `tests/demo_data.py`.
+- **Documentación:** los textos que daban por futuro lo ya hecho se corrigieron.
+
+**Medido y dejado como está:** no hay código muerto real; las consultas están acotadas (listado 14 o 15, detalle hasta 22 para el personal y 12 para el Solicitante, pantallas de acción hasta 23) y no hay una consulta por fila en ninguna pantalla; con **casi 20 000 tickets** (23 000 períodos de SLA, 54 000 eventos de historial y 12 000 notificaciones, medido en un esquema desechable de la base de pruebas) el número de consultas por pantalla no cambia, el listado responde en unos 30 ms (entre 80 y 230 ms con el filtro y el orden por SLA), el centro de notificaciones en 17 ms y la campana en 3 ms, muy por debajo de los 2 segundos de RNF-001, y el planificador encuentra 16 000 avisos pendientes en 17 ms y envía cada uno en unos 6 ms; la función `_refresh` del seed de tickets (complejidad 52) es una herramienta de desarrollo cubierta por 259 tests y se anota como deuda técnica antes que arriesgar su comportamiento; y las funciones con muchos argumentos son la API de palabras clave del proyecto.
+
+**Trazabilidad de los requisitos de la fase.** Al cerrar se comprobó, uno por uno, cada requisito de `04_requisitos_funcionales.md` (RF-077 a RF-087) y de `06_reglas_de_negocio.md` (RN-58, RN-59 y RN-85 a RN-97) contra el código y las pruebas que lo cubren. Es la forma de responder «¿está todo lo que se prometió?» sin fiarse de la memoria de nadie:
+
+| Requisito | Estado | Dónde vive | Quién lo prueba |
+| --- | --- | --- | --- |
+| RF-077 configurar el SLA · RN-92 (configura el Administrador) · RN-165 | Hecho (el interruptor general queda para `v0.7.0`) | `sla/policies.py` y la pantalla «SLA» (`/admin/sla`) | `test_sla_policies.py`, `test_sla_policy_forms.py`, `test_sla_policies_routes.py` |
+| RF-078 cálculo del SLA · RN-166 | Hecho | `sla/periods.py` (`reconcile_sla`, `evaluate_ticket_sla`) | `test_sla_periods.py` |
+| RF-079 horarios y feriados · RN-90 | Hecho | `worktime.py`, `sla/work_calendar.py` y `/admin/sla/calendar` | `test_worktime.py`, `test_work_calendar.py`, `test_work_calendar_routes.py` |
+| RF-080 pausa del SLA · RN-89 | Hecho (la pausa es por política) | `sla/periods.py` | `test_sla_periods.py`, `test_sla_policies.py` |
+| RF-081 indicador de estado · RN-91 (informar) | Hecho (solo para el personal, RN-169) | `sla/queries.py`, listado y detalle de tickets | `test_sla_indicators.py`, `test_sla_indicators_ui.py` |
+| RF-082 aviso de vencimiento · RN-91 (avisar y registrar) | Hecho: un aviso por período y el evento `SLA_VENCIDO` en el historial | `scheduler.py`, `notifications/events.py` | `test_scheduler.py` |
+| RF-083 excepciones de SLA · parte de RN-92 | **Fuera de la fase** (`v0.6.0` o `v0.7.0`) | — | — |
+| RF-084 generación de avisos · RN-94, RN-95 y RN-96 | Hecho, con una decisión: crear un ticket no avisa a nadie (RN-168) | `notifications/events.py`, llamado desde los servicios de tickets | `test_notification_events.py` |
+| RF-085 centro de notificaciones · RF-086 estado de lectura · RN-93 | Hecho | `notifications/` (servicio, rutas y campana) | `test_notifications.py`, `test_notifications_routes.py` |
+| RF-087 configurar eventos y destinatarios · RN-97 | **Fuera de la fase** (`v0.7.0`) | — | — |
+| RN-58 y RN-59 cierre automático | Hecho (el plazo es una variable de entorno hasta `v0.7.0`) | `scheduler.py`, `tickets/lifecycle.py` (`close_automatically`) | `test_scheduler.py` |
+| RN-85, RN-86 y RN-87 el SLA es del ticket, no bloquea y no depende de la carga | Hecho, por construcción | los períodos cuelgan del ticket; ninguna operación consulta el SLA para permitirse | `test_sla_business_rules.py` |
+| RN-88 prioridad y continuidad | Hecho | `sla/periods.py`, `tickets/editing.py`, `notifications/events.py` | `test_sla_periods.py`, `test_sla_indicators_ui.py` |
+
+Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron al planificar la fase (ver «Decisiones de la fase») y siguen escritas más abajo con su destino. Dos requisitos tenían una forma de cumplirse más estricta de la que se eligió y conviene decirlo: RN-91 pedía *registrar* el incumplimiento y la primera versión de la fase solo lo dejaba deducible de las fechas (se cerró en esta entrega con `SLA_VENCIDO`), y RF-084 lista la creación entre los eventos que avisan, pero un aviso al crear un ticket no le dice nada a nadie (quien lo crea ya lo ve y quien lo atiende lo conocerá al asignarlo), así que se decidió no generarlo.
+
+**Lo que la fase deja para las siguientes** (cada cosa con su destino): las excepciones de SLA (RF-083, con los dashboards de `v0.6.0` o la configuración de `v0.7.0`), la configuración de eventos y destinatarios de las notificaciones (RF-087 y RN-97, `v0.7.0`), el interruptor general del SLA (RN-165, `v0.7.0`), los avisos de la primera respuesta vencida y la política de retención de las notificaciones leídas (sin fase asignada) y la actualización en tiempo real de las notificaciones (después del MVP; hoy es un contador que se consulta cada 30 segundos).
 
 ### Criterio de salida
 

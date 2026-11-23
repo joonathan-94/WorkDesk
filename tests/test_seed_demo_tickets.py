@@ -1,6 +1,5 @@
 import hashlib
 import re
-import shutil
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -25,7 +24,6 @@ from src.workdesk.models import (
     TicketRequester,
     TicketTechnician,
     TipoRelacionTicket,
-    Ubicacion,
     User,
     Validation,
 )
@@ -33,12 +31,9 @@ from src.workdesk.models.ticket_history import TicketHistoryImmutableError
 from src.workdesk.seeds import (
     DemoTicketsError,
     seed_catalogs,
-    seed_demo_groups,
     seed_demo_tickets,
-    seed_demo_users,
     seed_roles,
 )
-from src.workdesk.seeds.demo import DEMO_USERS
 from src.workdesk.seeds.demo_tickets import validate_demo_tickets
 from src.workdesk.seeds.demo_tickets_data import (
     DEMO_CATEGORIES,
@@ -58,86 +53,8 @@ from src.workdesk.tickets.attachments import attachment_path
 from src.workdesk.tickets.editing import update_ticket
 from src.workdesk.tickets.service import create_ticket
 from src.workdesk.worktime import Franja, WorkCalendar, parse_time
-from tests.database import empty_tables, has_snapshot, restore_snapshot, take_snapshot
-
-DEMO_PASSWORD = "ClaveDemoSegura2026"
-ZONE = ZoneInfo("America/Santiago")
-
-# Un miércoles a media tarde: deja hacia atrás un fin de semana cercano.
-NOW = datetime(2026, 11, 18, 15, 0, tzinfo=ZONE)
-
-ROLES = {demo.username: demo.rol for demo in DEMO_USERS}
-SOLICITANTES = sorted(u for u, rol in ROLES.items() if rol == "SOLICITANTE")
-
-
-def prepare(app, *, categories=("Redes", "Hardware", "Correo", "Impresoras"),
-            locations=(MARCOLETA, MATTA)):
-    """Deja la base como la tendría quien siguió el README hasta antes del seed."""
-    app.config["APP_TIMEZONE"] = "America/Santiago"
-
-    with app.app_context():
-        seed_roles()
-        seed_catalogs()
-        seed_demo_users(DEMO_PASSWORD)
-        seed_demo_groups()
-
-        for order, name in enumerate(categories, start=1):
-            db.session.add(Categoria(nombre=name, orden=order))
-
-        for name in locations:
-            db.session.add(Ubicacion(nombre=name, tipo="OFICINA"))
-
-        db.session.commit()
-
-
-# Cargar los 76 tickets de demostración cuesta unos 2,6 s y casi la mitad de los tests
-# parten de ellos: se cargan una vez por proceso y cada test restaura una copia exacta
-# de la base (ver `tests/database.py`) y de los adjuntos que dejó la carga.
-
-
-@pytest.fixture()
-def prepared(app):
-    """La base como la tendría quien siguió el README hasta antes del seed."""
-    if has_snapshot("demo_prepared"):
-        app.config["APP_TIMEZONE"] = "America/Santiago"
-
-        with app.app_context():
-            restore_snapshot("demo_prepared")
-
-        return
-
-    prepare(app)
-
-    with app.app_context():
-        take_snapshot("demo_prepared")
-
-
-@pytest.fixture(scope="session")
-def seeded_uploads(tmp_path_factory):
-    """Los adjuntos que deja la carga de los tickets de demostración."""
-    return tmp_path_factory.mktemp("seeded-uploads")
-
-
-@pytest.fixture()
-def seeded(app, prepared, seeded_uploads):
-    uploads = Path(app.config["UPLOADS_DIR"])
-
-    if has_snapshot("demo_seeded"):
-        with app.app_context():
-            result = restore_snapshot("demo_seeded")
-
-        shutil.copytree(seeded_uploads, uploads, dirs_exist_ok=True)
-
-        return result
-
-    with app.app_context():
-        result = seed_demo_tickets(now=NOW)
-        take_snapshot("demo_seeded", extra=result)
-
-    if uploads.exists():
-        shutil.copytree(uploads, seeded_uploads, dirs_exist_ok=True)
-
-    return result
+from tests.database import empty_tables
+from tests.demo_data import DEMO_PASSWORD, NOW, ROLES, SOLICITANTES, ZONE, prepare
 
 
 def run_command(app):

@@ -292,6 +292,14 @@ def test_a_relation_without_its_ticket_does_not_break():
     assert _lines(TicketEvent.RELACION_ELIMINADA) == ["Relación con #? eliminada"]
 
 
+def test_a_sla_breach_tells_its_objective():
+    # El evento lo registra el planificador y lleva el objetivo en el contexto.
+    assert _lines(TicketEvent.SLA_VENCIDO, context={"objetivo_minutos": 90}) == [
+        "Venció el objetivo de resolución de 1 h 30 min"
+    ]
+    assert _lines(TicketEvent.SLA_VENCIDO) == ["Venció el objetivo de resolución"]
+
+
 # --- Lo que nunca se cuenta ----------------------------------------------------
 
 REASONS = {

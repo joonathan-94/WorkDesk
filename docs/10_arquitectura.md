@@ -743,6 +743,7 @@ WorkDesk/
 ├── src/
 │   └── workdesk/
 │       ├── auth/
+│       ├── cli/
 │       ├── main/
 │       ├── models/
 │       ├── security/
@@ -751,7 +752,6 @@ WorkDesk/
 │       ├── system/
 │       ├── templates/
 │       ├── __init__.py
-│       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
 │       ├── extensions.py
@@ -1611,7 +1611,7 @@ Los valores podrán parametrizarse posteriormente.
 
 Estos límites no estaban implementados en `v0.1.0`. Se incorporan en `v0.2.0` como una entrega propia, con 30 minutos de inactividad y 8 horas de duración máxima como valores predeterminados, configurables mediante las variables de entorno `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. Pasarán a la tabla `configuracion` cuando exista la administración (`v0.7.0`).
 
-Implementación: la sesión conserva el instante de inicio y el de última actividad (en la cookie firmada); un `before_app_request` comprueba ambos límites en cada petición autenticada y, si alguno se supera, cierra la sesión y redirige al login con un aviso. Una sesión autenticada sin marcas de tiempo válidas se considera expirada. Las rutas técnicas (`/health` y `static`) no renuevan la actividad ni provocan la expiración. Valores menores o iguales a cero se rechazan al iniciar la aplicación.
+Implementación: la sesión conserva el instante de inicio y el de última actividad (en la cookie firmada); un `before_app_request` comprueba ambos límites en cada petición autenticada y, si alguno se supera, cierra la sesión y redirige al login con un aviso. Una sesión autenticada sin marcas de tiempo válidas se considera expirada. Las rutas técnicas (`/health` y `static`) no renuevan la actividad ni provocan la expiración. Las consultas que el navegador hace solo, sin que la persona haga nada (hoy, la del contador de la campana de notificaciones, cada 30 segundos), se comprueban como cualquier petición pero **no cuentan como actividad**: si contaran, una pestaña abandonada renovaría la sesión sin parar y el límite de inactividad (RNF-013) nunca se aplicaría. Con la sesión ya expirada responden `401` en JSON, sin cerrarla: la siguiente acción de la persona la cierra con su aviso. Valores menores o iguales a cero se rechazan al iniciar la aplicación.
 
 ---
 

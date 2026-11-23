@@ -12,6 +12,13 @@ SESSION_ACTIVITY_KEY = "session_last_activity"
 # ni deben provocar la expiración de su sesión.
 EXEMPT_ENDPOINTS = frozenset({"static", "system.health"})
 
+# Consultas que el navegador hace solo, sin que la persona haga nada (hoy, el contador de
+# la campana de notificaciones, cada 30 segundos). Se comprueban como cualquier petición:
+# una sesión expirada no recibe datos. Pero no cuentan como actividad: si contaran, una
+# pestaña abandonada renovaría la sesión sin parar y el límite de inactividad nunca se
+# aplicaría (RNF-013).
+PASSIVE_ENDPOINTS = frozenset({"notifications.unread_count"})
+
 # Pantalla donde se cambia la contraseña. Un usuario con cambio obligatorio
 # pendiente solo puede acceder a ella, cerrar sesión y a las rutas técnicas.
 PASSWORD_CHANGE_ENDPOINT = "account.change_password"

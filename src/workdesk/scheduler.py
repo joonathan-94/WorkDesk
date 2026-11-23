@@ -11,8 +11,9 @@ Hay dos tareas:
 
 - **Avisos de SLA** (`run_sla_notices`): cuando un período de SLA en marcha alcanza su
   umbral de aviso o vence, avisa **una sola vez** a quien corresponde
-  (`notifications/events.py`). La marca de «ya avisado» está en el propio período
-  (`fecha_aviso_umbral_enviado` y `fecha_aviso_vencimiento_enviado`).
+  (`notifications/events.py`) y, al vencer, deja el incumplimiento registrado en el
+  historial del ticket (`SLA_VENCIDO`, RN-91). La marca de «ya avisado» está en el propio
+  período (`fecha_aviso_umbral_enviado` y `fecha_aviso_vencimiento_enviado`).
 - **Cierre automático** (`run_auto_close`): cierra los tickets `Resuelto` que nadie
   validó en `AUTO_CLOSE_HOURS` horas (`tickets/lifecycle.py`, `close_automatically`).
 
@@ -38,11 +39,12 @@ from flask import current_app
 from sqlalchemy import and_, or_
 
 from .extensions import db
-from .models import Estado, PeriodoSla, Ticket
+from .models import Estado, PeriodoSla, Ticket, TicketEvent
 from .notifications.events import notify_sla_breach, notify_sla_warning
 from .security.authorization import RESOLVED_STATE
 from .sla.periods import current_time
 from .tickets.lifecycle import close_automatically
+from .tickets.service import record_ticket_event
 from .tickets.versioning import lock_ticket
 
 logger = logging.getLogger(__name__)
@@ -147,6 +149,19 @@ def _send_notice(period_id: int, now: datetime) -> str | None:
 
     if breach:
         notify_sla_breach(ticket)
+        # RN-91: además de avisar, el incumplimiento queda registrado en el historial
+        # (interno: el SLA es solo del personal), en la misma transacción que el aviso.
+        record_ticket_event(
+            ticket,
+            TicketEvent.SLA_VENCIDO,
+            actor=None,
+            detail="El SLA del ticket venció.",
+            context={
+                "periodo_id": period.id,
+                "objetivo_minutos": period.tiempo_objetivo_resolucion_minutos,
+                "vencimiento": period.fecha_vencimiento_resolucion.isoformat(),
+            },
+        )
         period.fecha_aviso_vencimiento_enviado = now
         # Si venció, el aviso de «próximo a vencer» ya no tiene sentido.
         if period.fecha_aviso_umbral_enviado is None:

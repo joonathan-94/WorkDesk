@@ -59,17 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.4.0 — Asignación, colaboración y ciclo de vida
+v0.5.0 — SLA y notificaciones internas
 ```
 
-La versión `v0.4.0` está:
+La versión `v0.5.0` está:
 
 - implementada;
-- testeada (2201 tests);
+- testeada (3965 tests);
 - documentada;
-- mergeada en `main` (PR #23 a #35).
+- mergeada en `main` (PR #36 a #45).
 
-Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0` están etiquetadas.
+Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida` y `v0.5.0` están etiquetadas.
 
 ## Rama estable
 
@@ -82,12 +82,12 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/scheduler
+feature/sla-notifications-close-v0-5-0
 ```
 
-Entrega 8 de `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito"): el planificador (ver "Planificador"). El comando `run-scheduler` (un bucle simple o `--once`, sin dependencias nuevas) avisa **una sola vez** al personal cuando un SLA está próximo a vencer o vence, y cierra solo los tickets `Resuelto` que nadie validó en `AUTO_CLOSE_HOURS` horas (24 por defecto), con o sin solicitantes (RN-58, RN-59 y RN-170). Incluye una migración: cada período guarda cuándo se enviaron sus dos avisos.
+Entrega 9 de `v0.5.0 — SLA y notificaciones internas`: el cierre de la versión (ver "Hito completado: v0.5.0"). Una revisión de toda la fase, medida antes de tocar nada: `cli.py` pasa a un paquete, el incumplimiento del SLA queda registrado en el historial (`SLA_VENCIDO`, RN-91), la campana deja de mantener viva una sesión abandonada, la suite gana pruebas de pantallas con datos reales, de migraciones, de una instalación limpia, de las reglas RN-85 a RN-87 y de coherencia con los documentos, y la documentación queda al día (con una matriz de trazabilidad de los requisitos de la fase en `docs/12`). **Sin migraciones.**
 
-Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las siete primeras entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38) y los períodos de SLA (PR #39), el centro de notificaciones (PR #40) los avisos por los eventos de un ticket (PR #41) y los indicadores de SLA (PR #43).
+Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
 `v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
 
@@ -100,8 +100,8 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 | 5 | Notificaciones internas: infraestructura y centro de notificaciones | Integrada (PR #40) |
 | 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Integrada (PR #41) |
 | 7 | Indicadores de SLA en el listado y el detalle | Integrada (PR #43) |
-| 8 | Planificador: avisos de SLA y cierre automático | En curso |
-| 9 | Cierre de la versión: revisión de toda la fase y documentación | Pendiente |
+| 8 | Planificador: avisos de SLA y cierre automático | Integrada (PR #44) |
+| 9 | Cierre de la versión: revisión de toda la fase y documentación | Integrada (PR #45) |
 
 ## Identidad visual (integrada en `main`)
 
@@ -179,44 +179,80 @@ Sus reglas están en `docs/06` (RN-146 y RN-156 a RN-164) y su alcance en `docs/
 
 Decisiones de la fase:
 
-- **El vocabulario de eventos del historial vive solo en la aplicación** (se eliminó el CHECK de `tipo_evento`). Un evento nuevo obliga a decidir su nombre, su visibilidad y su descriptor, y un test lo exige. Hoy son 23.
+- **El vocabulario de eventos del historial vive solo en la aplicación** (se eliminó el CHECK de `tipo_evento`). Un evento nuevo obliga a decidir su nombre, su visibilidad y su descriptor, y un test lo exige. Hoy son 24 (`SLA_VENCIDO` llegó en `v0.5.0`).
 - **Quién ve qué se decide en la consulta**, nunca en la plantilla: lo mismo para el historial, los comentarios y los adjuntos. Cada condición SQL tiene su política Python equivalente y un test comprueba que coinciden para todos los roles.
 - **Una acción, una pantalla** (sin modales, y funcionan sin JavaScript): 404 si no se ve el ticket y 403 si se ve y no se puede actuar.
 - **`change_state` es el único camino que escribe el estado** y los datos de resolución y cierre, así que «cerrado ⇒ fecha y motivo de cierre» no puede romperse; marcar un duplicado y la asignación lo reutilizan.
 - **Lo aditivo no sube la versión del ticket:** comentarios, notas, adjuntos, relaciones y cambios de solicitantes.
 - **Los parámetros que serán configuración** (plazos de edición y de reapertura, límites de adjuntos y tiempos del bloqueo) son variables de entorno hasta `v0.7.0`.
 
-## Próximo hito
+## Hito completado: v0.5.0
 
 ```text
 v0.5.0 — SLA y notificaciones internas
 ```
 
-Su alcance está en `docs/12_roadmap.md` (fase 5): SLA por prioridad calculado en tiempo laboral, con un calendario laboral administrable; pausa en `En espera`; avisos de próximo a vencer y vencido; y notificaciones internas. `v0.4.0` dejó preparado o decidido para esta fase:
+Es la fase en que WorkDesk empieza a **medir el tiempo y a avisar**: SLA por prioridad calculado en tiempo laboral con un calendario administrable, indicadores en la interfaz, notificaciones internas y un planificador que avisa de los vencimientos y cierra solo los tickets resueltos que nadie valida. Se dividió en 9 entregas, cada una con su rama, tests y Pull Request (y una optimización de la suite de tests, PR #42, entre la 6 y la 7):
 
-- el cierre automático de un ticket `Resuelto` que nadie valida: la transición `AUTO_CIERRE`, el motivo de cierre `INACTIVIDAD` y la columna `tickets.cerrado_automaticamente` ya existían y el planificador (entrega 8) ya los usa; un ticket resuelto sin solicitante también se cierra solo pasado el plazo (RN-59), además del cierre excepcional de un Supervisor o el Administrador;
-- las notificaciones a los técnicos cuando el Solicitante comenta (RF-068) y el aviso de reapertura (RN-72 y RN-96);
-- el motor de tiempo laboral del seed de demostración (`_BusinessClock`) pasó a un módulo propio, `src/workdesk/worktime.py`, para compartirlo con el SLA (entrega 1, ver "Tiempo laboral"); `DEMO_CALENDAR` es el calendario por defecto mientras no haya uno guardado, y el calendario administrable (entrega 2, ver "Calendario laboral administrable") ya existe: `resolve_work_calendar` decide cuál es el vigente;
-- por el motor de estados pasa todo cambio de estado (`change_state`): ahí reacciona el SLA al entrar y salir de `En espera`, al resolver, cerrar y reabrir (entrega 4, ver "Períodos de SLA");
-- la política de continuidad del SLA ante un cambio de prioridad (RN-88): `change_priority` la aplica desde la entrega 4.
+| # | Entrega | Estado |
+| --- | --- | --- |
+| 1 | Motor de tiempo laboral compartido (`worktime.py`) | Integrada (PR #36) |
+| 2 | Calendario laboral administrable | Integrada (PR #37) |
+| 3 | Políticas de SLA por prioridad | Integrada (PR #38) |
+| 4 | Períodos de SLA: pausa, continuidad y cambios de prioridad | Integrada (PR #39) |
+| 5 | Notificaciones internas: infraestructura y centro de notificaciones | Integrada (PR #40) |
+| 6 | Notificaciones internas: generación por eventos | Integrada (PR #41) |
+| 7 | Indicadores de SLA en el listado y el detalle | Integrada (PR #43) |
+| 8 | Planificador: avisos de SLA y cierre automático | Integrada (PR #44) |
+| 9 | Cierre de la versión: revisión de toda la fase y documentación | Integrada (PR #45) |
 
-Decisiones tomadas al planificar la fase (el detalle está en `docs/12_roadmap.md`):
+Sus reglas están en `docs/06` (RN-165 a RN-170, más RN-58, RN-59, RN-88 y RN-91) y su alcance en `docs/12_roadmap.md` (fase 5, con las decisiones de la fase). Los detalles de cada pieza están en las secciones "Tiempo laboral", "Calendario laboral administrable", "Políticas de SLA", "Períodos de SLA", "Notificaciones internas", "Avisos por los eventos de un ticket", "Indicadores de SLA" y "Planificador".
 
-- **El planificador será un comando propio** (`run-scheduler`), sin APScheduler ni otra dependencia nueva: las tareas son idempotentes y pueden ejecutarse también una sola vez desde el Programador de tareas de Windows o `cron`.
-- **«Primera respuesta»** es el primer comentario público del personal y es un objetivo opcional de la política de SLA.
-- **Las excepciones de SLA (RF-083) quedan fuera** de la fase.
-- **La pausa del SLA no usa columnas nuevas:** al entrar en `En espera` se cierra el período y, al reanudar, se abre otro que arrastra el consumo acumulado.
-- **El plazo del cierre automático** es una variable de entorno (24 horas por defecto) hasta que llegue la configuración administrable de `v0.7.0`.
+Decisiones de la fase:
 
-Asignada a `v0.7.0`: la advertencia de posibles duplicados al crear un ticket (RF-061), junto a la base de conocimiento, con la que comparte la búsqueda.
+- **Un único motor de tiempo laboral** (`worktime.py`) para el SLA y el seed, y **un único lugar que decide el calendario vigente** (`resolve_work_calendar`). El calendario es global y versionado: una versión guardada nunca se modifica, así que lo ya calculado no cambia con retroactividad.
+- **La pausa del SLA no usa columnas nuevas:** al entrar en `En espera` se cierra el período y, al reanudar, se abre otro que arrastra el consumo. **Un cambio de prioridad nunca reinicia el reloj ni borra un incumplimiento** (RN-88).
+- **El SLA es solo del personal** (RN-169): el Solicitante no lo ve en pantallas, filtros ni avisos, y sus parámetros en la URL se ignoran.
+- **Crear un ticket no avisa a nadie** (decisión de la fase) y **los avisos nunca copian contenido**: dicen qué pasó y en qué ticket. Un Solicitante solo recibe lo que vería en el historial.
+- **El planificador es un comando propio** (`run-scheduler`), sin APScheduler ni dependencias nuevas, con tareas idempotentes. **Un aviso se envía una sola vez** (las marcas viven en el período) y cada elemento se procesa en su propia transacción, **bloqueando siempre el ticket primero** (como los cambios de estado).
+- **El cierre automático reutiliza el camino de cierre** (`_closing_changes`): «cerrado ⇒ fecha y motivo» sigue sin poder romperse. El plazo (`AUTO_CLOSE_HOURS`, 24 horas corridas) y el intervalo (`SCHEDULER_INTERVAL_SECONDS`) son variables de entorno hasta `v0.7.0`.
+- **El incumplimiento queda registrado** (RN-91): al avisar del vencimiento, el planificador deja el evento interno `SLA_VENCIDO` en el historial (actor Sistema).
+- **Quedan fuera de la fase,** con su destino: las excepciones de SLA (RF-083) y la configuración de eventos y destinatarios de las notificaciones (RF-087 y RN-97), el interruptor general del SLA (RN-165, «configuración básica»), los avisos de la primera respuesta vencida y la política de retención de notificaciones leídas.
+
+Cierre de la versión (entrega 9). Se midió antes de cambiar nada (tamaño y complejidad de los módulos, código sin uso, comentarios desfasados, consultas por pantalla y tiempos de la suite) y se actuó solo donde la medida lo justificaba:
+
+- **`cli.py` pasó a un paquete** (`src/workdesk/cli/`: `setup`, `demo`, `sla` y `scheduling`, más `register_commands`). Era una sola función con complejidad 33 y 105 sentencias donde se habían ido apilando los comandos; ahora ninguna función de registro pasa de 12. Los comandos, sus nombres, opciones y salidas no cambiaron.
+- **El incumplimiento del SLA queda en el historial** (`SLA_VENCIDO`): RN-91 pedía informarlo, avisar y registrarlo, y lo último solo se deducía de las fechas de los períodos. Es el único cambio de comportamiento de la entrega.
+- **Un error real** que la revisión encontró en el planificador (entrega 8): bloqueaba primero el período y después, al guardar la notificación, el ticket (por su clave foránea); los cambios de estado bloquean al revés, así que un aviso y un cambio de estado simultáneos sobre el mismo ticket podían esperarse mutuamente y PostgreSQL abortaba a uno (`DeadlockDetected`). Se reprodujo con un test de hilos que fallaba y se corrigió.
+- **La campana mantenía viva una sesión abandonada** (entrega 5): su consulta automática cada 30 segundos pasaba por los límites de sesión como una petición más y renovaba la última actividad, así que una pestaña olvidada nunca expiraba por inactividad (solo por las 8 horas de duración máxima, RNF-013). Ahora `auth/session.py` distingue las rutas **pasivas** (`PASSIVE_ENDPOINTS`): se comprueban como cualquier petición (con la sesión expirada responden `401` en JSON, sin cerrarla ni gastar el aviso «Tu sesión expiró») pero no cuentan como actividad. Ver "15. Sesiones".
+- **Pruebas nuevas:** pantallas con datos reales y presupuesto de consultas, migraciones, una instalación limpia que sigue el README sobre un esquema creado solo por las migraciones, las reglas RN-85, RN-86 y RN-87 (que se cumplían por construcción pero no tenían una prueba que las defendiera), la sesión de la campana y coherencia con los documentos, incluida la lista de rutas (ver "23. Testing"). Los fixtures de los 76 tickets de demostración y `clock` pasaron a `conftest.py` y `tests/demo_data.py` para que los dashboards de `v0.6.0` los reutilicen.
+- **Medido y dejado como está,** con su porqué: no hay código muerto real (los candidatos eran un registro de secuencia en el metadata y el «oráculo» en Python del test que compara SQL y Python); las consultas por pantalla están acotadas (listado 14 o 15, detalle hasta 22 para el personal y 12 para el Solicitante, pantallas de acción hasta 23) y no hay N+1; con casi 20 000 tickets (23 000 períodos de SLA, 54 000 eventos de historial y 12 000 notificaciones, medido en un esquema desechable de la base de pruebas) el número de consultas no cambia, el listado responde en unos 30 ms (entre 80 y 230 ms con el filtro y el orden por SLA), el centro de notificaciones en 17 ms, la campana en 3 ms y el planificador envía cada aviso en unos 6 ms; `seeds/demo_tickets.py::_refresh` (complejidad 52) es una herramienta de desarrollo cubierta por 259 tests de seeds, y dividirla arriesga el comportamiento sin beneficio para el producto: queda anotada como deuda técnica; las funciones con muchos argumentos (18) son la API de palabras clave del proyecto, una decisión deliberada.
+- **Documentación:** se corrigieron comentarios y textos que hablaban de lo ya hecho como futuro, se completaron las cinco rutas de «SLA» que faltaban en el README y las cuatro columnas de `tickets_sla_periodos` que faltaban en `docs/09`, se añadieron los guardianes de coherencia con el README y `docs/12` incorpora la matriz de trazabilidad (cada requisito de la fase con su código y sus pruebas).
+
+## Próximo hito
+
+```text
+v0.6.0 — Dashboards y carga de trabajo
+```
+
+Su alcance está en `docs/12_roadmap.md` (fase 6): el dashboard del Solicitante (abiertos, en progreso, requiere revisión, cerrados recientes, tickets recientes y notificaciones), el dashboard operacional (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer, en espera, prioritarios, carga de trabajo y actividad reciente) y la carga de trabajo (tickets activos por técnico, por grupo, críticos, con SLA en riesgo y sin asignar), con navegación hacia los listados relacionados. Un ticket puede tener varios técnicos, así que la suma de la carga por técnico no tiene por qué coincidir con el total de tickets únicos. `v0.5.0` deja preparado:
+
+- los datos de SLA (`evaluate_tickets_sla`, que evalúa por lotes con un número fijo de consultas, y las condiciones SQL de `sla/queries.py`, que filtran y cuentan en la base de datos sin evaluar ticket por ticket);
+- el filtro del listado por estado de SLA y por orden de urgencia, a donde pueden enlazar los contadores «fuera de SLA» y «próximos a vencer»;
+- las notificaciones (`count_unread`) para el dashboard del Solicitante;
+- los 76 tickets de demostración compartidos por los tests (`tests/demo_data.py`) y la prueba de pantallas con presupuesto de consultas (`tests/test_pages_smoke.py`), a la que las pantallas nuevas se añaden;
+- el seed `seed-demo-tickets`, que se amplía en cada fase (ver "22. CLI").
 
 Pendiente, sin fase asignada, para decidirlo al planificar:
 
 - los adjuntos desde el formulario de creación del ticket;
 - las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - la liberación manual de un bloqueo de edición por el Supervisor o el Administrador;
+- las excepciones de SLA (RF-083), que `docs/12` propone decidir con los dashboards o con la configuración de `v0.7.0`;
 - las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`);
 - los parámetros que hoy son variables de entorno, en la configuración administrable (`v0.7.0`).
+
+Asignada a `v0.7.0`: la advertencia de posibles duplicados al crear un ticket (RF-061), junto a la base de conocimiento, con la que comparte la búsqueda.
 
 ## Hito completado: v0.2.0
 
@@ -360,6 +396,7 @@ WorkDesk/
 │       ├── audit/
 │       ├── auth/
 │       ├── catalogs/
+│       ├── cli/
 │       ├── groups/
 │       ├── main/
 │       ├── models/
@@ -406,7 +443,6 @@ WorkDesk/
 │       │   └── users/
 │       ├── __init__.py
 │       ├── cleaning.py
-│       ├── cli.py
 │       ├── config.py
 │       ├── errors.py
 │       ├── extensions.py
@@ -420,6 +456,7 @@ WorkDesk/
 │   ├── areas.py
 │   ├── conftest.py
 │   ├── database.py
+│   ├── demo_data.py
 │   ├── sla_helpers.py
 │   ├── test_account_password.py
 │   ├── test_account_profile.py
@@ -432,19 +469,23 @@ WorkDesk/
 │   ├── test_catalogs_service.py
 │   ├── test_cli.py
 │   ├── test_credentials.py
+│   ├── test_docs_coherence.py
 │   ├── test_formatting.py
 │   ├── test_groups.py
 │   ├── test_layout.py
+│   ├── test_migrations.py
+│   ├── test_notification_events.py
 │   ├── test_notifications.py
 │   ├── test_notifications_routes.py
+│   ├── test_pages_smoke.py
 │   ├── test_password_policy.py
 │   ├── test_passwords.py
 │   ├── test_route_authorization.py
 │   ├── test_route_protection.py
+│   ├── test_scheduler.py
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_notifications.py
 │   ├── test_seed_demo_tickets.py
-│   ├── test_scheduler.py
 │   ├── test_session_limits.py
 │   ├── test_sla_indicators.py
 │   ├── test_sla_indicators_ui.py
@@ -848,7 +889,7 @@ Relación N:M temporal: un ticket tiene 0..N solicitantes y el creador no se con
 
 ## Historial (`historial_ticket`)
 
-Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO`, `TICKET_REABIERTO`, `RELACION_AGREGADA` y `RELACION_ELIMINADA`. Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Lo rellena `change_state` al poner un ticket en espera.
+Registro cronológico **append-only**: el ORM rechaza actualizar o eliminar eventos (`TicketHistoryImmutableError`), igual que la auditoría administrativa. El actor es un usuario o el sistema (`actor_usuario_id` NULL, sin usuario ficticio) y hay una restricción de coherencia entre ambos. El vocabulario de eventos (`TicketEvent`) contiene hoy `TICKET_CREADO`, `TICKET_MODIFICADO`, `CATEGORIA_CAMBIADA`, `PRIORIDAD_CAMBIADA`, `ESTADO_CAMBIADO`, `TECNICO_ASIGNADO`, `TECNICO_DESASIGNADO`, `GRUPO_CAMBIADO`, `TICKET_ESCALADO`, `SOLICITANTE_AGREGADO`, `SOLICITANTE_RETIRADO`, `COMENTARIO_AGREGADO`, `COMENTARIO_EDITADO`, `COMENTARIO_ELIMINADO`, `ARCHIVO_ADJUNTADO`, `ARCHIVO_ELIMINADO`, `TICKET_RESUELTO`, `VALIDACION_ACEPTADA`, `VALIDACION_RECHAZADA`, `TICKET_CERRADO`, `TICKET_REABIERTO`, `RELACION_AGREGADA`, `RELACION_ELIMINADA` y `SLA_VENCIDO` (interno, lo registra el planificador). Los datos variables van en `valor_anterior`, `valor_nuevo` y `contexto` (JSONB); el motivo de un cambio de prioridad va en `contexto`. La columna opcional `motivo_espera_id` (FK a `motivos_espera`, `ON DELETE RESTRICT`) guarda el motivo del catálogo cuando el evento es la entrada a `En espera`; `record_ticket_event(..., wait_reason=)` la rellena. Lo rellena `change_state` al poner un ticket en espera.
 
 **Vocabulario solo en la aplicación (`v0.4.0`, entrega 1).** La base de datos ya no restringe `tipo_evento` (se eliminó el CHECK `ck_historial_ticket_tipo_evento`; los de actor se conservan): `record_ticket_event` convierte el evento con `TicketEvent(...)` y rechaza con `ValueError` cualquiera que no pertenezca al vocabulario, igual que `AuditAction` en la auditoría administrativa. Añadir un evento es añadirlo al enum, a `TICKET_EVENT_LABELS` y a `DEFAULT_EVENT_VISIBILITY`, y escribir su descriptor en `tickets/history.py` (un test comprueba que no falte ninguno), sin migración.
 
@@ -1296,7 +1337,7 @@ Entrega 4 de `v0.5.0`, en el paquete `src/workdesk/sla/` (módulo `periods.py`).
 - **`current_time()`** es el `now()` de la base de datos (el mismo instante que los eventos del historial); los tests lo reemplazan para fijar «la hora».
 - **`rebuild_ticket_periods(ticket)`** reconstruye los períodos repasando el historial (creación, cambios de prioridad y de estado) con la misma lógica que el cálculo en vivo (comparten `_reconcile`; un test comprueba que dan el mismo resultado para un recorrido completo). Usa la política y el calendario vigentes hoy, porque el historial no guarda cuáles eran. **`rebuild_periods(only_missing=, public_id=)`** lo aplica a varios tickets.
 
-**Comandos** (`cli.py`):
+**Comandos** (`cli/sla.py`):
 
 - `sla-rebuild [--all] [--ticket N]`: calcula los períodos de los tickets que **no tienen ninguno** (los anteriores al SLA); `--all` recalcula también los que ya tienen y se niega con `APP_ENV=production` (son el cálculo en vivo); `--ticket` limita a uno. Además completa la fecha de aviso de los períodos en marcha que no la tienen (los anteriores a la entrega 7), sin tocar el resto. Informa `Tickets recalculados: N. Períodos de SLA: M. Fechas de aviso completadas: K.`.
 - `sla-status <número>`: el estado del SLA de un ticket (dentro de plazo, próximo a vencer, vencido o pausado), el consumo (`3 h de 12 h (25 %)`), el vencimiento, la fecha de aviso, la primera respuesta y la lista de períodos.
@@ -1328,7 +1369,7 @@ Entrega 5 de `v0.5.0`, en el paquete `src/workdesk/notifications/` (blueprint `n
 - `POST /notifications/<id>/read` (marcar como leída), `POST /notifications/<id>/open` (marcar y abrir el ticket; sin ticket, vuelve al listado) y `POST /notifications/read-all`: **todo lo que cambia algo es POST con CSRF**, también «abrir» (un GET no debe cambiar nada). Vuelven al listado con la pestaña y la página en que estaba la persona. Abrir no es un permiso: si ya no ve el ticket, este responde 404.
 - `GET /notifications/unread-count`: `{"unread": N}` sin caché, para la campana.
 
-**La campana** (`layouts/app.html`, a la izquierda del menú del usuario) es un enlace al centro con el contador de no leídas (sin número si no hay; «99+» desde 100). `layout_context` (`navigation.py`) calcula el número en cada página autenticada y `static/js/common/notifications.js` (mejora progresiva) lo actualiza cada 30 segundos mientras la pestaña está visible y al volver a ella; se detiene si el servidor deja de responder JSON (sesión caducada). Es un polling simple, sin WebSockets (`docs/12`, sección 32, los deja para después del MVP).
+**La campana** (`layouts/app.html`, a la izquierda del menú del usuario) es un enlace al centro con el contador de no leídas (sin número si no hay; «99+» desde 100). `layout_context` (`navigation.py`) calcula el número en cada página autenticada y `static/js/common/notifications.js` (mejora progresiva) lo actualiza cada 30 segundos mientras la pestaña está visible y al volver a ella; se detiene si el servidor deja de responder JSON (sesión caducada: responde `401`). Esa consulta **no cuenta como actividad** de la persona y no renueva la sesión (ver "15. Sesiones"). Es un polling simple, sin WebSockets (`docs/12`, sección 32, los deja para después del MVP).
 
 **Seed de demostración** (`seeds/demo_notifications.py`): `seed-demo-notifications [--username ...]` (ver "22. CLI"). Mientras nada genera avisos, deja cinco notificaciones de ejemplo por persona, escritas para su rol: el personal recibe asignaciones, respuestas, SLA próximo a vencer, SLA vencido y reaperturas; el Solicitante, cambios de estado, respuestas, la revisión de la solución, el cierre y la creación (el SLA es solo para el personal). Cada aviso apunta a un ticket **que esa persona puede ver** (el mismo criterio que el listado de tickets), unos están leídos y otros no, y su antigüedad va de minutos a días. Es idempotente por (persona, ticket, evento, mensaje).
 
@@ -1374,7 +1415,7 @@ Entrega 8 de `v0.5.0`, en `src/workdesk/scheduler.py`. Reglas completas en `docs
 
 **Idempotencia.** Las tareas se pueden repetir, o correr dos planificadores a la vez, sin duplicar nada. Cada elemento (un período, un ticket) se procesa en **su propia transacción**: se bloquea el **ticket** (siempre el ticket primero y su período después, que es el orden de los cambios de estado y de prioridad), se **vuelve a comprobar** que sigue correspondiendo (otra transacción pudo cambiarlo desde que se lo encontró) y solo entonces se actúa y se confirma. Un fallo deshace solo ese elemento, se registra en el log y se sigue con los demás. Este módulo es de los pocos que hace commit: es quien inicia las transacciones.
 
-**Avisos de SLA** (`run_sla_notices`). Busca los períodos en marcha cuyo `fecha_umbral_aviso` o `fecha_vencimiento_resolucion` ya pasó sin que el aviso se hubiera enviado. Las marcas están en el propio período: `fecha_aviso_umbral_enviado` y `fecha_aviso_vencimiento_enviado` (dos columnas nuevas; un período nuevo de la misma prioridad las hereda y un cambio de prioridad empieza sin ellas; la migración da por avisado lo que los períodos abiertos ya habían alcanzado, para que la primera ejecución no avise de todo lo atrasado). *Próximo a vencer* (`SLA_PROXIMO_A_VENCER`): a los técnicos asignados o, si no hay, a los Supervisores del grupo (o a todos). *Vencido* (`SLA_VENCIDO`): a los técnicos asignados y a esos Supervisores. Nunca a los solicitantes. Si se encuentra ya vencido, solo se envía el de vencido. Los destinatarios se deciden en `notifications/events.py` (`notify_sla_warning` y `notify_sla_breach`).
+**Avisos de SLA** (`run_sla_notices`). Busca los períodos en marcha cuyo `fecha_umbral_aviso` o `fecha_vencimiento_resolucion` ya pasó sin que el aviso se hubiera enviado. Las marcas están en el propio período: `fecha_aviso_umbral_enviado` y `fecha_aviso_vencimiento_enviado` (dos columnas nuevas; un período nuevo de la misma prioridad las hereda y un cambio de prioridad empieza sin ellas; la migración da por avisado lo que los períodos abiertos ya habían alcanzado, para que la primera ejecución no avise de todo lo atrasado). *Próximo a vencer* (`SLA_PROXIMO_A_VENCER`): a los técnicos asignados o, si no hay, a los Supervisores del grupo (o a todos). *Vencido* (`SLA_VENCIDO`): a los técnicos asignados y a esos Supervisores. Nunca a los solicitantes. Si se encuentra ya vencido, solo se envía el de vencido. Los destinatarios se deciden en `notifications/events.py` (`notify_sla_warning` y `notify_sla_breach`). **Al vencer, además, el incumplimiento queda registrado** (RN-91): el evento interno `SLA_VENCIDO` del historial, con el Sistema como actor y, en el contexto, el período, el objetivo en minutos y el instante en que venció; se guarda en la misma transacción que el aviso, así que una sola vez. Solo lo ve el personal.
 
 **Cierre automático** (`run_auto_close`). Busca los tickets `Resuelto` cuya resolución es anterior a `AUTO_CLOSE_HOURS` horas (horas corridas, 24 por defecto) y llama a `close_automatically` (`tickets/lifecycle.py`). Esta función bloquea el ticket y **vuelve a comprobar** el estado, el plazo (la fecha de resolución sigue siendo anterior al límite, así que un ticket rechazado y resuelto de nuevo reinicia la espera) y que la transición `AUTO_CIERRE` siga activa; cierra con el motivo `INACTIVIDAD`, `cerrado_automaticamente` verdadero y sin usuario que cierra; registra `TICKET_CERRADO` con actor **Sistema** (`actor_tipo` `SISTEMA`) y `contexto["accion"]` `AUTO_CIERRE`; sube la versión, detiene el SLA y avisa a los solicitantes vigentes y a los técnicos asignados («Ticket cerrado automáticamente»). Reutiliza `_closing_changes`, así que «cerrado ⇒ fecha y motivo» sigue sin poder romperse. Para que el sistema pudiera actuar sin usuario, `apply_ticket_changes` y las funciones de avisos admiten `actor=None`. Un ticket cerrado así se puede reabrir como cualquier otro (la reapertura limpia `cerrado_automaticamente`).
 
@@ -1534,6 +1575,7 @@ Al iniciar sesión se guardan en la cookie firmada el instante de inicio y el de
 
 - Una sesión autenticada sin marcas de tiempo válidas se considera expirada.
 - `/health` y `static` no renuevan la actividad ni provocan la expiración.
+- Las consultas que el navegador hace solo (hoy, la de la campana de notificaciones, cada 30 segundos: `PASSIVE_ENDPOINTS` en `auth/session.py`) **se comprueban como cualquier petición pero no cuentan como actividad**: si contaran, una pestaña abandonada renovaría la sesión sin parar y la inactividad nunca se aplicaría. Con la sesión expirada responden `401` en JSON, sin cerrarla: la siguiente acción de la persona la cierra con su aviso. El latido del bloqueo de edición de un ticket (`v0.4.0`) sí renueva la sesión mientras la pantalla de edición está abierta: quien tiene un formulario abierto está trabajando.
 - Valores menores o iguales a cero impiden iniciar la aplicación.
 
 ## token_version
@@ -1885,6 +1927,8 @@ python -m flask --app src.workdesk run-scheduler [--once] [--interval <segundos>
 python -m flask --app src.workdesk seed-demo-notifications [--username <usuario>]
 ```
 
+Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`setup`: `seed-roles`, `seed-catalogs` y `create-admin`; `demo`: los tres `seed-demo*`; `sla`: `sla-rebuild` y `sla-status`; `scheduling`: `run-scheduler`), y `register_commands` los registra todos desde la Application Factory. Solo orquestan: la lógica está en los servicios.
+
 `sla-rebuild` y `sla-status` calculan y muestran los períodos de SLA de los tickets (ver "Períodos de SLA").
 
 `run-scheduler` (`src/workdesk/scheduler.py`, entrega 8 de `v0.5.0`, ver "Planificador"): avisa de los SLA próximos a vencer y vencidos y cierra los tickets `Resuelto` que nadie validó. Sin opciones queda en marcha (bucle cada `SCHEDULER_INTERVAL_SECONDS`, `--interval` lo cambia, Ctrl+C lo detiene); con `--once` hace una pasada. En el bucle solo imprime cuando hubo algo que hacer; con `--once` informa `SLA próximo a vencer: N. SLA vencido: N. Tickets cerrados automáticamente: N. Errores: N.` y falla si algún elemento falló. Se puede repetir sin riesgo.
@@ -1955,6 +1999,8 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 - **Paralelo con `pytest-xdist`** (`-n 6`, un proceso por núcleo físico): cada proceso usa su propio esquema de PostgreSQL (`wd_test_gw0`...) dentro de `workdesk_test`, así que no hay bases nuevas y la protección sigue valiendo.
 - **Áreas** (`tests/areas.py`): cada módulo de tests pertenece a un área y su marcador se asigna solo (`pytest -m sla`, `-m "tickets or notifications"`); `unit` marca a los que no usan la base. Un módulo sin área hace fallar la recolección, así que ninguno queda fuera. Los marcadores están declarados en `pytest.ini` (`--strict-markers`).
 - **Hash de la contraseña de prueba:** se calcula una vez por proceso (hash real de Argon2id con los parámetros de producción).
+- **Datos de demostración compartidos** (`tests/demo_data.py` y los fixtures `prepared` y `seeded` de `conftest.py`): los 76 tickets de `seed-demo-tickets` sirven de datos realistas para probar cualquier pantalla. `clock` (la hora de las pruebas de SLA) también vive en `conftest.py`.
+- **Migraciones** (`tests/test_migrations.py`): como el esquema de la suite sale de los modelos (`db.create_all()`), ninguna otra prueba comprobaba las migraciones. Esta las sube, las compara con los modelos (`db check`), las baja y las vuelve a subir en un esquema desechable de `workdesk_test`, en un subproceso (el `env.py` de Alembic reconfigura el logging de todo el proceso).
 - Mientras se desarrolla basta con el área que se toca; **antes de un commit o un Pull Request se ejecuta siempre la suite completa**.
 
 Estado al cerrar `v0.1.0`:
@@ -1981,6 +2027,23 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 9 de `v0.5.0` (cierre de la versión):
+
+```text
+3965 tests passing
+```
+
+Los 40 tests nuevos cubren:
+
+- `tests/test_pages_smoke.py` (11): **cada rol abre lo que le corresponde con datos reales** (los 76 tickets de demostración): las pantallas generales dan 200 o 403 según el rol y, para el personal, el detalle de los 76 tickets y las 14 pantallas de acción de cada uno (1064 peticiones) abren o vuelven al detalle con un aviso, nunca un error ni el login; el Solicitante abre **exactamente** los tickets que creó o donde es solicitante vigente (calculados con SQL propio) y recibe 404 en el resto; y los adjuntos se descargan como archivo. Cada petición tiene un **presupuesto de consultas** (20 en las pantallas, 30 en el detalle del personal, 18 en el del Solicitante y 30 en las de acción, con margen sobre lo medido), y el listado hace las mismas consultas en la primera y la segunda página. Las excepciones de la aplicación no se esconden detrás de una página de error en las pruebas, así que una plantilla que falla con una combinación poco común hace fallar el test.
+- `tests/test_migrations.py` (2), los dos en un esquema desechable de `workdesk_test` y en un subproceso (el `env.py` de Alembic reconfigura el logging): **(1) las migraciones son coherentes**: suben todas, hay una sola cabeza, `db check` no encuentra diferencias con los modelos, bajan hasta dejar solo `alembic_version` (ninguna tabla ni secuencia) y vuelven a subir (se comprobó que falla de verdad: añadir una columna a un modelo sin migración rompe el paso de `db check` con «Detected added column»; unos 12 s, cada comando `flask db` unos 1,5 s); **(2) una instalación limpia funciona**: sobre un esquema creado solo por las migraciones sigue los pasos del README (`seed-roles`, `seed-catalogs`, `seed-demo`, `seed-demo-tickets`, `seed-demo-notifications`, `sla-status` y dos veces `run-scheduler --once`) y revisa lo que deja en la base: los 76 tickets, un período de SLA por cada uno, un único `SLA_VENCIDO` por cada vencimiento avisado y nada duplicado al repetir. Cubre lo que `db check` no ve (secuencias, valores por defecto y restricciones `CHECK`): se comprobó quitando el valor por defecto de `fecha_creacion` en la migración de notificaciones, con lo que `db check` siguió pasando y esta prueba falló con el error real (`NotNullViolation`). `create-admin` queda fuera porque pide la contraseña con `getpass`, que en Windows lee la consola y no una tubería (lo cubre `test_cli.py`). Usa un directorio temporal para los adjuntos. Tarda unos 17 s.
+- `tests/test_docs_coherence.py` (9): cada variable de entorno que lee el código está en `.env.example`, el README y este archivo; cada comando propio tiene un ejemplo ejecutable en el README y aquí; cada migración figura en la lista de este archivo; **la lista «Rutas actuales» del README y de este archivo es el mapa de rutas real** (ni falta una, ni sobra una que ya no existe, ni se equivoca de métodos; `/static` queda fuera porque es el servidor de archivos de Flask); y el propio recorrido encuentra lo que debe (no pasa en vacío). Se comprobó que una variable sin documentar lo hace fallar nombrándola y que el guardián de rutas detecta una ruta quitada, una inventada y un método equivocado (el README no listaba cinco rutas de `/admin/sla`, y así se descubrió).
+- `tests/test_sla_business_rules.py` (7): **las reglas del SLA que protegen el trabajo.** RN-85 (el SLA es del ticket, no del técnico): asignar, reasignar, quitar a un técnico, cambiar el grupo y escalar no tocan los períodos (mismos ids y mismas fechas), y cambiar de técnico no cambia lo consumido. RN-86 (el incumplimiento no bloquea nada): con el SLA vencido se sigue comentando, esperando, reanudando, resolviendo, cerrando y reabriendo, resolver o reabrir no borra el incumplimiento, y la pantalla sigue ofreciendo y aceptando resolver. RN-87 (la carga no detiene el reloj): tres tickets de un mismo técnico consumen cada uno su propio tiempo laboral desde su propio inicio. Se comprobó que detectan una violación real alterando temporalmente el código.
+- `tests/test_session_limits.py` (+3): **la consulta de la campana no cuenta como actividad.** No renueva la última actividad; una pestaña abandonada que consulta cada 30 segundos no mantiene viva la sesión (con un reloj que se mueve a mano: la campana responde poco antes del límite y, dos minutos después, la sesión ya expiró y la siguiente acción de la persona recibe «Tu sesión expiró»); y una sesión pasada de la duración máxima no recibe datos (`401`). Se comprobó con tres mutaciones (renovar en la consulta pasiva, cerrar la sesión en ella en vez de responder `401` y no tener rutas pasivas): las tres se detectan.
+- **El incumplimiento registrado** (`tests/test_scheduler.py`, +6, y `tests/test_ticket_history.py`, +2: el texto del evento y su caso en la prueba que recorre todo el vocabulario): el vencimiento deja un único evento `SLA_VENCIDO` interno, con el Sistema como actor y el período, el objetivo y el instante en el contexto; el aviso de umbral no lo registra; volver a ejecutar no lo duplica; un vencimiento hallado tras un aviso también se registra; el personal lo lee con su objetivo y el Solicitante nunca lo ve; y un aviso que falla no deja el evento. Las pruebas que recorren todo el vocabulario (descriptor, nombre, visibilidad, motivos y texto de comentarios) ya lo cubren sin cambios.
+- Ajustes sin cambiar lo que comprueban: los fixtures y constantes de la demostración salieron de `tests/test_seed_demo_tickets.py` a `tests/demo_data.py` y `tests/conftest.py`; la fixture `clock`, que tres módulos tenían copiada, es una sola; y `tests/areas.py` incluye los módulos nuevos en `platform`.
+- **Mediciones:** la suite completa tarda unos 6 minutos en paralelo (`-n 6`; 6 min 12 s con los 3965 tests); el recorrido de pantallas, unos 27 s; las dos pruebas de migraciones, unos 30 s; Ruff y `db check`, limpios. **Prueba de mutación** de los cambios del planificador: 33 mutaciones, 2 supervivientes equivalentes (documentados en la entrega 8).
 
 Estado tras la entrega 8 de `v0.5.0` (planificador):
 
@@ -2797,7 +2860,7 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 # 30. Fases completadas y siguiente fase
 
-`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0 — Asignación, colaboración y ciclo de vida` están completas. Este apartado resume lo que dejaron implementado; la siguiente fase es `v0.5.0 — SLA y notificaciones internas` (ver "Próximo hito").
+`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0 — Asignación, colaboración y ciclo de vida` y `v0.5.0 — SLA y notificaciones internas` están completas. Este apartado resume lo que dejaron implementado; la siguiente fase es `v0.6.0 — Dashboards y carga de trabajo` (ver "Próximo hito").
 
 ## Implementado hasta `v0.2.0`
 
@@ -2861,14 +2924,25 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 - políticas de autorización por acción (`can_change_state`, `can_assign_self`, `can_manage_assignments`, `can_manage_requesters`, `can_write_internal_note`, `can_resolve_ticket`, `can_close_directly`, `can_close_exceptionally`, `can_validate_resolution`, `can_reopen_ticket`, `can_manage_relations`, `can_access_groups`...) y su red de seguridad sobre todas las rutas;
 - migraciones: diez nuevas (de 7 a 17) y 23 eventos del historial.
 
+## Implementado en `v0.5.0`
+
+- motor de tiempo laboral compartido y calendario laboral administrable (versionado), con su pantalla en «SLA»;
+- políticas de SLA por prioridad (objetivo de resolución, primera respuesta opcional, porcentaje de aviso y pausa en espera);
+- períodos de SLA: pausa en `En espera`, detención al resolver, continuidad ante cambios de prioridad y reconstrucción desde el historial (`sla-rebuild`, `sla-status`);
+- indicadores de SLA solo para el personal: insignias, filtro, orden «SLA más urgente», tarjeta del detalle y advertencia al bajar la prioridad con el SLA en riesgo;
+- notificaciones internas: centro de notificaciones, campana con contador y avisos por los eventos de un ticket;
+- planificador (`run-scheduler`): avisos de SLA próximo a vencer y vencido, una sola vez, con el incumplimiento registrado en el historial (`SLA_VENCIDO`), y cierre automático de los tickets resueltos que nadie valida;
+- migraciones: seis nuevas (de 17 a 23) y 24 eventos del historial;
+- la suite pasó de 2201 a 3965 tests, con pruebas de pantallas con datos reales, de migraciones y de una instalación limpia, de las reglas RN-85 a RN-87, de la sesión de la campana y de coherencia con los documentos (variables de entorno, comandos, migraciones y rutas).
+
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0`, `v0.3.0` ni `v0.4.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.4.0` deja preparado o pendiente está en "Próximo hito"):
+Nada de `v0.2.0` a `v0.5.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.5.0` deja preparado o pendiente está en "Próximo hito"):
 
-- `v0.5.0`: SLA, cierre automático y notificaciones internas (ver "Próximo hito");
+- `v0.6.0`: dashboards y carga de trabajo;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.5.0`: el motor de tiempo laboral, el calendario laboral administrable, las políticas de SLA por prioridad, los períodos de SLA y el centro de notificaciones ya existen (entregas 1 a 5: `worktime.py`, el paquete `sla/` y el paquete `notifications/`); las notificaciones por eventos de un ticket ya existen (entrega 6); los indicadores de SLA en la interfaz son la entrega 7; el planificador es la entrega 8 (ver "Planificador");
+- `v0.7.0`: la configuración administrable (que reemplaza a las variables de entorno de plazos y límites y trae el interruptor general del SLA y la configuración de eventos y destinatarios de las notificaciones), la advertencia de duplicados al crear un ticket y la base de conocimiento;
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

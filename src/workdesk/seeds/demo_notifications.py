@@ -1,8 +1,9 @@
 """Notificaciones de demostración (solo desarrollo).
 
-Mientras ningún evento del sistema genera avisos por sí solo (llegan con la entrega
-6 de `v0.5.0`), este seed deja unas cuantas notificaciones de ejemplo para poder ver
-el centro de notificaciones y la campana con contador. Son avisos sueltos con el
+Los avisos reales los generan las operaciones de los tickets
+(`notifications/events.py`) y el planificador (`run-scheduler`). Este seed deja unas
+cuantas notificaciones de ejemplo para poder ver el centro de notificaciones y la
+campana con contador sin tener que provocar esos eventos. Son avisos sueltos con el
 aspecto de los reales, escritos para cada rol: el personal recibe asignaciones,
 respuestas y avisos de SLA; el Solicitante, cambios de estado, respuestas y la
 revisión de la solución (el SLA es solo para el personal).

@@ -28,7 +28,6 @@ from src.workdesk.models import (
     TicketRequester,
 )
 from src.workdesk.models.comment import CommentType
-from src.workdesk.sla import periods
 from src.workdesk.sla.periods import (
     SlaStatus,
     accumulated_seconds,
@@ -49,7 +48,6 @@ from src.workdesk.worktime import Franja, parse_time
 from tests.sla_helpers import (
     HOUR,
     ZONE,
-    FakeClock,
     at,
     close,
     hold,
@@ -65,15 +63,6 @@ from tests.sla_helpers import (
 from tests.ticket_helpers import person
 
 # --- Auxiliares -------------------------------------------------------------
-
-
-@pytest.fixture()
-def clock(app, monkeypatch):
-    app.config["APP_TIMEZONE"] = "America/Santiago"
-    fake = FakeClock()
-    monkeypatch.setattr(periods, "current_time", lambda: fake.now)
-
-    return fake
 
 
 @pytest.fixture()

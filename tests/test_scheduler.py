@@ -32,12 +32,12 @@ from src.workdesk.models import (
     Ticket,
     TicketHistory,
 )
-from src.workdesk.sla import periods
 from src.workdesk.sla.periods import list_periods
 from src.workdesk.tickets.assignment import assign_technician
+from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.lifecycle import close_automatically
+from src.workdesk.tickets.service import list_ticket_history
 from tests.sla_helpers import (
-    FakeClock,
     act,
     at,
     hold,
@@ -52,15 +52,6 @@ E = NotificationEvent
 
 
 # --- Ayudas -------------------------------------------------------------------
-
-
-@pytest.fixture()
-def clock(app, monkeypatch):
-    app.config["APP_TIMEZONE"] = "America/Santiago"
-    fake = FakeClock()
-    monkeypatch.setattr(periods, "current_time", lambda: fake.now)
-
-    return fake
 
 
 @pytest.fixture()
@@ -114,6 +105,29 @@ def notices(app, team, who, *events):
 
 def sla_notices(app, team, who):
     return notices(app, team, who, E.SLA_PROXIMO_A_VENCER, E.SLA_VENCIDO)
+
+
+def breach_events(app, public_id):
+    """Los eventos `SLA_VENCIDO` del historial del ticket, como diccionarios."""
+    with app.app_context():
+        rows = db.session.scalars(
+            db.select(TicketHistory)
+            .where(
+                TicketHistory.ticket_id == ticket_by_public_id(public_id).id,
+                TicketHistory.tipo_evento == "SLA_VENCIDO",
+            )
+            .order_by(TicketHistory.id)
+        )
+
+        return [
+            {
+                "actor_tipo": row.actor_tipo,
+                "actor_usuario_id": row.actor_usuario_id,
+                "visibilidad": row.visibilidad,
+                "contexto": row.contexto,
+            }
+            for row in rows
+        ]
 
 
 def run_notices(app, now):
@@ -257,6 +271,98 @@ def test_the_breach_follows_a_warning_already_sent(app, clock, catalog, team):
         E.SLA_PROXIMO_A_VENCER.value,
         E.SLA_VENCIDO.value,
     ]
+
+
+# --- El incumplimiento queda registrado en el historial (RN-91) ---------------------
+
+
+def test_the_breach_is_recorded_in_the_ticket_history(app, clock, catalog, team):
+    public_id = started_ticket(app, catalog, team)
+
+    run_notices(app, at(17, 13))
+
+    (event,) = breach_events(app, public_id)
+    assert event["actor_tipo"] == "SISTEMA"
+    assert event["actor_usuario_id"] is None
+    assert event["visibilidad"] == "INTERNO"
+
+    with app.app_context():
+        (period,) = [
+            p for p in list_periods(ticket_by_public_id(public_id).id) if p.fecha_fin is None
+        ]
+        assert event["contexto"]["periodo_id"] == period.id
+
+    # Media: 12 h de objetivo de resolución, que vencen el martes a las 13:00.
+    assert event["contexto"]["objetivo_minutos"] == 720
+    assert datetime.fromisoformat(event["contexto"]["vencimiento"]) == at(17, 13)
+
+
+def test_the_warning_is_not_recorded_in_the_history(app, clock, catalog, team):
+    public_id = started_ticket(app, catalog, team)
+
+    run_notices(app, at(17, 10, 36))
+
+    assert breach_events(app, public_id) == []
+
+
+def test_the_breach_is_recorded_only_once(app, clock, catalog, team):
+    public_id = started_ticket(app, catalog, team)
+
+    run_notices(app, at(17, 13))
+    run_notices(app, at(17, 14))
+    run_notices(app, at(20, 12))
+
+    assert len(breach_events(app, public_id)) == 1
+
+
+def test_the_breach_found_after_a_warning_is_recorded_too(app, clock, catalog, team):
+    public_id = started_ticket(app, catalog, team)
+
+    run_notices(app, at(17, 10, 40))
+    assert breach_events(app, public_id) == []
+
+    run_notices(app, at(17, 13))
+    assert len(breach_events(app, public_id)) == 1
+
+
+def test_the_staff_reads_the_breach_and_the_requester_never_sees_it(
+    app, clock, catalog, team
+):
+    public_id = started_ticket(app, catalog, team)
+    run_notices(app, at(17, 13))
+
+    with app.app_context():
+        ticket = ticket_by_public_id(public_id)
+        seen_by_staff = [
+            entry
+            for entry in list_ticket_history(ticket, person(team["sup"]["id"]))
+            if entry.tipo_evento == "SLA_VENCIDO"
+        ]
+        seen_by_requester = [
+            entry
+            for entry in list_ticket_history(ticket, person(team["req"]["id"]))
+            if entry.tipo_evento == "SLA_VENCIDO"
+        ]
+
+        assert len(seen_by_staff) == 1
+        assert describe_history_changes(seen_by_staff[0]) == [
+            "Venció el objetivo de resolución de 12 h"
+        ]
+        assert seen_by_requester == []
+
+
+def test_a_failed_breach_notice_leaves_no_history_event(
+    app, clock, catalog, team, monkeypatch
+):
+    public_id = started_ticket(app, catalog, team)
+
+    def broken(_ticket):
+        raise RuntimeError("falla de prueba")
+
+    monkeypatch.setattr(scheduler, "notify_sla_breach", broken)
+
+    assert run_notices(app, at(17, 13)) == (0, 0, 1)
+    assert breach_events(app, public_id) == []
 
 
 def test_the_marks_are_stored_in_the_period(app, clock, catalog, team):
