@@ -21,6 +21,7 @@ from flask_login import current_user, login_required
 from ...catalogs.service import list_locations, list_priorities
 from ...extensions import db
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
+from ...responses import json_error
 from ...security import can_change_priority, can_edit_ticket, current_actor
 from ...sla.periods import evaluate_ticket_sla
 from .. import bp
@@ -276,19 +277,15 @@ def renew_ticket_lock(public_id: str):
         abort(403)
 
     if ticket_is_closed(ticket):
-        return jsonify(ok=False, message="El ticket está cerrado."), 409
+        return json_error("ticket_closed", "El ticket está cerrado.", 409)
 
     holder = _hold_edit_lock(ticket)
 
     if holder is not None:
-        return (
-            jsonify(
-                ok=False,
-                message=(
-                    f"{holder.usuario.nombre} {holder.usuario.apellido} "
-                    "está editando este ticket."
-                ),
-            ),
+        return json_error(
+            "lock_held",
+            f"{holder.usuario.nombre} {holder.usuario.apellido} "
+            "está editando este ticket.",
             409,
         )
 

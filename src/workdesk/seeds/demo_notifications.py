@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from ..extensions import db
 from ..models import Notificacion, NotificationEvent, Ticket, User
 from ..security import STAFF_ROLES
-from ..tickets.service import visible_tickets_condition
+from ..tickets.queries import visible_tickets_condition
 from .demo import DEMO_USERS
 
 E = NotificationEvent

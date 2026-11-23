@@ -1,27 +1,68 @@
-"""Funciones auxiliares compartidas por los tests de tickets."""
+"""Funciones auxiliares compartidas por los tests."""
 
 import re
+import threading
 from datetime import UTC, datetime
 
 from src.workdesk.extensions import db
 from src.workdesk.models import (
+    AdminAuditLog,
     Estado,
     MotivoCierre,
     Ticket,
     TicketRequester,
     User,
 )
-from src.workdesk.tickets.service import create_ticket
+from src.workdesk.tickets.service import TicketRuleError, create_ticket
 
 
-def login(client, user_data):
+def login(client, user_data, password=None):
+    """Inicia sesión con los datos de `make_user` (o con otra contraseña)."""
     return client.post(
         "/login",
         data={
             "username": user_data["username"],
-            "password": user_data["password"],
+            "password": password or user_data["password"],
         },
     )
+
+
+def audit_entries() -> list[AdminAuditLog]:
+    """Todos los eventos de auditoría administrativa, del más antiguo al más nuevo
+    (dentro de un app context)."""
+    return list(db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id)))
+
+
+def run_in_threads(app, tasks):
+    """Ejecuta `tasks` a la vez, cada una en su hilo y su transacción, y devuelve el
+    resultado de cada una: «ok» si confirmó o el mensaje de la regla que la rechazó.
+    Sirve para comprobar que dos personas que actúan a la vez no se pisan."""
+    barrier = threading.Barrier(len(tasks))
+    outcomes = []
+
+    def run(task):
+        with app.app_context():
+            barrier.wait(timeout=10)
+
+            try:
+                task()
+                db.session.commit()
+                outcomes.append("ok")
+            except TicketRuleError as error:
+                db.session.rollback()
+                outcomes.append(str(error))
+            finally:
+                db.session.remove()
+
+    threads = [threading.Thread(target=run, args=(task,)) for task in tasks]
+
+    for thread in threads:
+        thread.start()
+
+    for thread in threads:
+        thread.join(timeout=30)
+
+    return outcomes
 
 
 def text(response) -> str:

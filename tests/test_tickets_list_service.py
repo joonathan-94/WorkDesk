@@ -11,7 +11,7 @@ from src.workdesk.models import (
     User,
 )
 from src.workdesk.security import can_view_ticket
-from src.workdesk.tickets.service import (
+from src.workdesk.tickets.queries import (
     DEFAULT_SORT,
     PAGE_SIZE,
     SORT_OLDEST,

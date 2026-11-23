@@ -22,13 +22,13 @@ from src.workdesk.catalogs.service import (
 )
 from src.workdesk.extensions import db
 from src.workdesk.models import (
-    AdminAuditLog,
     Categoria,
     Prioridad,
     Ubicacion,
     User,
 )
 from src.workdesk.tickets.service import TicketRuleError, create_ticket
+from tests.ticket_helpers import audit_entries
 
 
 @pytest.fixture()
@@ -42,12 +42,6 @@ def admin(admin_id) -> User:
 
 def by_code(model, code):
     return db.session.scalar(db.select(model).where(model.codigo == code))
-
-
-def audit_entries() -> list[AdminAuditLog]:
-    return list(
-        db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id))
-    )
 
 
 def names(items) -> list[str]:

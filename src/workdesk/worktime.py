@@ -186,7 +186,7 @@ class BusinessClock:
 
         shift = (parse_time(calendar.inicio), parse_time(calendar.fin))
 
-        self._setup({day: (shift,) for day in calendar.dias}, calendar.feriados, zone)
+        self._setup(dict.fromkeys(calendar.dias, (shift,)), calendar.feriados, zone)
 
     @classmethod
     def from_schedule(
@@ -358,6 +358,8 @@ class BusinessClock:
                 return begin + remaining
 
             remaining -= available
+
+        raise RuntimeError("Un calendario con días laborales no se acaba nunca.")
 
     def add_hours(self, moment: datetime, hours: int) -> datetime:
         """Avanza `hours` horas LABORALES y cae siempre en un momento en que se trabaja.

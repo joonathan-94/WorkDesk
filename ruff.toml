@@ -1,0 +1,19 @@
+# Ruff de WorkDesk.
+#
+# Se conserva el conjunto de reglas por defecto de Ruff y se añade un límite de
+# complejidad: ninguna función de `src/workdesk` supera 12 de complejidad ciclomática,
+# 12 ramas ni 50 sentencias. El límite existe para que una función no vuelva a
+# crecer hasta ser imposible de leer sin que alguien lo note (al cerrar v0.5.0 `cli.py`
+# tenía una de complejidad 33 y el seed de tickets una de 52: ver docs/12).
+#
+# Los tests quedan fuera de este límite: una prueba que prepara un escenario largo
+# es lineal y no se vuelve más difícil de entender por tener muchas sentencias.
+
+[lint]
+extend-select = ["C901", "PLR0912", "PLR0915"]
+
+[lint.per-file-ignores]
+"tests/**" = ["C901", "PLR0912", "PLR0915"]
+
+[lint.mccabe]
+max-complexity = 12

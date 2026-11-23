@@ -4,7 +4,7 @@ import pytest
 
 from src.workdesk.auth.session import load_user
 from src.workdesk.extensions import db
-from src.workdesk.models import AdminAuditLog, User
+from src.workdesk.models import User
 from src.workdesk.security import PasswordPolicyError, verify_password
 from src.workdesk.users import service
 from src.workdesk.users.service import (
@@ -19,18 +19,13 @@ from src.workdesk.users.service import (
     reset_user_password,
     update_profile,
 )
+from tests.ticket_helpers import audit_entries
 
 TEMPORARY_PASSWORD = "ClaveTemporal789xyz"
 
 
 def get(user_data) -> User:
     return db.session.get(User, user_data["id"])
-
-
-def audit_entries() -> list[AdminAuditLog]:
-    return list(
-        db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id))
-    )
 
 
 def profile_data(user: User, **overrides):

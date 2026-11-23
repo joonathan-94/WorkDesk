@@ -355,6 +355,7 @@ WorkDesk/
 │       ├── formatting.py
 │       ├── logging_config.py
 │       ├── navigation.py
+│       ├── responses.py
 │       ├── scheduler.py
 │       ├── search.py
 │       └── worktime.py
@@ -364,6 +365,7 @@ WorkDesk/
 │   ├── conftest.py
 │   ├── database.py
 │   ├── demo_data.py
+│   ├── seed_helpers.py
 │   ├── sla_helpers.py
 │   ├── test_account_password.py
 │   ├── test_account_profile.py
@@ -390,8 +392,14 @@ WorkDesk/
 │   ├── test_route_protection.py
 │   ├── test_seed_demo.py
 │   ├── test_seed_demo_notifications.py
-│   ├── test_seed_demo_tickets.py
+│   ├── test_seed_demo_tickets_data.py
+│   ├── test_seed_demo_tickets_dates.py
+│   ├── test_seed_demo_tickets_lifecycle.py
+│   ├── test_seed_demo_tickets_load.py
+│   ├── test_seed_demo_tickets_people.py
+│   ├── test_seed_demo_tickets_steps.py
 │   ├── test_scheduler.py
+│   ├── test_security_headers.py
 │   ├── test_session_limits.py
 │   ├── test_sla_indicators.py
 │   ├── test_sla_indicators_ui.py
@@ -440,7 +448,8 @@ WorkDesk/
 ├── README.md
 ├── pytest.ini
 ├── requirements.txt
-└── requirements-dev.txt
+├── requirements-dev.txt
+└── ruff.toml
 ```
 
 `instance/`, los archivos `.env`, entornos virtuales, logs y caches de herramientas permanecen fuera del control de versiones.
@@ -1325,6 +1334,7 @@ La base técnica de autenticación utiliza:
 - Usuario activo/inactivo.
 - Invalidación de sesiones mediante `token_version`.
 - Mensajes de autenticación genéricos para evitar revelar información innecesaria.
+- Cabeceras de seguridad en todas las respuestas (`security/headers.py`): `nosniff`, sin incrustación en otras páginas (`X-Frame-Options` y `frame-ancestors`), `Referrer-Policy`, una política de contenido (CSP) que solo permite lo que sirve WorkDesk y `Cache-Control: no-store` en las páginas con datos de la sesión.
 
 La autorización basada en roles se comprueba en backend (`security/authorization.py`) y se aplica a las rutas administrativas; la navegación se filtra por rol.
 
@@ -1389,7 +1399,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-3965 tests
+3975 tests
 ```
 
 Los tests cubren principalmente:
@@ -1474,7 +1484,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **6 minutos en paralelo** (`-n 6`) con los 3965 tests de `v0.5.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 3975 tests de la revisión de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 
@@ -1511,6 +1521,8 @@ ruff check src/workdesk tests
 ```
 
 El objetivo es mantener el código libre de errores básicos de estilo, imports innecesarios y determinados problemas detectables de forma automática.
+
+`ruff.toml` conserva las reglas por defecto de Ruff y añade un límite de complejidad para `src/workdesk`: ninguna función supera 12 de complejidad ciclomática, 12 ramas ni 50 sentencias. Si Ruff señala una función, la solución es partirla en piezas con nombre, no subir el límite.
 
 Ruff complementa, pero no sustituye, la revisión lógica del código.
 

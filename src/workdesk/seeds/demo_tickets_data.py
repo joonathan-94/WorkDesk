@@ -1,6 +1,6 @@
 """Datos de demostración: tickets de soporte TI.
 
-Este archivo es SOLO datos. La lógica que los carga está en `demo_tickets.py`;
+Este archivo es SOLO datos. La lógica que los carga está en el paquete `demo_tickets/`;
 para mejorar la demostración se edita esta lista, sin tocar el código.
 
 Cómo leerla:

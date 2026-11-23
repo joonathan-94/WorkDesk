@@ -6,22 +6,13 @@ from src.workdesk.extensions import db
 from src.workdesk.models import AdminAuditLog, Role, User
 from src.workdesk.security import hash_password, verify_password
 from src.workdesk.users.service import PAGE_SIZE
+from tests.ticket_helpers import login
 
 NON_ADMIN_ROLES = ("SOLICITANTE", "TECNICO", "SUPERVISOR")
 TEMPORARY_PASSWORD = "ClaveTemporal789xyz"
 GENERATED_PASSWORD = re.compile(
     r'id="temporary-password"\s*>([^<]+)</code>'
 )
-
-
-def login(client, user_data, password=None):
-    return client.post(
-        "/login",
-        data={
-            "username": user_data["username"],
-            "password": password or user_data["password"],
-        },
-    )
 
 
 def admin_session(client, make_user):

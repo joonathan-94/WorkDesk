@@ -10,8 +10,9 @@ from src.workdesk.auth.credentials import (
 )
 from src.workdesk.auth.session import load_user
 from src.workdesk.extensions import db
-from src.workdesk.models import AdminAuditLog, User
+from src.workdesk.models import User
 from src.workdesk.security import PasswordPolicyError, verify_password
+from tests.ticket_helpers import audit_entries
 
 NEW_PASSWORD = "NuevaClaveSegura456!"
 TEMPORARY_PASSWORD = "ClaveTemporal789xyz"
@@ -19,14 +20,6 @@ TEMPORARY_PASSWORD = "ClaveTemporal789xyz"
 
 def get_user(user_data) -> User:
     return db.session.get(User, user_data["id"])
-
-
-def audit_entries() -> list[AdminAuditLog]:
-    return list(
-        db.session.scalars(
-            db.select(AdminAuditLog).order_by(AdminAuditLog.id)
-        )
-    )
 
 
 def test_change_own_password_updates_credentials(app, make_user):

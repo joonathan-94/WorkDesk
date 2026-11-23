@@ -18,31 +18,29 @@ def health():
             "Health check fallido: PostgreSQL no está disponible."
         )
 
-        return (
-            jsonify(
-                status="degraded",
-                application="ok",
-                database="unavailable",
-            ),
-            503,
-        )
+        return _degraded()
 
     if database_result != 1:
         current_app.logger.error(
             "Health check recibió una respuesta inesperada de PostgreSQL."
         )
 
-        return (
-            jsonify(
-                status="degraded",
-                application="ok",
-                database="unavailable",
-            ),
-            503,
-        )
+        return _degraded()
 
     return jsonify(
         status="ok",
         application="ok",
         database="ok",
+    )
+
+
+def _degraded():
+    """La aplicación responde pero PostgreSQL no (503, sin detalles técnicos)."""
+    return (
+        jsonify(
+            status="degraded",
+            application="ok",
+            database="unavailable",
+        ),
+        503,
     )

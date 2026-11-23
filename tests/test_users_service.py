@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import event
 
 from src.workdesk.extensions import db
-from src.workdesk.models import AdminAuditLog, Role, User
+from src.workdesk.models import Role, User
 from src.workdesk.security import (
     PasswordPolicyError,
     hash_password,
@@ -16,6 +16,7 @@ from src.workdesk.users.service import (
     create_user,
     list_users,
 )
+from tests.ticket_helpers import audit_entries
 
 TEMPORARY_PASSWORD = "ClaveTemporal789xyz"
 
@@ -36,12 +37,6 @@ def default_data(**overrides):
 
 def get_admin(admin_data):
     return db.session.get(User, admin_data["id"])
-
-
-def audit_entries():
-    return list(
-        db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id))
-    )
 
 
 def count_users() -> int:

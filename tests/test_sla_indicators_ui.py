@@ -198,7 +198,7 @@ def test_a_requester_cannot_filter_or_sort_by_sla(app, client, requester, board)
 
 def test_the_listing_service_ignores_the_sla_for_a_requester(app, requester, board):
     from src.workdesk.sla.queries import SlaFilter
-    from src.workdesk.tickets.service import TicketFilters, list_tickets
+    from src.workdesk.tickets.queries import TicketFilters, list_tickets
 
     with app.app_context():
         user = person(requester["id"])

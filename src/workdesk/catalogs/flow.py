@@ -89,7 +89,7 @@ def count_tickets_by_state() -> dict[int, int]:
         db.select(Ticket.estado_id, db.func.count()).group_by(Ticket.estado_id)
     )
 
-    return {state_id: count for state_id, count in rows}
+    return dict(rows.all())
 
 
 def get_state(state_id: int) -> Estado | None:

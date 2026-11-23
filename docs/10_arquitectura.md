@@ -1208,6 +1208,14 @@ Los endpoints JSON deberán utilizar un prefijo versionado cuando formen una int
 
 Esto permitirá modificar posteriormente contratos sin afectar necesariamente versiones anteriores.
 
+**Estado (`v0.6.0`, entrega 1).** Los endpoints JSON que existen hoy (`GET /health`, `GET /notifications/unread-count`, `POST /tickets/<n>/lock/renew` y `POST /tickets/<n>/lock/release`, más el `401` de la sesión expirada) son consultas de los dos scripts propios de WorkDesk y no forman todavía una interfaz reutilizable, así que **no llevan** el prefijo `/api/v1/` ni se renombraron. Lo que sí tienen es una forma común de error, definida en `responses.py`:
+
+```json
+{"ok": false, "error": "lock_held", "message": "Alicia Mora está editando este ticket."}
+```
+
+El código es estable (`session_expired`, `lock_held`, `ticket_closed`) y el mensaje está pensado para mostrarse. Las respuestas correctas conservan su forma. Todas las respuestas, JSON o no, llevan además las cabeceras de seguridad de `security/headers.py` (`nosniff`, `X-Frame-Options`, `Referrer-Policy`, una política de contenido que solo permite lo que sirve WorkDesk y `Cache-Control: no-store` salvo en los archivos estáticos).
+
 ---
 
 # 35. Persistencia

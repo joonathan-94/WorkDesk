@@ -6,7 +6,6 @@ y las pantallas.
 """
 
 import re
-import threading
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -46,6 +45,7 @@ from tests.ticket_helpers import (
     login,
     make_ticket,
     plain_text,
+    run_in_threads,
     set_state,
     ticket_by_public_id,
 )
@@ -695,35 +695,6 @@ def test_the_history_lines_describe_the_type_and_never_the_text(app, catalog, te
 # --- Concurrencia -----------------------------------------------------
 
 
-def _run_in_threads(app, tasks):
-    barrier = threading.Barrier(len(tasks))
-    outcomes = []
-
-    def run(task):
-        with app.app_context():
-            barrier.wait(timeout=10)
-
-            try:
-                task()
-                db.session.commit()
-                outcomes.append("ok")
-            except TicketRuleError as error:
-                db.session.rollback()
-                outcomes.append(str(error))
-            finally:
-                db.session.remove()
-
-    threads = [threading.Thread(target=run, args=(task,)) for task in tasks]
-
-    for thread in threads:
-        thread.start()
-
-    for thread in threads:
-        thread.join(timeout=30)
-
-    return outcomes
-
-
 def test_two_simultaneous_edits_are_applied_one_after_the_other(app, catalog, team):
     public_id = new_ticket(app, catalog, team)
 
@@ -736,7 +707,7 @@ def test_two_simultaneous_edits_are_applied_one_after_the_other(app, catalog, te
 
         return task
 
-    outcomes = _run_in_threads(
+    outcomes = run_in_threads(
         app,
         [attempt("sup", "Versión A"), attempt("admin", "Versión B")],
     )
@@ -765,7 +736,7 @@ def test_two_simultaneous_deletions_delete_it_once(app, catalog, team):
 
         return task
 
-    outcomes = _run_in_threads(app, [attempt("sup"), attempt("admin")])
+    outcomes = run_in_threads(app, [attempt("sup"), attempt("admin")])
 
     assert sorted(outcomes) == ["Ese comentario ya no existe.", "ok"]
 

@@ -4,7 +4,6 @@ Cubre el servicio (`tickets/assignment.py`), sus efectos sobre el estado y el
 historial, la visibilidad por rol y las pantallas.
 """
 
-import threading
 
 import pytest
 
@@ -36,6 +35,7 @@ from tests.ticket_helpers import (
     login,
     make_ticket,
     plain_text,
+    run_in_threads,
     set_state,
     ticket_by_public_id,
 )
@@ -831,35 +831,6 @@ def test_escalation_detects_a_stale_version_and_closed_tickets(app, catalog, tea
 # --- Concurrencia -----------------------------------------------------
 
 
-def _run_in_threads(app, tasks):
-    barrier = threading.Barrier(len(tasks))
-    outcomes = []
-
-    def run(task):
-        with app.app_context():
-            barrier.wait(timeout=10)
-
-            try:
-                task()
-                db.session.commit()
-                outcomes.append("ok")
-            except TicketRuleError as error:
-                db.session.rollback()
-                outcomes.append(str(error))
-            finally:
-                db.session.remove()
-
-    threads = [threading.Thread(target=run, args=(task,)) for task in tasks]
-
-    for thread in threads:
-        thread.start()
-
-    for thread in threads:
-        thread.join(timeout=30)
-
-    return outcomes
-
-
 def test_two_simultaneous_self_assignments_of_the_same_technician(
     app,
     catalog,
@@ -871,7 +842,7 @@ def test_two_simultaneous_self_assignments_of_the_same_technician(
         ticket = ticket_by_public_id(public_id)
         assign_technician(ticket, team["tec"]["id"], actor=user(team, "tec"))
 
-    outcomes = _run_in_threads(app, [attempt, attempt])
+    outcomes = run_in_threads(app, [attempt, attempt])
 
     assert sorted(outcomes) == ["Ese técnico ya está asignado al ticket.", "ok"]
 
@@ -893,7 +864,7 @@ def test_two_technicians_assigning_to_a_new_ticket_move_it_to_assigned_once(
 
         return task
 
-    outcomes = _run_in_threads(app, [attempt("tec"), attempt("tec2")])
+    outcomes = run_in_threads(app, [attempt("tec"), attempt("tec2")])
 
     assert outcomes == ["ok", "ok"]
 
