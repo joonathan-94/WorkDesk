@@ -1,11 +1,15 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from src.workdesk import create_app
+from src.workdesk.auth import routes as auth_routes
 
 STARTED_KEY = "session_started_at"
 ACTIVITY_KEY = "session_last_activity"
+
+# La consulta que la campana de notificaciones hace sola, cada 30 segundos.
+BELL_POLL = "/notifications/unread-count"
 
 
 def now_timestamp() -> float:
@@ -169,6 +173,89 @@ def test_health_does_not_renew_or_expire_the_session(
 
     with client.session_transaction() as client_session:
         assert client_session[ACTIVITY_KEY] == previous_activity
+
+
+@pytest.fixture()
+def moving_clock(monkeypatch):
+    """La hora que ven los límites de sesión, que se mueve a mano.
+
+    El login y `enforce_session_limits` leen `datetime.now` de `auth.routes`: con este
+    reloj una prueba deja pasar los minutos sin esperarlos.
+    """
+    state = {"now": datetime.now(UTC)}
+
+    class MovingDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return state["now"]
+
+    monkeypatch.setattr(auth_routes, "datetime", MovingDatetime)
+
+    return state
+
+
+def test_the_bell_poll_does_not_count_as_activity(client, admin_user):
+    login(client, admin_user)
+    set_session_times(client, started_ago=600, activity_ago=600)
+
+    with client.session_transaction() as client_session:
+        previous_activity = client_session[ACTIVITY_KEY]
+
+    response = client.get(BELL_POLL)
+
+    assert response.status_code == 200
+    assert response.get_json() == {"unread": 0}
+
+    with client.session_transaction() as client_session:
+        assert client_session[ACTIVITY_KEY] == previous_activity
+
+
+def test_a_tab_left_open_cannot_keep_the_session_alive_with_the_bell(
+    client,
+    app,
+    admin_user,
+    moving_clock,
+):
+    """La campana consulta cada 30 segundos. Si esa consulta renovara la sesión, una
+    pestaña abandonada nunca expiraría por inactividad."""
+    idle_seconds = app.config["SESSION_IDLE_MINUTES"] * 60
+
+    login(client, admin_user)
+
+    # Casi al límite de inactividad, la campana todavía recibe su respuesta...
+    moving_clock["now"] += timedelta(seconds=idle_seconds - 60)
+
+    assert client.get(BELL_POLL).status_code == 200
+
+    # ...pero no ganó tiempo: dos minutos después ya pasó el límite desde la última
+    # acción de la persona. Si la consulta hubiera renovado la sesión, seguiría viva.
+    moving_clock["now"] += timedelta(seconds=120)
+    expired = client.get(BELL_POLL)
+
+    assert expired.status_code == 401
+    assert expired.get_json() == {"error": "session_expired"}
+    assert expired.headers["Cache-Control"] == "no-store"
+
+    # La consulta automática no cerró la sesión ni gastó el aviso: la siguiente acción
+    # de la persona sí, y con su mensaje.
+    page = client.get("/dashboard", follow_redirects=True)
+
+    assert "Tu sesión expiró" in page.get_data(as_text=True)
+
+
+def test_a_session_past_its_maximum_duration_gets_nothing_from_the_bell(
+    client,
+    app,
+    admin_user,
+):
+    login(client, admin_user)
+
+    max_seconds = app.config["SESSION_MAX_HOURS"] * 3600
+    set_session_times(client, started_ago=max_seconds + 60, activity_ago=5)
+
+    response = client.get(BELL_POLL)
+
+    assert response.status_code == 401
 
 
 def test_logout_clears_the_session_clock(client, admin_user):

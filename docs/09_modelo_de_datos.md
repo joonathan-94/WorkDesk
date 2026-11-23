@@ -1345,7 +1345,7 @@ Cuando cambia la prioridad o cualquier condición que modifica el SLA aplicable,
 | `ticket_id` | BIGINT | No | FK a `tickets`. |
 | `politica_sla_id` | BIGINT | Sí | Política de origen. |
 | `prioridad_id` | BIGINT | No | Prioridad aplicada al período. |
-| `calendario_laboral_id` | BIGINT | No | Versión de calendario aplicada. |
+| `calendario_laboral_id` | BIGINT | Sí | Versión de calendario aplicada. NULL si se usó el calendario por defecto, que no tiene fila (ver la implementación, más abajo). |
 | `tiempo_objetivo_respuesta_minutos` | INTEGER | Sí | Snapshot. |
 | `tiempo_objetivo_resolucion_minutos` | INTEGER | No | Snapshot. |
 | `pausa_en_espera` | BOOLEAN | No | Snapshot del comportamiento. |
@@ -1353,7 +1353,11 @@ Cuando cambia la prioridad o cualquier condición que modifica el SLA aplicable,
 | `fecha_fin` | TIMESTAMPTZ | Sí | NULL si es período vigente. |
 | `segundos_consumidos` | BIGINT | No | Tiempo SLA efectivo consumido dentro de este período. Default 0. |
 | `fecha_vencimiento_respuesta` | TIMESTAMPTZ | Sí | Cuando corresponda. |
-| `fecha_vencimiento_resolucion` | TIMESTAMPTZ | Sí | Vencimiento calculado. |
+| `fecha_vencimiento_resolucion` | TIMESTAMPTZ | Sí | Vencimiento calculado. NULL mientras el período está pausado. |
+| `umbral_aviso_porcentaje` | INTEGER | Sí | Snapshot del umbral de aviso de la política (de 1 a 100). NULL si no hay umbral. |
+| `fecha_umbral_aviso` | TIMESTAMPTZ | Sí | Momento en que el consumo alcanza el umbral, calculado al abrir el período. NULL sin umbral o con el período pausado. |
+| `fecha_aviso_umbral_enviado` | TIMESTAMPTZ | Sí | Cuándo el planificador avisó de que el SLA está próximo a vencer. NULL hasta entonces. |
+| `fecha_aviso_vencimiento_enviado` | TIMESTAMPTZ | Sí | Cuándo el planificador avisó del vencimiento. NULL hasta entonces. |
 | `usuario_cambio_id` | BIGINT | Sí | Usuario que provocó una modificación manual, si aplica. |
 | `motivo_cambio` | TEXT | Sí | Contexto. |
 

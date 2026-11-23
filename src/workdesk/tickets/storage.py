@@ -17,6 +17,7 @@ Reglas:
   que no salgan de ella.
 """
 
+import contextlib
 import hashlib
 import os
 import re
@@ -183,10 +184,8 @@ def absolute_path(root: str | Path, relative: str) -> Path:
 
 def remove_file(root: str | Path, relative: str) -> None:
     """Elimina un archivo físico (compensación si falla la base de datos)."""
-    try:
+    with contextlib.suppress(ValueError, OSError):
         absolute_path(root, relative).unlink(missing_ok=True)
-    except (ValueError, OSError):
-        pass
 
 
 def _check_signature(name: str, kind: str, first_chunk: bytes) -> None:

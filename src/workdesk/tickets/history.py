@@ -13,6 +13,7 @@ descriptor, aunque sea para no decir nada.
 
 from collections.abc import Callable
 
+from ..formatting import format_duration
 from ..models import TicketEvent, TicketHistory
 
 # Recibe `(valor_anterior, valor_nuevo, evento)` y devuelve las líneas.
@@ -220,3 +221,16 @@ def _relation_added(old, new, entry):
 @describes(TicketEvent.RELACION_ELIMINADA)
 def _relation_removed(old, new, entry):
     return [f"Relación con #{old.get('ticket', '?')} eliminada"]
+
+
+# --- SLA --------------------------------------------------------------------
+
+
+@describes(TicketEvent.SLA_VENCIDO)
+def _sla_breached(old, new, entry):
+    minutes = (entry.contexto or {}).get("objetivo_minutos")
+
+    if minutes is None:
+        return ["Venció el objetivo de resolución"]
+
+    return [f"Venció el objetivo de resolución de {format_duration(minutes)}"]

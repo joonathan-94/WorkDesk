@@ -24,6 +24,9 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_audit",
         "test_route_protection",
         "test_route_authorization",
+        "test_pages_smoke",
+        "test_migrations",
+        "test_docs_coherence",
         "test_suite_infrastructure",
     ),
     # Autenticación, sesiones, contraseñas, roles y «Mi cuenta».
@@ -81,6 +84,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_work_calendar_routes",
         "test_sla_periods",
         "test_sla_indicators",
+        "test_sla_business_rules",
         "test_sla_indicators_ui",
         "test_sla_policies",
         "test_sla_policies_routes",

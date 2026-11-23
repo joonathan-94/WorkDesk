@@ -28,8 +28,9 @@ if (bell) {
             });
             const type = response.headers.get("Content-Type") || "";
 
-            // Si la sesión expiró, el servidor responde con la pantalla de acceso (no
-            // JSON): se deja de consultar.
+            // Si la sesión expiró, el servidor responde 401 (o, si ya no hay sesión, con
+            // la pantalla de acceso: no es JSON): se deja de consultar. Esta consulta no
+            // cuenta como actividad: no mantiene viva una sesión abandonada.
             if (!response.ok || !type.includes("application/json")) {
                 stop();
                 return;

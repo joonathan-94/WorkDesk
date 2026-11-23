@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from flask import (
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -31,6 +32,7 @@ from .security import (
 )
 from .session import (
     EXEMPT_ENDPOINTS,
+    PASSIVE_ENDPOINTS,
     PASSWORD_CHANGE_ALLOWED_ENDPOINTS,
     PASSWORD_CHANGE_ENDPOINT,
     clear_session_clock,
@@ -50,8 +52,19 @@ def enforce_session_limits():
         return None
 
     now = datetime.now(UTC)
+    passive = request.endpoint in PASSIVE_ENDPOINTS
 
     if session_has_expired(now):
+        if passive:
+            # Una consulta automática no cierra la sesión ni gasta el aviso «Tu sesión
+            # expiró»: solo le dice al script que pare. La siguiente acción de la persona
+            # la cierra, con su mensaje.
+            response = jsonify(error="session_expired")
+            response.status_code = 401
+            response.headers["Cache-Control"] = "no-store"
+
+            return response
+
         current_app.logger.info(
             "Sesión expirada: usuario_id=%s",
             current_user.id,
@@ -64,7 +77,9 @@ def enforce_session_limits():
 
         return redirect(url_for("auth.login"))
 
-    touch_session(now)
+    # Una consulta pasiva no es actividad de la persona (ver `PASSIVE_ENDPOINTS`).
+    if not passive:
+        touch_session(now)
 
     return None
 

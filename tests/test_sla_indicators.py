@@ -20,7 +20,6 @@ from sqlalchemy.exc import IntegrityError
 
 from src.workdesk.extensions import db
 from src.workdesk.models import PeriodoSla, Ticket
-from src.workdesk.sla import periods
 from src.workdesk.sla.periods import (
     SlaStatus,
     evaluate_ticket_sla,
@@ -38,7 +37,6 @@ from src.workdesk.sla.queries import (
 from src.workdesk.sla.work_calendar import save_work_calendar
 from src.workdesk.worktime import Franja, parse_time
 from tests.sla_helpers import (
-    FakeClock,
     at,
     close,
     hold,
@@ -56,15 +54,6 @@ SECOND = timedelta(seconds=1)
 
 
 # --- Auxiliares -------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def clock(app, monkeypatch):
-    app.config["APP_TIMEZONE"] = "America/Santiago"
-    fake = FakeClock()
-    monkeypatch.setattr(periods, "current_time", lambda: fake.now)
-
-    return fake
 
 
 @pytest.fixture()

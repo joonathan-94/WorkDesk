@@ -1,4 +1,6 @@
 import functools
+import shutil
+from pathlib import Path
 
 import pytest
 
@@ -6,7 +8,8 @@ from src.workdesk import create_app
 from src.workdesk.extensions import db
 from src.workdesk.models import Categoria, Prioridad, Role, Ubicacion, User
 from src.workdesk.security import hash_password
-from src.workdesk.seeds import seed_catalogs, seed_roles
+from src.workdesk.seeds import seed_catalogs, seed_demo_tickets, seed_roles
+from src.workdesk.sla import periods
 from tests.areas import AREA_BY_MODULE
 from tests.database import (
     checked_database_url,
@@ -14,7 +17,12 @@ from tests.database import (
     drop_schema,
     empty_tables,
     engine_options,
+    has_snapshot,
+    restore_snapshot,
+    take_snapshot,
 )
+from tests.demo_data import NOW, prepare
+from tests.sla_helpers import FakeClock
 
 TEST_PASSWORD = "WorkDeskTest123!"
 
@@ -104,6 +112,18 @@ def app(tmp_path, _schema):
         # pool, las conexiones se acumulan hasta agotar max_connections de
         # PostgreSQL a medida que crece la suite.
         db.engine.dispose()
+
+
+@pytest.fixture()
+def clock(app, monkeypatch):
+    """«La hora» que ven los períodos de SLA: noviembre de 2026 en Santiago, y se mueve a
+    mano (`clock.set(...)`). Las pruebas de SLA llaman a las funciones con esa hora y las
+    ayudas de `tests/sla_helpers.py` arman los momentos."""
+    app.config["APP_TIMEZONE"] = "America/Santiago"
+    fake = FakeClock()
+    monkeypatch.setattr(periods, "current_time", lambda: fake.now)
+
+    return fake
 
 
 @pytest.fixture()
@@ -253,3 +273,54 @@ def catalog(app, seeded_roles, seeded_catalogs):
                 db.select(Prioridad.id).where(Prioridad.codigo == "ALTA")
             ),
         }
+
+# --- Los 76 tickets de demostración (ver `tests/demo_data.py`) ---------------------------
+#
+# Cargarlos cuesta unos 2,6 s y casi la mitad de los tests parten de ellos: se cargan una
+# vez por proceso y cada test restaura una copia exacta de la base (ver `tests/database.py`)
+# y de los adjuntos que dejó la carga.
+
+
+@pytest.fixture()
+def prepared(app):
+    """La base como la tendría quien siguió el README hasta antes del seed."""
+    if has_snapshot("demo_prepared"):
+        app.config["APP_TIMEZONE"] = "America/Santiago"
+
+        with app.app_context():
+            restore_snapshot("demo_prepared")
+
+        return
+
+    prepare(app)
+
+    with app.app_context():
+        take_snapshot("demo_prepared")
+
+
+@pytest.fixture(scope="session")
+def seeded_uploads(tmp_path_factory):
+    """Los adjuntos que deja la carga de los tickets de demostración."""
+    return tmp_path_factory.mktemp("seeded-uploads")
+
+
+@pytest.fixture()
+def seeded(app, prepared, seeded_uploads):
+    uploads = Path(app.config["UPLOADS_DIR"])
+
+    if has_snapshot("demo_seeded"):
+        with app.app_context():
+            result = restore_snapshot("demo_seeded")
+
+        shutil.copytree(seeded_uploads, uploads, dirs_exist_ok=True)
+
+        return result
+
+    with app.app_context():
+        result = seed_demo_tickets(now=NOW)
+        take_snapshot("demo_seeded", extra=result)
+
+    if uploads.exists():
+        shutil.copytree(uploads, seeded_uploads, dirs_exist_ok=True)
+
+    return result
