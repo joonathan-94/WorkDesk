@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/operational-dashboard
+feature/bulk-reassignment-service
 ```
 
-Entrega 7 de `v0.6.0 — Dashboards y carga de trabajo`: el dashboard operacional del personal (contadores, tickets prioritarios, carga compacta y actividad reciente, con «Mi trabajo» para el Técnico y un bloque para el Administrador). **Incluye una migración** (un índice del historial, medido). Ver «Dashboard operacional del personal».
+Entrega 8 de `v0.6.0 — Dashboards y carga de trabajo`: el servicio de reasignación masiva (`tickets/reassignment.py`), sin pantalla (es la entrega 9). **Sin migraciones.** Ver «Reasignación masiva (servicio)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -172,8 +172,8 @@ v0.6.0 — Dashboards y carga de trabajo
 | 4 | Dashboard del Solicitante | Integrada (PR #49) |
 | 5 | Carga de trabajo: consultas | Integrada (PR #50) |
 | 6 | Carga de trabajo: pantalla | Integrada (PR #51) |
-| 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | En curso (`feature/operational-dashboard`) |
-| 8 | Reasignación masiva: servicio | Pendiente |
+| 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Integrada (PR #52) |
+| 8 | Reasignación masiva: servicio | En curso (`feature/bulk-reassignment-service`) |
 | 9 | Reasignación masiva: pantalla | Pendiente |
 | 10 | Cierre de la fase | Pendiente |
 
@@ -884,6 +884,20 @@ Blueprint `workload` (`/workload`, `src/workdesk/workload/routes.py`), registrad
 - **Presupuesto de consultas:** el dashboard del personal es la pantalla más densa (`BUDGET_STAFF_DASHBOARD` = 26 en `test_pages_smoke`; el resto, 20); el número no depende del tamaño del equipo (hay un test con 20 técnicos más).
 - **Se retira** la pantalla provisional `main/dashboard.html`.
 - **Tests:** `tests/test_dashboard_staff.py` (23, área `dashboards`).
+
+## Reasignación masiva (servicio) (entrega 8 de `v0.6.0`)
+
+`src/workdesk/tickets/reassignment.py`: pasar tickets de un técnico a otros en una sola operación (RF-034 y RF-035; RN-30, RN-104 y RN-137 a RN-139; CU-014). **Todavía no hay pantalla ni ruta** (entrega 9). Sin migraciones. Nada hace commit: lo confirma quien llama.
+
+- **API:** `reassign_tickets(actor, source_id=, moves=[(id del ticket, id del técnico destino), ...], reason=)` devuelve un `ReassignmentResult` (`batch`, `source`, `moved` y `skipped` con su motivo). `distribute(ticket_ids, destination_ids)` es el reparto por defecto: por turnos, en orden de id y determinista, para que la pantalla lo muestre antes de confirmar y el servicio ejecute lo mismo.
+- **Quién:** solo el Supervisor y el Administrador (`can_manage_assignments`); el servicio lo comprueba (`PermissionError`) aunque la ruta también lo haga. Un usuario inactivo no tiene permisos.
+- **Errores que detienen todo** (`TicketRuleError`, sin dejar nada hecho): motivo vacío o de más de 500 caracteres (es **obligatorio**: por qué se reasigna es parte del rastro), sin movimientos, técnico de origen inexistente, destino que no es un Técnico activo o que es el propio origen, ticket repetido. El técnico de **origen puede estar desactivado** (RN-104).
+- **Un ticket con problemas se omite sin frenar a los demás** (savepoint por ticket): cerrado, ya no asignado al origen (otra persona lo movió) o inexistente. Cada omisión lleva su motivo.
+- **Concurrencia:** cada ticket se bloquea primero (`begin_ticket_operation`) y **en orden de id**, aunque se pida en otro: dos reasignaciones que comparten tickets no se bloquean entre sí ni duplican nada (hay un test con dos hilos y órdenes contrarios; sin el orden, falla).
+- **Rastro (RF-035, RN-139):** la asignación anterior se cierra y se conserva (con `motivo_desasignacion` «Reasignación masiva: …»); el historial de cada ticket recibe `TECNICO_DESASIGNADO` y `TECNICO_ASIGNADO` (los mismos de la asignación individual, públicos) con `contexto = {lote, motivo, reasignacion_masiva, asignacion_id}`; y **una sola auditoría** `AuditAction.REASIGNACION_MASIVA` (`entidad_tipo` `tecnico`, `entidad_id` el origen) con los tickets movidos, el reparto por destino, los omitidos y el motivo. Si no se movió nada, no se audita. Si el destino ya atendía el ticket, solo se quita al origen.
+- **Qué no cambia:** versión, «Actualizado», estado (un ticket `Asignado` sigue `Asignado`; uno `Nuevo` pasa a `Asignado` como en toda asignación), grupo, solicitantes, comentarios, archivos y SLA (RN-85: el reloj no depende de quién atiende). Un test lo comprueba.
+- **Avisos:** un resumen a cada técnico que recibe tickets («Se te reasignaron N tickets de X») y otro al de origen, y un aviso por ticket a sus solicitantes («Tu ticket cambió de técnico»). Nunca incluyen el motivo, y no se avisa a quien ejecuta (`notifications/events.py`: `notify_bulk_reassignment` y `notify_reassignment_requesters`). El Solicitante no ve el motivo en el ticket.
+- **Tests:** `tests/test_ticket_reassignment.py` (32, área `tickets`), con los tickets de demostración incluidos.
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
@@ -1939,7 +1953,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4098 tests passing (unos 5 minutos con `-n 6`)
+4130 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

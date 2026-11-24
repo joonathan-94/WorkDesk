@@ -150,6 +150,51 @@ def notify_unassignment(ticket: Ticket, actor: User, technician: User) -> None:
     )
 
 
+def notify_reassignment_requesters(ticket: Ticket, actor: User, technician: User) -> None:
+    """Avisa a los solicitantes de que ahora los atiende otro técnico (una reasignación
+    masiva). No dice de dónde viene el ticket ni el motivo."""
+    notify_many(
+        _others(_requesters(ticket), actor),
+        E.TICKET_ASIGNADO,
+        title="Tu ticket cambió de técnico",
+        message=f"El ticket {_label(ticket)} ahora lo atiende {_name(technician)}.",
+        ticket=ticket,
+    )
+
+
+def notify_bulk_reassignment(
+    actor: User, source: User, moved: dict[User, list[Ticket]]
+) -> None:
+    """Un solo aviso a cada técnico que recibe tickets y otro al técnico de origen, con
+    cuántos se movieron: una reasignación masiva no inunda a nadie con un aviso por
+    ticket. No incluye el motivo ni los títulos."""
+    for destination, tickets in moved.items():
+        notify_many(
+            _others([destination], actor),
+            E.TICKET_REASIGNADO,
+            title="Tickets reasignados a ti",
+            message=(
+                f"Se te reasignaron {_count(tickets)} de {_name(source)}."
+            ),
+            ticket=tickets[0] if len(tickets) == 1 else None,
+        )
+
+    total = [ticket for tickets in moved.values() for ticket in tickets]
+
+    if total:
+        notify_many(
+            _others([source], actor),
+            E.TICKET_REASIGNADO,
+            title="Tus tickets se reasignaron",
+            message=f"{_count(total).capitalize()} tuyos se reasignaron a otros técnicos.",
+            ticket=total[0] if len(total) == 1 else None,
+        )
+
+
+def _count(tickets: list[Ticket]) -> str:
+    return "1 ticket" if len(tickets) == 1 else f"{len(tickets)} tickets"
+
+
 def notify_escalation(
     ticket: Ticket, actor: User, before: list[User], after: list[User]
 ) -> None:
