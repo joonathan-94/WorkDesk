@@ -40,7 +40,7 @@ from ..notifications.events import (
     notify_reassignment_requesters,
 )
 from ..security import RoleCode, can_manage_assignments
-from .assignment import _add_assignment, _close_assignment
+from .assignment import add_assignment, close_assignment
 from .lifecycle import apply_derived_transition
 from .service import (
     TicketRuleError,
@@ -102,27 +102,7 @@ def reassign_tickets(
     origen inexistente, destinos que no son Técnicos activos o que son el propio origen, o un
     ticket repetido. Todo lo demás se resuelve ticket por ticket.
     """
-    if not can_manage_assignments(actor):
-        raise PermissionError("Solo el Supervisor y el Administrador pueden reasignar.")
-
-    if not actor.is_active:
-        raise TicketRuleError("El usuario no está activo.")
-
-    reason = _clean_reason(reason)
-    source = _get_technician(source_id)
-
-    if not moves:
-        raise TicketRuleError("Elige al menos un ticket para reasignar.")
-
-    ticket_ids = [ticket_id for ticket_id, _ in moves]
-
-    if len(set(ticket_ids)) != len(ticket_ids):
-        raise TicketRuleError("Un ticket no puede aparecer dos veces en la reasignación.")
-
-    destinations = {
-        destination_id: _get_destination(destination_id, source)
-        for destination_id in {destination for _, destination in moves}
-    }
+    reason, source, destinations = _validate_request(actor, source_id, moves, reason)
 
     result = ReassignmentResult(batch=uuid4().hex, source=source)
     moved_tickets: dict[User, list[Ticket]] = defaultdict(list)
@@ -156,6 +136,34 @@ def reassign_tickets(
     return result
 
 
+def _validate_request(actor, source_id, moves, reason):
+    """Todo lo que puede detener la operación completa, antes de tocar ningún ticket.
+    Devuelve el motivo limpio, el técnico de origen y los destinos por id."""
+    if not can_manage_assignments(actor):
+        raise PermissionError("Solo el Supervisor y el Administrador pueden reasignar.")
+
+    if not actor.is_active:
+        raise TicketRuleError("El usuario no está activo.")
+
+    reason = _clean_reason(reason)
+    source = _get_source(source_id)
+
+    if not moves:
+        raise TicketRuleError("Elige al menos un ticket para reasignar.")
+
+    ticket_ids = [ticket_id for ticket_id, _ in moves]
+
+    if len(set(ticket_ids)) != len(ticket_ids):
+        raise TicketRuleError("Un ticket no puede aparecer dos veces en la reasignación.")
+
+    destinations = {
+        destination_id: _get_destination(destination_id, source)
+        for destination_id in {destination for _, destination in moves}
+    }
+
+    return reason, source, destinations
+
+
 # --- Un ticket ----------------------------------------------------------------------
 
 
@@ -181,9 +189,9 @@ def _move(
 
     # Si el destino ya atendía el ticket, solo se quita al técnico de origen.
     already_there = any(a.tecnico_id == destination.id for a in current)
-    new = None if already_there else _add_assignment(ticket, destination, actor)
+    new = None if already_there else add_assignment(ticket, destination, actor)
 
-    _close_assignment(old, actor, f"Reasignación masiva: {reason}")
+    close_assignment(old, actor, f"Reasignación masiva: {reason}")
     db.session.flush()
     db.session.expire(ticket, ["tecnicos"])
 
@@ -233,14 +241,11 @@ def _clean_reason(reason: str | None) -> str:
     return reason
 
 
-def _get_technician(user_id: int) -> User:
-    """El técnico de origen puede estar desactivado: sus tickets deben poder redistribuirse
-    (RN-104)."""
-    user = db.session.scalar(
-        db.select(User)
-        .join(Role, User.rol_id == Role.id)
-        .where(User.id == user_id, Role.codigo == RoleCode.TECNICO)
-    )
+def _get_source(user_id: int) -> User:
+    """El técnico de origen: cualquier usuario que aún conserve tickets asignados. Puede estar
+    desactivado, o ya no ser Técnico (cambió de rol): su trabajo debe poder redistribuirse
+    igual (RN-104 y RN-137)."""
+    user = db.session.get(User, user_id)
 
     if user is None:
         raise TicketRuleError("El técnico de origen no existe.")

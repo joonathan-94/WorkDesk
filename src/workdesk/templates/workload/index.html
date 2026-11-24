@@ -233,6 +233,10 @@
         </div>
 
         <div class="card-body pb-0 small text-secondary">
+            {{ summary.technicians_with_work }}
+            {{ 'técnico tiene' if summary.technicians_with_work == 1 else 'técnicos tienen' }}
+            tickets activos
+            {%- if summary.high_load_technicians %} y {{ summary.high_load_technicians }} están con carga alta{% endif %}.
             Un ticket puede tener varios técnicos y cuenta en cada uno de ellos: la suma de
             esta tabla puede ser mayor que el total de tickets activos
             ({{ summary.active }}). No es un error.
@@ -252,6 +256,7 @@
                         <th scope="col" class="text-end">En espera</th>
                         <th scope="col" class="text-end">Críticos</th>
                         <th scope="col" class="text-end">SLA en riesgo</th>
+                        <th scope="col" class="text-end">Resueltos</th>
                         <th scope="col">Distribución</th>
                     </tr>
                 </thead>
@@ -286,6 +291,7 @@
                                     <span class="small text-secondary">({{ row.overdue }} vencidos)</span>
                                 {% endif %}
                             </td>
+                            <td class="text-end">{{ count_link(row.resolved, list_link(tecnico=who.id, estado=resolved_id), 'resueltos') }}</td>
                             <td class="distribution-cell">
                                 {% if row.active %}
                                     <div
@@ -311,7 +317,7 @@
                     {% else %}
                         <tr>
                             <td
-                                colspan="7"
+                                colspan="8"
                                 class="text-center text-secondary py-4"
                             >
                                 {% if filtered %}
@@ -333,6 +339,7 @@
                     {{ priority.nombre }}
                 </span>
             {% endfor %}
+            · «Resueltos» esperan que su solicitante confirme la solución: ya no son carga.
             · El largo de cada barra es comparativo (respecto del técnico con más tickets
             activos), no una capacidad máxima.
         </div>

@@ -59,17 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.5.0 — SLA y notificaciones internas
+v0.6.0 — Dashboards y carga de trabajo
 ```
 
-La versión `v0.5.0` está:
+La versión `v0.6.0` está:
 
 - implementada;
-- testeada (3965 tests);
+- testeada (4175 tests);
 - documentada;
-- mergeada en `main` (PR #36 a #45).
+- mergeada en `main` (PR #46 a #55).
 
-Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida` y `v0.5.0` están etiquetadas.
+Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas` y `v0.6.0` están etiquetadas.
 
 ## Rama estable
 
@@ -82,27 +82,14 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/bulk-reassignment-screen
+feature/dashboards-workload-close-v0-6-0
 ```
 
-Entrega 9 de `v0.6.0 — Dashboards y carga de trabajo`: las pantallas de la reasignación masiva (`/reassign`) para el Supervisor y el Administrador, con su entrada en el menú y el botón en la carga de trabajo. **Sin migraciones.** Ver «Reasignación masiva (pantallas)».
+Entrega 10 de `v0.6.0`: el cierre de la fase (revisión de todo lo construido, comprobación de escala y matriz de trazabilidad). **Sin migraciones.** Ver «Cierre de `v0.6.0`».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
-`v0.5.0` se divide en 9 entregas, cada una con su rama, tests y Pull Request (decididas al empezar la fase):
-
-| # | Entrega | Estado |
-| --- | --- | --- |
-| 1 | Motor de tiempo laboral compartido (`worktime.py`) | Integrada (PR #36) |
-| 2 | Calendario laboral administrable: tablas, calendario vigente y pantalla del Administrador | Integrada (PR #37) |
-| 3 | Políticas de SLA por prioridad (`politicas_sla`) y su pantalla | Integrada (PR #38) |
-| 4 | Períodos de SLA: cálculo, pausa en `En espera` y continuidad ante cambios de prioridad | Integrada (PR #39) |
-| 5 | Notificaciones internas: infraestructura y centro de notificaciones | Integrada (PR #40) |
-| 6 | Notificaciones internas: generación por eventos (incluye RF-068 y RN-96) | Integrada (PR #41) |
-| 7 | Indicadores de SLA en el listado y el detalle | Integrada (PR #43) |
-| 8 | Planificador: avisos de SLA y cierre automático | Integrada (PR #44) |
-| 9 | Cierre de la versión: revisión de toda la fase y documentación | Integrada (PR #45) |
-
+`v0.6.0` se construyó en 10 entregas (PR #46 a #55): la revisión de lo construido (dos entregas), los filtros del listado, el dashboard del Solicitante, la carga de trabajo (consultas y pantalla), el dashboard operacional, la reasignación masiva (servicio y pantallas) y el cierre de la fase. Su tabla de entregas está en `docs/12_roadmap.md` y su relato, en `docs/14_historial_de_implementacion.md`.
 ## Identidad visual (integrada en `main`)
 
 La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. Incorporó:
@@ -132,6 +119,7 @@ Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su P
 | `v0.3.0` | Núcleo de tickets: catálogos, creación, listado, detalle y edición | 7 | #14 a #20 | 967 |
 | `v0.4.0` | Asignación, colaboración y ciclo de vida: grupos, comentarios, adjuntos, resolución, relaciones y bloqueo de edición | 12 | #23 a #35 | 2201 |
 | `v0.5.0` | SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 9 | #36 a #45 | 3965 |
+| `v0.6.0` | Dashboards por rol, carga de trabajo del equipo y reasignación masiva | 10 | #46 a #55 | 4175 |
 
 Decisiones de las fases que siguen vigentes (cada una con su detalle en las secciones de este archivo):
 
@@ -156,46 +144,38 @@ Primera entrega de la fase: revisar todo lo hecho hasta `v0.5.0` antes de constr
 - **Pequeños arreglos** que señaló la auditoría con reglas de Ruff adicionales: cuatro comprensiones innecesarias, un `return` implícito al final de `add_business_seconds` (ahora falla con un mensaje si algún día se llegara a él) y el bloque duplicado de `/health`.
 - **Medido y dejado como está:** 3975 tests en 4 min 51 s con `-n 6` (3965 en 4 min 53 s antes). Los más largos son de infraestructura (las dos pruebas de migraciones, 34 s y 23 s, y las 1064 pantallas de acción, 26 s) y 27 de los 40 más lentos son del seed, porque cada uno ejecuta la carga real (de 4 a 14 s): es el coste de probar la carga y no de un fixture mal montado, y solo seis tests la ejecutan dos veces. Los 800 tests del umbral de SLA ya eran unitarios (sin base de datos). Los fixtures con el mismo nombre no eran copias: `login` tiene cuatro variantes distintas, así que solo se consolidó lo idéntico (comparado por AST).
 
+## Cierre de `v0.6.0`
+
+La entrega 10 revisó toda la fase antes de darla por terminada. Se midió primero y se actuó donde la medida o la comprobación de los requisitos lo justificaba. **Sin migraciones.**
+
+- **Dos huecos que la matriz de trazabilidad destapó** (RF-036, RF-094 y RF-095 contra lo construido): la carga de trabajo calculaba los tickets *resueltos* de cada técnico pero no los mostraba (ahora es una columna con enlace), el dashboard del Técnico no mostraba sus tickets *en progreso* ni *en espera* (ahora «Mi trabajo» los trae, con los vencidos y próximos a vencer), y el dashboard del Supervisor no tenía los *tickets por prioridad* (ahora hay un bloque con enlace a cada listado). Los tres cumplen la regla de la fase: la cifra es el total de su listado.
+- **Un error real en la reasignación masiva:** un usuario que dejó de ser Técnico (cambio de rol) conserva sus tickets, aparecía en la pantalla de origen y el servicio lo rechazaba con «el técnico de origen no existe». RN-104 y RN-137 piden que su trabajo pueda redistribuirse: el origen ahora es cualquier usuario que aún tenga tickets asignados (hay un test).
+- **Escala (RNF-001):** con unos 20 000 tickets y 66 000 eventos (copiando los de demostración en una base de pruebas), el dashboard del personal tarda unos 350 ms, la carga de trabajo 260 ms, la pantalla de reasignación 270 a 360 ms, el listado entre 35 y 190 ms según el filtro y el dashboard del Solicitante 45 ms, todo bajo los 2 segundos de RNF-001 y con un número de consultas que no crece con los datos. El resumen de la carga de trabajo se calculaba con un recorrido completo del SLA que repetía el de los grupos: ahora se obtiene sumando las filas de los grupos y la pantalla pasó de 610 a 260 ms (un campo calculado y nunca mostrado, `unassigned_at_risk`, se eliminó y los contadores de técnicos con carga alta pasaron a verse).
+- **Reasignar 500 tickets de una vez** (el máximo que muestra la pantalla) tarda unos 3,2 s y 16 consultas por ticket: es una operación rara y por ticket a propósito (savepoint, bloqueo, historial y avisos), así que se deja como está.
+- **Pequeñas limpiezas:** el servicio de reasignación usa las funciones `add_assignment` y `close_assignment` de la asignación (antes privadas), la validación de la petición salió de `reassign_tickets` y las condiciones de fecha del listado salieron de `listing_conditions`; ninguna de las dos pasa ya de la complejidad 10 (el límite del proyecto es 12).
+- **Interacciones comprobadas:** las pantallas nuevas son `no-store` (hay tests), ninguna pasa por la campana ni por la renovación de la sesión, un Solicitante recibe 403 en `/workload` y en `/reassign` también en los POST, y la reasignación bloquea primero el ticket y en orden de id (un test con dos hilos en órdenes contrarios falla si se quita ese orden).
+
+Lo que `v0.6.0` deja pendiente, con su destino, está en `docs/12_roadmap.md` (fase 6, «Cierre de la fase»).
+
 ## Próximo hito
 
 ```text
-v0.6.0 — Dashboards y carga de trabajo
+v0.7.0 — Administración y base de conocimiento
 ```
 
-`v0.6.0` se divide en 10 entregas, cada una con su rama, tests y Pull Request (planificadas al empezar la fase):
+Su alcance está en `docs/12_roadmap.md` (fase 7): la tabla `configuracion` y la configuración administrable (los plazos y límites que hoy son variables de entorno, el interruptor general del SLA y la configuración de eventos y destinatarios de las notificaciones), la base de conocimiento y la advertencia de posibles duplicados al crear un ticket (RF-061), que comparte la búsqueda con ella. `v0.6.0` deja preparado:
 
-| # | Entrega | Estado |
-| --- | --- | --- |
-| 1 | Revisión de lo construido: backend/API y tests | Integrada (PR #46) |
-| 2 | Revisión: README, PROJECT_CONTEXT y docs | Integrada (PR #47) |
-| 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | Integrada (PR #48) |
-| 4 | Dashboard del Solicitante | Integrada (PR #49) |
-| 5 | Carga de trabajo: consultas | Integrada (PR #50) |
-| 6 | Carga de trabajo: pantalla | Integrada (PR #51) |
-| 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Integrada (PR #52) |
-| 8 | Reasignación masiva: servicio | Integrada (PR #53) |
-| 9 | Reasignación masiva: pantalla | En curso (`feature/bulk-reassignment-screen`) |
-| 10 | Cierre de la fase | Pendiente |
-
-
-Su alcance está en `docs/12_roadmap.md` (fase 6): el dashboard del Solicitante (abiertos, en progreso, requiere revisión, cerrados recientes, tickets recientes y notificaciones), el dashboard operacional (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer, en espera, prioritarios, carga de trabajo y actividad reciente) y la carga de trabajo (tickets activos por técnico, por grupo, críticos, con SLA en riesgo y sin asignar), con navegación hacia los listados relacionados. Un ticket puede tener varios técnicos, así que la suma de la carga por técnico no tiene por qué coincidir con el total de tickets únicos. `v0.5.0` deja preparado:
-
-- los datos de SLA (`evaluate_tickets_sla`, que evalúa por lotes con un número fijo de consultas, y las condiciones SQL de `sla/queries.py`, que filtran y cuentan en la base de datos sin evaluar ticket por ticket);
-- el filtro del listado por estado de SLA y por orden de urgencia, a donde pueden enlazar los contadores «fuera de SLA» y «próximos a vencer»;
-- las notificaciones (`count_unread`) para el dashboard del Solicitante;
-- los 108 tickets de demostración compartidos por los tests (`tests/demo_data.py`) y la prueba de pantallas con presupuesto de consultas (`tests/test_pages_smoke.py`), a la que las pantallas nuevas se añaden;
-- el seed `seed-demo-tickets`, que se amplía en cada fase (ver "22. CLI").
+- los contadores y las definiciones de carga de trabajo (`workload/queries.py`), cuya marca de carga alta (`WORKLOAD_HIGH_ACTIVE_TICKETS`) pasará a la configuración;
+- los 108 tickets de demostración compartidos por los tests (`tests/demo_data.py`), la prueba de pantallas con presupuesto de consultas (`tests/test_pages_smoke.py`) y el seed `seed-demo-tickets`, que se amplía en cada fase (ver "22. CLI").
 
 Pendiente, sin fase asignada, para decidirlo al planificar:
 
 - los adjuntos desde el formulario de creación del ticket;
 - las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - la liberación manual de un bloqueo de edición por el Supervisor o el Administrador;
-- las excepciones de SLA (RF-083), que `docs/12` propone decidir con los dashboards o con la configuración de `v0.7.0`;
-- las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`);
-- los parámetros que hoy son variables de entorno, en la configuración administrable (`v0.7.0`).
-
-Asignada a `v0.7.0`: la advertencia de posibles duplicados al crear un ticket (RF-061), junto a la base de conocimiento, con la que comparte la búsqueda.
+- las excepciones de SLA (RF-083);
+- los tickets «sin actividad reciente» (RF-036, RN-27) y los avisos internos de sobrecarga (RN-28): necesitan decidir qué es «reciente» y quién recibe el aviso, y se resuelven junto con la configuración de `v0.7.0`;
+- las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`).
 
 ---
 
@@ -1969,7 +1949,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4170 tests passing (unos 5 minutos con `-n 6`)
+4175 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
@@ -2336,13 +2316,12 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 # 30. Fases completadas y siguiente fase
 
-`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0 — Asignación, colaboración y ciclo de vida` y `v0.5.0 — SLA y notificaciones internas` están completas. Lo que dejó cada una está en «Historial de versiones» y con detalle en `docs/14_historial_de_implementacion.md`; la siguiente fase es `v0.6.0 — Dashboards y carga de trabajo` (ver "Próximo hito").
+`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas` y `v0.6.0 — Dashboards y carga de trabajo` están completas. Lo que dejó cada una está en «Historial de versiones» y con detalle en `docs/14_historial_de_implementacion.md`; la siguiente fase es `v0.7.0 — Administración y base de conocimiento` (ver "Próximo hito").
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0` a `v0.5.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.5.0` deja preparado o pendiente está en "Próximo hito"):
+Nada de `v0.2.0` a `v0.6.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.6.0` deja preparado o pendiente está en "Próximo hito"):
 
-- `v0.6.0`: dashboards y carga de trabajo;
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
 - `v0.7.0`: la configuración administrable (que reemplaza a las variables de entorno de plazos y límites y trae el interruptor general del SLA y la configuración de eventos y destinatarios de las notificaciones), la advertencia de duplicados al crear un ticket y la base de conocimiento;

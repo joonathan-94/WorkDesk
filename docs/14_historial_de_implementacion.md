@@ -112,9 +112,18 @@ La fase `v0.2.0` completó:
 - migraciones: seis nuevas (de 17 a 23) y 24 eventos del historial;
 - la suite pasó de 2201 a 3965 tests, con pruebas de pantallas con datos reales, de migraciones y de una instalación limpia, de las reglas RN-85 a RN-87, de la sesión de la campana y de coherencia con los documentos (variables de entorno, comandos, migraciones y rutas).
 
+## Implementado en `v0.6.0`
+
+- un dashboard por rol: el del Solicitante (abiertos, en progreso, solicitudes por revisar, cerrados recientes y sus notificaciones) y el operacional del personal (contadores, tickets prioritarios, carga compacta, tickets por prioridad y actividad reciente), con «Mi trabajo» para el Técnico y un bloque de Administración;
+- la carga de trabajo del equipo (`/workload`): por técnico (con distribución por prioridad), por grupo y sin asignar, con insignia de carga alta informativa;
+- la reasignación masiva de tickets (`/reassign`): elegir, revisar y confirmar, con el rastro completo en el historial y la auditoría;
+- los filtros del listado por técnico, grupo, «sin asignar», «en trabajo», «por revisar» y «cerrados desde», y `sla=riesgo`, que son el destino de los contadores;
+- una forma única de error JSON y cabeceras de seguridad en todas las respuestas, el seed de tickets convertido en paquete y una migración (un índice del historial);
+- la suite pasó de 3965 a 4175 tests y los tickets de demostración de 76 a 108.
+
 ---
 
-# 2. Hitos de v0.3.0, v0.4.0 y v0.5.0
+# 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0
 
@@ -224,6 +233,45 @@ Cierre de la versión (entrega 9). Se midió antes de cambiar nada (tamaño y co
 - **Medido y dejado como está,** con su porqué: no hay código muerto real (los candidatos eran un registro de secuencia en el metadata y el «oráculo» en Python del test que compara SQL y Python); las consultas por pantalla están acotadas (listado 14 o 15, detalle hasta 22 para el personal y 12 para el Solicitante, pantallas de acción hasta 23) y no hay N+1; con casi 20 000 tickets (23 000 períodos de SLA, 54 000 eventos de historial y 12 000 notificaciones, medido en un esquema desechable de la base de pruebas) el número de consultas no cambia, el listado responde en unos 30 ms (entre 80 y 230 ms con el filtro y el orden por SLA), el centro de notificaciones en 17 ms, la campana en 3 ms y el planificador envía cada aviso en unos 6 ms; `seeds/demo_tickets.py::_refresh` (complejidad 52) es una herramienta de desarrollo cubierta por 259 tests de seeds, y dividirla arriesga el comportamiento sin beneficio para el producto: queda anotada como deuda técnica; las funciones con muchos argumentos (18) son la API de palabras clave del proyecto, una decisión deliberada.
 - **Documentación:** se corrigieron comentarios y textos que hablaban de lo ya hecho como futuro, se completaron las cinco rutas de «SLA» que faltaban en el README y las cuatro columnas de `tickets_sla_periodos` que faltaban en `docs/09`, se añadieron los guardianes de coherencia con el README y `docs/12` incorpora la matriz de trazabilidad (cada requisito de la fase con su código y sus pruebas).
 
+## Hito completado: v0.6.0
+
+```text
+v0.6.0 — Dashboards y carga de trabajo
+```
+
+Es la fase en que WorkDesk pasa de listar tickets a **dar una vista de conjunto**: cada rol abre un dashboard con lo suyo, el personal ve cómo está repartido el trabajo y el Supervisor puede redistribuirlo. Se construyó en diez entregas, cada una con su rama, sus tests y su Pull Request.
+
+| # | Entrega | Estado | Tests al cerrar |
+| --- | --- | --- | --- |
+| 1 | Revisión de lo construido: backend/API y tests | Integrada (PR #46) | 3975 |
+| 2 | Revisión: README, PROJECT_CONTEXT y documentación | Integrada (PR #47) | 3975 |
+| 3 | Listado: filtros de asignación | Integrada (PR #48) | 3997 |
+| 4 | Dashboard del Solicitante | Integrada (PR #49) | 4022 |
+| 5 | Carga de trabajo: consultas | Integrada (PR #50) | 4052 |
+| 6 | Carga de trabajo: pantalla | Integrada (PR #51) | 4075 |
+| 7 | Dashboard operacional | Integrada (PR #52) | 4098 |
+| 8 | Reasignación masiva: servicio | Integrada (PR #53) | 4130 |
+| 9 | Reasignación masiva: pantallas | Integrada (PR #54) | 4170 |
+| 10 | Cierre de la fase | Integrada (PR #55) | 4175 |
+
+Decisiones de la fase:
+
+- **Cada cifra es el total del listado al que enlaza,** y un test lo comprueba leyendo los enlaces de la propia página. Es lo que impide que un dashboard diga una cosa y el listado otra.
+- **Las definiciones se escriben una sola vez** (`workload/queries.py`): *activo* es el ticket que no está Resuelto ni Cerrado, *sin asignar* el activo sin técnico vigente, *crítico* el de prioridad `CRITICA`, *SLA en riesgo* la suma de próximo a vencer y vencido. El dashboard operacional toma sus cifras de la carga de trabajo, así que las dos pantallas coinciden.
+- **Un ticket con varios técnicos cuenta en cada uno y una vez en los totales;** la pantalla lo explica para que la suma no parezca un error.
+- **La sobrecarga solo informa** (RN-26): una insignia con texto, nunca un bloqueo. Su umbral es una variable de entorno hasta `v0.7.0`.
+- **El SLA sigue siendo solo del personal:** el Solicitante no ve carga, grupos ni SLA en su dashboard, y `/workload` y `/reassign` le responden 403.
+- **La reasignación masiva es de tres pasos y no cambia nada hasta confirmar,** cada ticket se procesa por separado (uno cerrado se omite sin frenar a los demás), se bloquea siempre el ticket primero y en orden de id, y el servidor revalida todo al confirmar porque no confía en los campos ocultos del resumen.
+- **Sin gráficos ni librerías nuevas:** cifras exactas y barras con CSS. La única migración es un índice, creado después de medir su efecto.
+
+Errores reales que aparecieron por el camino:
+
+- Entrega 7: un test mío no detectaba que se invirtiera el orden de prioridad (los ocho tickets más bajos tenían la misma prioridad); se reforzó. Y el nombre «Mis tickets activos» chocaba con un test que buscaba esa frase en el menú.
+- Entrega 9: se creó la rama sobre una base sin la entrega anterior (su Pull Request aún no estaba mergeado); se detectó al fallar un import y se reubicó la rama sin perder nada.
+- Entrega 10: la matriz de trazabilidad encontró tres cosas prometidas y no mostradas (los resueltos por técnico, los tickets en progreso y en espera del Técnico y los tickets por prioridad del Supervisor) y un error de la reasignación con quien dejó de ser Técnico.
+
+Cierre de la fase (entrega 10). Se midió antes de cambiar nada, se comprobó la escala con ~20 000 tickets, se compararon los requisitos con el código y se actuó donde hacía falta: lo detallado está en `docs/12_roadmap.md` (fase 6, «Cierre de la fase»), con su matriz de trazabilidad, y en `PROJECT_CONTEXT.md` («Cierre de `v0.6.0`»).
+
 ---
 
 # 3. Revisión final de la fase de v0.4.0 (entrega 12)
@@ -267,6 +315,80 @@ Los tests actuales cubren principalmente:
 - error 404;
 - configuración obligatoria;
 - degradación de `/health` cuando PostgreSQL falla.
+
+Estado tras la entrega 10 de `v0.6.0` (cierre de la versión):
+
+```text
+4175 tests passing
+```
+
+Los 5 tests nuevos cubren:
+
+- `tests/test_ticket_reassignment.py` (+1): quien dejó de ser Técnico puede quedarse sin tickets (RN-104).
+- `tests/test_dashboard_staff.py` (+3): el recuento por prioridad coincide con su listado (Supervisor y Técnico) y suma los tickets activos.
+- `tests/test_security_headers.py` (+1): `/workload` y `/reassign` no se guardan en caché.
+- Ajustes sin cambiar lo que comprueban: «Mi trabajo» tiene cinco cifras enlazadas y la consulta de la carga de trabajo cuesta siete consultas (antes ocho).
+- **Mediciones:** la suite completa tarda unos 6 minutos en paralelo (`-n 6`; 6 min 19 s con los 4175 tests); la escala se midió con ~20 000 tickets en una base de pruebas, sin dejar rastro.
+
+Estado tras la entrega 9 de `v0.6.0` (reasignación masiva, pantallas):
+
+```text
+4170 tests passing
+```
+
+`tests/test_reassignment_screen.py` (38 tests): permisos (403 a Técnico y Solicitante, también en los POST), los tres pasos, lo que se conserva al fallar la validación, tickets que cambian entre el resumen y la confirmación, envíos manipulados, doble envío, avisos sin el motivo, el recorrido completo con los datos de demostración y un número de consultas que no crece con la cantidad de tickets. Mutaciones: quitar el control de rol de la confirmación (4 fallos) y no revalidar los tickets (2).
+
+Estado tras la entrega 8 de `v0.6.0` (reasignación masiva, servicio):
+
+```text
+4130 tests passing
+```
+
+`tests/test_ticket_reassignment.py` (32 tests): el reparto, el rastro completo (asignación anterior cerrada y conservada, eventos con lote y motivo, una auditoría), lo que no cambia (versión, estado, SLA), las omisiones, los errores que detienen todo, permisos y un test con dos hilos y órdenes contrarios que falla si se quita el bloqueo en orden de id. Mutaciones: sin orden de bloqueo (1 fallo), sin permiso (3) y sin cerrar la asignación anterior (5).
+
+Estado tras la entrega 7 de `v0.6.0` (dashboard operacional):
+
+```text
+4098 tests passing
+```
+
+`tests/test_dashboard_staff.py` (23 tests): cada contador contra su listado, coincidencia con la carga de trabajo, qué ve cada rol, el orden de los tickets prioritarios, que la actividad no copie el contenido de un comentario y un número de consultas que no crece con el equipo. La migración del índice se aplicó tras medirlo (79 ms contra 0,09 ms con 250 000 eventos).
+
+Estado tras la entrega 6 de `v0.6.0` (carga de trabajo, pantalla):
+
+```text
+4075 tests passing
+```
+
+`tests/test_workload_screen.py` (23 tests): los enlaces se leen de la propia página y se resuelven con los filtros del listado para exigir que su total sea la cifra mostrada, también con filtros.
+
+Estado tras la entrega 5 de `v0.6.0` (carga de trabajo, consultas):
+
+```text
+4052 tests passing
+```
+
+`tests/test_workload_queries.py` (30 tests): cada cifra contra su listado, un ticket con dos técnicos, quién aparece, la carga alta, solo el personal y el número de consultas.
+
+Estado tras la entrega 4 de `v0.6.0` (dashboard del Solicitante):
+
+```text
+4022 tests passing
+```
+
+`tests/test_dashboard_requester.py` (25 tests).
+
+Estado tras la entrega 3 de `v0.6.0` (filtros de asignación del listado):
+
+```text
+3997 tests passing
+```
+
+Estado tras las entregas 1 y 2 de `v0.6.0` (revisión de lo construido):
+
+```text
+3975 tests passing
+```
 
 Estado tras la entrega 9 de `v0.5.0` (cierre de la versión):
 

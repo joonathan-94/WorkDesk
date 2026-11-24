@@ -1158,7 +1158,7 @@ Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron a
 **Semana:** 7  
 **Versión:** `v0.6.0`
 
-**Estado de ejecución:** en curso. Se planificó en 10 entregas pequeñas, cada una con su rama, tests y Pull Request (la última es la revisión de toda la fase).
+**Estado de ejecución:** implementada, validada e integrada en `main` (PR #46 a #55). 4175 tests automatizados (3965 al empezar la fase). Se implementó en 10 entregas pequeñas, cada una en su propia rama, con tests y Pull Request; la décima fue la revisión de toda la fase. Los tickets de demostración pasaron de 76 a 108.
 
 ### Entregas de `v0.6.0`
 
@@ -1171,7 +1171,7 @@ Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron a
 7. **Dashboard operacional** ✓: contadores, tickets prioritarios, carga compacta y actividad reciente para el personal; «Mi trabajo» para el Técnico y un bloque administrativo para el Administrador (RF-093 a RF-096).
 8. **Reasignación masiva: servicio** ✓ (RF-034 y RF-035, RN-30): mover los tickets de un técnico a otros con historial, auditoría y avisos.
 9. **Reasignación masiva: pantalla** ✓ (UI-007): selección, resumen y confirmación, con la carga de cada destino a la vista (RF-033).
-10. **Cierre de la fase**: revisión de todo lo anterior, comprobación de escala y matriz de trazabilidad.
+10. **Cierre de la fase** ✓: revisión de todo lo anterior, comprobación de escala y matriz de trazabilidad.
 
 ### Decisiones de la fase
 
@@ -1185,6 +1185,38 @@ Se tomaron al planificarla:
 - **Sobrecarga (RF-037):** variable de entorno `WORKLOAD_HIGH_ACTIVE_TICKETS` (10 por defecto; 0 la desactiva) hasta `v0.7.0`; es una insignia con texto, nunca notifica ni bloquea una asignación (RN-26).
 - **Sin migraciones previstas.** Solo se añadiría un índice por `historial_ticket(fecha_hora)` si se mide que la actividad reciente lo necesita; sin caché.
 - **Fuera de la fase,** con su destino: las excepciones de SLA (RF-083) y los pendientes sin fase (adjuntos al crear un ticket, advertencia de duplicados, liberar un bloqueo de edición, primera respuesta vencida, retención de notificaciones, el interruptor general del SLA y los parámetros en variables de entorno) van a `v0.7.0`; impacto y urgencia, después del MVP.
+
+### Cierre de la fase (entrega 10)
+
+Se revisó todo lo de `v0.6.0` y se comparó cada requisito de la fase con el código. Lo que se encontró y se hizo:
+
+- **La matriz de trazabilidad destapó tres huecos reales** que los tests de cada entrega no podían ver, porque cada uno comprobaba lo que se había construido y no lo que se había prometido: los tickets *resueltos* de cada técnico (RF-036) se calculaban y no se mostraban; el dashboard del Técnico no traía sus tickets *en progreso* y *en espera* (RF-094); y el del Supervisor no tenía los tickets *por prioridad* (RF-095). Se completaron los tres, con enlace a su listado y su test de «la cifra es el total del listado».
+- **Un error en la reasignación masiva:** quien dejó de ser Técnico (cambio de rol) conservaba sus tickets pero la pantalla de origen lo ofrecía y el servicio lo rechazaba (RN-104 y RN-137 piden poder redistribuir su trabajo). El técnico de origen es ahora cualquier usuario que aún tenga tickets asignados.
+- **Escala (RNF-001).** Con ~20 000 tickets y 66 000 eventos, en una base de pruebas: dashboard del personal ~350 ms, carga de trabajo ~260 ms, reasignación 270 a 360 ms, listado de 35 a 190 ms y dashboard del Solicitante 45 ms, con un número de consultas que no crece con los datos. Medir sirvió: la carga de trabajo calculaba el resumen con un segundo recorrido completo del SLA que repetía el de los grupos; ahora lo suma de ellos (610 → 260 ms). Reasignar 500 tickets a la vez tarda ~3,2 s y se deja así (operación rara, por ticket a propósito).
+- **Medido en una tabla temporal** para decidir el índice del historial en la entrega 7: la actividad reciente pasó de 79 ms a 0,09 ms con 250 000 eventos.
+- **Limpieza:** un campo calculado y nunca mostrado se eliminó (`unassigned_at_risk`) y los que no se mostraban se usan; las funciones privadas que importaba otro módulo pasaron a ser públicas; y ninguna función supera la complejidad 12.
+
+#### Matriz de trazabilidad
+
+| Requisito | Estado | Dónde | Pruebas |
+| --- | --- | --- | --- |
+| RF-033 reasignar según la carga | Hecho | `/reassign` muestra la carga de cada destino, solo como dato | `test_reassignment_screen` |
+| RF-034 reasignación masiva | Hecho | `tickets/reassignment.py`, `/reassign` | `test_ticket_reassignment`, `test_reassignment_screen` |
+| RF-035 conservar el historial | Hecho | asignación cerrada y conservada, eventos con lote y motivo, una auditoría | `test_ticket_reassignment` |
+| RF-036 / RN-27 información de carga | Hecho, salvo «sin actividad reciente» | `workload/queries.py`, `/workload` (asignados y activos, en progreso, en espera, críticos, SLA, resueltos y distribución por prioridad) | `test_workload_queries`, `test_workload_screen` |
+| RF-037 / RN-28 sobrecarga informativa | Hecho como insignia con texto; **los avisos internos quedan para `v0.7.0`** | `WORKLOAD_HIGH_ACTIVE_TICKETS` | `test_workload_queries` |
+| RF-038 carga consolidada | Hecho | `/workload` (técnicos, grupos y sin asignar) | `test_workload_screen` |
+| RF-093 dashboard según el rol | Hecho | `main/routes.py` | `test_dashboard_requester`, `test_dashboard_staff` |
+| RF-094 dashboard del Técnico | Hecho | «Mi trabajo» (activos, en progreso, en espera, críticos, SLA y resueltos en 7 días) | `test_dashboard_staff` |
+| RF-095 dashboard del Supervisor | Hecho | contadores globales, sin asignar, carga por técnico, tickets por prioridad, SLA | `test_dashboard_staff` |
+| RF-096 dashboard del Administrador | Hecho | bloque «Administración» | `test_dashboard_staff` |
+| RF-097 dashboard del Solicitante | Hecho | `dashboard/requester.py` | `test_dashboard_requester` |
+| RN-24 y RN-25 varios tickets por técnico y varios técnicos por ticket | Hecho | la suma por técnico puede superar al total, y la pantalla lo explica | `test_workload_queries` |
+| RN-26 la carga no bloquea | Hecho | ninguna asignación mira la carga | `test_high_load_never_blocks_an_assignment` |
+| RN-29 y RN-30 redistribución y reasignación masiva | Hecho | asignación individual y `/reassign` | `test_ticket_reassignment` |
+| RN-104, RN-137 a RN-139 continuidad ante la ausencia de un técnico | Hecho | origen desactivado o que dejó de ser Técnico; no se pierde historial, comentarios ni archivos | `test_ticket_reassignment` |
+
+**Queda fuera de la fase,** con su destino: los tickets «sin actividad reciente» (RF-036, RN-27) y los avisos internos de sobrecarga (RN-28), que necesitan decidir qué es «reciente» y quién recibe el aviso, y se resuelven con la configuración de `v0.7.0`.
 
 ### Dashboard Solicitante
 

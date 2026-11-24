@@ -114,7 +114,7 @@ def assign_technician(
     if any(a.tecnico_id == technician.id for a in ticket.tecnicos_vigentes):
         raise TicketRuleError(_ALREADY_ASSIGNED)
 
-    assignment = _add_assignment(ticket, technician, actor)
+    assignment = add_assignment(ticket, technician, actor)
 
     record_ticket_event(
         ticket,
@@ -163,7 +163,7 @@ def unassign_technician(
     reason = clean_optional_reason(reason)
     technician = assignment.tecnico
 
-    _close_assignment(assignment, actor, reason)
+    close_assignment(assignment, actor, reason)
     db.session.flush()
     db.session.expire(ticket, ["tecnicos"])
 
@@ -295,10 +295,10 @@ def escalate_ticket(
 
     if technician_changes:
         for assignment in current:
-            _close_assignment(assignment, actor, "Escalamiento.")
+            close_assignment(assignment, actor, "Escalamiento.")
 
         db.session.flush()
-        _add_assignment(ticket, technician, actor)
+        add_assignment(ticket, technician, actor)
 
     db.session.expire(ticket, ["tecnicos"])
     after = _escalation_snapshot(
@@ -352,7 +352,7 @@ def _check_version(ticket: Ticket, expected_version: int) -> None:
         )
 
 
-def _add_assignment(
+def add_assignment(
     ticket: Ticket,
     technician: User,
     actor: User,
@@ -378,7 +378,7 @@ def _add_assignment(
     return assignment
 
 
-def _close_assignment(
+def close_assignment(
     assignment: TicketTechnician,
     actor: User,
     reason: str | None,

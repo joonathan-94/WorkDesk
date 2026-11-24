@@ -36,6 +36,7 @@ from ..tickets.queries import (
     SORT_PRIORITY_SLA,
     TAB_OPEN,
     TicketFilters,
+    active_state_condition,
     list_tickets,
     visible_tickets_condition,
 )
@@ -84,6 +85,8 @@ class StaffDashboard:
     in_progress_state_id: int | None
     on_hold_state_id: int | None
     critical_priority_id: int | None
+    # Tickets activos por prioridad, de mayor a menor nivel: (prioridad, cuántos).
+    by_priority: list[tuple[Prioridad, int]]
     priority_tickets: list[Ticket]
     slas: dict[int, SlaSnapshot | None]
     top_technicians: list[TechnicianLoad]
@@ -128,6 +131,7 @@ def staff_dashboard(user, now: datetime | None = None) -> StaffDashboard:
         in_progress_state_id=state_ids.get("EN_PROGRESO"),
         on_hold_state_id=state_ids.get(ON_HOLD_STATE_CODE),
         critical_priority_id=critical_id,
+        by_priority=_by_priority(user, overview.priorities),
         priority_tickets=list(page.items),
         slas=slas,
         top_technicians=sorted(
@@ -155,6 +159,25 @@ def recent_activity(user, limit: int = RECENT_ACTIVITY) -> list[ActivityItem]:
     ).all()
 
     return [ActivityItem(entry, number, title) for entry, number, title in rows]
+
+
+def _by_priority(user, priorities: list[Prioridad]) -> list[tuple[Prioridad, int]]:
+    """Los tickets en trabajo de cada prioridad (RF-095), de mayor a menor nivel. Una
+    prioridad desactivada solo aparece si aún tiene tickets."""
+    counts = dict(
+        db.session.execute(
+            db.select(Ticket.prioridad_id, func.count(Ticket.id))
+            .join(Ticket.estado)
+            .where(visible_tickets_condition(user), active_state_condition())
+            .group_by(Ticket.prioridad_id)
+        ).all()
+    )
+
+    return [
+        (priority, counts.get(priority.id, 0))
+        for priority in sorted(priorities, key=lambda p: -p.nivel)
+        if priority.activo or counts.get(priority.id)
+    ]
 
 
 def _is_technician(user) -> bool:

@@ -15,6 +15,7 @@ from src.workdesk.extensions import db
 from src.workdesk.models import (
     Notificacion,
     PeriodoSla,
+    Role,
     TicketHistory,
     TicketTechnician,
     User,
@@ -219,6 +220,20 @@ def test_an_inactive_origin_technician_can_be_emptied(app, catalog, team):
 
     with app.app_context():
         who(team, "origin").activo = False
+        db.session.commit()
+
+    moved, skipped, _ = run(app, team, numbers)
+
+    assert sorted(moved) == sorted(numbers) and skipped == {}
+
+
+def test_a_user_who_is_no_longer_a_technician_can_still_be_emptied(app, catalog, team):
+    """Cambiar el rol de un técnico no libera sus tickets (RN-104): deben poder redistribuirse."""
+    numbers = assigned_tickets(app, catalog, team, count=2)
+
+    with app.app_context():
+        supervisor_role = db.session.scalar(db.select(Role).where(Role.codigo == "SUPERVISOR"))
+        db.session.get(User, team["origin"]["id"]).rol_id = supervisor_role.id
         db.session.commit()
 
     moved, skipped, _ = run(app, team, numbers)

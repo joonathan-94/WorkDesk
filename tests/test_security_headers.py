@@ -46,6 +46,13 @@ def test_pages_with_session_data_are_never_cached(client, make_user):
 
     assert client.get("/dashboard").headers["Cache-Control"] == "no-store"
     assert client.get("/tickets").headers["Cache-Control"] == "no-store"
+    assert client.get("/workload").headers["Cache-Control"] == "no-store"
+
+
+def test_the_reassignment_screens_are_never_cached(client, make_user):
+    login(client, make_user("SUPERVISOR"))
+
+    assert client.get("/reassign").headers["Cache-Control"] == "no-store"
 
 
 def test_a_route_that_sets_its_own_cache_policy_keeps_it(client, make_user):
