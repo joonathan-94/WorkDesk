@@ -43,6 +43,19 @@ class SlaFilter(StrEnum):
     VENCIDO = "vencido"
     PAUSADO = "pausado"
     SIN_SLA = "sin"
+    # No es una opción más de la partición: es la unión de «próximo a vencer» y
+    # «vencido» (los dashboards cuentan «SLA en riesgo» y enlazan con ella).
+    RIESGO = "riesgo"
+
+
+# Las cinco opciones que se excluyen entre sí: todo ticket está en exactamente una.
+SLA_PARTITION = (
+    SlaFilter.DENTRO,
+    SlaFilter.PROXIMO,
+    SlaFilter.VENCIDO,
+    SlaFilter.PAUSADO,
+    SlaFilter.SIN_SLA,
+)
 
 
 # Nombre visible de cada opción, en el orden en que se ofrecen.
@@ -50,6 +63,7 @@ SLA_FILTER_LABELS = {
     SlaFilter.DENTRO: "Dentro de plazo",
     SlaFilter.PROXIMO: "Próximo a vencer",
     SlaFilter.VENCIDO: "Vencido",
+    SlaFilter.RIESGO: "En riesgo (próximo o vencido)",
     SlaFilter.PAUSADO: "Pausado",
     SlaFilter.SIN_SLA: "Sin SLA",
 }
@@ -79,6 +93,11 @@ def parse_filter(value: str | None) -> SlaFilter | None:
 def sla_condition(option: SlaFilter, now: datetime):
     """Condición SQL sobre `tickets` con los que están en esa opción del filtro en
     `now`. Se usa dentro de una consulta que ya tiene `tickets` en su `FROM`."""
+    if option is SlaFilter.RIESGO:
+        return or_(
+            sla_condition(SlaFilter.VENCIDO, now), sla_condition(SlaFilter.PROXIMO, now)
+        )
+
     now_value = literal(now, DateTime(timezone=True))
     breached = _breached(now_value)
     has_sla = _has_sla()

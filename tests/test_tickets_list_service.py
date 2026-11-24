@@ -684,6 +684,8 @@ def test_the_list_loads_its_relations_without_one_query_per_row(
                     ticket.prioridad.nombre,
                     ticket.categoria.nombre,
                     [r.solicitante.nombre for r in ticket.solicitantes],
+                    [a.tecnico.nombre for a in ticket.tecnicos_vigentes],
+                    ticket.grupo,
                     ticket.fecha_actualizacion,
                 )
                 for ticket in page.items
@@ -692,8 +694,9 @@ def test_the_list_loads_its_relations_without_one_query_per_row(
             event.remove(db.engine, "before_cursor_execute", count_statement)
 
         assert len(rows) == 10
-        # La página, el total y los solicitantes por lote.
-        assert len(statements) <= 3
+        # La página, el total, los solicitantes y los técnicos (por lote; el grupo
+        # viaja en la propia consulta de la página).
+        assert len(statements) <= 4
 
 
 def test_the_states_are_listed_in_visual_order(app, catalog):

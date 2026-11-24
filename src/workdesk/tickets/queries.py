@@ -15,14 +15,18 @@ from ..extensions import db
 from ..formatting import start_of_local_day
 from ..models import (
     Estado,
+    Grupo,
     Prioridad,
+    Role,
     Ticket,
     TicketRequester,
+    TicketTechnician,
     User,
 )
 from ..search import escape_like
-from ..security import STAFF_ROLES, RoleCode, has_any_role
+from ..security import RESOLVED_STATE, STAFF_ROLES, RoleCode, has_any_role
 from ..sla import periods as sla_periods
+from ..sla.periods import STOPPING_STATES
 from ..sla.queries import SlaFilter, sla_condition, sla_urgency_order
 from .service import CLOSED_STATE_CODE
 
@@ -85,6 +89,19 @@ class TicketFilters:
     created_to: date | None = None
     # Solo el personal puede filtrar por SLA: para un Solicitante se ignora.
     sla: SlaFilter | None = None
+    # Los tres siguientes son solo del personal (el grupo es un dato interno: un
+    # Solicitante que probara el filtro podría deducirlo): para un Solicitante se
+    # ignoran. `unassigned` y `technician_id` no se combinan con sentido.
+    technician_id: int | None = None
+    unassigned: bool = False
+    group_id: int | None = None
+    # «En trabajo»: ni resuelto ni cerrado (la carga de trabajo, docs/12 fase 6).
+    active_only: bool = False
+    # Los resueltos que están esperando la validación de quien consulta (solo para un
+    # Solicitante: el creador que no figura como solicitante no puede validar).
+    pending_review: bool = False
+    # Cerrados desde ese día (día local, incluido).
+    closed_from: date | None = None
 
 
 def visible_tickets_condition(user):
@@ -166,6 +183,13 @@ def list_tickets(
         )
     )
 
+    if staff:
+        # Las columnas Técnico(s) y Grupo: una consulta por lote, no una por fila.
+        statement = statement.options(
+            joinedload(Ticket.grupo),
+            selectinload(Ticket.tecnicos).joinedload(TicketTechnician.tecnico),
+        )
+
     if tab == TAB_OPEN:
         statement = statement.where(Estado.codigo != CLOSED_STATE_CODE)
     elif tab == TAB_CLOSED:
@@ -204,6 +228,24 @@ def count_tickets_by_tab(
     return {TAB_ALL: row[0], TAB_OPEN: row[1], TAB_CLOSED: row[2]}
 
 
+def list_technician_options() -> list[User]:
+    """Todos los técnicos, también los desactivados (conservan tickets asignados), por
+    apellido y nombre: las opciones del filtro «Técnico»."""
+    return list(
+        db.session.scalars(
+            db.select(User)
+            .join(Role, User.rol_id == Role.id)
+            .where(Role.codigo == RoleCode.TECNICO)
+            .order_by(func.lower(User.apellido), func.lower(User.nombre))
+        )
+    )
+
+
+def list_group_options() -> list[Grupo]:
+    """Todos los grupos, también los desactivados, por nombre: las opciones del filtro."""
+    return list(db.session.scalars(db.select(Grupo).order_by(func.lower(Grupo.nombre))))
+
+
 def list_states() -> list[Estado]:
     """Los estados en su orden visual, para el filtro del listado."""
     return list(db.session.scalars(db.select(Estado).order_by(Estado.orden)))
@@ -219,6 +261,19 @@ def listing_conditions(user, filters: TicketFilters, now=None) -> list:
 
     if filters.sla is not None and has_any_role(user, *STAFF_ROLES):
         conditions.append(sla_condition(filters.sla, now or sla_periods.current_time()))
+
+    conditions += _assignment_conditions(user, filters)
+
+    if filters.active_only:
+        conditions.append(active_state_condition())
+
+    if filters.pending_review and has_any_role(user, RoleCode.SOLICITANTE):
+        conditions.append(pending_review_condition(user))
+
+    if filters.closed_from is not None:
+        conditions.append(
+            Ticket.fecha_cierre >= start_of_local_day(filters.closed_from)
+        )
 
     if filters.state_id is not None:
         conditions.append(Ticket.estado_id == filters.state_id)
@@ -246,6 +301,60 @@ def listing_conditions(user, filters: TicketFilters, now=None) -> list:
         )
 
     return conditions
+
+
+def _assignment_conditions(user, filters: TicketFilters) -> list:
+    """Técnico, «sin asignar» y grupo: solo para el personal."""
+    if not has_any_role(user, *STAFF_ROLES):
+        return []
+
+    conditions = []
+
+    if filters.technician_id is not None:
+        conditions.append(has_current_technician(filters.technician_id))
+
+    if filters.unassigned:
+        conditions.append(~has_current_technician())
+
+    if filters.group_id is not None:
+        conditions.append(Ticket.grupo_id == filters.group_id)
+
+    return conditions
+
+
+def has_current_technician(technician_id: int | None = None):
+    """«El ticket tiene un técnico asignado ahora» (o ese técnico en concreto).
+
+    Usa las asignaciones vigentes (sin `fecha_desasignacion`), que es lo que cuenta la
+    carga de trabajo y lo que enlazan los dashboards."""
+    conditions = [
+        TicketTechnician.ticket_id == Ticket.id,
+        TicketTechnician.fecha_desasignacion.is_(None),
+    ]
+
+    if technician_id is not None:
+        conditions.append(TicketTechnician.tecnico_id == technician_id)
+
+    return db.select(TicketTechnician.id).where(*conditions).exists()
+
+
+def active_state_condition():
+    """Estado en trabajo: ni `Resuelto` ni `Cerrado`. Necesita `Estado` en el JOIN."""
+    return Estado.codigo.not_in(sorted(STOPPING_STATES))
+
+
+def pending_review_condition(user):
+    """Resuelto y con `user` como solicitante vigente (quien puede validarlo)."""
+    return db.and_(
+        Estado.codigo == RESOLVED_STATE,
+        db.select(TicketRequester.id)
+        .where(
+            TicketRequester.ticket_id == Ticket.id,
+            TicketRequester.solicitante_id == user.id,
+            TicketRequester.fecha_retiro.is_(None),
+        )
+        .exists(),
+    )
 
 
 def _search_condition(user, query_text: str):
