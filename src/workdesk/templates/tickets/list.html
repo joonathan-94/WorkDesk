@@ -18,6 +18,20 @@
         {% endif %}
     {% endmacro %}
 
+    {# Técnico(s) asignados ahora: el primero y cuántos más. #}
+    {% macro technicians_summary(ticket) %}
+        {% set current = ticket.tecnicos_vigentes %}
+
+        {% if current %}
+            {{ current[0].tecnico.nombre }} {{ current[0].tecnico.apellido }}
+            {% if current|length > 1 %}
+                <span class="text-secondary">+{{ current|length - 1 }}</span>
+            {% endif %}
+        {% else %}
+            <span class="text-secondary">Sin asignar</span>
+        {% endif %}
+    {% endmacro %}
+
     {% set list_url = 'tickets.list_tickets_page' %}
     {% set tabs = [('todos', 'Todos'), ('abiertos', 'Abiertos'), ('cerrados', 'Cerrados')] %}
 
@@ -289,6 +303,122 @@
                         value="{{ filter_params.hasta or '' }}"
                     >
                 </div>
+
+                <div class="col-sm-6 col-lg-3">
+                    <label
+                        class="form-label"
+                        for="cerrado_desde"
+                    >
+                        Cerrado desde
+                    </label>
+
+                    <input
+                        class="form-control"
+                        id="cerrado_desde"
+                        name="cerrado_desde"
+                        type="date"
+                        value="{{ filter_params.cerrado_desde or '' }}"
+                    >
+                </div>
+
+                {# Técnico y grupo son solo del personal (el grupo es un dato interno). #}
+                {% if is_staff %}
+                    <div class="col-sm-6 col-lg-3">
+                        <label
+                            class="form-label"
+                            for="tecnico"
+                        >
+                            Técnico
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="tecnico"
+                            name="tecnico"
+                        >
+                            <option value="">Todos</option>
+                            <option
+                                value="{{ unassigned_value }}"
+                                {% if filters.unassigned %}selected{% endif %}
+                            >
+                                Sin asignar
+                            </option>
+
+                            {% for technician in technicians %}
+                                <option
+                                    value="{{ technician.id }}"
+                                    {% if technician.id == filters.technician_id %}selected{% endif %}
+                                >
+                                    {{ technician.apellido }}, {{ technician.nombre }}{% if not technician.activo %} (inactivo){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-sm-6 col-lg-3">
+                        <label
+                            class="form-label"
+                            for="grupo"
+                        >
+                            Grupo
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="grupo"
+                            name="grupo"
+                        >
+                            <option value="">Todos</option>
+
+                            {% for group in groups %}
+                                <option
+                                    value="{{ group.id }}"
+                                    {% if group.id == filters.group_id %}selected{% endif %}
+                                >
+                                    {{ group.nombre }}{% if not group.activo %} (inactivo){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <input
+                            class="form-check-input"
+                            id="activos"
+                            name="activos"
+                            type="checkbox"
+                            value="1"
+                            {% if filters.active_only %}checked{% endif %}
+                        >
+                        <label
+                            class="form-check-label"
+                            for="activos"
+                        >
+                            Solo en trabajo (ni resueltos ni cerrados)
+                        </label>
+                    </div>
+
+                    {% if not is_staff %}
+                        <div class="form-check">
+                            <input
+                                class="form-check-input"
+                                id="revision"
+                                name="revision"
+                                type="checkbox"
+                                value="1"
+                                {% if filters.pending_review %}checked{% endif %}
+                            >
+                            <label
+                                class="form-check-label"
+                                for="revision"
+                            >
+                                Solo los que esperan tu revisión
+                            </label>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </details>
 
@@ -337,6 +467,8 @@
                             <th scope="col">Categoría</th>
                             {% if is_staff %}
                                 <th scope="col">Solicitante(s)</th>
+                                <th scope="col">Técnico(s)</th>
+                                <th scope="col">Grupo</th>
                             {% endif %}
                             <th scope="col">Actualizado</th>
                         </tr>
@@ -369,6 +501,14 @@
                                 <td>{{ ticket.categoria.nombre }}</td>
                                 {% if is_staff %}
                                     <td>{{ requesters_summary(ticket) }}</td>
+                                    <td>{{ technicians_summary(ticket) }}</td>
+                                    <td>
+                                        {% if ticket.grupo %}
+                                            {{ ticket.grupo.nombre }}
+                                        {% else %}
+                                            <span class="text-secondary">—</span>
+                                        {% endif %}
+                                    </td>
                                 {% endif %}
                                 <td class="text-nowrap text-secondary small">
                                     {{ ticket.fecha_actualizacion|local_datetime }}
@@ -406,6 +546,8 @@
                         {{ ticket.categoria.nombre }}
                         {% if is_staff %}
                             · {{ requesters_summary(ticket) }}
+                            · {{ technicians_summary(ticket) }}
+                            {% if ticket.grupo %}· {{ ticket.grupo.nombre }}{% endif %}
                         {% endif %}
                         · {{ ticket.fecha_actualizacion|local_datetime }}
                     </span>

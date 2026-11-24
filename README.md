@@ -69,7 +69,7 @@ La última versión estable es **`v0.5.0 — SLA y notificaciones internas`** y 
 | `v0.4.0` | Se trabaja en equipo: grupos, asignación, comentarios y notas internas, adjuntos, resolución y cierre, relaciones y bloqueo de edición | 2201 |
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 
-Hoy la suite cuenta con **3975 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **3997 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -749,7 +749,7 @@ La opción **Tickets** (para el personal) o **Mis tickets** (para el Solicitante
 
 - **Pestañas:** Todos, Abiertos y Cerrados, cada una con su contador. Se abre en **Abiertos**, que incluye todo lo que no está Cerrado (un ticket Resuelto sigue abierto porque espera la confirmación del solicitante).
 - **Buscador:** acepta el número (`12` o `#12`), parte del título o de la descripción. El personal también puede escribir el nombre de un solicitante. La barra superior busca igual, en todas las pestañas.
-- **Filtros:** estado y prioridad; y, en "Más filtros", categoría, ubicación y fechas de creación. Se pueden combinar entre sí y con el buscador.
+- **Filtros:** estado y prioridad (y, para el personal, el SLA, incluida la opción «En riesgo»); y, en "Más filtros", categoría, ubicación, fechas de creación y de cierre, «Solo en trabajo» (ni resueltos ni cerrados) y, para el personal, técnico («Sin asignar» incluido) y grupo; el Solicitante tiene además «Solo los que esperan tu revisión». Se pueden combinar entre sí y con el buscador. La tabla del personal muestra también los técnicos y el grupo de cada ticket.
 - **Orden:** más recientes (por defecto), más antiguos, mayor prioridad primero o recién actualizados.
 - **Paginación:** de 20 tickets por página; los enlaces conservan la búsqueda, los filtros y el orden.
 
@@ -1243,7 +1243,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-3975 tests
+3997 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1303,7 +1303,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 3975 tests de la revisión de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 3997 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 

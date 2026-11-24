@@ -22,9 +22,14 @@ from ..queries import (
     VALID_TABS,
     TicketFilters,
     count_tickets_by_tab,
+    list_group_options,
     list_states,
+    list_technician_options,
     list_tickets,
 )
+
+# Valor de `tecnico` para «sin técnico asignado».
+UNASSIGNED_VALUE = "ninguno"
 
 
 @bp.get("")
@@ -40,6 +45,10 @@ def list_tickets_page():
     priorities = list_priorities("")
     categories = list_categories("")
     locations = list_locations("")
+    # Técnico y grupo son solo del personal (el grupo es un dato interno).
+    technicians = list_technician_options() if is_staff else []
+    groups = list_group_options() if is_staff else []
+    unassigned = is_staff and request.args.get("tecnico") == UNASSIGNED_VALUE
 
     filters = TicketFilters(
         query_text=request.args.get("q", "").strip()[:MAX_SEARCH_LENGTH],
@@ -51,6 +60,13 @@ def list_tickets_page():
         created_to=_date_arg("hasta"),
         # El SLA es solo del personal: para un Solicitante el parámetro no existe.
         sla=parse_filter(request.args.get("sla")) if is_staff else None,
+        technician_id=None if unassigned else _choice_arg("tecnico", technicians),
+        unassigned=unassigned,
+        group_id=_choice_arg("grupo", groups),
+        active_only=request.args.get("activos") == "1",
+        # Solo un Solicitante tiene resoluciones que revisar.
+        pending_review=not is_staff and request.args.get("revision") == "1",
+        closed_from=_date_arg("cerrado_desde"),
     )
 
     tab = request.args.get("vista", DEFAULT_TAB)
@@ -98,6 +114,11 @@ def list_tickets_page():
         "desde": _iso(filters.created_from),
         "hasta": _iso(filters.created_to),
         "sla": filters.sla.value if filters.sla else None,
+        "tecnico": UNASSIGNED_VALUE if filters.unassigned else filters.technician_id,
+        "grupo": filters.group_id,
+        "activos": "1" if filters.active_only else None,
+        "revision": "1" if filters.pending_review else None,
+        "cerrado_desde": _iso(filters.closed_from),
         "orden": None if sort == DEFAULT_SORT else sort,
     }
 
@@ -126,12 +147,21 @@ def list_tickets_page():
                 filters.location_id,
                 filters.created_from,
                 filters.created_to,
+                filters.closed_from,
+                filters.technician_id,
+                filters.group_id,
+                filters.unassigned or None,
+                filters.active_only or None,
+                filters.pending_review or None,
             )
         ),
         states=states,
         priorities=priorities,
         categories=categories,
         locations=locations,
+        technicians=technicians,
+        groups=groups,
+        unassigned_value=UNASSIGNED_VALUE,
         is_staff=is_staff,
     )
 

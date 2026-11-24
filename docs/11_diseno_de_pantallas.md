@@ -1672,6 +1672,10 @@ En mobile utilizar cards.
 - **Estados vacíos** según el caso: sin tickets abiertos o cerrados, sin tickets todavía, o sin resultados para los criterios (con el enlace "Limpiar filtros").
 - El detalle muestra la ruta de navegación "Tickets / #N" (o "Mis tickets / #N") y el botón "Cancelar" del formulario de creación vuelve a este listado.
 
+**Implementación (`v0.6.0`, entrega 3).** La tabla del personal muestra ya **Técnico(s)** (el primero y cuántos más, o «Sin asignar») y **Grupo**. «Más filtros» añade, para el personal, **Técnico** (con «Sin asignar») y **Grupo**; para todos, **Cerrado desde** y «Solo en trabajo (ni resueltos ni cerrados)»; y para el Solicitante, «Solo los que esperan tu revisión». El filtro de SLA suma la opción «En riesgo (próximo o vencido)». Son el destino de los enlaces de los dashboards; técnico, grupo y SLA son solo del personal.
+
+---
+
 ---
 
 ## UI-004 — Crear ticket

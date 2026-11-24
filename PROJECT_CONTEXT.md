@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-docs/review-readme-and-context
+feature/tickets-assignment-filters
 ```
 
-Entrega 2 de `v0.6.0 — Dashboards y carga de trabajo`: revisión de la documentación, sin cambios de código. El relato por entrega (hitos de `v0.2.0` a `v0.5.0`, la revisión final de `v0.4.0` y el historial de tests por entrega) pasó de este archivo y del README al nuevo `docs/14_historial_de_implementacion.md`, de modo que este archivo describe lo que existe hoy y cómo funciona, y no cómo se llegó a ello (de 3070 a 2316 líneas; el README, de 1679 a 1497). La fase 6 de `docs/12` incorpora ahora las 10 entregas, las decisiones tomadas al planificarla y la reasignación masiva, que la nota de `v0.4.0` le asignaba pero su alcance no listaba.
+Entrega 3 de `v0.6.0 — Dashboards y carga de trabajo`: el listado de tickets gana los filtros a los que enlazarán los dashboards y la carga de trabajo, y las columnas Técnico(s) y Grupo para el personal. **Sin migraciones** (los índices de `tickets_tecnicos` y `tickets` ya existían). Ver «Filtros de asignación del listado».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -167,8 +167,8 @@ v0.6.0 — Dashboards y carga de trabajo
 | # | Entrega | Estado |
 | --- | --- | --- |
 | 1 | Revisión de lo construido: backend/API y tests | Integrada (PR #46) |
-| 2 | Revisión: README, PROJECT_CONTEXT y docs | En curso (`docs/review-readme-and-context`) |
-| 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | Pendiente |
+| 2 | Revisión: README, PROJECT_CONTEXT y docs | Integrada (PR #47) |
+| 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | En curso (`feature/tickets-assignment-filters`) |
 | 4 | Dashboard del Solicitante | Pendiente |
 | 5 | Carga de trabajo: consultas | Pendiente |
 | 6 | Carga de trabajo: pantalla | Pendiente |
@@ -798,9 +798,29 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 - **Búsqueda** (`TicketFilters.query_text`, máx. 100 caracteres): número exacto (con o sin `#`) o `ILIKE` en título y descripción con los comodines escapados (`search.escape_like`, compartido con el listado de usuarios); para el personal también el nombre, apellido, nombre completo o usuario de los solicitantes vigentes.
 - **Filtros** (`TicketFilters`): estado, prioridad, categoría, ubicación y fechas de creación (días de `APP_TIMEZONE`; "hasta" incluye el día completo). Las opciones de los desplegables incluyen los valores desactivados (marcados "(inactiva)") porque los tickets antiguos los usan. Los valores inválidos de la URL se ignoran.
 - **Orden:** `recientes` (por defecto), `antiguos`, `prioridad` (por nivel) y `actualizados` (`Ticket.fecha_actualizacion`: la última modificación o, si no hay, la creación); siempre con desempate por antigüedad.
-- **Parámetros de la URL:** `q`, `vista`, `estado`, `prioridad`, `categoria`, `ubicacion`, `desde`, `hasta`, `orden` y `page`. Los enlaces de pestañas y de páginas conservan los que están aplicados.
+- **Parámetros de la URL:** `q`, `vista`, `estado`, `prioridad`, `categoria`, `ubicacion`, `desde`, `hasta`, `orden` y `page` (y, desde `v0.6.0`, los de «Filtros de asignación del listado»). Los enlaces de pestañas y de páginas conservan los que están aplicados.
 - **Plantilla** `tickets/list.html`: tabla desde pantallas medianas y tarjetas en móvil; columna "Solicitante(s)" solo para el personal; "Más filtros" es un `<details>` que se abre solo si hay un filtro de ese grupo aplicado; paginación con números de página.
 - **Menú y buscador:** "Tickets" (personal) y "Mis tickets" (Solicitante) apuntan al mismo listado (`navigation.py`) y se marcan activas también en el detalle. El buscador de la barra superior (`layouts/app.html`, visible desde pantallas medianas) envía `q` a este listado con `vista=todos`, para que un ticket cerrado también se encuentre.
+
+## Filtros de asignación del listado (entrega 3 de `v0.6.0`)
+
+Los contadores de los dashboards y de la carga de trabajo enlazan con el listado que los explica, así que el listado puede filtrar por lo que ellos cuentan. Todo vive en `tickets/queries.py` (`TicketFilters` y `listing_conditions`) y `tickets/routes/listing.py` solo lee la URL.
+
+| Parámetro | Campo de `TicketFilters` | Quién | Qué filtra |
+| --- | --- | --- | --- |
+| `tecnico=<id>` | `technician_id` | personal | tickets con ese técnico **asignado ahora** (sin `fecha_desasignacion`); un ticket con dos técnicos cuenta para cada uno |
+| `tecnico=ninguno` | `unassigned` | personal | tickets sin ningún técnico vigente |
+| `grupo=<id>` | `group_id` | personal | tickets de ese grupo |
+| `activos=1` | `active_only` | todos | «en trabajo»: ni `Resuelto` ni `Cerrado` (`active_state_condition`) |
+| `revision=1` | `pending_review` | Solicitante | `Resuelto` con él como solicitante vigente (`pending_review_condition`): el creador que no figura como solicitante no puede validar y no entra |
+| `cerrado_desde=AAAA-MM-DD` | `closed_from` | todos | cerrados desde ese día local (`APP_TIMEZONE`) |
+| `sla=riesgo` | `sla` | personal | próximo a vencer **o** vencido (`SlaFilter.RIESGO`) |
+
+- **Técnico, grupo y «sin asignar» son solo del personal**, igual que el SLA: el grupo es un dato interno y un Solicitante que probara el filtro podría deducirlo. Se ignoran en la ruta y también en la consulta (`_assignment_conditions`). `revision` solo vale para un Solicitante.
+- **`SlaFilter.RIESGO` no es una opción más de la partición:** es la unión de «próximo» y «vencido». `SLA_PARTITION` lista las cinco opciones que se excluyen entre sí y es lo que recorren las pruebas que comprueban que todo ticket está en exactamente una.
+- **Los valores inválidos se ignoran** (un técnico o grupo que no existe, una fecha mal escrita), como en el resto de filtros, y los enlaces de pestañas y páginas los conservan.
+- **Pantalla:** el personal ve las columnas **Técnico(s)** (el primero y cuántos más, o «Sin asignar») y **Grupo**; los filtros de técnico y grupo están en «Más filtros», con los técnicos y grupos desactivados marcados «(inactivo)» porque pueden conservar tickets. El Solicitante no ve ni las columnas ni esos filtros. La página sigue costando un número fijo de consultas: los técnicos se cargan en un lote más (4 en el servicio) y el grupo viaja en la consulta de la página.
+- Helpers reutilizables: `has_current_technician(technician_id=None)`, `active_state_condition()`, `pending_review_condition(user)`, `list_technician_options()` y `list_group_options()`.
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
@@ -1857,7 +1877,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-3975 tests passing (4 min 51 s con `-n 6`)
+3997 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

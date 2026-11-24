@@ -29,6 +29,7 @@ from src.workdesk.sla.periods import (
     warning_seconds,
 )
 from src.workdesk.sla.queries import (
+    SLA_PARTITION,
     SlaFilter,
     filter_of,
     sla_condition,
@@ -459,7 +460,7 @@ def test_the_scenarios_cover_every_status_and_a_ticket_without_sla(app, scenario
             for snapshot in evaluate_tickets_sla(scenarios.values(), at(16, 15, 30)).values()
         }
 
-        assert found == set(SlaFilter)
+        assert found == set(SLA_PARTITION)
 
 
 def test_the_expected_status_of_each_scenario(app, scenarios):
@@ -577,12 +578,12 @@ def test_the_sql_conditions_select_exactly_what_the_evaluation_says(app, scenari
         checked = 0
 
         for now in moments_to_check(ids):
-            expected = {option: set() for option in SlaFilter}
+            expected = {option: set() for option in SLA_PARTITION}
 
             for ticket_id, snapshot in evaluate_tickets_sla(ids, now).items():
                 expected[filter_of(snapshot)].add(ticket_id)
 
-            for option in SlaFilter:
+            for option in SLA_PARTITION:
                 assert sql_selection(option, now, ids) == expected[option], (option, now)
 
             checked += 1
@@ -595,10 +596,22 @@ def test_every_ticket_is_in_exactly_one_option_of_the_filter(app, scenarios):
         ids = list(scenarios.values())
 
         for now in (at(16, 15, 30), at(16, 16), at(17, 10, 36), at(17, 13), at(20, 12)):
-            selections = [sql_selection(option, now, ids) for option in SlaFilter]
+            selections = [sql_selection(option, now, ids) for option in SLA_PARTITION]
 
             assert sum(len(selection) for selection in selections) == len(ids)
             assert set().union(*selections) == set(ids)
+
+
+def test_at_risk_is_the_union_of_close_to_due_and_overdue(app, scenarios):
+    with app.app_context():
+        ids = list(scenarios.values())
+
+        for now in moments_to_check(ids):
+            at_risk = sql_selection(SlaFilter.RIESGO, now, ids)
+
+            assert at_risk == sql_selection(SlaFilter.PROXIMO, now, ids) | sql_selection(
+                SlaFilter.VENCIDO, now, ids
+            )
 
 
 def test_a_ticket_that_changes_option_over_time_does_it_at_its_dates(
@@ -611,7 +624,7 @@ def test_a_ticket_that_changes_option_over_time_does_it_at_its_dates(
         def option_at(moment):
             return next(
                 option
-                for option in SlaFilter
+                for option in SLA_PARTITION
                 if sql_selection(option, moment, [ticket.id])
             )
 

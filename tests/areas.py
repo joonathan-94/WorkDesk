@@ -75,6 +75,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_tickets_edit_service",
         "test_tickets_list_routes",
         "test_tickets_list_service",
+        "test_tickets_assignment_filters",
         "test_tickets_routes",
         "test_tickets_service",
     ),
