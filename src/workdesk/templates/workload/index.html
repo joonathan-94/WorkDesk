@@ -1,0 +1,376 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, kpi_card %}
+
+{% block title %}Carga de trabajo{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/workload.css') }}"
+    >
+{% endblock %}
+
+{# Un número que, si no es cero, enlaza con el listado que lo explica. #}
+{% macro count_link(value, url, label) %}
+    {% if value %}
+        <a
+            href="{{ url }}"
+            aria-label="{{ value }} {{ label }}: ver los tickets"
+        >{{ value }}</a>
+    {% else %}
+        <span class="text-secondary">0</span>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+    {% set summary = data.summary %}
+
+    {{ page_header(
+        'Carga de trabajo',
+        'Cómo está repartido el trabajo activo del equipo. Es una vista para analizar, no un ranking.'
+    ) }}
+
+    <section
+        class="kpi-grid"
+        aria-label="Resumen de la carga de trabajo"
+    >
+        {{ kpi_card(
+            'Tickets activos',
+            summary.active,
+            hint=summary.assigned ~ ' asignados · ' ~ summary.unassigned ~ ' sin asignar',
+            href=list_link(activos=1),
+            icon='ticket-detailed',
+            tone='primary',
+        ) }}
+
+        {{ kpi_card(
+            'Sin asignar',
+            summary.unassigned,
+            hint=(summary.unassigned_critical ~ ' críticos') if summary.unassigned_critical else 'Ningún crítico',
+            href=list_link(activos=1, tecnico='ninguno'),
+            icon='person-x',
+            tone='warning',
+            alert=summary.unassigned > 0,
+        ) }}
+
+        {{ kpi_card(
+            'Críticos',
+            summary.critical,
+            hint='Prioridad crítica, en trabajo',
+            href=list_link(activos=1, prioridad=critical_id),
+            icon='exclamation-octagon',
+            tone='danger',
+            alert=summary.critical > 0,
+        ) }}
+
+        {{ kpi_card(
+            'SLA en riesgo',
+            summary.at_risk,
+            hint=summary.overdue ~ ' vencidos · ' ~ summary.near_due ~ ' próximos',
+            href=list_link(activos=1, sla='riesgo'),
+            icon='hourglass-split',
+            tone='danger',
+            alert=summary.at_risk > 0,
+        ) }}
+    </section>
+
+    <form
+        class="card card-body mb-3"
+        method="get"
+        action="{{ url_for('workload.workload_page') }}"
+    >
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="grupo"
+                >Grupo</label>
+                <select
+                    class="form-select"
+                    id="grupo"
+                    name="grupo"
+                >
+                    <option value="">Todos</option>
+                    {% for group in groups %}
+                        <option
+                            value="{{ group.id }}"
+                            {% if selected.grupo == group.id %}selected{% endif %}
+                        >{{ group.nombre }}{% if not group.activo %} (inactivo){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="prioridad"
+                >Prioridad</label>
+                <select
+                    class="form-select"
+                    id="prioridad"
+                    name="prioridad"
+                >
+                    <option value="">Todas</option>
+                    {% for priority in priorities %}
+                        <option
+                            value="{{ priority.id }}"
+                            {% if selected.prioridad == priority.id %}selected{% endif %}
+                        >{{ priority.nombre }}{% if not priority.activo %} (inactiva){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="estado"
+                >Estado</label>
+                <select
+                    class="form-select"
+                    id="estado"
+                    name="estado"
+                >
+                    <option value="">Todos los activos</option>
+                    {% for state in states %}
+                        <option
+                            value="{{ state.id }}"
+                            {% if selected.estado == state.id %}selected{% endif %}
+                        >{{ state.nombre_visible }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="tecnico"
+                >Técnico</label>
+                <select
+                    class="form-select"
+                    id="tecnico"
+                    name="tecnico"
+                >
+                    <option value="">Todos</option>
+                    {% for technician in technician_options %}
+                        <option
+                            value="{{ technician.id }}"
+                            {% if selected.tecnico == technician.id %}selected{% endif %}
+                        >{{ technician.apellido }}, {{ technician.nombre }}{% if not technician.activo %} (inactivo){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-4">
+                <label
+                    class="form-label"
+                    for="q"
+                >Buscar técnico</label>
+                <input
+                    class="form-control"
+                    id="q"
+                    name="q"
+                    type="search"
+                    maxlength="100"
+                    value="{{ selected.q }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="orden"
+                >Ordenar por</label>
+                <select
+                    class="form-select"
+                    id="orden"
+                    name="orden"
+                >
+                    {% for key, label in sorts.items() %}
+                        <option
+                            value="{{ key }}"
+                            {% if selected.orden == key %}selected{% endif %}
+                        >{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-lg-5 d-flex gap-2">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >Aplicar</button>
+
+                {% if filtered or selected.orden != 'activos' %}
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('workload.workload_page') }}"
+                    >Limpiar</a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <section class="card mb-3">
+        <div class="card-header">
+            <h2 class="h6 mb-0">Carga por técnico</h2>
+        </div>
+
+        <div class="card-body pb-0 small text-secondary">
+            Un ticket puede tener varios técnicos y cuenta en cada uno de ellos: la suma de
+            esta tabla puede ser mayor que el total de tickets activos
+            ({{ summary.active }}). No es un error.
+            {% if data.high_threshold %}
+                «Carga alta» indica {{ data.high_threshold }} tickets activos o más; es solo
+                informativo y no impide asignar.
+            {% endif %}
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Técnico</th>
+                        <th scope="col" class="text-end">Activos</th>
+                        <th scope="col" class="text-end">En progreso</th>
+                        <th scope="col" class="text-end">En espera</th>
+                        <th scope="col" class="text-end">Críticos</th>
+                        <th scope="col" class="text-end">SLA en riesgo</th>
+                        <th scope="col">Distribución</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        {% set who = row.user %}
+                        <tr>
+                            <th scope="row">
+                                <a href="{{ list_link(tecnico=who.id, activos=1) }}">
+                                    {{ who.nombre }} {{ who.apellido }}
+                                </a>
+                                {% if not who.activo %}
+                                    <span class="badge badge-soft badge-soft-neutral">Inactivo</span>
+                                {% endif %}
+                                {% if row.high %}
+                                    <span class="badge badge-soft badge-soft-warning">Carga alta</span>
+                                {% endif %}
+                            </th>
+                            <td class="text-end">{{ count_link(row.active, list_link(tecnico=who.id, activos=1), 'activos') }}</td>
+                            <td class="text-end">{{ count_link(row.in_progress, list_link(tecnico=who.id, estado=in_progress_id), 'en progreso') }}</td>
+                            <td class="text-end">{{ count_link(row.on_hold, list_link(tecnico=who.id, estado=on_hold_id), 'en espera') }}</td>
+                            <td class="text-end">{{ count_link(row.critical, list_link(tecnico=who.id, activos=1, prioridad=critical_id), 'críticos') }}</td>
+                            <td class="text-end">
+                                {{ count_link(row.at_risk, list_link(tecnico=who.id, activos=1, sla='riesgo'), 'con SLA en riesgo') }}
+                                {% if row.overdue %}
+                                    <span class="small text-secondary">({{ row.overdue }} vencidos)</span>
+                                {% endif %}
+                            </td>
+                            <td class="distribution-cell">
+                                {% if row.active %}
+                                    <div
+                                        class="distribution"
+                                        role="img"
+                                        style="width: {{ (row.active * 100 / max_active)|round|int }}%"
+                                        aria-label="{% for priority in data.priorities|reverse %}{% if row.by_priority.get(priority.id) %}{{ row.by_priority[priority.id] }} {{ priority.nombre }}; {% endif %}{% endfor %}"
+                                    >
+                                        {% for priority in data.priorities|reverse %}
+                                            {% if row.by_priority.get(priority.id) %}
+                                                <span
+                                                    class="distribution-segment distribution-segment--{{ priority.codigo|lower }}"
+                                                    style="flex: {{ row.by_priority[priority.id] }}"
+                                                ></span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-secondary small">Sin tickets activos</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td
+                                colspan="7"
+                                class="text-center text-secondary py-4"
+                            >
+                                {% if filtered %}
+                                    Ningún técnico coincide con los filtros.
+                                {% else %}
+                                    No hay técnicos activos.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card-footer small text-secondary">
+            {% for priority in data.priorities|reverse %}
+                <span class="legend-item">
+                    <span class="distribution-segment distribution-segment--{{ priority.codigo|lower }} legend-swatch"></span>
+                    {{ priority.nombre }}
+                </span>
+            {% endfor %}
+            · El largo de cada barra es comparativo (respecto del técnico con más tickets
+            activos), no una capacidad máxima.
+        </div>
+    </section>
+
+    <section class="card mb-3">
+        <div class="card-header">
+            <h2 class="h6 mb-0">Carga por grupo</h2>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Grupo</th>
+                        <th scope="col" class="text-end">Activos</th>
+                        <th scope="col" class="text-end">Sin asignar</th>
+                        <th scope="col" class="text-end">Críticos</th>
+                        <th scope="col" class="text-end">SLA en riesgo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data.groups %}
+                        {% set group = row.group %}
+                        <tr>
+                            <th scope="row">
+                                {% if group %}
+                                    {{ group.nombre }}
+                                    {% if not group.activo %}
+                                        <span class="badge badge-soft badge-soft-neutral">Inactivo</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="fst-italic">Sin grupo</span>
+                                {% endif %}
+                            </th>
+                            {% if group %}
+                                <td class="text-end">{{ count_link(row.active, list_link(grupo=group.id, activos=1), 'activos') }}</td>
+                                <td class="text-end">{{ count_link(row.unassigned, list_link(grupo=group.id, activos=1, tecnico='ninguno'), 'sin asignar') }}</td>
+                                <td class="text-end">{{ count_link(row.critical, list_link(grupo=group.id, activos=1, prioridad=critical_id), 'críticos') }}</td>
+                                <td class="text-end">{{ count_link(row.at_risk, list_link(grupo=group.id, activos=1, sla='riesgo'), 'con SLA en riesgo') }}</td>
+                            {% else %}
+                                <td class="text-end">{{ row.active }}</td>
+                                <td class="text-end">{{ row.unassigned }}</td>
+                                <td class="text-end">{{ row.critical }}</td>
+                                <td class="text-end">{{ row.at_risk }}</td>
+                            {% endif %}
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td
+                                colspan="5"
+                                class="text-center text-secondary py-4"
+                            >Todavía no hay grupos.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endblock %}

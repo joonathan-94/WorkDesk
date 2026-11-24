@@ -1,3 +1,9 @@
+from flask import Blueprint
+
+# La carga de trabajo del equipo: solo el personal (docs/12, fase 6; UI-006).
+bp = Blueprint("workload", __name__, url_prefix="/workload")
+
+from . import routes as routes
 from .queries import GroupLoad as GroupLoad
 from .queries import TechnicianLoad as TechnicianLoad
 from .queries import WorkloadFilters as WorkloadFilters

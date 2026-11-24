@@ -24,6 +24,7 @@ from .system import bp as system_bp
 from .tickets import bp as tickets_bp
 from .tickets.storage import MAX_FILES_PER_REQUEST
 from .users import bp as users_bp
+from .workload import bp as workload_bp
 
 
 def create_app(
@@ -66,6 +67,7 @@ def create_app(
     app.register_blueprint(admin_bp)
     app.register_blueprint(catalogs_bp)
     app.register_blueprint(groups_bp)
+    app.register_blueprint(workload_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(sla_bp)

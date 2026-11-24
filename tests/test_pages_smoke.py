@@ -61,6 +61,12 @@ PAGES_FOR_EVERYONE = [
     "/notifications?vista=no-leidas",
     "/account",
 ]
+# La carga de trabajo es del personal: el Solicitante recibe 403.
+STAFF_PAGES = [
+    "/workload",
+    "/workload?grupo=1&prioridad=1&estado=1",
+    "/workload?q=a&orden=nombre",
+]
 GROUP_PAGES = ["/groups"]
 ADMIN_PAGES = [
     "/admin",
@@ -77,11 +83,11 @@ ADMIN_PAGES = [
 # Quién entra en qué pantallas: 200 si puede, 403 si no.
 ALLOWED = {
     "SOLICITANTE": PAGES_FOR_EVERYONE,
-    "TECNICO": PAGES_FOR_EVERYONE,
-    "SUPERVISOR": PAGES_FOR_EVERYONE + GROUP_PAGES,
-    "ADMINISTRADOR": PAGES_FOR_EVERYONE + GROUP_PAGES + ADMIN_PAGES,
+    "TECNICO": PAGES_FOR_EVERYONE + STAFF_PAGES,
+    "SUPERVISOR": PAGES_FOR_EVERYONE + STAFF_PAGES + GROUP_PAGES,
+    "ADMINISTRADOR": PAGES_FOR_EVERYONE + STAFF_PAGES + GROUP_PAGES + ADMIN_PAGES,
 }
-EVERY_PAGE = PAGES_FOR_EVERYONE + GROUP_PAGES + ADMIN_PAGES
+EVERY_PAGE = PAGES_FOR_EVERYONE + STAFF_PAGES + GROUP_PAGES + ADMIN_PAGES
 
 # Las pantallas de acción de un ticket para el personal. Algunas no corresponden al estado
 # del ticket (cerrarlo si ya está cerrado): entonces vuelven al detalle con un aviso.

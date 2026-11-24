@@ -1994,6 +1994,8 @@ La advertencia:
 - no convierte la pantalla en ranking;
 - debe acompañarse de texto.
 
+**Implementación (`v0.6.0`, entrega 6).** `/workload` para Técnico, Supervisor y Administrador: cuatro tarjetas enlazadas (activos, sin asignar, críticos, SLA en riesgo), tabla por técnico con barra de distribución por prioridad (comparativa y con texto equivalente), carga por grupo, filtros (grupo, prioridad, estado, técnico, búsqueda y orden), la nota de que la suma por técnico puede superar al total y la insignia «Carga alta» con texto. Cada número abre el listado que lo explica.
+
 ### Áreas secundarias
 
 - Carga por grupo;

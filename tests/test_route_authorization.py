@@ -216,6 +216,13 @@ def test_the_groups_area_is_only_for_administrators_and_supervisors(
     assert area_violations(client, app, ("groups.",), role) == []
 
 
+def test_the_workload_area_is_closed_to_requesters(client, app, make_user, catalog):
+    """La carga de trabajo es información de todo el equipo: solo el personal."""
+    login(client, make_user("SOLICITANTE", username="persona"))
+
+    assert area_violations(client, app, ("workload.",), "SOLICITANTE") == []
+
+
 def test_there_are_administration_routes_to_check(app):
     endpoints = {
         rule.endpoint
