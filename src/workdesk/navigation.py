@@ -99,6 +99,14 @@ MAIN_NAVIGATION = (
         icon="plus-circle",
         active_prefixes=("tickets.new_ticket",),
     ),
+    # La carga de trabajo del equipo: solo el personal (la ruta lo vuelve a comprobar).
+    NavItem(
+        label="Carga de trabajo",
+        endpoint="workload.workload_page",
+        icon="people",
+        roles=STAFF_ROLES,
+        active_prefixes=("workload.",),
+    ),
     # Los avisos del propio usuario: los ven los cuatro roles (docs/11, 5.x).
     NavItem(
         label="Notificaciones",

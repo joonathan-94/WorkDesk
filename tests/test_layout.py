@@ -72,6 +72,7 @@ def test_a_technician_sees_tickets_and_create_ticket():
         "Dashboard",
         "Tickets",
         "Crear ticket",
+        "Carga de trabajo",
         "Notificaciones",
     ]
 
@@ -81,6 +82,7 @@ def test_a_supervisor_also_sees_the_groups_they_manage():
         "Dashboard",
         "Tickets",
         "Crear ticket",
+        "Carga de trabajo",
         "Notificaciones",
         "Grupos",
     ]
@@ -100,6 +102,7 @@ def test_administrator_sees_the_administration_hub():
         "Dashboard",
         "Tickets",
         "Crear ticket",
+        "Carga de trabajo",
         "Notificaciones",
         "Administración",
     ]

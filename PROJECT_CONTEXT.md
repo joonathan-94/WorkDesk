@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/workload-queries
+feature/workload-screen
 ```
 
-Entrega 5 de `v0.6.0 — Dashboards y carga de trabajo`: las consultas de la carga de trabajo del equipo (por técnico, por grupo y sin asignar), la variable `WORKLOAD_HIGH_ACTIVE_TICKETS` y 21 tickets de demostración más repartidos entre técnicos y grupos. **Sin migraciones y sin pantallas** (la pantalla es la entrega 6). Ver «Carga de trabajo (consultas)».
+Entrega 6 de `v0.6.0 — Dashboards y carga de trabajo`: la pantalla `/workload` (Carga de trabajo) para el personal, con su entrada en el menú. **Sin migraciones.** Ver «Carga de trabajo (pantalla)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -170,8 +170,8 @@ v0.6.0 — Dashboards y carga de trabajo
 | 2 | Revisión: README, PROJECT_CONTEXT y docs | Integrada (PR #47) |
 | 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | Integrada (PR #48) |
 | 4 | Dashboard del Solicitante | Integrada (PR #49) |
-| 5 | Carga de trabajo: consultas | En curso (`feature/workload-queries`) |
-| 6 | Carga de trabajo: pantalla | Pendiente |
+| 5 | Carga de trabajo: consultas | Integrada (PR #50) |
+| 6 | Carga de trabajo: pantalla | En curso (`feature/workload-screen`) |
 | 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Pendiente |
 | 8 | Reasignación masiva: servicio | Pendiente |
 | 9 | Reasignación masiva: pantalla | Pendiente |
@@ -855,6 +855,18 @@ Paquete `src/workdesk/workload/` (`queries.py`): `workload_overview(user, filter
 - **Carga alta (RN-26):** `WORKLOAD_HIGH_ACTIVE_TICKETS` (variable de entorno, 10 por defecto, validada al iniciar; 0 desactiva la marca) marca con `high=True` a quien tiene ese número de tickets activos o más. **Solo informa:** no bloquea ni avisa. Pasará a la configuración administrable en `v0.7.0`.
 - **Seed de demostración:** 21 tickets nuevos al final de la lista (108 en total) repartidos entre los cuatro técnicos y los tres grupos: críticos, en espera, uno con dos técnicos, otros sin asignar y sin grupo. Con la configuración por defecto, Valentina Pizarro queda en 10 tickets activos y aparece con carga alta.
 - **Tests:** `tests/test_workload_queries.py` en el área `dashboards`.
+
+## Carga de trabajo (pantalla) (entrega 6 de `v0.6.0`)
+
+Blueprint `workload` (`/workload`, `src/workdesk/workload/routes.py`), registrado en `create_app()`. **Solo `STAFF_ROLES`** (`roles_required`: 403 al Solicitante, login al anónimo) y la entrada «Carga de trabajo» del menú (`navigation.py`) solo la ven Técnico, Supervisor y Administrador. Plantilla `workload/index.html` y hoja `static/css/workload.css` (solo tokens `--wd-*`). Los datos vienen de `workload_overview` (ver «Carga de trabajo (consultas)»). Sin migraciones.
+
+- **Cuatro tarjetas** (`kpi_card`): *Tickets activos* (con «N asignados · M sin asignar»), *Sin asignar*, *Críticos* y *SLA en riesgo* (con vencidos y próximos). Cada una enlaza con el listado que la explica.
+- **Carga por técnico:** activos, en progreso, en espera, críticos y SLA en riesgo (con los vencidos entre paréntesis), todo con enlace al listado cuando no es cero, y una barra de distribución por prioridad. La barra es **comparativa** (su largo es relativo al técnico con más tickets activos, no una capacidad) y tiene texto equivalente (`aria-label`); los colores son tokens. Insignias «Inactivo» y «Carga alta» (con texto y una nota que dice que no impide asignar).
+- **Carga por grupo:** activos, sin asignar, críticos y SLA en riesgo; «Sin grupo» no enlaza (el listado no filtra por «sin grupo»).
+- **Un ticket con varios técnicos** cuenta en cada uno: una nota sobre la tabla explica que la suma puede superar al total.
+- **Filtros** (por URL, valores inválidos ignorados): `grupo`, `prioridad` y `estado` (solo los activos) restringen qué se cuenta y **se conservan en los enlaces** al listado, así que cada cifra sigue siendo el total de su listado; `tecnico`, `q` (nombre, apellido o usuario) y `orden` (`activos`, `criticos`, `riesgo`, `nombre`) solo afectan a la tabla por técnico, no a los indicadores del equipo.
+- **Tests:** `tests/test_workload_screen.py` (área `dashboards`) lee los enlaces de la propia página, los vuelve a resolver con los filtros del listado y exige que su total sea la cifra mostrada, también con filtros. Las pantallas se añadieron a `test_pages_smoke`, `test_layout` y `test_route_authorization`.
+- **Pendiente:** el botón «Ir a reasignación» llega con la entrega 9.
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
@@ -1597,6 +1609,7 @@ GET, POST  /tickets/<public_id>/relations/<relation_id>/remove
 GET, POST  /tickets/<public_id>/duplicate
 POST       /tickets/<public_id>/lock/renew
 POST       /tickets/<public_id>/lock/release
+GET        /workload
 GET        /notifications
 POST       /notifications/<id>/read
 POST       /notifications/<id>/open
@@ -1636,7 +1649,7 @@ El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos, de grupos y de SLA; Grupos (del Supervisor), en las de grupos; Notificaciones, en el centro de notificaciones; Mi cuenta, en `/account` y en el cambio de contraseña.
 - `layout_context` entrega además `unread_notifications` (el número de no leídas del usuario): una consulta por página autenticada, resuelta por el índice `(usuario_id, leida, fecha_creacion)`.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
@@ -1765,7 +1778,7 @@ WorkDesk no tiene API pública. Las cuatro rutas JSON (`GET /health`, `GET /noti
 
 - **Una forma de error** (`responses.py`, `json_error`): `{"ok": false, "error": "<código>", "message": "<texto>"}`, con códigos estables (`session_expired`, `lock_held`, `ticket_closed`) y sin caché. Las respuestas correctas conservan su forma (`{"ok": true}`, `{"ok": true, "released": bool}`, `{"unread": N}` y la de `/health`).
 - **Cabeceras en todas las respuestas** (`security/headers.py`, un único `after_request`; `setdefault`, así que una ruta que fija la suya, como la descarga de un adjunto, manda): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Content-Security-Policy` y `Cache-Control: no-store` en todo lo que no sea un archivo estático. `Strict-Transport-Security` solo con `SESSION_COOKIE_SECURE=true`.
-- **La política de contenido** (`default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data:`, `frame-ancestors 'none'`...) se apoya en dos hechos medidos: las 24 etiquetas `<script>` de las plantillas llevan `src` (no hay JavaScript en línea ni manejadores `on...=`) y solo quedan 3 atributos `style=` en línea, de datos (el ancho de la barra de SLA y el color de una prioridad), por eso los estilos admiten `'unsafe-inline'` y los scripts no.
+- **La política de contenido** (`default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data:`, `frame-ancestors 'none'`...) se apoya en dos hechos medidos: las 24 etiquetas `<script>` de las plantillas llevan `src` (no hay JavaScript en línea ni manejadores `on...=`) y solo quedan 5 atributos `style=` en línea, de datos (el ancho de la barra de SLA y el color de una prioridad), por eso los estilos admiten `'unsafe-inline'` y los scripts no.
 
 # 21. Logging
 
@@ -1909,7 +1922,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4052 tests passing (unos 5 minutos con `-n 6`)
+4075 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

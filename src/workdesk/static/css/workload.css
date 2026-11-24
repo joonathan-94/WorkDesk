@@ -1,0 +1,50 @@
+/*
+ * Carga de trabajo (docs/11, UI-006). Solo tokens `--wd-*`: ningún color escrito a mano.
+ */
+
+.distribution-cell {
+    min-width: 12rem;
+}
+
+.distribution {
+    display: flex;
+    height: 0.75rem;
+    min-width: 0.75rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--wd-border);
+}
+
+.distribution-segment {
+    display: block;
+    min-width: 0.25rem;
+}
+
+.distribution-segment--baja {
+    background: var(--wd-text-secondary);
+}
+
+.distribution-segment--media {
+    background: var(--wd-primary);
+}
+
+.distribution-segment--alta {
+    background: var(--wd-warning);
+}
+
+.distribution-segment--critica {
+    background: var(--wd-danger);
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 0.75rem;
+}
+
+.legend-swatch {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+}
