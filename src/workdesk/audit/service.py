@@ -74,6 +74,11 @@ class AuditAction(StrEnum):
     POLITICA_SLA_ACTIVADA = "POLITICA_SLA_ACTIVADA"
     POLITICA_SLA_DESACTIVADA = "POLITICA_SLA_DESACTIVADA"
 
+    # Reasignación masiva de los tickets de un técnico a otros (`entidad_tipo` es
+    # "tecnico"; `entidad_id`, el técnico de origen). Una sola entrada por operación,
+    # con los tickets movidos y omitidos; el rastro de cada ticket va en su historial.
+    REASIGNACION_MASIVA = "REASIGNACION_MASIVA"
+
 
 def record_admin_event(
     action: AuditAction,

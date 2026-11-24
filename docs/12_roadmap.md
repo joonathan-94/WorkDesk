@@ -1169,7 +1169,7 @@ Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron a
 5. **Carga de trabajo: consultas** ✓: por técnico, por grupo y sin asignar, con el aviso de sobrecarga informativo (RF-036 a RF-038).
 6. **Carga de trabajo: pantalla** ✓ (UI-006): `/workload` para Técnico, Supervisor y Administrador.
 7. **Dashboard operacional** ✓: contadores, tickets prioritarios, carga compacta y actividad reciente para el personal; «Mi trabajo» para el Técnico y un bloque administrativo para el Administrador (RF-093 a RF-096).
-8. **Reasignación masiva: servicio** (RF-034 y RF-035, RN-30): mover los tickets de un técnico a otros con historial, auditoría y avisos.
+8. **Reasignación masiva: servicio** ✓ (RF-034 y RF-035, RN-30): mover los tickets de un técnico a otros con historial, auditoría y avisos.
 9. **Reasignación masiva: pantalla** (UI-007): selección, resumen y confirmación, con la carga de cada destino a la vista (RF-033).
 10. **Cierre de la fase**: revisión de todo lo anterior, comprobación de escala y matriz de trazabilidad.
 
