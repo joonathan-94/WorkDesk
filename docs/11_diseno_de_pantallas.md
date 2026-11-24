@@ -2032,6 +2032,7 @@ Debe incluir:
 
 No debe mezclarse con Carga de trabajo.
 
+**Implementación (`v0.6.0`, entrega 9).** `/reassign` para el Supervisor y el Administrador, en tres pasos y sin modales: elegir (técnico de origen, sus tickets en trabajo con filtros por prioridad, estado y grupo, técnicos de destino con su carga actual como dato informativo, y el motivo), revisar (el reparto ticket por ticket y cuántos tickets recibe cada técnico, sin cambiar nada) y confirmar (resultado con lo reasignado y lo omitido). Con varios destinos los tickets se reparten por turnos. La carga de trabajo enlaza con esta pantalla, pero siguen siendo dos: una analiza, la otra modifica.
 ---
 
 ## UI-008 — Centro de notificaciones

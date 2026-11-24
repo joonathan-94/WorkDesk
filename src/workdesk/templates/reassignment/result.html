@@ -1,0 +1,94 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header %}
+
+{% block title %}Resultado de la reasignación{% endblock %}
+
+{% block content %}
+    {{ page_header(
+        'Reasignación terminada',
+        'Esto es lo que se hizo con los tickets de ' ~ result.source.nombre ~ ' ' ~ result.source.apellido ~ '.'
+    ) }}
+
+    <div
+        class="alert {{ 'alert-success' if result.moved else 'alert-warning' }}"
+        role="status"
+    >
+        {% if result.moved %}
+            Se reasignaron <strong>{{ result.moved|length }}</strong>
+            {{ 'ticket' if result.moved|length == 1 else 'tickets' }}.
+        {% else %}
+            No se pudo reasignar ningún ticket.
+        {% endif %}
+        {% if result.skipped %}
+            <strong>{{ result.skipped|length }}</strong>
+            {{ 'se omitió' if result.skipped|length == 1 else 'se omitieron' }}.
+        {% endif %}
+    </div>
+
+    {% if result.moved %}
+        <section class="card mb-3">
+            <div class="card-header">
+                <h2 class="h6 mb-0">Reasignados</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Ticket</th>
+                            <th scope="col">Ahora lo atiende</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for moved in result.moved %}
+                            <tr>
+                                <td class="text-break">
+                                    <a
+                                        class="fw-semibold text-decoration-none"
+                                        href="{{ url_for('tickets.detail', public_id=moved.number) }}"
+                                    >#{{ moved.number }}</a>
+                                    {{ moved.title }}
+                                </td>
+                                <td>{{ moved.destination.nombre }} {{ moved.destination.apellido }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if result.skipped %}
+        <section class="card mb-3">
+            <div class="card-header">
+                <h2 class="h6 mb-0">Omitidos</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Ticket</th>
+                            <th scope="col">Por qué</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for skipped in result.skipped %}
+                            <tr>
+                                <td>#{{ skipped.number }}</td>
+                                <td>{{ skipped.reason }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
+    <a
+        class="btn btn-primary"
+        href="{{ url_for('workload.workload_page') }}"
+    >Ver la carga de trabajo</a>
+    <a
+        class="btn btn-link"
+        href="{{ url_for('reassignment.select_page') }}"
+    >Hacer otra reasignación</a>
+{% endblock %}

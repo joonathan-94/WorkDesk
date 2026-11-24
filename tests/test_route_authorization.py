@@ -216,6 +216,15 @@ def test_the_groups_area_is_only_for_administrators_and_supervisors(
     assert area_violations(client, app, ("groups.",), role) == []
 
 
+@pytest.mark.parametrize("role", ["SOLICITANTE", "TECNICO"])
+def test_the_reassignment_area_is_only_for_supervisors_and_administrators(
+    client, app, make_user, catalog, role
+):
+    login(client, make_user(role, username="persona"))
+
+    assert area_violations(client, app, ("reassignment.",), role) == []
+
+
 def test_the_workload_area_is_closed_to_requesters(client, app, make_user, catalog):
     """La carga de trabajo es información de todo el equipo: solo el personal."""
     login(client, make_user("SOLICITANTE", username="persona"))

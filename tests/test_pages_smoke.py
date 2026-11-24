@@ -70,7 +70,7 @@ STAFF_PAGES = [
     "/workload?grupo=1&prioridad=1&estado=1",
     "/workload?q=a&orden=nombre",
 ]
-GROUP_PAGES = ["/groups"]
+GROUP_PAGES = ["/groups", "/reassign"]
 ADMIN_PAGES = [
     "/admin",
     "/users",

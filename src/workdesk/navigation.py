@@ -107,6 +107,14 @@ MAIN_NAVIGATION = (
         roles=STAFF_ROLES,
         active_prefixes=("workload.",),
     ),
+    # Pasar los tickets de un técnico a otros: Supervisor y Administrador.
+    NavItem(
+        label="Reasignación",
+        endpoint="reassignment.select_page",
+        icon="arrow-left-right",
+        roles=(RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR),
+        active_prefixes=("reassignment.",),
+    ),
     # Los avisos del propio usuario: los ven los cuatro roles (docs/11, 5.x).
     NavItem(
         label="Notificaciones",

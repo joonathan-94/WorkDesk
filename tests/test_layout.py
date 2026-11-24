@@ -83,6 +83,7 @@ def test_a_supervisor_also_sees_the_groups_they_manage():
         "Tickets",
         "Crear ticket",
         "Carga de trabajo",
+        "Reasignación",
         "Notificaciones",
         "Grupos",
     ]
@@ -103,6 +104,7 @@ def test_administrator_sees_the_administration_hub():
         "Tickets",
         "Crear ticket",
         "Carga de trabajo",
+        "Reasignación",
         "Notificaciones",
         "Administración",
     ]
