@@ -40,6 +40,7 @@ def create_app(
     _validate_comment_edit_window(app)
     _validate_reopen_window(app)
     _validate_scheduler(app)
+    _validate_workload(app)
     _validate_edit_lock(app)
     _configure_uploads(app)
     _validate_password_policy(app)
@@ -155,6 +156,14 @@ def _validate_scheduler(app: Flask) -> None:
     for name in ("AUTO_CLOSE_HOURS", "SCHEDULER_INTERVAL_SECONDS"):
         if app.config[name] <= 0:
             raise RuntimeError(f"{name} debe ser un entero mayor que cero.")
+
+
+def _validate_workload(app: Flask) -> None:
+    # 0 desactiva la marca de carga alta; un valor negativo no significa nada.
+    if app.config["WORKLOAD_HIGH_ACTIVE_TICKETS"] < 0:
+        raise RuntimeError(
+            "WORKLOAD_HIGH_ACTIVE_TICKETS debe ser un entero mayor o igual que cero."
+        )
 
 
 def _validate_edit_lock(app: Flask) -> None:

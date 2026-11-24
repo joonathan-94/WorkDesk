@@ -34,6 +34,7 @@ from .authorization import (
     can_view_internal_activity as can_view_internal_activity,
 )
 from .authorization import can_view_ticket as can_view_ticket
+from .authorization import can_view_workload as can_view_workload
 from .authorization import can_write_internal_note as can_write_internal_note
 from .authorization import current_actor as current_actor
 from .authorization import has_any_role as has_any_role

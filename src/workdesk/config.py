@@ -76,6 +76,14 @@ class Config:
         os.getenv("SCHEDULER_INTERVAL_SECONDS", "60")
     )
 
+    # Carga de trabajo (docs/06, RN-26 y docs/12, fase 6): a partir de cuántos tickets
+    # activos (ni Resueltos ni Cerrados) se marca a un técnico con «carga alta». Es solo
+    # informativo: nunca bloquea ni impide asignar. 0 desactiva la marca. Pasará a la
+    # tabla `configuracion` cuando exista la administración (`v0.7.0`).
+    WORKLOAD_HIGH_ACTIVE_TICKETS = int(
+        os.getenv("WORKLOAD_HIGH_ACTIVE_TICKETS", "10")
+    )
+
     # Bloqueo temporal de edición (docs/10, secciones 71 a 74). Segundos que
     # dura un bloqueo sin renovarse y cada cuánto lo renueva la pantalla de
     # edición mientras está abierta; el latido debe ser menor que la duración.

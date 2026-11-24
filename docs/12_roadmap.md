@@ -1166,7 +1166,7 @@ Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron a
 2. **Revisión: README, PROJECT_CONTEXT y docs** ✓: el relato por entrega pasa a `14_historial_de_implementacion.md` y el README y `PROJECT_CONTEXT.md` quedan centrados en el estado actual.
 3. **Listado: filtros de asignación** ✓: filtros por técnico, grupo, «sin asignar», «activos», «pendientes de mi revisión» y «cerrados desde», `sla=riesgo`, y las columnas Técnico(s) y Grupo para el personal. Son el destino de los enlaces de los dashboards.
 4. **Dashboard del Solicitante** ✓: abiertos, en progreso, requieren tu revisión, cerrados recientes, tickets y notificaciones recientes (UI-002, RF-097).
-5. **Carga de trabajo: consultas**: por técnico, por grupo y sin asignar, con el aviso de sobrecarga informativo (RF-036 a RF-038).
+5. **Carga de trabajo: consultas** ✓: por técnico, por grupo y sin asignar, con el aviso de sobrecarga informativo (RF-036 a RF-038).
 6. **Carga de trabajo: pantalla** (UI-006): `/workload` para Técnico, Supervisor y Administrador.
 7. **Dashboard operacional**: contadores, tickets prioritarios, carga compacta y actividad reciente para el personal; «Mi trabajo» para el Técnico y un bloque administrativo para el Administrador (RF-093 a RF-096).
 8. **Reasignación masiva: servicio** (RF-034 y RF-035, RN-30): mover los tickets de un técnico a otros con historial, auditoría y avisos.
