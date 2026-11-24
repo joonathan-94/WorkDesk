@@ -45,6 +45,9 @@ BUDGET_PAGE = 20
 BUDGET_DETAIL_STAFF = 30
 BUDGET_DETAIL_REQUESTER = 18
 BUDGET_SCREEN = 30
+# El dashboard del personal reúne seis consultas de la carga de trabajo, los tickets
+# prioritarios con su SLA, la actividad y los bloques de rol: es la pantalla más densa.
+BUDGET_STAFF_DASHBOARD = 26
 
 PAGES_FOR_EVERYONE = [
     "/dashboard",
@@ -186,7 +189,13 @@ def test_every_page_answers_as_expected_for_each_role(seeded, client, make_user,
         expected = 200 if url in ALLOWED[role] else 403
 
         assert response.status_code == expected, f"{role} {url}"
-        assert queries <= BUDGET_PAGE, f"{role} {url} hizo {queries} consultas"
+        budget = (
+            BUDGET_STAFF_DASHBOARD
+            if url == "/dashboard" and role != "SOLICITANTE"
+            else BUDGET_PAGE
+        )
+
+        assert queries <= budget, f"{role} {url} hizo {queries} consultas"
 
 
 def test_a_listing_costs_the_same_with_few_or_many_tickets(seeded, client, make_user):

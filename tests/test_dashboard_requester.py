@@ -146,10 +146,12 @@ def test_a_resolved_ticket_waiting_for_the_review_is_marked(seeded, client):
     assert "Requiere tu revisión" in page
 
 
-def test_staff_keep_the_provisional_dashboard_for_now(seeded, client):
+def test_staff_get_the_operational_dashboard_not_the_requester_one(seeded, client):
     login(client, {"username": "diego.soto", "password": DEMO_PASSWORD})
+    content = text(client.get("/dashboard"))
 
-    assert "provisional" in text(client.get("/dashboard"))
+    assert "Tickets abiertos prioritarios" in content
+    assert "Requieren tu revisión" not in content
 
 
 # --- Un Solicitante sin nada ----------------------------------------------------------------

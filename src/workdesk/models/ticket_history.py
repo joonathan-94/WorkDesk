@@ -190,6 +190,13 @@ class TicketHistory(db.Model):
             "ticket_id",
             "fecha_hora",
         ),
+        # Los últimos eventos de todos los tickets (la actividad reciente del dashboard
+        # del personal): sin este índice cada visita ordena toda la tabla.
+        Index(
+            "ix_historial_ticket_fecha_hora",
+            "fecha_hora",
+            "id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(

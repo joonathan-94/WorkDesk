@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/workload-screen
+feature/operational-dashboard
 ```
 
-Entrega 6 de `v0.6.0 — Dashboards y carga de trabajo`: la pantalla `/workload` (Carga de trabajo) para el personal, con su entrada en el menú. **Sin migraciones.** Ver «Carga de trabajo (pantalla)».
+Entrega 7 de `v0.6.0 — Dashboards y carga de trabajo`: el dashboard operacional del personal (contadores, tickets prioritarios, carga compacta y actividad reciente, con «Mi trabajo» para el Técnico y un bloque para el Administrador). **Incluye una migración** (un índice del historial, medido). Ver «Dashboard operacional del personal».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -171,8 +171,8 @@ v0.6.0 — Dashboards y carga de trabajo
 | 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | Integrada (PR #48) |
 | 4 | Dashboard del Solicitante | Integrada (PR #49) |
 | 5 | Carga de trabajo: consultas | Integrada (PR #50) |
-| 6 | Carga de trabajo: pantalla | En curso (`feature/workload-screen`) |
-| 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Pendiente |
+| 6 | Carga de trabajo: pantalla | Integrada (PR #51) |
+| 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | En curso (`feature/operational-dashboard`) |
 | 8 | Reasignación masiva: servicio | Pendiente |
 | 9 | Reasignación masiva: pantalla | Pendiente |
 | 10 | Cierre de la fase | Pendiente |
@@ -499,7 +499,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente veintitrés migraciones:
+Existen actualmente veinticuatro migraciones:
 
 ```text
 create_roles_table
@@ -525,6 +525,7 @@ create_sla_periods_table
 create_notifications_table
 add_warning_threshold_to_sla_periods
 add_sla_notice_marks_to_sla_periods
+add_history_date_index
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -828,7 +829,7 @@ Los contadores de los dashboards y de la carga de trabajo enlazan con el listado
 
 ## Dashboard del Solicitante (entrega 4 de `v0.6.0`)
 
-`GET /dashboard` despacha por rol (`main/routes.py`): el Solicitante recibe `main/dashboard_requester.html`; el personal sigue con la pantalla provisional hasta la entrega 7. Las consultas viven en `src/workdesk/dashboard/requester.py` (`requester_dashboard(user, now=None)` devuelve un `RequesterDashboard`). Reglas de la fase en `docs/12` (fase 6) y diseño en `docs/11` (UI-002).
+`GET /dashboard` despacha por rol (`main/routes.py`): el Solicitante recibe `main/dashboard_requester.html`; el personal recibe `main/dashboard_staff.html` (ver «Dashboard operacional del personal»). Las consultas viven en `src/workdesk/dashboard/requester.py` (`requester_dashboard(user, now=None)` devuelve un `RequesterDashboard`). Reglas de la fase en `docs/12` (fase 6) y diseño en `docs/11` (UI-002).
 
 - **Un único `COUNT ... FILTER`** calcula los cinco números sobre `visible_tickets_condition(user)`: *abiertos* (no `Cerrado`, igual que el listado), *en progreso* (`EN_PROGRESO`), *requieren tu revisión* (`pending_review_condition`: `Resuelto` con él como solicitante vigente), *cerrados recientemente* (`Cerrado` desde `hoy − 7 días`, día local, `CLOSED_WINDOW_DAYS`) y *actualizados hoy* (abiertos con `coalesce(fecha_modificacion, fecha_creacion)` de hoy; es un dato de apoyo, sin enlace propio).
 - **Cada contador enlaza con el listado que lo explica y su cifra es el total de ese listado:** abiertos → `/tickets`; en progreso → `?estado=<id>`; revisión → `?revision=1&vista=todos`; cerrados → `?vista=cerrados&cerrado_desde=<día>`. Un test lo comprueba para los seis solicitantes de demostración.
@@ -867,6 +868,22 @@ Blueprint `workload` (`/workload`, `src/workdesk/workload/routes.py`), registrad
 - **Filtros** (por URL, valores inválidos ignorados): `grupo`, `prioridad` y `estado` (solo los activos) restringen qué se cuenta y **se conservan en los enlaces** al listado, así que cada cifra sigue siendo el total de su listado; `tecnico`, `q` (nombre, apellido o usuario) y `orden` (`activos`, `criticos`, `riesgo`, `nombre`) solo afectan a la tabla por técnico, no a los indicadores del equipo.
 - **Tests:** `tests/test_workload_screen.py` (área `dashboards`) lee los enlaces de la propia página, los vuelve a resolver con los filtros del listado y exige que su total sea la cifra mostrada, también con filtros. Las pantallas se añadieron a `test_pages_smoke`, `test_layout` y `test_route_authorization`.
 - **Pendiente:** el botón «Ir a reasignación» llega con la entrega 9.
+
+## Dashboard operacional del personal (entrega 7 de `v0.6.0`)
+
+`GET /dashboard` para Técnico, Supervisor y Administrador (`main/routes.py`) renderiza `main/dashboard_staff.html` con `staff_dashboard(user, now=None)` (`src/workdesk/dashboard/staff.py`). Solo el personal: un Solicitante recibe `PermissionError` (y su propio dashboard). Reglas de la fase en `docs/12` y diseño en `docs/11` (UI-002).
+
+- **Seis tarjetas** (`kpi_card`), todas con enlace y todas con la regla «la cifra es el total de su listado»: *Tickets abiertos* (no `Cerrado`, `/tickets`), *Sin asignar*, *Críticos*, *Fuera de SLA* (`activos=1&sla=vencido`), *Próximos a vencer* (`activos=1&sla=proximo`) y *En espera*. Las cinco últimas salen de `workload_overview(...).summary` (mismas definiciones y cifras que la carga de trabajo); *abiertos* es un `COUNT` aparte. **Un único `now`** decide todo el SLA de la pantalla.
+- **Aviso** (`dashboard-alert`) si hay tickets críticos sin asignar, con enlace al listado.
+- **Tickets abiertos prioritarios:** 8 tickets en trabajo con `list_tickets(..., sort=SORT_PRIORITY_SLA)`: prioridad descendente y, dentro de cada una, `sla_urgency_order()`. `SORT_PRIORITY_SLA` (`prioritarios`) no se ofrece en el listado (es solo del personal y la pantalla solo admite los órdenes que lista). El SLA de la página se evalúa por lotes (`evaluate_tickets_sla`).
+- **Carga compacta:** los 5 técnicos con más tickets activos, la marca «Carga alta» y los sin asignar, con enlaces al listado y a `/workload`.
+- **Actividad reciente** (`recent_activity`): los últimos 10 eventos con `visible_tickets_condition` y `visible_history_condition`; solo el nombre del evento, el ticket, quién y cuándo, **nunca el contenido** de un comentario o una nota (un test lo comprueba). Para el personal incluye los eventos internos.
+- **Mi trabajo** (solo el Técnico): sus tickets activos, críticos y con SLA en riesgo (enlazados a `tecnico=<yo>`) y los **resueltos por él en 7 días** (eventos `TICKET_RESUELTO` propios desde el día local de hace 7 días; sin enlace: el listado no filtra por quién resolvió).
+- **Administración** (solo el Administrador): usuarios activos por rol, calendario laboral (por defecto o «configurado · versión N») y políticas de SLA activas de cuántas prioridades hay.
+- **Migración `add_history_date_index`:** índice `ix_historial_ticket_fecha_hora (fecha_hora, id)` en `historial_ticket`. **Medido antes de crearlo** (tabla temporal con 250 000 eventos, sin tocar datos): la consulta de actividad reciente tardaba 79 ms sin índice y 0,09 ms con él, y crecería con el historial en cada visita de todo el personal. Se aplica con `db upgrade`; no cambia datos.
+- **Presupuesto de consultas:** el dashboard del personal es la pantalla más densa (`BUDGET_STAFF_DASHBOARD` = 26 en `test_pages_smoke`; el resto, 20); el número no depende del tamaño del equipo (hay un test con 20 técnicos más).
+- **Se retira** la pantalla provisional `main/dashboard.html`.
+- **Tests:** `tests/test_dashboard_staff.py` (23, área `dashboards`).
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
@@ -1629,7 +1646,7 @@ Las rutas `/notifications...` las ven los cuatro roles, cada uno las suyas: una 
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
-El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»); el del personal sigue siendo temporal y no representa todavía el dashboard final del MVP.
+El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»); el del personal está descrito en «Dashboard operacional del personal».
 
 ---
 
@@ -1922,7 +1939,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4075 tests passing (unos 5 minutos con `-n 6`)
+4098 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
