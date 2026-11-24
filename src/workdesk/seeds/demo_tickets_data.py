@@ -2342,4 +2342,493 @@ DEMO_TICKETS = (
             ),
         ),
     ),
+    # --- Tickets para la carga de trabajo -------------------------------------
+    DemoTicket(
+        clave="switch-piso-2-caido",
+        titulo="se cayo el internet de todo el segundo piso",
+        descripcion=(
+            "desde las nueve no hay red en todo el piso 2, ni wifi ni cable. somos como veinte personas sin poder trabajar"
+        ),
+        categoria="Redes",
+        prioridad="CRITICA",
+        creado_por="andres.silva",
+        hace_dias=4,
+        hora="09:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="camaras-sin-senal",
+        titulo="las camaras de la entrada no se ven",
+        descripcion=(
+            "el guardia dice que las pantallas de las camaras estan en negro desde ayer en la tarde"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=6,
+        hora="14:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=3,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="ESPERA_TERCERO",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="cable-red-bodega",
+        titulo="el cable de red de la bodega esta suelto",
+        descripcion=(
+            "el cable que va al computador de la bodega se salio de la pared y no se puede conectar"
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="paula.contreras",
+        hace_dias=2,
+        hora="10:15",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="wifi-visitas-lento",
+        titulo="el wifi de visitas es muy lento",
+        descripcion=(
+            "los clientes que vienen a las reuniones se quejan de que el wifi de visitas no carga nada"
+        ),
+        categoria="Redes",
+        prioridad="BAJA",
+        creado_por="constanza.herrera",
+        hace_dias=2,
+        hora="16:00",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="vpn-proveedor-caida",
+        titulo="el proveedor no puede entrar por vpn",
+        descripcion=(
+            "el proveedor del sistema de contabilidad dice que no puede conectarse por vpn desde ayer y tiene que hacer una actualizacion hoy"
+        ),
+        categoria="Redes",
+        prioridad="CRITICA",
+        creado_por="javiera.torres",
+        hace_dias=1,
+        hora="11:00",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="punto-red-sala-reuniones",
+        titulo="falta un punto de red en la sala de reuniones",
+        descripcion=(
+            "queremos conectar un notebook por cable en la sala grande y no hay ningun punto que funcione"
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="ignacio.molina",
+        hace_dias=3,
+        hora="12:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="servidor-correo-lento",
+        titulo="el correo se demora mucho en llegar",
+        descripcion=(
+            "los correos llegan con una hora de atraso y a veces se pierden, el jefe esta furioso"
+        ),
+        categoria="Correo",
+        prioridad="CRITICA",
+        creado_por="sebastian.vargas",
+        hace_dias=5,
+        hora="09:50",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="diego.soto",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="notebooks-nuevos-configurar",
+        titulo="hay que configurar tres notebooks nuevos",
+        descripcion=(
+            "llegaron tres notebooks para gente que entra el lunes, hay que instalarles todo lo basico"
+        ),
+        categoria="Hardware",
+        prioridad="MEDIA",
+        creado_por="andres.silva",
+        hace_dias=3,
+        hora="15:45",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="diego.soto",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="monitor-parpadea-escritorio",
+        titulo="el monitor parpadea todo el rato",
+        descripcion=(
+            "el monitor de mi escritorio se apaga y prende solo, me duele la cabeza"
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="paula.contreras",
+        hace_dias=2,
+        hora="10:40",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="diego.soto",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="impresora-gerencia-offline",
+        titulo="la impresora de gerencia aparece sin conexion",
+        descripcion=(
+            "la impresora a color de gerencia sale como desconectada y hay que imprimir los informes para el directorio"
+        ),
+        categoria="Impresoras",
+        prioridad="ALTA",
+        creado_por="constanza.herrera",
+        hace_dias=1,
+        hora="13:15",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="diego.soto",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="correo-compartido-permisos",
+        titulo="no puedo ver el correo compartido de ventas",
+        descripcion=(
+            "me cambiaron de area y ya no puedo abrir la casilla compartida de ventas"
+        ),
+        categoria="Correo",
+        prioridad="MEDIA",
+        creado_por="ignacio.molina",
+        hace_dias=2,
+        hora="09:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="felipe.araya",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="pc-no-enciende-recepcion",
+        titulo="el computador de recepcion no prende",
+        descripcion=(
+            "aprieto el boton y no pasa nada, no hay luces ni ruido, hay gente esperando"
+        ),
+        categoria="Hardware",
+        prioridad="ALTA",
+        creado_por="javiera.torres",
+        hace_dias=3,
+        hora="09:05",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="felipe.araya",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=3,
+                estado="PONER_EN_ESPERA",
+                motivo_espera="RECURSO_PENDIENTE",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="mouse-teclado-reemplazo",
+        titulo="necesito un mouse y un teclado nuevos",
+        descripcion=(
+            "los mios estan viejos y varias teclas no funcionan, el mouse se pega"
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="andres.silva",
+        hace_dias=1,
+        hora="12:10",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+                asignar="felipe.araya",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="sistema-contable-error",
+        titulo="el sistema contable da error al guardar",
+        descripcion=(
+            "cuando intento guardar una factura sale un error con muchos numeros y se pierde todo lo que escribi"
+        ),
+        categoria="Sin clasificar",
+        prioridad="CRITICA",
+        creado_por="paula.contreras",
+        hace_dias=3,
+        hora="10:00",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Aplicaciones",
+                asignar="francisca.munoz",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="reporte-ventas-no-genera",
+        titulo="el reporte de ventas del mes no se genera",
+        descripcion=(
+            "cuando pido el reporte de ventas se queda cargando y despues dice tiempo agotado"
+        ),
+        categoria="Sin clasificar",
+        prioridad="ALTA",
+        creado_por="constanza.herrera",
+        hace_dias=4,
+        hora="11:35",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Aplicaciones",
+                asignar="francisca.munoz",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="usuario-nuevo-sistema",
+        titulo="crear usuario en el sistema para una persona nueva",
+        descripcion=(
+            "entra el lunes una persona a bodega y necesita acceso al sistema de inventario"
+        ),
+        categoria="Sin clasificar",
+        prioridad="BAJA",
+        creado_por="ignacio.molina",
+        hace_dias=1,
+        hora="15:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                grupo="Aplicaciones",
+                asignar="francisca.munoz",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="servidor-respaldo-alerta",
+        titulo="alerta del servidor de respaldos",
+        descripcion=(
+            "salio un aviso rojo en el servidor de respaldos pero no se que significa, lo dejo informado"
+        ),
+        categoria="Sin clasificar",
+        prioridad="CRITICA",
+        creado_por="sebastian.vargas",
+        hace_dias=2,
+        hora="16:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=2,
+                grupo="Soporte Redes",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="telefono-ip-sin-tono",
+        titulo="el telefono de mi escritorio no tiene tono",
+        descripcion=(
+            "levanto el telefono y no suena nada, no puedo recibir llamadas de clientes"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="andres.silva",
+        hace_dias=2,
+        hora="09:40",
+        ajustes=(
+        ),
+    ),
+    DemoTicket(
+        clave="permiso-carpeta-compartida",
+        titulo="necesito acceso a la carpeta de contratos",
+        descripcion=(
+            "mi jefe me dijo que pidiera acceso a la carpeta compartida de contratos"
+        ),
+        categoria="Sin clasificar",
+        prioridad="MEDIA",
+        creado_por="paula.contreras",
+        hace_dias=1,
+        hora="10:25",
+        ajustes=(
+        ),
+    ),
+    DemoTicket(
+        clave="proyector-sala-grande",
+        titulo="el proyector de la sala grande esta muy oscuro",
+        descripcion=(
+            "casi no se ve lo que proyectan, se ve todo gris aunque apaguemos las luces"
+        ),
+        categoria="Hardware",
+        prioridad="BAJA",
+        creado_por="javiera.torres",
+        hace_dias=1,
+        hora="14:05",
+        ajustes=(
+            DemoAdjustment(
+                actor="matias.fuentes",
+                despues_horas=1,
+                grupo="Soporte Usuarios",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="migracion-servidor-archivos",
+        titulo="migrar las carpetas al servidor nuevo",
+        descripcion=(
+            "hay que pasar las carpetas de todas las areas al servidor nuevo antes del fin de mes, sin perder permisos"
+        ),
+        categoria="Sin clasificar",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=6,
+        hora="15:00",
+        ajustes=(
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=2,
+                grupo="Soporte Redes",
+                asignar="valentina.pizarro",
+            ),
+            DemoAdjustment(
+                actor="camila.rojas",
+                despues_horas=1,
+                asignar="diego.soto",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=2,
+                estado="INICIAR",
+            ),
+        ),
+    ),
 )

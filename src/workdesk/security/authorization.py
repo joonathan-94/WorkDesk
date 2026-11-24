@@ -183,6 +183,13 @@ def can_manage_relations(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_view_workload(user) -> bool:
+    """Ver la carga de trabajo del equipo (docs/12, fase 6). Es información de
+    todo el equipo —no solo de lo propio—, así que es solo del personal: un
+    Técnico ve la carga de sus compañeros, el Solicitante no ve nada de esto."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
 def can_assign_self(user) -> bool:
     """Asignarse (y dejar de estar asignado) a un ticket (docs/03, sección 5).
 

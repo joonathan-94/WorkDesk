@@ -13,6 +13,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from ..extensions import db
 from ._catalog import CatalogAuditMixin
 
+# Código de la prioridad que cuentan como «crítica» los dashboards y la carga de trabajo.
+# Es estructural: lo que el Administrador renombra es el nombre visible.
+CRITICAL_PRIORITY_CODE = "CRITICA"
+
 
 class Prioridad(CatalogAuditMixin, db.Model):
     """Niveles de prioridad (docs/09, 11.2). La prioridad es siempre manual."""

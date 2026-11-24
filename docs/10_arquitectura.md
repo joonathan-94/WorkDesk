@@ -3236,7 +3236,7 @@ La protección vive en `checked_database_url` (`tests/database.py`), que `tests/
 Con unos 3000 tests, preparar y limpiar una base por test llegó a ser el 83 % del tiempo de la suite (medido sobre una muestra). Las decisiones, en orden de impacto:
 
 - **El esquema se crea una vez por sesión** y entre tests solo se vacían las tablas que quedaron con filas, reiniciando las secuencias. Se descartó envolver cada test en una transacción que se deshace: WorkDesk depende de confirmaciones reales (`now()` es el instante de la transacción, de modo que el orden por fecha y los períodos de SLA cambiarían, y los tests con hilos usan conexiones que solo ven lo confirmado). `TRUNCATE` también se descartó: en esta base cuesta más que recrear el esquema.
-- **Instantáneas** de los estados caros de construir (los 87 tickets de demostración): se construyen una vez por proceso y cada test restaura una copia exacta en milisegundos.
+- **Instantáneas** de los estados caros de construir (los 108 tickets de demostración): se construyen una vez por proceso y cada test restaura una copia exacta en milisegundos.
 - **Paralelo** (`pytest-xdist`): cada proceso trabaja en su propio esquema de PostgreSQL dentro de `workdesk_test`, sin crear bases nuevas ni permisos adicionales.
 - **Áreas por marcador** (`tests/areas.py`) para ejecutar solo lo que corresponde mientras se desarrolla; antes de un commit o un Pull Request se ejecuta siempre la suite completa.
 
