@@ -160,7 +160,7 @@ def test_my_work_equals_the_lists_it_links_to(seeded, client, app):
         r'kpi-value">(\d+)</div>\s*<a\s+class="small"\s+href="([^"]+)"', section, re.DOTALL
     )
 
-    assert len(cells) == 3
+    assert len(cells) == 5
 
     for value, href in cells:
         assert total_of(app, href) == int(value), href
@@ -182,6 +182,31 @@ def test_resolved_by_me_counts_only_my_resolutions_in_the_last_seven_days(seeded
             )
 
             assert staff_dashboard(who, now=NOW).my_work.resolved_recently == expected
+
+
+# --- Tickets activos por prioridad (RF-095) --------------------------------------------------------
+
+
+@pytest.mark.parametrize("role", STAFF)
+def test_the_count_by_priority_equals_the_list_of_each_priority(seeded, client, app, role):
+    sign_in(client, STAFF[role])
+    html = client.get("/dashboard").get_data(as_text=True)
+    section = html[html.index("priority-count-title") :]
+    links = re.findall(r'href="([^"]+)"\s+aria-label="(\d+) tickets de prioridad', section)
+
+    assert len(links) >= 3
+
+    for href, value in links:
+        assert total_of(app, href) == int(value), href
+
+
+def test_the_count_by_priority_adds_up_to_the_active_tickets(seeded, app):
+    with app.app_context():
+        data = staff_dashboard(user("camila.rojas"), now=NOW)
+
+        assert sum(total for _, total in data.by_priority) == data.overview.summary.active
+        levels = [priority.nivel for priority, _ in data.by_priority]
+        assert levels == sorted(levels, reverse=True)
 
 
 # --- Tickets prioritarios -----------------------------------------------------------------------------

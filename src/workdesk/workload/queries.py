@@ -104,7 +104,6 @@ class WorkloadSummary:
     in_progress: int
     on_hold: int
     unassigned_critical: int
-    unassigned_at_risk: int
     # Técnicos con trabajo activo y cuántos de ellos están en «carga alta».
     technicians_with_work: int
     high_load_technicians: int
@@ -146,8 +145,9 @@ def workload_overview(
     threshold = current_app.config["WORKLOAD_HIGH_ACTIVE_TICKETS"]
 
     technicians = _technician_loads(filters, now, threshold)
-    groups = _group_loads(filters, now)
-    summary = _summary(filters, now, technicians)
+    by_group = _group_rows(filters, now)
+    groups = _group_loads(by_group)
+    summary = _summary(by_group, technicians)
 
     priorities = list(db.session.scalars(db.select(Prioridad).order_by(Prioridad.nivel)))
 
@@ -294,27 +294,33 @@ def _active_tickets_query(columns, filters):
     )
 
 
-def _group_loads(filters, now) -> list[GroupLoad]:
+def _group_rows(filters, now) -> dict:
+    """Una fila por grupo (la clave `None` es «sin grupo») con los contadores de sus tickets
+    activos. Como todo ticket activo está en exactamente un grupo, la suma de las filas son
+    los totales (`_summary`): se calculan una sola vez, con un solo recorrido de SLA."""
     counts = _counts(now)
-    unassigned = func.count(Ticket.id).filter(~has_current_technician())
+    unassigned = ~has_current_technician()
+    critical = Prioridad.codigo == CRITICAL_PRIORITY_CODE
 
-    by_group = {
+    return {
         row.grupo_id: row
         for row in db.session.execute(
             _active_tickets_query(
                 [
                     Ticket.grupo_id,
-                    counts["active"].label("active"),
-                    unassigned.label("unassigned"),
-                    counts["critical"].label("critical"),
-                    counts["near_due"].label("near_due"),
-                    counts["overdue"].label("overdue"),
+                    *(expression.label(name) for name, expression in counts.items()),
+                    func.count(Ticket.id).filter(unassigned).label("unassigned"),
+                    func.count(Ticket.id)
+                    .filter(unassigned, critical)
+                    .label("unassigned_critical"),
                 ],
                 filters,
             ).group_by(Ticket.grupo_id)
         )
     }
 
+
+def _group_loads(by_group: dict) -> list[GroupLoad]:
     def load(group, row):
         if row is None:
             return GroupLoad(group, 0, 0, 0, 0, 0)
@@ -338,41 +344,19 @@ def _group_loads(filters, now) -> list[GroupLoad]:
     return loads
 
 
-def _summary(filters, now, technicians) -> WorkloadSummary:
-    counts = _counts(now)
-    unassigned = ~has_current_technician()
-    critical = Prioridad.codigo == CRITICAL_PRIORITY_CODE
-
-    row = db.session.execute(
-        _active_tickets_query(
-            [
-                *(expression.label(name) for name, expression in counts.items()),
-                func.count(Ticket.id).filter(unassigned).label("unassigned"),
-                func.count(Ticket.id).filter(unassigned, critical).label("unassigned_critical"),
-                func.count(Ticket.id)
-                .filter(
-                    unassigned,
-                    db.or_(
-                        sla_condition(SlaFilter.PROXIMO, now),
-                        sla_condition(SlaFilter.VENCIDO, now),
-                    ),
-                )
-                .label("unassigned_at_risk"),
-            ],
-            filters,
-        )
-    ).one()
+def _summary(by_group: dict, technicians) -> WorkloadSummary:
+    def total(name: str) -> int:
+        return sum(getattr(row, name) for row in by_group.values())
 
     return WorkloadSummary(
-        active=row.active,
-        unassigned=row.unassigned,
-        critical=row.critical,
-        near_due=row.near_due,
-        overdue=row.overdue,
-        in_progress=row.in_progress,
-        on_hold=row.on_hold,
-        unassigned_critical=row.unassigned_critical,
-        unassigned_at_risk=row.unassigned_at_risk,
+        active=total("active"),
+        unassigned=total("unassigned"),
+        critical=total("critical"),
+        near_due=total("near_due"),
+        overdue=total("overdue"),
+        in_progress=total("in_progress"),
+        on_hold=total("on_hold"),
+        unassigned_critical=total("unassigned_critical"),
         technicians_with_work=sum(1 for t in technicians if t.active > 0),
         high_load_technicians=sum(1 for t in technicians if t.high),
     )

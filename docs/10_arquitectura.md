@@ -778,16 +778,19 @@ src/workdesk/
 ├── auth/           login, sesiones y credenciales
 ├── catalogs/       categorías, prioridades, ubicaciones, motivos de espera,
 │                   y los estados y sus transiciones (flow.py)
+├── dashboard/      dashboards por rol (v0.6.0): el del Solicitante y el operacional del personal
 ├── groups/         grupos, membresías y supervisores responsables
-├── main/           inicio y dashboard temporal
+├── main/           inicio y despacho del dashboard según el rol
 ├── models/         modelos SQLAlchemy (uno por entidad)
 ├── notifications/  notificaciones internas (v0.5.0): servicio y centro de notificaciones
+├── reassignment/   pantallas de la reasignación masiva (v0.6.0); el servicio está en tickets/
 ├── security/       políticas de autorización y de contraseñas
 ├── seeds/          datos iniciales y de demostración
 ├── sla/            configuración del SLA (v0.5.0): el calendario laboral y los objetivos por prioridad
 ├── system/         health check
 ├── tickets/        núcleo de tickets (ver abajo)
 ├── users/          administración de usuarios
+├── workload/       carga de trabajo del equipo (v0.6.0): consultas y pantalla
 ├── cleaning.py     limpieza de textos compartida por servicios y formularios
 ├── formatting.py   fechas en hora local
 ├── navigation.py   navegación por rol
@@ -802,12 +805,14 @@ tickets/
 ├── routes/            una por área: listing, creation, detail, editing,
 │                      states, assignment, requesters, comments, attachments,
 │                      relations (+ common con lo que comparten)
-├── service.py         creación, consultas y visibilidad del historial
+├── service.py         creación, historial y ayudantes comunes
+├── queries.py         quién ve qué y el listado: visibilidad, filtros y orden (lo reutilizan los dashboards)
 ├── editing.py         edición de datos y prioridad
 ├── versioning.py      control de versión, bloqueo de la fila y errores comunes
 ├── state_actions.py   catálogo de acciones de estado (textos, roles, esenciales)
 ├── lifecycle.py       motor de estados: change_state y las acciones disponibles
 ├── assignment.py      técnicos, grupo y escalamiento
+├── reassignment.py    reasignación masiva de los tickets de un técnico (v0.6.0)
 ├── requesters.py      solicitantes tras crear el ticket
 ├── comments.py        comentarios públicos y notas internas
 ├── attachments.py     metadatos y reglas de los adjuntos

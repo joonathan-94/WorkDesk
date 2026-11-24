@@ -12,6 +12,7 @@ from ..catalogs.service import list_priorities
 from ..models.estado import IN_PROGRESS_STATE_CODE, ON_HOLD_STATE_CODE
 from ..models.prioridad import CRITICAL_PRIORITY_CODE
 from ..security import (
+    RESOLVED_STATE,
     STAFF_ROLES,
     can_manage_assignments,
     current_actor,
@@ -92,6 +93,7 @@ def workload_page():
         critical_id=critical,
         in_progress_id=state_ids.get(IN_PROGRESS_STATE_CODE),
         on_hold_id=state_ids.get(ON_HOLD_STATE_CODE),
+        resolved_id=state_ids.get(RESOLVED_STATE),
         can_reassign=can_manage_assignments(current_actor()),
         groups=groups,
         priorities=priorities,

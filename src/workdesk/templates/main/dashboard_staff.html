@@ -141,28 +141,45 @@
 
             <div class="card-body">
                 <div class="row g-3 text-center">
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-4 col-xl-2">
                         <div class="kpi-value">{{ mine.active if mine else 0 }}</div>
                         <a
                             class="small"
                             href="{{ url_for(list_url, tecnico=me, activos=1, vista='todos') }}"
                         >Activos a mi cargo</a>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="kpi-value">{{ mine.in_progress if mine else 0 }}</div>
+                        <a
+                            class="small"
+                            href="{{ url_for(list_url, tecnico=me, estado=data.in_progress_state_id, vista='todos') }}"
+                        >En progreso</a>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="kpi-value">{{ mine.on_hold if mine else 0 }}</div>
+                        <a
+                            class="small"
+                            href="{{ url_for(list_url, tecnico=me, estado=data.on_hold_state_id, vista='todos') }}"
+                        >En espera</a>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
                         <div class="kpi-value">{{ mine.critical if mine else 0 }}</div>
                         <a
                             class="small"
                             href="{{ url_for(list_url, tecnico=me, activos=1, prioridad=data.critical_priority_id, vista='todos') }}"
                         >Críticos</a>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-4 col-xl-2">
                         <div class="kpi-value">{{ mine.at_risk if mine else 0 }}</div>
                         <a
                             class="small"
                             href="{{ url_for(list_url, tecnico=me, activos=1, sla='riesgo', vista='todos') }}"
                         >Con SLA en riesgo</a>
+                        <div class="small text-secondary">
+                            {{ mine.overdue if mine else 0 }} vencidos · {{ mine.near_due if mine else 0 }} próximos
+                        </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-4 col-xl-2">
                         <div class="kpi-value">{{ data.my_work.resolved_recently }}</div>
                         <span class="small">Resueltos por mí en 7 días</span>
                     </div>
@@ -236,6 +253,7 @@
             </div>
         </section>
 
+        <div>
         <section
             class="card mb-3"
             aria-labelledby="load-title"
@@ -280,6 +298,36 @@
                 Un ticket con varios técnicos cuenta en cada uno.
             </div>
         </section>
+
+        <section
+            class="card mb-3"
+            aria-labelledby="priority-count-title"
+        >
+            <div class="card-header">
+                <h2
+                    class="h6 mb-0"
+                    id="priority-count-title"
+                >Tickets activos por prioridad</h2>
+            </div>
+
+            <ul class="list-group list-group-flush">
+                {% for priority, total in data.by_priority %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ priority_badge(priority) }}
+                        {% if total %}
+                            <a
+                                class="fw-semibold"
+                                href="{{ url_for(list_url, activos=1, prioridad=priority.id, vista='todos') }}"
+                                aria-label="{{ total }} tickets de prioridad {{ priority.nombre }}: ver los tickets"
+                            >{{ total }}</a>
+                        {% else %}
+                            <span class="text-secondary">0</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+        </div>
     </div>
 
     <section

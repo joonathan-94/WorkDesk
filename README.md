@@ -59,7 +59,7 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 ## Estado del proyecto
 
-La última versión estable es **`v0.5.0 — SLA y notificaciones internas`** y la fase en curso es **`v0.6.0 — Dashboards y carga de trabajo`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
+La última versión estable es **`v0.6.0 — Dashboards y carga de trabajo`** y la fase siguiente es **`v0.7.0 — Administración y base de conocimiento`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
 
 | Versión | Qué hace WorkDesk con ella | Tests al cerrar |
 | --- | --- | --- |
@@ -68,12 +68,13 @@ La última versión estable es **`v0.5.0 — SLA y notificaciones internas`** y 
 | `v0.3.0` | Núcleo de tickets: catálogos, creación, listado con búsqueda y filtros, detalle y edición | 967 |
 | `v0.4.0` | Se trabaja en equipo: grupos, asignación, comentarios y notas internas, adjuntos, resolución y cierre, relaciones y bloqueo de edición | 2201 |
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
+| `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 
-Hoy la suite cuenta con **4170 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **4175 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
-`v0.6.0 — Dashboards y carga de trabajo` se está construyendo en 10 entregas: una revisión de lo ya hecho (backend, tests y documentación), los filtros del listado por técnico y grupo, el dashboard del Solicitante, la carga de trabajo (consultas y pantalla), el dashboard operacional para el personal y la reasignación masiva de tickets. Reutiliza los datos de SLA y de notificaciones de `v0.5.0` y todos los contadores enlazan con el listado que los explica. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 6).
+`v0.7.0 — Administración y base de conocimiento`: la configuración administrable (que reemplaza a las variables de entorno de plazos y límites), la base de conocimiento y la advertencia de posibles tickets duplicados al crear uno. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 7).
 
 ---
 
@@ -857,7 +858,7 @@ Si dos personas actúan sobre el mismo ticket a la vez, la segunda recibe un avi
 
 ## Recorrido de prueba
 
-Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos lo que hace WorkDesk hasta `v0.5.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
+Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos lo que hace WorkDesk hasta `v0.6.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
 
 ### Tener tickets con los que probar
 
@@ -1020,6 +1021,13 @@ Entra, por ejemplo, como `camila.rojas` (o `matias.fuentes`).
 
 Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pertenecer a un grupo no cambia lo que ve ni lo que hace.
 
+### 5. Dashboards, carga de trabajo y reasignación
+
+1. **Dashboard del Solicitante.** Entra como `javiera.torres`: cuatro tarjetas (abiertos, en progreso, requieren tu revisión y cerrados recientes), un aviso con las soluciones por revisar, tus tickets y notificaciones recientes. Haz clic en cada tarjeta: el listado se abre filtrado y su total es la cifra de la tarjeta. No hay SLA, grupos ni carga.
+2. **Dashboard del personal.** Entra como `camila.rojas`: seis contadores (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer y en espera), los tickets prioritarios con su SLA, la carga compacta, los tickets por prioridad y la actividad reciente. Un aviso te dice si hay críticos sin asignar. Como `diego.soto` ves además **Mi trabajo**; como Administrador, un bloque de **Administración**.
+3. **Carga de trabajo.** Abre **Carga de trabajo** (técnicos, supervisores y administradores): por técnico y por grupo, con una barra de distribución por prioridad y la insignia **Carga alta** (Valentina Pizarro con los datos de demostración). Filtra por grupo o prioridad: las cifras y los enlaces siguen coincidiendo con el listado. Un solicitante que abre `/workload` recibe **Acceso denegado**.
+4. **Reasignación masiva.** Como `camila.rojas`, abre **Reasignación**, elige a Valentina Pizarro, marca como destino a Diego Soto y a Felipe Araya, escribe un motivo y pulsa **Revisar la reasignación**: ves quién recibe cuántos tickets y todavía no cambió nada. **Confirmar** ejecuta (esto sí modifica tus datos de demostración) y muestra lo reasignado y lo omitido. Un técnico que abre `/reassign` recibe **Acceso denegado**.
+
 ### Lo que todavía no verás
 
 - Los avisos de SLA y el cierre automático solo ocurren mientras `run-scheduler` está en marcha (ver [Ejecutar el planificador](#ejecutar-el-planificador)). Crear un ticket no avisa a nadie.
@@ -1028,7 +1036,8 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - La pantalla de Estados y transiciones cambia el nombre, la descripción y las transiciones; el color y el orden de los estados no se editan todavía (llegan con el pulido visual, `v0.9.0`).
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
 - Los límites (plazo para editar comentarios, plazo de reapertura, tamaño y cantidad de archivos, tiempos del bloqueo de edición) se cambian en el `.env`, no desde la interfaz: pasan a la configuración administrable en `v0.7.0`.
-- El dashboard es una pantalla temporal.
+- Los dashboards muestran solo cifras exactas: no hay gráficos ni comparaciones con ayer (los gráficos se deciden con los reportes).
+- Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga llegan con la configuración administrable.
 
 ---
 
@@ -1174,7 +1183,7 @@ El detalle de un ticket (`/tickets/<public_id>`) lo ve el personal en todos los 
 
 Si el usuario tiene una contraseña temporal pendiente de cambio, el sistema solo le permite acceder a `/account/password` y cerrar sesión hasta que la cambie.
 
-La pantalla actual de dashboard es temporal y será reemplazada progresivamente durante la implementación de los módulos funcionales.
+`/dashboard` muestra un resumen distinto según el rol (el Solicitante, el del personal con «Mi trabajo» para el Técnico y un bloque más para el Administrador). `/workload` es solo del personal y `/reassign`, solo del Supervisor y el Administrador: los demás roles reciben un 403.
 
 ---
 
@@ -1303,7 +1312,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4170 tests
+4175 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1363,7 +1372,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 4170 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 4175 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 

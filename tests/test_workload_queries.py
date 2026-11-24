@@ -62,9 +62,6 @@ def test_every_total_equals_the_list_it_links_to(seeded, app):
         assert summary.unassigned_critical == total(
             active_only=True, unassigned=True, priority_id=critical_id()
         )
-        assert summary.unassigned_at_risk == total(
-            active_only=True, unassigned=True, sla=SlaFilter.RIESGO
-        )
 
 
 def test_every_technician_row_equals_the_list_filtered_by_that_technician(seeded, app):
@@ -404,7 +401,7 @@ def test_the_number_of_queries_does_not_depend_on_the_size_of_the_team(
     after = count_queries(app, run)
 
     assert before == after
-    assert before == 8, before
+    assert before == 7, before
 
     with app.app_context():
         assert len(overview().technicians) >= 34

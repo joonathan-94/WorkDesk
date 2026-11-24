@@ -304,8 +304,14 @@ def listing_conditions(user, filters: TicketFilters, now=None) -> list:
     if filters.location_id is not None:
         conditions.append(Ticket.ubicacion_id == filters.location_id)
 
-    # Las fechas son días de la zona horaria de la aplicación: "hasta" incluye
-    # el día completo.
+    return conditions + _created_conditions(filters)
+
+
+def _created_conditions(filters: TicketFilters) -> list:
+    """Las fechas de creación son días de la zona horaria de la aplicación: «hasta»
+    incluye el día completo."""
+    conditions = []
+
     if filters.created_from is not None:
         conditions.append(
             Ticket.fecha_creacion >= start_of_local_day(filters.created_from)
