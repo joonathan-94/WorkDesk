@@ -17,6 +17,7 @@ from .logging_config import configure_logging
 from .main import bp as main_bp
 from .navigation import layout_context, user_initials
 from .notifications import bp as notifications_bp
+from .reassignment import bp as reassignment_bp
 from .security import MAX_LENGTH, MIN_LENGTH_FLOOR, can_manage_users
 from .security.headers import register_security_headers
 from .sla import bp as sla_bp
@@ -68,6 +69,7 @@ def create_app(
     app.register_blueprint(catalogs_bp)
     app.register_blueprint(groups_bp)
     app.register_blueprint(workload_bp)
+    app.register_blueprint(reassignment_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(sla_bp)

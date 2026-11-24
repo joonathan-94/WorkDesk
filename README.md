@@ -69,7 +69,7 @@ La última versión estable es **`v0.5.0 — SLA y notificaciones internas`** y 
 | `v0.4.0` | Se trabaja en equipo: grupos, asignación, comentarios y notas internas, adjuntos, resolución y cierre, relaciones y bloqueo de edición | 2201 |
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 
-Hoy la suite cuenta con **4130 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **4170 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -787,6 +787,18 @@ Con los datos de demostración, Valentina Pizarro aparece con carga alta. Un Sol
 
 ---
 
+## La reasignación masiva
+
+Cuando un técnico no está disponible (vacaciones, licencia, renuncia...), el **Supervisor** o el **Administrador** pueden pasar sus tickets a otros técnicos en una sola operación, desde **Reasignación** del menú (`/reassign`) o desde el botón «Ir a reasignación» de la carga de trabajo:
+
+1. **Elegir.** Se escoge al técnico de origen (también uno desactivado que aún tenga trabajo), se ven sus tickets en trabajo —con filtros por prioridad, estado y grupo, y todos marcados— y se eligen los técnicos de destino (con su carga actual, solo como información) y el motivo.
+2. **Revisar.** Un resumen muestra cuántos tickets recibe cada técnico, con cuántos quedaría y a quién pasa cada ticket. **Todavía no se cambió nada.**
+3. **Confirmar.** Se ejecuta y se muestra lo reasignado y lo omitido (por ejemplo, un ticket que mientras tanto se cerró o que otra persona ya movió), cada uno con su motivo.
+
+Con varios destinos, los tickets se reparten por turnos. La asignación anterior queda registrada (no se sobrescribe), cada ticket anota en su historial el cambio de técnico y hay una única entrada de auditoría con el resumen. Los solicitantes reciben un aviso por ticket y cada técnico un resumen; ninguno incluye el motivo. Todo funciona sin JavaScript.
+
+---
+
 ## Consultar y buscar tickets
 
 La opción **Tickets** (para el personal) o **Mis tickets** (para el Solicitante), en el menú lateral, lista los tickets que cada persona puede ver:
@@ -1145,6 +1157,9 @@ GET POST  /tickets/<public_id>/duplicate
 POST      /tickets/<public_id>/lock/renew
 POST      /tickets/<public_id>/lock/release
 GET       /workload
+GET       /reassign
+POST      /reassign/review
+POST      /reassign/confirm
 GET       /notifications
 POST      /notifications/<id>/read
 POST      /notifications/<id>/open
@@ -1288,7 +1303,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4130 tests
+4170 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1348,7 +1363,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 4130 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 4170 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 

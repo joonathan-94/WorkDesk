@@ -1,0 +1,325 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, state_badge, priority_badge %}
+
+{% block title %}Reasignación{% endblock %}
+
+{% block content %}
+    {{ page_header(
+        'Reasignación masiva',
+        'Pasa los tickets de un técnico a otros cuando no está disponible. Es distinta de la carga de trabajo: aquí se modifica la distribución.'
+    ) }}
+
+    <form
+        class="card card-body mb-3"
+        method="get"
+        action="{{ url_for('reassignment.select_page') }}"
+    >
+        <div class="row g-3 align-items-end">
+            <div class="col-md-8 col-lg-6">
+                <label
+                    class="form-label"
+                    for="origen"
+                >Técnico de origen</label>
+                <select
+                    class="form-select"
+                    id="origen"
+                    name="origen"
+                >
+                    <option value="">Elige un técnico…</option>
+                    {% for row in sources %}
+                        <option
+                            value="{{ row.user.id }}"
+                            {% if origin and origin.user.id == row.user.id %}selected{% endif %}
+                        >
+                            {{ row.user.apellido }}, {{ row.user.nombre }}
+                            {%- if not row.user.activo %} (inactivo){% endif %}
+                            — {{ row.active }} activos
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >Ver sus tickets</button>
+            </div>
+        </div>
+    </form>
+
+    {% if origin %}
+        {% set who = origin.user %}
+
+        <form
+            class="card card-body mb-3"
+            method="get"
+            action="{{ url_for('reassignment.select_page') }}"
+        >
+            <input
+                type="hidden"
+                name="origen"
+                value="{{ who.id }}"
+            >
+            <div class="row g-3 align-items-end">
+                <div class="col-sm-4">
+                    <label
+                        class="form-label"
+                        for="f-prioridad"
+                    >Prioridad</label>
+                    <select
+                        class="form-select"
+                        id="f-prioridad"
+                        name="prioridad"
+                    >
+                        <option value="">Todas</option>
+                        {% for priority in priorities %}
+                            <option
+                                value="{{ priority.id }}"
+                                {% if filters.prioridad == priority.id %}selected{% endif %}
+                            >{{ priority.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label
+                        class="form-label"
+                        for="f-estado"
+                    >Estado</label>
+                    <select
+                        class="form-select"
+                        id="f-estado"
+                        name="estado"
+                    >
+                        <option value="">Todos los activos</option>
+                        {% for state in states %}
+                            <option
+                                value="{{ state.id }}"
+                                {% if filters.estado == state.id %}selected{% endif %}
+                            >{{ state.nombre_visible }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label
+                        class="form-label"
+                        for="f-grupo"
+                    >Grupo</label>
+                    <select
+                        class="form-select"
+                        id="f-grupo"
+                        name="grupo"
+                    >
+                        <option value="">Todos</option>
+                        {% for group in groups %}
+                            <option
+                                value="{{ group.id }}"
+                                {% if filters.grupo == group.id %}selected{% endif %}
+                            >{{ group.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button
+                        class="btn btn-outline-secondary"
+                        type="submit"
+                    >Filtrar la lista</button>
+                    <a
+                        class="btn btn-link"
+                        href="{{ url_for('reassignment.select_page', origen=who.id) }}"
+                    >Limpiar</a>
+                </div>
+            </div>
+        </form>
+
+        {% if not who.activo %}
+            <div
+                class="alert alert-info"
+                role="status"
+            >
+                {{ who.nombre }} {{ who.apellido }} está desactivado: sus tickets activos
+                siguen asignados a su nombre hasta que los pases a otros técnicos.
+            </div>
+        {% endif %}
+
+        {% if not tickets %}
+            <div class="card card-body text-center text-secondary">
+                {{ who.nombre }} {{ who.apellido }} no tiene tickets activos
+                {% if filters.prioridad or filters.estado or filters.grupo %}con esos filtros{% endif %}.
+            </div>
+        {% else %}
+            <form
+                method="post"
+                action="{{ url_for('reassignment.review') }}"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                >
+                <input
+                    type="hidden"
+                    name="origen"
+                    value="{{ who.id }}"
+                >
+
+                <section class="card mb-3">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h2 class="h6 mb-0">
+                            Tickets de {{ who.nombre }} {{ who.apellido }}
+                            ({{ total }} en trabajo)
+                        </h2>
+                        <span class="small text-secondary">
+                            Están marcados todos: desmarca los que no quieras pasar.
+                        </span>
+                    </div>
+
+                    {% if truncated %}
+                        <div class="card-body pb-0 small text-secondary">
+                            Se muestran los primeros {{ tickets|length }} de {{ total }}. Usa los
+                            filtros para ver el resto.
+                        </div>
+                    {% endif %}
+
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            id="select-all"
+                                            aria-label="Marcar o desmarcar todos los tickets"
+                                            checked
+                                            data-select-all
+                                        >
+                                    </th>
+                                    <th scope="col">Ticket</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col">Prioridad</th>
+                                    <th scope="col">Grupo</th>
+                                    <th scope="col">Otros técnicos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ticket in tickets %}
+                                    <tr>
+                                        <td>
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="tickets"
+                                                value="{{ ticket.id }}"
+                                                id="t-{{ ticket.id }}"
+                                                aria-label="Reasignar el ticket #{{ ticket.public_id }}"
+                                                {% if ticket.id in tickets_chosen %}checked{% endif %}
+                                            >
+                                        </td>
+                                        <td class="text-break">
+                                            <a
+                                                class="fw-semibold text-decoration-none"
+                                                href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                                            >#{{ ticket.public_id }}</a>
+                                            {{ ticket.titulo }}
+                                        </td>
+                                        <td>{{ state_badge(ticket.estado) }}</td>
+                                        <td>{{ priority_badge(ticket.prioridad) }}</td>
+                                        <td>
+                                            {% if ticket.grupo %}
+                                                {{ ticket.grupo.nombre }}
+                                            {% else %}
+                                                <span class="text-secondary">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% set others = ticket.tecnicos_vigentes|rejectattr('tecnico_id', 'equalto', who.id)|list %}
+                                            {% if others %}
+                                                {% for link in others %}
+                                                    {{ link.tecnico.nombre }} {{ link.tecnico.apellido }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-secondary">—</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="card mb-3">
+                    <div class="card-header">
+                        <h2 class="h6 mb-0">Técnicos de destino</h2>
+                    </div>
+
+                    <div class="card-body">
+                        <p class="small text-secondary">
+                            Con varios, los tickets se reparten por turnos. La carga actual es
+                            solo informativa: no impide elegir a nadie.
+                        </p>
+
+                        {% for user in destinations %}
+                            {% set load = loads.get(user.id) %}
+                            <div class="form-check">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    name="destinos"
+                                    value="{{ user.id }}"
+                                    id="d-{{ user.id }}"
+                                    {% if user.id in destinations_chosen %}checked{% endif %}
+                                >
+                                <label
+                                    class="form-check-label"
+                                    for="d-{{ user.id }}"
+                                >
+                                    {{ user.apellido }}, {{ user.nombre }}
+                                    <span class="text-secondary small">
+                                        — {{ load.active if load else 0 }} activos
+                                        {%- if load and load.high %} · carga alta{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                        {% else %}
+                            <p class="text-secondary mb-0">No hay otros técnicos activos.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="card mb-3">
+                    <div class="card-body">
+                        <label
+                            class="form-label"
+                            for="motivo"
+                        >Motivo de la reasignación</label>
+                        <textarea
+                            class="form-control"
+                            id="motivo"
+                            name="motivo"
+                            rows="2"
+                            maxlength="{{ max_reason }}"
+                            placeholder="Por ejemplo: vacaciones, licencia, desvinculación…"
+                            required
+                        >{{ reason }}</textarea>
+                        <div class="form-text">Queda registrado en el historial de cada ticket y en la auditoría.</div>
+                    </div>
+                </section>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                >Revisar la reasignación</button>
+                <a
+                    class="btn btn-link"
+                    href="{{ url_for('workload.workload_page') }}"
+                >Cancelar</a>
+            </form>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/reassignment/select-all.js') }}"></script>
+{% endblock %}

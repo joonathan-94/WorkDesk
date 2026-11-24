@@ -1,0 +1,129 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, state_badge, priority_badge %}
+
+{% block title %}Revisar reasignación{% endblock %}
+
+{% block content %}
+    {{ page_header(
+        'Revisa la reasignación',
+        'Todavía no se cambió nada. Confirma para ejecutarla.'
+    ) }}
+
+    <section class="card mb-3">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-secondary fw-normal">Técnico de origen</dt>
+                <dd class="col-sm-9">
+                    {{ origin.nombre }} {{ origin.apellido }}
+                    {% if not origin.activo %}<span class="badge badge-soft badge-soft-neutral">Inactivo</span>{% endif %}
+                    <span class="text-secondary">({{ origin_active }} tickets activos)</span>
+                </dd>
+
+                <dt class="col-sm-3 text-secondary fw-normal">Tickets a pasar</dt>
+                <dd class="col-sm-9">{{ rows|length }}</dd>
+
+                <dt class="col-sm-3 text-secondary fw-normal">Motivo</dt>
+                <dd class="col-sm-9">{{ reason }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mb-3">
+        <div class="card-header">
+            <h2 class="h6 mb-0">Quién recibe cuántos</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Técnico</th>
+                        <th scope="col" class="text-end">Hoy tiene</th>
+                        <th scope="col" class="text-end">Recibe</th>
+                        <th scope="col" class="text-end">Quedaría con</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user, current, receives in summary %}
+                        <tr>
+                            <th scope="row">{{ user.nombre }} {{ user.apellido }}</th>
+                            <td class="text-end">{{ current }}</td>
+                            <td class="text-end">{{ receives }}</td>
+                            <td class="text-end">{{ current + receives }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card mb-3">
+        <div class="card-header">
+            <h2 class="h6 mb-0">Ticket por ticket</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Ticket</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Prioridad</th>
+                        <th scope="col">Pasa a</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket, destination in rows %}
+                        <tr>
+                            <td class="text-break">
+                                <a
+                                    class="fw-semibold text-decoration-none"
+                                    href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                                >#{{ ticket.public_id }}</a>
+                                {{ ticket.titulo }}
+                            </td>
+                            <td>{{ state_badge(ticket.estado) }}</td>
+                            <td>{{ priority_badge(ticket.prioridad) }}</td>
+                            <td>{{ destination.nombre }} {{ destination.apellido }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <form
+        method="post"
+        action="{{ url_for('reassignment.confirm') }}"
+    >
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token() }}"
+        >
+        <input
+            type="hidden"
+            name="origen"
+            value="{{ origin.id }}"
+        >
+        <input
+            type="hidden"
+            name="motivo"
+            value="{{ reason }}"
+        >
+        {% for move in moves %}
+            <input
+                type="hidden"
+                name="movimientos"
+                value="{{ move }}"
+            >
+        {% endfor %}
+
+        <button
+            class="btn btn-primary"
+            type="submit"
+        >Confirmar la reasignación</button>
+        <a
+            class="btn btn-link"
+            href="{{ url_for('reassignment.select_page', origen=origin.id) }}"
+        >Volver y cambiar la selección</a>
+    </form>
+{% endblock %}

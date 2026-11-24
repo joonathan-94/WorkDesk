@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/bulk-reassignment-service
+feature/bulk-reassignment-screen
 ```
 
-Entrega 8 de `v0.6.0 — Dashboards y carga de trabajo`: el servicio de reasignación masiva (`tickets/reassignment.py`), sin pantalla (es la entrega 9). **Sin migraciones.** Ver «Reasignación masiva (servicio)».
+Entrega 9 de `v0.6.0 — Dashboards y carga de trabajo`: las pantallas de la reasignación masiva (`/reassign`) para el Supervisor y el Administrador, con su entrada en el menú y el botón en la carga de trabajo. **Sin migraciones.** Ver «Reasignación masiva (pantallas)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -173,8 +173,8 @@ v0.6.0 — Dashboards y carga de trabajo
 | 5 | Carga de trabajo: consultas | Integrada (PR #50) |
 | 6 | Carga de trabajo: pantalla | Integrada (PR #51) |
 | 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Integrada (PR #52) |
-| 8 | Reasignación masiva: servicio | En curso (`feature/bulk-reassignment-service`) |
-| 9 | Reasignación masiva: pantalla | Pendiente |
+| 8 | Reasignación masiva: servicio | Integrada (PR #53) |
+| 9 | Reasignación masiva: pantalla | En curso (`feature/bulk-reassignment-screen`) |
 | 10 | Cierre de la fase | Pendiente |
 
 
@@ -318,6 +318,7 @@ WorkDesk/
 │       ├── main/
 │       ├── models/
 │       ├── notifications/
+│       ├── reassignment/
 │       ├── security/
 │       ├── seeds/
 │       ├── sla/
@@ -867,7 +868,7 @@ Blueprint `workload` (`/workload`, `src/workdesk/workload/routes.py`), registrad
 - **Un ticket con varios técnicos** cuenta en cada uno: una nota sobre la tabla explica que la suma puede superar al total.
 - **Filtros** (por URL, valores inválidos ignorados): `grupo`, `prioridad` y `estado` (solo los activos) restringen qué se cuenta y **se conservan en los enlaces** al listado, así que cada cifra sigue siendo el total de su listado; `tecnico`, `q` (nombre, apellido o usuario) y `orden` (`activos`, `criticos`, `riesgo`, `nombre`) solo afectan a la tabla por técnico, no a los indicadores del equipo.
 - **Tests:** `tests/test_workload_screen.py` (área `dashboards`) lee los enlaces de la propia página, los vuelve a resolver con los filtros del listado y exige que su total sea la cifra mostrada, también con filtros. Las pantallas se añadieron a `test_pages_smoke`, `test_layout` y `test_route_authorization`.
-- **Pendiente:** el botón «Ir a reasignación» llega con la entrega 9.
+- **Reasignación:** el Supervisor y el Administrador ven el botón «Ir a reasignación» y un enlace «Reasignar» junto a cada técnico con tickets activos (ver «Reasignación masiva (pantallas)»).
 
 ## Dashboard operacional del personal (entrega 7 de `v0.6.0`)
 
@@ -887,7 +888,7 @@ Blueprint `workload` (`/workload`, `src/workdesk/workload/routes.py`), registrad
 
 ## Reasignación masiva (servicio) (entrega 8 de `v0.6.0`)
 
-`src/workdesk/tickets/reassignment.py`: pasar tickets de un técnico a otros en una sola operación (RF-034 y RF-035; RN-30, RN-104 y RN-137 a RN-139; CU-014). **Todavía no hay pantalla ni ruta** (entrega 9). Sin migraciones. Nada hace commit: lo confirma quien llama.
+`src/workdesk/tickets/reassignment.py`: pasar tickets de un técnico a otros en una sola operación (RF-034 y RF-035; RN-30, RN-104 y RN-137 a RN-139; CU-014). Las pantallas están en «Reasignación masiva (pantallas)». Sin migraciones. Nada hace commit: lo confirma quien llama.
 
 - **API:** `reassign_tickets(actor, source_id=, moves=[(id del ticket, id del técnico destino), ...], reason=)` devuelve un `ReassignmentResult` (`batch`, `source`, `moved` y `skipped` con su motivo). `distribute(ticket_ids, destination_ids)` es el reparto por defecto: por turnos, en orden de id y determinista, para que la pantalla lo muestre antes de confirmar y el servicio ejecute lo mismo.
 - **Quién:** solo el Supervisor y el Administrador (`can_manage_assignments`); el servicio lo comprueba (`PermissionError`) aunque la ruta también lo haga. Un usuario inactivo no tiene permisos.
@@ -898,6 +899,18 @@ Blueprint `workload` (`/workload`, `src/workdesk/workload/routes.py`), registrad
 - **Qué no cambia:** versión, «Actualizado», estado (un ticket `Asignado` sigue `Asignado`; uno `Nuevo` pasa a `Asignado` como en toda asignación), grupo, solicitantes, comentarios, archivos y SLA (RN-85: el reloj no depende de quién atiende). Un test lo comprueba.
 - **Avisos:** un resumen a cada técnico que recibe tickets («Se te reasignaron N tickets de X») y otro al de origen, y un aviso por ticket a sus solicitantes («Tu ticket cambió de técnico»). Nunca incluyen el motivo, y no se avisa a quien ejecuta (`notifications/events.py`: `notify_bulk_reassignment` y `notify_reassignment_requesters`). El Solicitante no ve el motivo en el ticket.
 - **Tests:** `tests/test_ticket_reassignment.py` (32, área `tickets`), con los tickets de demostración incluidos.
+
+## Reasignación masiva (pantallas) (entrega 9 de `v0.6.0`)
+
+Blueprint `reassignment` (`/reassign`, `src/workdesk/reassignment/routes.py`), registrado en `create_app()`. **Solo Supervisor y Administrador** (`roles_required`: 403 al Técnico y al Solicitante, también en los POST) y la entrada «Reasignación» del menú solo la ven ellos. Plantillas `reassignment/select.html`, `review.html` y `result.html`; un script de mejora progresiva (`static/js/reassignment/select-all.js`: la casilla de la cabecera marca o desmarca todos). Todo funciona sin JavaScript. Sin migraciones. Diseño en `docs/11` (UI-007).
+
+Tres pasos, sin modales; el servicio es el de «Reasignación masiva (servicio)»:
+
+- **`GET /reassign`:** elegir el técnico de origen (los técnicos activos y los desactivados con trabajo, con su carga: `workload_overview`; parámetro `origen`), ver sus tickets en trabajo (ni `Resuelto` ni `Cerrado`; hasta 500, con aviso si hay más) con filtros por prioridad, estado y grupo (GET), todos marcados, elegir los destinos (los técnicos activos menos el origen, con su carga actual como dato informativo, nunca como límite) y escribir el motivo (obligatorio, hasta 500).
+- **`POST /reassign/review`:** valida todo a la vez (al menos un ticket y un destino, destinos activos de la lista, motivo) y, si algo falla, vuelve a mostrar el primer paso con los mensajes y la selección. Descarta los tickets que el origen ya no atiende o que ya no están en trabajo (con aviso) y, con el resto, calcula el reparto con `distribute` (por turnos, en orden de id). Muestra el resumen —origen, motivo, cuántos recibe cada técnico, con cuántos quedaría y el destino de cada ticket—. **No cambia nada.**
+- **`POST /reassign/confirm`:** el resumen lleva el reparto en campos ocultos (`movimientos`, «ticket:destino») y **el servidor no confía en ellos**: `reassign_tickets` vuelve a comprobar el permiso, los destinos y cada ticket (un ticket de otro técnico, cerrado o ya movido se omite con su motivo). Un campo mal formado, sin motivo o con un destino que no es un Técnico activo no ejecuta nada y vuelve al principio con el error. Hace commit y muestra el resultado: los reasignados y los omitidos con su motivo. Un doble envío no duplica nada (el segundo omite todo: «ya no está asignado»).
+- **Carga de trabajo:** el botón «Ir a reasignación» (y «Reasignar» junto a cada técnico con tickets activos) solo aparece a quien puede usar la pantalla (`can_manage_assignments`).
+- **Tests:** `tests/test_reassignment_screen.py` (38, área `tickets`), con la red de seguridad de rutas (`test_route_authorization`), la del menú (`test_layout`) y la de pantallas (`test_pages_smoke`). Se comprobó con mutaciones que fallan al quitar el control de rol de la confirmación o al no revalidar los tickets.
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
@@ -1641,6 +1654,9 @@ GET, POST  /tickets/<public_id>/duplicate
 POST       /tickets/<public_id>/lock/renew
 POST       /tickets/<public_id>/lock/release
 GET        /workload
+GET        /reassign
+POST       /reassign/review
+POST       /reassign/confirm
 GET        /notifications
 POST       /notifications/<id>/read
 POST       /notifications/<id>/open
@@ -1680,7 +1696,7 @@ El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Reasignación (Supervisor y Administrador), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos, de grupos y de SLA; Grupos (del Supervisor), en las de grupos; Notificaciones, en el centro de notificaciones; Mi cuenta, en `/account` y en el cambio de contraseña.
 - `layout_context` entrega además `unread_notifications` (el número de no leídas del usuario): una consulta por página autenticada, resuelta por el índice `(usuario_id, leida, fecha_creacion)`.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
@@ -1953,7 +1969,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4130 tests passing (unos 5 minutos con `-n 6`)
+4170 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

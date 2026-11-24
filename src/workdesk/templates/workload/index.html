@@ -29,10 +29,23 @@
 {% block content %}
     {% set summary = data.summary %}
 
-    {{ page_header(
+    {% call page_header(
         'Carga de trabajo',
         'Cómo está repartido el trabajo activo del equipo. Es una vista para analizar, no un ranking.'
-    ) }}
+    ) %}
+        {% if can_reassign %}
+            <a
+                class="btn btn-outline-secondary"
+                href="{{ url_for('reassignment.select_page') }}"
+            >
+                <i
+                    class="bi bi-arrow-left-right me-1"
+                    aria-hidden="true"
+                ></i>
+                Ir a reasignación
+            </a>
+        {% endif %}
+    {% endcall %}
 
     <section
         class="kpi-grid"
@@ -255,6 +268,12 @@
                                 {% endif %}
                                 {% if row.high %}
                                     <span class="badge badge-soft badge-soft-warning">Carga alta</span>
+                                {% endif %}
+                                {% if can_reassign and row.active %}
+                                    <a
+                                        class="small ms-1"
+                                        href="{{ url_for('reassignment.select_page', origen=who.id) }}"
+                                    >Reasignar</a>
                                 {% endif %}
                             </th>
                             <td class="text-end">{{ count_link(row.active, list_link(tecnico=who.id, activos=1), 'activos') }}</td>
