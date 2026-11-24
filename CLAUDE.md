@@ -35,6 +35,7 @@ Referencias principales:
 - `docs/11_diseno_de_pantallas.md` — UI, UX y Design System.
 - `docs/12_roadmap.md` — orden de implementación.
 - `docs/13_evolucion_post_mvp.md` — mejoras evaluadas para después del MVP y principio de ejecución 100 % local.
+- `docs/14_historial_de_implementacion.md` — relato por versión y por entrega (decisiones, errores hallados y tests); no describe el estado actual.
 
 No cargar o reinterpretar toda la documentación si la tarea solo requiere una parte concreta.
 

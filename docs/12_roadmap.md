@@ -1010,7 +1010,7 @@ Todos los criterios se cumplen. Además de lo previsto, la fase cierra con el bl
 ### Lo que `v0.4.0` deja para las fases siguientes
 
 - **`v0.5.0`:** el cierre automático por inactividad (la transición `AUTO_CIERRE` y el motivo `INACTIVIDAD` existían desde `v0.4.0` y el planificador de la entrega 8 los usa), el SLA con su calendario laboral y las notificaciones internas, entre ellas las que avisan a los técnicos cuando el Solicitante comenta (RF-068). Mientras tanto, un ticket resuelto sin solicitante solo lo cierra el Supervisor o el Administrador (cierre excepcional).
-- **`v0.6.0`:** la reasignación masiva y la carga de trabajo.
+- **`v0.6.0`:** la reasignación masiva y la carga de trabajo (ver la fase 6).
 - **`v0.7.0`:** los parámetros que hoy son variables de entorno (plazo de edición de comentarios, plazo de reapertura, límites de los adjuntos y tiempos del bloqueo de edición) pasan a la configuración administrable.
 - **`v0.9.0`:** las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), los modales y paneles laterales como mejora progresiva, y el color y el orden de los estados (RF-118).
 - **`v0.7.0`:** la advertencia de posibles tickets duplicados al crear uno (RF-061), junto a la base de conocimiento, que comparte la búsqueda.
@@ -1158,6 +1158,34 @@ Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron a
 **Semana:** 7  
 **Versión:** `v0.6.0`
 
+**Estado de ejecución:** en curso. Se planificó en 10 entregas pequeñas, cada una con su rama, tests y Pull Request (la última es la revisión de toda la fase).
+
+### Entregas de `v0.6.0`
+
+1. **Revisión de lo construido: backend/API y tests** ✓: el seed de tickets pasa a un paquete y sus funciones complejas se descomponen; las consultas del listado salen de `tickets/service.py` a `tickets/queries.py`; los endpoints JSON comparten forma de error y todas las respuestas llevan cabeceras de seguridad; `ruff.toml` fija un límite de complejidad; y los tests se ordenan. Sin migraciones.
+2. **Revisión: README, PROJECT_CONTEXT y docs** ✓: el relato por entrega pasa a `14_historial_de_implementacion.md` y el README y `PROJECT_CONTEXT.md` quedan centrados en el estado actual.
+3. **Listado: filtros de asignación**: filtros por técnico, grupo, «sin asignar», «activos», «pendientes de mi revisión» y «cerrados desde», `sla=riesgo`, y las columnas Técnico(s) y Grupo para el personal. Son el destino de los enlaces de los dashboards.
+4. **Dashboard del Solicitante**: abiertos, en progreso, requieren tu revisión, cerrados recientes, tickets y notificaciones recientes (UI-002, RF-097).
+5. **Carga de trabajo: consultas**: por técnico, por grupo y sin asignar, con el aviso de sobrecarga informativo (RF-036 a RF-038).
+6. **Carga de trabajo: pantalla** (UI-006): `/workload` para Técnico, Supervisor y Administrador.
+7. **Dashboard operacional**: contadores, tickets prioritarios, carga compacta y actividad reciente para el personal; «Mi trabajo» para el Técnico y un bloque administrativo para el Administrador (RF-093 a RF-096).
+8. **Reasignación masiva: servicio** (RF-034 y RF-035, RN-30): mover los tickets de un técnico a otros con historial, auditoría y avisos.
+9. **Reasignación masiva: pantalla** (UI-007): selección, resumen y confirmación, con la carga de cada destino a la vista (RF-033).
+10. **Cierre de la fase**: revisión de todo lo anterior, comprobación de escala y matriz de trazabilidad.
+
+### Decisiones de la fase
+
+Se tomaron al planificarla:
+
+- **La reasignación masiva entra en esta fase** (dos entregas). Es alcance MVP y la nota de `v0.4.0` ya la asignaba aquí, aunque el alcance de la fase no la listaba.
+- **Definiciones de las métricas.** *Abierto* es todo ticket no cerrado (un `Resuelto` sigue abierto, como en el listado). *Activo* (carga de trabajo) es el que no está `Resuelto` ni `Cerrado`. *Sin asignar* es un ticket activo sin técnico vigente. *Crítico* es el de prioridad `CRITICA`. *SLA en riesgo* es próximo a vencer más vencido. *Cerrados recientes* son los de los últimos 7 días. Un ticket con varios técnicos cuenta en cada uno y una sola vez en los totales.
+- **Cada cifra coincide con el total del listado al que enlaza**, y un test lo comprueba para cada rol con los tickets de demostración.
+- **Dashboard del Técnico:** el operacional global más un bloque «Mi trabajo». El Administrador ve el operacional más un bloque breve de indicadores administrativos. El Técnico ve la carga de todo el equipo, sin ranking.
+- **Sin gráficos ni librerías nuevas:** cifras exactas (por ejemplo «nuevos hoy») y barras con CSS. Los gráficos se deciden en los reportes (`v0.8.0`).
+- **Sobrecarga (RF-037):** variable de entorno `WORKLOAD_HIGH_ACTIVE_TICKETS` (10 por defecto; 0 la desactiva) hasta `v0.7.0`; es una insignia con texto, nunca notifica ni bloquea una asignación (RN-26).
+- **Sin migraciones previstas.** Solo se añadiría un índice por `historial_ticket(fecha_hora)` si se mide que la actividad reciente lo necesita; sin caché.
+- **Fuera de la fase,** con su destino: las excepciones de SLA (RF-083) y los pendientes sin fase (adjuntos al crear un ticket, advertencia de duplicados, liberar un bloqueo de edición, primera respuesta vencida, retención de notificaciones, el interruptor general del SLA y los parámetros en variables de entorno) van a `v0.7.0`; impacto y urgencia, después del MVP.
+
 ### Dashboard Solicitante
 
 - abiertos;
@@ -1186,6 +1214,10 @@ Las tres cosas que quedan fuera no se perdieron ni se olvidaron: se decidieron a
 - críticos;
 - SLA en riesgo;
 - sin asignar.
+
+### Reasignación masiva
+
+Mover varios tickets de un técnico (por vacaciones, licencia o desvinculación) a uno o más técnicos en una sola operación, conservando el técnico anterior, el nuevo, la fecha, quién la ejecutó y qué tickets se movieron (RF-034 y RF-035). Es una pantalla distinta de la carga de trabajo: la carga se analiza, la reasignación modifica la distribución.
 
 ### Consideración
 

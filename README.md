@@ -59,108 +59,21 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 ## Estado del proyecto
 
-### `v0.5.0 — SLA y notificaciones internas`
+La última versión estable es **`v0.5.0 — SLA y notificaciones internas`** y la fase en curso es **`v0.6.0 — Dashboards y carga de trabajo`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
 
-La quinta versión de WorkDesk está implementada y validada. Con ella WorkDesk **sabe cuánto tiempo lleva cada ticket y avisa cuando algo se atrasa**: el SLA se calcula en tiempo laboral, las personas reciben avisos dentro de la aplicación y un planificador se ocupa de lo que no depende de que alguien haga clic. Se construyó en nueve entregas pequeñas, cada una con su rama, tests y Pull Request:
+| Versión | Qué hace WorkDesk con ella | Tests al cerrar |
+| --- | --- | --- |
+| `v0.1.0` | Fundación técnica: Flask, PostgreSQL, autenticación con Argon2id, sesiones, CSRF, logging y health check | 20 |
+| `v0.2.0` | Usuarios, roles y permisos, límites de sesión, contraseñas temporales, auditoría y «Mi cuenta» | 385 |
+| `v0.3.0` | Núcleo de tickets: catálogos, creación, listado con búsqueda y filtros, detalle y edición | 967 |
+| `v0.4.0` | Se trabaja en equipo: grupos, asignación, comentarios y notas internas, adjuntos, resolución y cierre, relaciones y bloqueo de edición | 2201 |
+| `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 
-- **Tiempo laboral y calendario:** un motor que mide y suma tiempo solo dentro de la jornada (salta noches, pausas de almuerzo, fines de semana y feriados) y un calendario que el Administrador configura desde «SLA»: horario por día, feriados y zona horaria. Está versionado: guardar un cambio crea una versión nueva y nunca altera lo que ya se calculó.
-- **Políticas de SLA por prioridad:** objetivo de resolución, primera respuesta opcional, porcentaje de aviso y pausa en espera, editables desde la administración.
-- **Períodos de SLA:** cada ticket lleva su reloj. Se pausa en `En espera`, se detiene al resolver, sigue donde iba al reabrir y un cambio de prioridad conserva lo consumido: nunca reinicia el reloj ni borra un incumplimiento.
-- **Indicadores:** insignias en el listado, filtro y orden «SLA más urgente», tarjeta en el detalle y una advertencia al bajar la prioridad con el SLA en riesgo. El SLA es solo del personal: el Solicitante no lo ve por ninguna vía.
-- **Notificaciones internas:** centro de notificaciones y campana con contador. Asignar, cambiar el estado y comentar avisan a quien corresponde, sin copiar nunca el contenido y sin que un Solicitante reciba nada interno.
-- **Planificador (`run-scheduler`):** avisa **una sola vez** de los SLA próximos a vencer y vencidos (y deja el incumplimiento registrado en el historial) y cierra solo los tickets resueltos que nadie validó pasadas 24 horas. Es un comando propio, sin dependencias nuevas, que se ejecuta aparte de la aplicación web (ver [Ejecutar el planificador](#ejecutar-el-planificador)).
-- **Cierre de la versión:** una revisión de toda la fase, medida antes de tocar nada. El comando `cli.py` (una sola función de 105 sentencias) pasó a un paquete con un módulo por área; la suite ganó pruebas que recorren las pantallas con los 76 tickets de demostración vigilando las consultas, que comprueban que las migraciones suben, coinciden con los modelos y bajan, y que impiden que el README se quede atrás de las variables de entorno y los comandos. Durante la revisión se encontraron y corrigieron **dos cosas reales**: el planificador podía bloquearse con un cambio de estado simultáneo sobre el mismo ticket (bloqueaba primero el período y después el ticket; los cambios de estado, al revés, y PostgreSQL abortaba a uno de los dos), y RN-91 pedía **registrar el incumplimiento**, algo que solo se deducía de las fechas de los períodos: ahora el planificador deja el evento interno `SLA_VENCIDO` en el historial del ticket.
-
-Al cerrar la versión, la suite contaba con **3965 tests automatizados**. Si vienes de `v0.4.0`, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba) (el paso 19 explica el planificador).
-
-### `v0.4.0 — Asignación, colaboración y ciclo de vida`
-
-La cuarta versión de WorkDesk está implementada y validada. Con ella un ticket deja de ser algo que solo se registra y se edita: **se trabaja en equipo** y recorre su ciclo completo, desde que se crea hasta que se cierra (y, si hace falta, se reabre). Se construyó en 12 entregas pequeñas, cada una con su rama, tests y Pull Request:
-
-- **Historial con visibilidad por evento:** cada evento del historial es público o interno, y es la consulta (no la plantilla) la que decide qué ve cada rol. El vocabulario de eventos vive en la aplicación, así que añadir uno no requiere una migración.
-- **Motivos de espera:** catálogo administrable, con la opción genérica «Otro motivo» que admite un texto libre.
-- **Estados y transiciones:** iniciar el trabajo, poner en espera y reactivar, con una tabla de transiciones que valida cada cambio y bloquea la fila del ticket para que dos personas que actúan a la vez no apliquen dos transiciones.
-- **Grupos:** el Administrador los crea y el Supervisor gestiona los técnicos de los grupos de los que es responsable (los demás responden 404). Cambiar el rol de una persona o desactivarla cierra sus membresías.
-- **Asignación:** un Técnico se asigna a sí mismo; el Supervisor y el Administrador asignan, reasignan, fijan el grupo y **escalan** un ticket con un motivo. Asignar al primer técnico pasa el ticket a `Asignado`.
-- **Solicitantes del ticket:** el personal agrega o retira solicitantes después de crearlo. Quien se retira deja de ver el ticket, salvo que lo haya creado.
-- **Comentarios y notas internas:** el Solicitante y el personal conversan en comentarios públicos; el personal escribe además notas internas que el Solicitante no ve por ninguna vía. El autor edita y elimina dentro de un plazo.
-- **Archivos adjuntos:** se guardan en disco, fuera de `static/`, con validación por extensión y por contenido, SHA-256 y descarga autenticada. El adjunto de una nota interna hereda su visibilidad.
-- **Resolución, validación, cierre y reapertura:** el personal resuelve y el solicitante confirma o rechaza la solución; también hay cierre directo, cierre excepcional del Supervisor y reapertura (con plazo para el solicitante). Un ticket cerrado siempre tiene fecha y motivo de cierre.
-- **Relaciones y duplicados:** el personal relaciona tickets y marca un ticket como duplicado de otro (lo cierra con el motivo «Duplicado»).
-- **Bloqueo temporal de edición:** mientras alguien edita un ticket, los demás lo ven en solo lectura y saben quién lo edita; el bloqueo se renueva solo y expira si el navegador se cierra. La versión del ticket sigue siendo la barrera final.
-- **Estados y transiciones en la administración, y cierre de la versión:** el Administrador renombra los estados y habilita o deshabilita las transiciones opcionales sin poder romper el flujo. Además, una revisión de toda la fase reorganizó el código que había crecido y añadió un recorrido automático de la autorización de todas las rutas.
-
-El seed de demostración (`seed-demo-tickets`) creció con cada entrega: hoy carga **76 tickets** que recorren todos esos caminos. Si vienes de `v0.3.0`, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
-
-Al cerrar la versión, la suite contaba con **2201 tests automatizados**.
-
-### `v0.3.0 — Núcleo de tickets`
-
-La tercera versión de WorkDesk está implementada y validada. Es la fase central del MVP: ya se pueden **crear, consultar, buscar y editar tickets**, y cada rol ve únicamente lo que le corresponde. Se construyó en entregas pequeñas, cada una con su rama, tests y Pull Request:
-
-- **Catálogos de tickets:** estados (los seis estructurales), prioridades (Baja, Media, Alta y Crítica), categorías, ubicaciones, motivos de cierre y motivos de espera, con el comando `seed-catalogs` para cargar los datos iniciales.
-- **Modelo de datos de tickets:** tabla de tickets con identificador público generado por una secuencia de PostgreSQL, solicitantes de cada ticket (relación temporal N:M) e historial de eventos inmutable, más el servicio que crea tickets.
-- **Administración de catálogos:** el Administrador gestiona categorías, prioridades y ubicaciones desde la interfaz (crear, editar, desactivar y reactivar), con auditoría de cada cambio.
-- **Creación de tickets:** cualquier rol puede crear un ticket desde "Crear ticket". El Solicitante queda como su propio solicitante; el personal (Técnico, Supervisor y Administrador) puede crearlo a nombre de otras personas, eligiendo ninguno, uno o varios solicitantes. Tras crearlo se abre su detalle, visible solo para quien corresponde.
-- **Listado de tickets:** "Tickets" (personal) y "Mis tickets" (Solicitante) muestran solo lo que cada rol puede ver, con pestañas Todos, Abiertos y Cerrados, buscador (número, título, contenido y, para el personal, solicitante), filtros, orden y paginación. La barra superior también busca tickets.
-- **Edición de tickets:** el personal puede editar el título, la descripción, la categoría y la ubicación de un ticket, y cambiar su prioridad indicando un motivo. Cada cambio queda en el historial con lo que había antes y lo que hay ahora, y si dos personas editan a la vez, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
-- **Cierre de la versión:** revisión final, tests que recorren todas las rutas de la aplicación para comprobar que ninguna queda sin autenticación ni sin protección CSRF, y la guía de primera configuración con un recorrido de prueba y una solución de problemas.
-
-Al cerrar la versión, la suite contaba con **967 tests automatizados**.
-
-### `v0.2.0 — Usuarios, autenticación completa y RBAC`
-
-La segunda versión de WorkDesk está implementada y validada. Suma a la fundación:
-
-- Autorización por roles (Solicitante, Técnico, Supervisor y Administrador) comprobada en backend, con error 403 y navegación filtrada por rol.
-- Límites de sesión por inactividad (30 minutos) y por duración máxima (8 horas), configurables.
-- Política de contraseñas configurable, contraseñas temporales y cambio obligatorio en el primer inicio de sesión.
-- Administración de usuarios por el Administrador: listado con búsqueda, filtros y paginación; creación; edición; cambio de rol; desactivación y reactivación; y restablecimiento de contraseña, con salvaguardas (nadie actúa sobre sí mismo y siempre queda un Administrador activo).
-- Auditoría administrativa inmutable de todas las acciones sobre usuarios.
-- Pantalla "Mi cuenta": datos del usuario, edición de su información de contacto y cambio de contraseña.
-- Interfaz administrativa con Bootstrap servido localmente (sin CDN): sidebar y topbar, navegación por rol y hub de administración.
-- Comando `seed-demo` para cargar un equipo de soporte ficticio con el que mostrar el sistema.
-
-Al cerrar la versión, la suite contaba con 385 tests automatizados.
-
-### `v0.1.0 — Fundación técnica`
-
-La fundación técnica de WorkDesk se encuentra implementada y validada.
-
-Actualmente el proyecto dispone de:
-
-- Aplicación Flask mediante patrón Application Factory.
-- Arquitectura de monolito modular.
-- Configuración mediante variables de entorno.
-- PostgreSQL como base de datos principal.
-- SQLAlchemy y Flask-SQLAlchemy.
-- Migraciones mediante Alembic / Flask-Migrate.
-- Modelos iniciales de usuarios y roles.
-- Carga idempotente de roles estructurales.
-- Creación segura del Administrador inicial mediante CLI.
-- Autenticación por username y contraseña.
-- Hash de contraseñas mediante Argon2id.
-- Gestión de sesión mediante Flask-Login.
-- Protección CSRF mediante Flask-WTF.
-- Bloqueo temporal después de intentos fallidos de autenticación.
-- Invalidación de sesiones mediante `token_version`.
-- Protección de cookies de sesión.
-- Usuario activo/inactivo integrado al flujo de autenticación.
-- Interfaz visual de login con identidad gráfica oficial de WorkDesk.
-- Identidad visual propia con isotipo, logotipo y variantes para fondos claros y oscuros.
-- Favicons e iconos de aplicación integrados globalmente en los templates actuales.
-- Manejo controlado de errores HTTP.
-- Health check de aplicación y PostgreSQL.
-- Logging persistente con rotación configurable.
-- Base PostgreSQL independiente para pruebas.
-- Suite inicial automatizada con `pytest`.
-- Análisis estático mediante Ruff.
-
-La suite de fundación cuenta actualmente con **20 tests automatizados**.
+Hoy la suite cuenta con **3975 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
-La siguiente versión es `v0.6.0 — Dashboards y carga de trabajo`: el dashboard del Solicitante (abiertos, en progreso, requiere revisión, cerrados recientes y notificaciones), el dashboard operacional (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer, en espera y actividad reciente) y la carga de trabajo por técnico, todos con enlaces hacia los listados relacionados. Reutilizará los datos de SLA y de notificaciones de esta versión. El detalle de cada fase está en [`docs/12_roadmap.md`](docs/12_roadmap.md).
+`v0.6.0 — Dashboards y carga de trabajo` se está construyendo en 10 entregas: una revisión de lo ya hecho (backend, tests y documentación), los filtros del listado por técnico y grupo, el dashboard del Solicitante, la carga de trabajo (consultas y pantalla), el dashboard operacional para el personal y la reasignación masiva de tickets. Reutiliza los datos de SLA y de notificaciones de `v0.5.0` y todos los contadores enlazan con el listado que los explica. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 6).
 
 ---
 
@@ -280,7 +193,9 @@ WorkDesk/
 │   ├── 09_modelo_de_datos.md
 │   ├── 10_arquitectura.md
 │   ├── 11_diseno_de_pantallas.md
-│   └── 12_roadmap.md
+│   ├── 12_roadmap.md
+│   ├── 13_evolucion_post_mvp.md
+│   └── 14_historial_de_implementacion.md
 │
 ├── instance/
 │   ├── backups/
@@ -361,83 +276,12 @@ WorkDesk/
 │       └── worktime.py
 │
 ├── tests/
-│   ├── areas.py
-│   ├── conftest.py
-│   ├── database.py
-│   ├── demo_data.py
-│   ├── seed_helpers.py
-│   ├── sla_helpers.py
-│   ├── test_account_password.py
-│   ├── test_account_profile.py
-│   ├── test_app.py
-│   ├── test_audit.py
-│   ├── test_auth.py
-│   ├── test_authorization.py
-│   ├── test_catalogs.py
-│   ├── test_catalogs_routes.py
-│   ├── test_catalogs_service.py
-│   ├── test_cli.py
-│   ├── test_credentials.py
-│   ├── test_docs_coherence.py
-│   ├── test_formatting.py
-│   ├── test_groups.py
-│   ├── test_layout.py
-│   ├── test_migrations.py
-│   ├── test_notifications.py
-│   ├── test_notifications_routes.py
-│   ├── test_pages_smoke.py
-│   ├── test_password_policy.py
-│   ├── test_passwords.py
-│   ├── test_route_authorization.py
-│   ├── test_route_protection.py
-│   ├── test_seed_demo.py
-│   ├── test_seed_demo_notifications.py
-│   ├── test_seed_demo_tickets_data.py
-│   ├── test_seed_demo_tickets_dates.py
-│   ├── test_seed_demo_tickets_lifecycle.py
-│   ├── test_seed_demo_tickets_load.py
-│   ├── test_seed_demo_tickets_people.py
-│   ├── test_seed_demo_tickets_steps.py
-│   ├── test_scheduler.py
-│   ├── test_security_headers.py
-│   ├── test_session_limits.py
-│   ├── test_sla_indicators.py
-│   ├── test_sla_indicators_ui.py
-│   ├── test_sla_periods.py
-│   ├── test_sla_policies.py
-│   ├── test_sla_policies_routes.py
-│   ├── test_sla_policy_forms.py
-│   ├── test_state_actions.py
-│   ├── test_states_admin.py
-│   ├── test_suite_infrastructure.py
-│   ├── test_system.py
-│   ├── test_ticket_assignment.py
-│   ├── test_ticket_attachments.py
-│   ├── test_ticket_comments.py
-│   ├── test_ticket_edit_lock.py
-│   ├── test_ticket_history.py
-│   ├── test_ticket_history_visibility.py
-│   ├── test_ticket_model.py
-│   ├── test_ticket_policies.py
-│   ├── test_ticket_relations.py
-│   ├── test_ticket_requesters.py
-│   ├── test_ticket_resolution.py
-│   ├── test_ticket_state_transitions.py
-│   ├── test_tickets_edit_routes.py
-│   ├── test_tickets_edit_service.py
-│   ├── test_tickets_list_routes.py
-│   ├── test_tickets_list_service.py
-│   ├── test_tickets_routes.py
-│   ├── test_tickets_service.py
-│   ├── test_users_manage_routes.py
-│   ├── test_users_manage_service.py
-│   ├── test_users_routes.py
-│   ├── test_users_service.py
-│   ├── test_wait_reasons.py
-│   ├── test_work_calendar.py
-│   ├── test_work_calendar_routes.py
-│   ├── test_worktime.py
-│   └── ticket_helpers.py
+│   ├── conftest.py            # fixtures: app, client, make_user, instantáneas de datos de demostración
+│   ├── database.py            # protección de workdesk_test, esquemas por proceso, limpieza e instantáneas
+│   ├── areas.py               # qué módulo de tests pertenece a qué área (marcadores de pytest)
+│   ├── demo_data.py           # los 76 tickets de demostración compartidos por los tests
+│   ├── seed_helpers.py, sla_helpers.py, ticket_helpers.py   # ayudantes compartidos
+│   └── test_*.py              # un módulo por tema (autenticación, tickets, SLA, notificaciones, seeds...)
 │
 ├── .env.example
 ├── .gitattributes
@@ -1402,42 +1246,17 @@ La suite dispone actualmente de:
 3975 tests
 ```
 
-Los tests cubren principalmente:
+Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
 
-- creación de la aplicación, configuración y manejo de errores;
-- health check y conexión PostgreSQL de testing;
-- autenticación: login, logout, bloqueo por intentos fallidos, invalidación de sesiones, límites de sesión y Argon2id;
-- política de contraseñas, contraseñas temporales y cambio obligatorio;
-- autorización por roles y navegación filtrada por rol;
-- administración de usuarios (servicio y rutas) y "Mi cuenta";
-- auditoría administrativa, incluida su inmutabilidad;
-- datos de demostración: el equipo ficticio y los tickets de ejemplo (coherencia de los datos, que no duplica y refresca las fechas al volver a ejecutarlo, fechas relativas en tiempo laboral (días y horas configurables, feriados y fines de semana), ediciones hechas a mano que siguen en orden, historial de sus ajustes, avisos cuando falta una categoría o ubicación y que el historial sigue siendo inmutable);
-- catálogos de tickets: datos iniciales, restricciones de base de datos y administración desde la interfaz;
-- modelo de tickets: identificador público, solicitantes, historial inmutable y servicio de creación;
-- creación y detalle de tickets: políticas de acceso por rol, formulario y sus validaciones, que un Solicitante no pueda registrar otros solicitantes, visibilidad del detalle (404 para lo ajeno) y formato de fechas en hora local;
-- listado de tickets: visibilidad por rol aplicada en la consulta (y comprobada contra la política de acceso), búsqueda, pestañas con contadores, filtros, orden, paginación, ausencia de consultas por fila y parámetros inválidos;
-- edición de tickets: permisos por rol (403 para quien ve pero no edita), cambios y su historial, valores de catálogo desactivados, tickets cerrados, motivo obligatorio de la prioridad, conflictos entre ediciones simultáneas y qué ve cada rol del historial;
-- historial de los tickets: visibilidad por evento (el Solicitante nunca recibe un evento interno, y la condición SQL coincide con la política para todos los roles) y qué cuenta cada evento, sin repetir nunca un motivo;
-- grupos, asignación, solicitantes del ticket y bloqueo temporal de edición, incluidas las carreras entre dos personas (pruebas con dos hilos que comprueban que solo una operación prospera);
-- estados, transiciones y ciclo de vida: transiciones válidas e inválidas por estado y por rol, resolución, validación del solicitante, cierre directo y excepcional, reapertura y la regla «un ticket cerrado tiene fecha y motivo de cierre»;
-- comentarios, notas internas y adjuntos: el filtro por tipo en la consulta, los plazos de edición, los nombres de archivo hostiles, la extensión falsa, los límites de tamaño y la descarga autenticada;
-- relaciones y duplicados: el par simétrico, la ausencia de cadenas y ciclos y el cierre del duplicado;
-- administración de estados y transiciones: renombrar sin repetir nombres, las transiciones esenciales, que ninguna deshabilitación rompa el flujo (también entre dos Administradores a la vez) y que el catálogo de acciones y las políticas de autorización no se separen;
-- seguridad de las rutas: un recorrido automático de todo el mapa de rutas comprueba que cada una exige sesión, que las rutas POST exigen token CSRF y que cada ruta responde según quién la use (404 al ticket ajeno, 403 al rol sin permiso), con pruebas que confirman que ese recorrido realmente detecta una ruta abierta o mal protegida;
-- tiempo laboral (`worktime.py`): días y jornadas, franjas distintas por día (una pausa de almuerzo, un martes de un solo minuto, una franja que empieza a medianoche), feriados, medir y sumar tiempo laboral como operaciones inversas, una comparación con un recuento minuto a minuto, fechas en otra zona horaria y un fin de semana con cambio de horario de verano. Son pruebas unitarias: no usan la base de datos;
-- calendario laboral administrable: las restricciones de la base de datos (una sola versión vigente, franjas y feriados sin repetir), que guardar crea siempre una versión nueva y deja la anterior intacta, los conflictos entre dos personas (también con dos hilos a la vez), qué se audita, la lectura de los textos del horario y de los feriados, las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito) y que el seed de demostración respete el calendario guardado;
-- políticas de SLA: las restricciones de la base de datos (una sola política activa por prioridad, la primera respuesta que no supera la resolución, el umbral entre 1 y 100), las reglas de los valores y sus límites exactos, la lectura de las duraciones («30 min», «4 h», «1 h 30 min») con sus formas válidas, las inválidas y que escribirlas y leerlas sean operaciones inversas, los valores iniciales del seed (y que no pise lo que el Administrador cambió), qué se audita, desactivar y reactivar, los conflictos entre dos Administradores (con dos hilos a la vez, y con una política que la sesión ya había cargado cuando otra transacción la cambió) y las pantallas (solo el Administrador, cada error junto a su campo, el formulario que conserva lo escrito y la comprobación de que la pantalla estaba desactualizada);
-- períodos de SLA: abrir un período al crear el ticket, la pausa en espera y su reanudación, detener el reloj al resolver y cerrar y seguir donde iba al reabrir, que un cambio de prioridad conserve lo consumido (nacer vencido, bajar la prioridad sin borrar un incumplimiento, nacer pausado), que las condiciones se hereden aunque se edite la política, el tiempo laboral (noches, fines de semana y el calendario con que se calculó cada período), la primera respuesta, el estado del SLA con sus límites exactos, que reconstruir desde el historial dé lo mismo que el cálculo en vivo, las restricciones de la base de datos, dos cambios de prioridad a la vez, los comandos `sla-rebuild` y `sla-status` y que el seed de demostración deje los períodos de todos sus tickets;
-- indicadores de SLA: la fecha de aviso de cada período (el primer segundo que alcanza el porcentaje, heredada, y sus restricciones de base de datos), la evaluación por lotes con un número fijo de consultas, que las condiciones SQL del filtro y del orden coinciden **exactamente** con la evaluación en catorce tipos de ticket y más de 150 momentos (con los bordes de un segundo), que el Solicitante no ve ni puede usar el SLA, la tarjeta del detalle, la advertencia al bajar la prioridad y el aviso a los Supervisores (los del grupo o todos, nunca quien lo hizo);
-- notificaciones internas: el vocabulario de eventos (con su nombre y su icono), las restricciones de la base de datos (lectura coherente y un mensaje que no sea solo espacios o saltos de línea), que el contenido no se pueda reescribir pero la lectura sí, que marcar de nuevo no cambie la fecha de la primera lectura (ni con dos pestañas a la vez), que cada consulta devuelva solo las notificaciones de quien las pide (la de otra persona responde 404), que no se notifique a un usuario inactivo ni dos veces a la misma persona, el listado (filtro, orden, paginación y ausencia de consultas por fila), el contador y la campana, los formularios con su token CSRF y que el comando `seed-demo-notifications` solo apunte a tickets que cada persona puede ver;
-- planificador: los avisos de SLA (al llegar al umbral y al vencer, una sola vez, a quién llegan y a quién nunca, dos planificadores a la vez, y que un aviso y un cambio de estado del mismo ticket no se bloqueen entre sí), el cierre automático (el plazo, con y sin solicitantes, el Sistema como actor, que se vuelva a comprobar dentro de la transacción), el bucle, la configuración y el comando `run-scheduler`;
-- avisos por los eventos de un ticket: a quién avisa cada operación (asignar, escalar, cambiar el estado y comentar), que nunca se avise a quien hizo el cambio, que un Solicitante no reciba nada interno (notas, escalamientos, motivos ni el texto de los comentarios), que los avisos se revierten con la operación y que el seed de tickets de demostración no deje avisos sin leer;
-- el incumplimiento del SLA queda registrado: el planificador deja el evento interno `SLA_VENCIDO` en el historial una sola vez, con el período y el objetivo, y un Solicitante nunca lo ve;
-- **las pantallas con datos reales** (`tests/test_pages_smoke.py`): con los 76 tickets de demostración, cada rol abre las pantallas que le corresponden (y recibe 403 o 404 en las demás), el personal abre el detalle de todos los tickets y todas las pantallas de acción, el Solicitante ve exactamente los suyos y todos los adjuntos se descargan. Cada pantalla tiene un **presupuesto de consultas** a la base de datos: si una empieza a hacer una consulta por fila, el test falla aunque funcione bien con pocos datos;
-- **las migraciones y una instalación limpia** (`tests/test_migrations.py`): en un esquema desechable de `workdesk_test`, las migraciones suben todas, hay una sola cabeza, `db check` no encuentra diferencias con los modelos, bajan hasta dejar la base vacía y vuelven a subir; y una instalación construida **solo con ellas** sigue los pasos de este README (datos iniciales, equipo y tickets de demostración, avisos y planificador) y comprueba lo que queda en la base de datos, que es lo que `db check` no ve (secuencias, valores por defecto y restricciones);
-- **la coherencia de los documentos** (`tests/test_docs_coherence.py`): cada variable de entorno, cada comando propio, cada migración y cada ruta figuran en el README, `.env.example` y `PROJECT_CONTEXT.md`, y las listas de rutas son el mapa de rutas real;
-- **las reglas del SLA que protegen el trabajo** (`tests/test_sla_business_rules.py`): el SLA es del ticket y no cambia al reasignar, escalar o cambiar el grupo (RN-85), un SLA vencido no impide seguir trabajando, resolver, cerrar ni reabrir (RN-86) y que un técnico tenga muchos tickets no detiene el reloj de ninguno (RN-87);
-- **la sesión de la campana** (`tests/test_session_limits.py`): la consulta automática del contador no cuenta como actividad, así que una pestaña abandonada no mantiene viva la sesión, y una sesión expirada no recibe datos.
+Hay cinco redes de seguridad que no dependen de recordar nada al añadir código:
+
+- **`tests/test_route_protection.py` y `tests/test_route_authorization.py`** recorren el mapa de rutas real: toda ruta exige sesión, toda ruta POST exige token CSRF, el ticket ajeno responde 404 y el rol sin permiso, 403. Una ruta nueva queda cubierta sin tocar el test.
+- **`tests/test_pages_smoke.py`** abre todas las pantallas con los 76 tickets de demostración para cada rol y vigila un **presupuesto de consultas** por petición: si una pantalla empieza a hacer una consulta por fila, falla aunque funcione bien con pocos datos.
+- **`tests/test_migrations.py`** comprueba que las migraciones suben, coinciden con los modelos (`db check`), bajan y vuelven a subir, y que una instalación construida **solo con ellas** sigue los pasos de este README y deja lo esperado en la base de datos (secuencias, valores por defecto y restricciones, que `db check` no ve).
+- **`tests/test_docs_coherence.py`** exige que cada variable de entorno, comando propio, migración y ruta figuren en el README, `.env.example` y `PROJECT_CONTEXT.md`.
+- **`tests/test_security_headers.py`** vigila las cabeceras de seguridad de todas las respuestas y la forma común de los errores JSON.
+
+El detalle de qué cubre cada módulo y cuántos tests aportó cada entrega está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md).
 
 Para ejecutarlos hacen falta el entorno virtual activo, PostgreSQL en ejecución, la base `workdesk_test` creada y `TEST_DATABASE_URL` definida en `.env` (ver [Configuración de PostgreSQL](#configuración-de-postgresql) y [Variables de entorno](#variables-de-entorno)). No hace falta aplicar migraciones ni cargar datos: la suite crea sus propias tablas. `requirements-dev.txt` trae lo necesario, incluido `pytest-xdist` para ejecutarla en paralelo.
 
@@ -1597,6 +1416,7 @@ La documentación técnica, funcional y visual se encuentra en [`docs/`](docs/).
 11. [Diseño de pantallas](docs/11_diseno_de_pantallas.md)
 12. [Roadmap](docs/12_roadmap.md)
 13. [Evolución posterior al MVP](docs/13_evolucion_post_mvp.md)
+14. [Historial de implementación](docs/14_historial_de_implementacion.md)
 
 ---
 
