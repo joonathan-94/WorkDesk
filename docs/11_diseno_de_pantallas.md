@@ -1551,6 +1551,8 @@ No mostrar:
 
 **Implementación del Solicitante (`v0.6.0`, entrega 4).** Cuatro tarjetas-enlace (abiertos, en progreso, requieren tu revisión —teñida de ámbar si hay alguna— y cerrados en los últimos 7 días), el aviso de revisión con su botón, «Mis tickets recientes» (5, con «Atendido por» y la marca «Requiere tu revisión») y «Notificaciones recientes». No hay mini gráficos ni «respecto de ayer»: solo cifras que se pueden calcular exactamente. Las tarjetas usan los tokens `--wd-*` (nuevos: `--wd-success-soft`, `--wd-warning-soft` y `--wd-danger-soft`).
 
+**Implementación del personal (`v0.6.0`, entrega 7).** Seis tarjetas-enlace (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer y en espera) y un aviso si hay críticos sin asignar; «Tickets abiertos prioritarios» (8, por prioridad y vencimiento, con su SLA), una carga de trabajo compacta y la actividad reciente (solo qué pasó, nunca el texto de un comentario). El Técnico añade «Mi trabajo» y el Administrador un bloque con usuarios por rol, calendario y políticas de SLA. Como en el dashboard del Solicitante, no hay mini gráficos ni comparaciones con ayer: solo cifras exactas.
+
 ### Técnico / Supervisor
 
 KPIs:

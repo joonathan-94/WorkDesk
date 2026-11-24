@@ -49,6 +49,9 @@ SORT_PRIORITY = "prioridad"
 SORT_UPDATED = "actualizados"
 # Solo el personal ve y usa el SLA (docs/06, RN-169).
 SORT_SLA = "sla"
+# El orden del dashboard del personal: mayor prioridad primero y, dentro de cada una, el que
+# vence antes. No se ofrece en el listado (la pantalla solo admite los órdenes que lista).
+SORT_PRIORITY_SLA = "prioritarios"
 DEFAULT_SORT = SORT_RECENT
 
 # Nombre visible de cada orden, en el orden en que se ofrecen.
@@ -165,7 +168,7 @@ def list_tickets(
     filters = filters or TicketFilters()
     staff = has_any_role(user, *STAFF_ROLES)
 
-    if sort == SORT_SLA and not staff:
+    if sort in (SORT_SLA, SORT_PRIORITY_SLA) and not staff:
         sort = DEFAULT_SORT
 
     statement = (
@@ -181,13 +184,7 @@ def list_tickets(
             ),
         )
         .where(*listing_conditions(user, filters, now))
-        .order_by(
-            *(
-                sla_urgency_order()
-                if sort == SORT_SLA
-                else _ORDERINGS.get(sort, _ORDERINGS[DEFAULT_SORT])
-            )
-        )
+        .order_by(*_ordering(sort))
     )
 
     if staff:
@@ -212,6 +209,16 @@ def list_tickets(
         max_per_page=per_page,
         error_out=False,
     )
+
+
+def _ordering(sort: str) -> tuple:
+    if sort == SORT_SLA:
+        return sla_urgency_order()
+
+    if sort == SORT_PRIORITY_SLA:
+        return (Prioridad.nivel.desc(), *sla_urgency_order())
+
+    return _ORDERINGS.get(sort, _ORDERINGS[DEFAULT_SORT])
 
 
 def count_tickets_by_tab(

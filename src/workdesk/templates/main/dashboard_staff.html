@@ -1,0 +1,380 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, kpi_card, state_badge, priority_badge, sla_badge %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+{% endblock %}
+
+{% block content %}
+    {% set list_url = 'tickets.list_tickets_page' %}
+    {% set summary = data.overview.summary %}
+
+    {% call page_header('Dashboard', 'Resumen operativo del equipo y de tu trabajo.') %}
+        <a
+            class="btn btn-outline-secondary"
+            href="{{ url_for('workload.workload_page') }}"
+        >
+            <i
+                class="bi bi-people me-1"
+                aria-hidden="true"
+            ></i>
+            Carga de trabajo
+        </a>
+        <a
+            class="btn btn-primary"
+            href="{{ url_for('tickets.new_ticket') }}"
+        >
+            <i
+                class="bi bi-plus-lg me-1"
+                aria-hidden="true"
+            ></i>
+            Crear ticket
+        </a>
+    {% endcall %}
+
+    {% if summary.unassigned_critical %}
+        <div
+            class="dashboard-alert"
+            role="status"
+        >
+            <span>
+                <i
+                    class="bi bi-exclamation-octagon me-1"
+                    aria-hidden="true"
+                ></i>
+                <strong>
+                    {% if summary.unassigned_critical == 1 %}
+                        Hay 1 ticket crítico sin asignar.
+                    {% else %}
+                        Hay {{ summary.unassigned_critical }} tickets críticos sin asignar.
+                    {% endif %}
+                </strong>
+            </span>
+            <a
+                class="btn btn-sm btn-outline-secondary"
+                href="{{ url_for(list_url, activos=1, tecnico='ninguno', prioridad=data.critical_priority_id, vista='todos') }}"
+            >Ver los tickets</a>
+        </div>
+    {% endif %}
+
+    <section
+        class="kpi-grid"
+        aria-label="Resumen operativo"
+    >
+        {{ kpi_card(
+            'Tickets abiertos',
+            data.open,
+            hint='Todo lo que no está cerrado',
+            href=url_for(list_url),
+            icon='ticket-detailed',
+            tone='primary',
+        ) }}
+
+        {{ kpi_card(
+            'Sin asignar',
+            summary.unassigned,
+            hint=(summary.unassigned_critical ~ ' críticos') if summary.unassigned_critical else 'Ningún crítico',
+            href=url_for(list_url, activos=1, tecnico='ninguno', vista='todos'),
+            icon='person-x',
+            tone='warning',
+            alert=summary.unassigned > 0,
+        ) }}
+
+        {{ kpi_card(
+            'Críticos',
+            summary.critical,
+            hint='Prioridad crítica, en trabajo',
+            href=url_for(list_url, activos=1, prioridad=data.critical_priority_id, vista='todos'),
+            icon='exclamation-octagon',
+            tone='danger',
+            alert=summary.critical > 0,
+        ) }}
+
+        {{ kpi_card(
+            'Fuera de SLA',
+            summary.overdue,
+            hint='En trabajo y vencidos',
+            href=url_for(list_url, activos=1, sla='vencido', vista='todos'),
+            icon='exclamation-triangle',
+            tone='danger',
+            alert=summary.overdue > 0,
+        ) }}
+
+        {{ kpi_card(
+            'Próximos a vencer',
+            summary.near_due,
+            hint='Con el umbral de aviso alcanzado',
+            href=url_for(list_url, activos=1, sla='proximo', vista='todos'),
+            icon='hourglass-split',
+            tone='warning',
+        ) }}
+
+        {{ kpi_card(
+            'En espera',
+            summary.on_hold,
+            hint='Esperando información o un tercero',
+            href=url_for(list_url, estado=data.on_hold_state_id, vista='todos') if data.on_hold_state_id else url_for(list_url),
+            icon='pause-circle',
+            tone='purple',
+        ) }}
+    </section>
+
+    {% if data.my_work %}
+        {% set mine = data.my_work.row %}
+        {% set me = current_user.id %}
+
+        <section
+            class="card mb-3"
+            aria-labelledby="my-work-title"
+        >
+            <div class="card-header">
+                <h2
+                    class="h6 mb-0"
+                    id="my-work-title"
+                >Mi trabajo</h2>
+            </div>
+
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-value">{{ mine.active if mine else 0 }}</div>
+                        <a
+                            class="small"
+                            href="{{ url_for(list_url, tecnico=me, activos=1, vista='todos') }}"
+                        >Activos a mi cargo</a>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-value">{{ mine.critical if mine else 0 }}</div>
+                        <a
+                            class="small"
+                            href="{{ url_for(list_url, tecnico=me, activos=1, prioridad=data.critical_priority_id, vista='todos') }}"
+                        >Críticos</a>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-value">{{ mine.at_risk if mine else 0 }}</div>
+                        <a
+                            class="small"
+                            href="{{ url_for(list_url, tecnico=me, activos=1, sla='riesgo', vista='todos') }}"
+                        >Con SLA en riesgo</a>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-value">{{ data.my_work.resolved_recently }}</div>
+                        <span class="small">Resueltos por mí en 7 días</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <div class="dashboard-columns">
+        <section
+            class="card mb-3"
+            aria-labelledby="priority-title"
+        >
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2
+                    class="h6 mb-0"
+                    id="priority-title"
+                >Tickets abiertos prioritarios</h2>
+                <a
+                    class="small"
+                    href="{{ url_for(list_url, activos=1, orden='prioridad', vista='todos') }}"
+                >Ver todos</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Ticket</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Prioridad</th>
+                            <th scope="col">Técnico(s)</th>
+                            <th scope="col">SLA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in data.priority_tickets %}
+                            {% set current = ticket.tecnicos_vigentes %}
+                            <tr>
+                                <td class="text-break">
+                                    <a
+                                        class="fw-semibold text-decoration-none"
+                                        href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                                    >#{{ ticket.public_id }}</a>
+                                    {{ ticket.titulo }}
+                                </td>
+                                <td>{{ state_badge(ticket.estado) }}</td>
+                                <td>{{ priority_badge(ticket.prioridad) }}</td>
+                                <td>
+                                    {% if current %}
+                                        {{ current[0].tecnico.nombre }} {{ current[0].tecnico.apellido }}
+                                        {% if current|length > 1 %}
+                                            <span class="text-secondary">+{{ current|length - 1 }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-secondary">Sin asignar</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ sla_badge(data.slas[ticket.id], show_time=False) }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td
+                                    colspan="5"
+                                    class="text-center text-secondary py-4"
+                                >No hay tickets en trabajo.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section
+            class="card mb-3"
+            aria-labelledby="load-title"
+        >
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2
+                    class="h6 mb-0"
+                    id="load-title"
+                >Carga de trabajo</h2>
+                <a
+                    class="small"
+                    href="{{ url_for('workload.workload_page') }}"
+                >Ver detalle</a>
+            </div>
+
+            <ul class="list-group list-group-flush">
+                {% for row in data.top_technicians %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <a href="{{ url_for(list_url, tecnico=row.user.id, activos=1, vista='todos') }}">
+                                {{ row.user.nombre }} {{ row.user.apellido }}
+                            </a>
+                            {% if row.high %}
+                                <span class="badge badge-soft badge-soft-warning">Carga alta</span>
+                            {% endif %}
+                        </span>
+                        <span>
+                            <strong>{{ row.active }}</strong>
+                            <span class="small text-secondary">activos</span>
+                        </span>
+                    </li>
+                {% else %}
+                    <li class="list-group-item text-secondary">Ningún técnico tiene tickets activos.</li>
+                {% endfor %}
+
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for(list_url, activos=1, tecnico='ninguno', vista='todos') }}">Sin asignar</a>
+                    <strong>{{ summary.unassigned }}</strong>
+                </li>
+            </ul>
+            <div class="card-footer small text-secondary">
+                Un ticket con varios técnicos cuenta en cada uno.
+            </div>
+        </section>
+    </div>
+
+    <section
+        class="card mb-3"
+        aria-labelledby="activity-title"
+    >
+        <div class="card-header">
+            <h2
+                class="h6 mb-0"
+                id="activity-title"
+            >Actividad reciente</h2>
+        </div>
+
+        <ul class="list-group list-group-flush">
+            {% for item in data.activity %}
+                <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
+                    <span>
+                        <strong>{{ item.entry.evento_nombre }}</strong>
+                        en
+                        <a href="{{ url_for('tickets.detail', public_id=item.ticket_number) }}">#{{ item.ticket_number }}</a>
+                        <span class="text-secondary">{{ item.ticket_title }}</span>
+                    </span>
+                    <span class="small text-secondary">
+                        {% if item.entry.actor %}
+                            {{ item.entry.actor.nombre }} {{ item.entry.actor.apellido }}
+                        {% else %}
+                            Sistema
+                        {% endif %}
+                        · {{ item.entry.fecha_hora|local_datetime }}
+                    </span>
+                </li>
+            {% else %}
+                <li class="list-group-item text-secondary">Todavía no hay actividad.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    {% if data.admin %}
+        <section
+            class="card mb-3"
+            aria-labelledby="admin-title"
+        >
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2
+                    class="h6 mb-0"
+                    id="admin-title"
+                >Administración</h2>
+                <a
+                    class="small"
+                    href="{{ url_for('admin.index') }}"
+                >Ir a Administración</a>
+            </div>
+
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="fw-semibold">Usuarios activos</div>
+                        <ul class="list-unstyled mb-1">
+                            {% for name, total in data.admin.users_by_role %}
+                                <li>{{ name }}: {{ total }}</li>
+                            {% endfor %}
+                        </ul>
+                        <a
+                            class="small"
+                            href="{{ url_for('users.list_users_page') }}"
+                        >Ver usuarios</a>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fw-semibold">Calendario laboral</div>
+                        <div>
+                            {% if data.admin.calendar_configured %}
+                                Configurado · versión {{ data.admin.calendar_version }}
+                            {% else %}
+                                Por defecto (sin configurar)
+                            {% endif %}
+                        </div>
+                        <a
+                            class="small"
+                            href="{{ url_for('sla.index') }}"
+                        >Configurar SLA</a>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fw-semibold">Políticas de SLA</div>
+                        <div>
+                            {{ data.admin.policies_defined }} de {{ data.admin.priorities_total }} prioridades con política activa
+                        </div>
+                        <a
+                            class="small"
+                            href="{{ url_for('sla.index') }}"
+                        >Ver objetivos</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}
