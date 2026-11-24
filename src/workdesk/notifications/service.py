@@ -161,7 +161,9 @@ def count_notifications(user: User) -> NotificationCounts:
     return NotificationCounts(total=total, unread=unread)
 
 
-def list_notifications(user: User, *, view: str = VIEW_ALL, page: int = 1):
+def list_notifications(
+    user: User, *, view: str = VIEW_ALL, page: int = 1, per_page: int = PAGE_SIZE
+):
     """Una página de las notificaciones del usuario, de la más reciente a la más antigua.
 
     `view` es `VIEW_ALL` o `VIEW_UNREAD` (cualquier otro valor se trata como todas).
@@ -180,8 +182,8 @@ def list_notifications(user: User, *, view: str = VIEW_ALL, page: int = 1):
     return db.paginate(
         statement,
         page=page,
-        per_page=PAGE_SIZE,
-        max_per_page=PAGE_SIZE,
+        per_page=per_page,
+        max_per_page=per_page,
         error_out=False,
     )
 

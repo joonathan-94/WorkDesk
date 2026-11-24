@@ -30,6 +30,7 @@ from src.workdesk.models import (
     TicketRequester,
     User,
 )
+from src.workdesk.seeds.demo_tickets_data import DEMO_TICKETS
 from tests.demo_data import DEMO_PASSWORD
 from tests.ticket_helpers import login
 
@@ -202,7 +203,7 @@ def test_the_staff_opens_every_ticket(seeded, client, make_user, role):
     sign_in(client, role, make_user)
     numbers = all_ticket_numbers(client)
 
-    assert len(numbers) == 76
+    assert len(numbers) == len(DEMO_TICKETS)
 
     for number in numbers:
         response, queries = get(client, f"/tickets/{number}")

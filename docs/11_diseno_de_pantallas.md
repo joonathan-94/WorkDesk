@@ -1549,6 +1549,8 @@ No mostrar:
 - SLA operacional;
 - métricas globales.
 
+**Implementación del Solicitante (`v0.6.0`, entrega 4).** Cuatro tarjetas-enlace (abiertos, en progreso, requieren tu revisión —teñida de ámbar si hay alguna— y cerrados en los últimos 7 días), el aviso de revisión con su botón, «Mis tickets recientes» (5, con «Atendido por» y la marca «Requiere tu revisión») y «Notificaciones recientes». No hay mini gráficos ni «respecto de ayer»: solo cifras que se pueden calcular exactamente. Las tarjetas usan los tokens `--wd-*` (nuevos: `--wd-success-soft`, `--wd-warning-soft` y `--wd-danger-soft`).
+
 ### Técnico / Supervisor
 
 KPIs:
