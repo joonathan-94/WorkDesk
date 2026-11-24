@@ -45,6 +45,33 @@
     </nav>
 {% endmacro %}
 
+{# Tarjeta de indicador de un dashboard (docs/11, 17.2): etiqueta, valor principal y un
+   indicador secundario. Toda la superficie es un enlace al listado que explica la cifra
+   (docs/11, 17.3). `tone` es primary, purple, warning, success o danger; con `alert` la
+   tarjeta se tiñe (algo que requiere atención). #}
+{% macro kpi_card(label, value, hint=None, href=None, icon='circle', tone='primary', alert=False) %}
+    <a
+        class="kpi-card{% if alert %} kpi-card--{{ tone }}{% endif %}"
+        href="{{ href }}"
+    >
+        <span class="kpi-icon kpi-icon--{{ tone }}">
+            <i
+                class="bi bi-{{ icon }}"
+                aria-hidden="true"
+            ></i>
+        </span>
+
+        <span class="kpi-body">
+            <span class="kpi-label">{{ label }}</span>
+            <span class="kpi-value">{{ value }}</span>
+
+            {% if hint %}
+                <span class="kpi-hint">{{ hint }}</span>
+            {% endif %}
+        </span>
+    </a>
+{% endmacro %}
+
 {# Insignia de vigencia de un registro de catálogo. #}
 {% macro active_badge(item) %}
     {% if item.activo %}

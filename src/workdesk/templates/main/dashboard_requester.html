@@ -1,0 +1,231 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, kpi_card, state_badge, priority_badge %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+{% endblock %}
+
+{% block content %}
+    {% set list_url = 'tickets.list_tickets_page' %}
+
+    {% call page_header('Dashboard', 'Resumen de tus solicitudes y actividad reciente.') %}
+        <a
+            class="btn btn-primary"
+            href="{{ url_for('tickets.new_ticket') }}"
+        >
+            <i
+                class="bi bi-plus-lg me-1"
+                aria-hidden="true"
+            ></i>
+            Crear ticket
+        </a>
+    {% endcall %}
+
+    <section
+        class="kpi-grid"
+        aria-label="Resumen de tus tickets"
+    >
+        {{ kpi_card(
+            'Tickets abiertos',
+            data.open,
+            hint=(data.updated_today ~ ' actualizados hoy') if data.updated_today else 'Ninguno actualizado hoy',
+            href=url_for(list_url),
+            icon='ticket-detailed',
+            tone='primary',
+        ) }}
+
+        {{ kpi_card(
+            'En progreso',
+            data.in_progress,
+            hint='Siendo atendidos',
+            href=url_for(list_url, estado=data.in_progress_state_id) if data.in_progress_state_id else url_for(list_url),
+            icon='gear',
+            tone='purple',
+        ) }}
+
+        {{ kpi_card(
+            'Requieren tu revisión',
+            data.pending_review,
+            hint='Pendientes de validación',
+            href=url_for(list_url, revision=1, vista='todos'),
+            icon='exclamation-triangle',
+            tone='warning',
+            alert=data.pending_review > 0,
+        ) }}
+
+        {{ kpi_card(
+            'Cerrados recientemente',
+            data.recently_closed,
+            hint='Últimos 7 días',
+            href=url_for(list_url, vista='cerrados', cerrado_desde=data.closed_since.isoformat()),
+            icon='check-circle',
+            tone='success',
+        ) }}
+    </section>
+
+    {% if data.pending_review %}
+        <div
+            class="dashboard-alert"
+            role="status"
+        >
+            <div>
+                <strong>
+                    {% if data.pending_review == 1 %}
+                        Tienes 1 solicitud pendiente de revisión.
+                    {% else %}
+                        Tienes {{ data.pending_review }} solicitudes pendientes de revisión.
+                    {% endif %}
+                </strong>
+                <div class="small text-secondary">
+                    El equipo indicó que el ticket #{{ data.pending_ticket.public_id }}
+                    está resuelto{% if data.pending_review > 1 %} (y otros más){% endif %}.
+                </div>
+            </div>
+
+            <a
+                class="btn btn-outline-primary"
+                href="{{ url_for('tickets.detail', public_id=data.pending_ticket.public_id) if data.pending_review == 1 else url_for(list_url, revision=1, vista='todos') }}"
+            >
+                {{ 'Revisar resolución' if data.pending_review == 1 else 'Ver las solicitudes' }}
+            </a>
+        </div>
+    {% endif %}
+
+    <div class="dashboard-columns">
+        <section class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Mis tickets recientes</h2>
+
+                <a
+                    class="small text-decoration-none"
+                    href="{{ url_for(list_url, vista='todos', orden='actualizados') }}"
+                >
+                    Ver todos los tickets
+                </a>
+            </div>
+
+            {% if data.recent_tickets %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Título</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col">Prioridad</th>
+                                <th scope="col">Atendido por</th>
+                                <th scope="col">Actualizado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for ticket in data.recent_tickets %}
+                                {% set technicians = ticket.tecnicos_vigentes %}
+                                <tr>
+                                    <td>
+                                        <a
+                                            class="fw-semibold text-decoration-none"
+                                            href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                                        >
+                                            #{{ ticket.public_id }}
+                                        </a>
+                                    </td>
+                                    <td class="text-break">
+                                        {{ ticket.titulo }}
+                                        {% if ticket.id in data.pending_ids %}
+                                            <div class="small text-warning-emphasis">
+                                                <i
+                                                    class="bi bi-exclamation-triangle"
+                                                    aria-hidden="true"
+                                                ></i>
+                                                Requiere tu revisión
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ state_badge(ticket.estado) }}</td>
+                                    <td>{{ priority_badge(ticket.prioridad) }}</td>
+                                    <td>
+                                        {% if technicians %}
+                                            {{ technicians[0].tecnico.nombre }} {{ technicians[0].tecnico.apellido }}
+                                            {% if technicians|length > 1 %}
+                                                <span class="text-secondary">+{{ technicians|length - 1 }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-secondary">Sin asignar</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap text-secondary small">
+                                        {{ ticket.fecha_actualizacion|local_datetime }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card-body text-center text-secondary">
+                    <p class="mb-2">Todavía no tienes tickets.</p>
+
+                    <a
+                        class="btn btn-primary"
+                        href="{{ url_for('tickets.new_ticket') }}"
+                    >
+                        Crear mi primer ticket
+                    </a>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Notificaciones recientes</h2>
+
+                <a
+                    class="small text-decoration-none"
+                    href="{{ url_for('notifications.list_notifications_page') }}"
+                >
+                    Ver todas
+                </a>
+            </div>
+
+            {% if data.notifications %}
+                <ul class="notification-list">
+                    {% for notification in data.notifications %}
+                        <li class="{% if not notification.leida %}is-unread{% endif %}">
+                            <span
+                                class="notification-dot"
+                                aria-hidden="true"
+                            ></span>
+
+                            <div>
+                                {% if notification.titulo %}
+                                    <div class="fw-semibold">{{ notification.titulo }}</div>
+                                {% endif %}
+
+                                <div>{{ notification.mensaje }}</div>
+
+                                <div class="small text-secondary">
+                                    {% if not notification.leida %}(No leída) {% endif %}
+                                    {% if notification.ticket %}
+                                        <a href="{{ url_for('tickets.detail', public_id=notification.ticket.public_id) }}">#{{ notification.ticket.public_id }}</a>
+                                        ·
+                                    {% endif %}
+                                    {{ notification.fecha_creacion|local_datetime }}
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="card-body text-center text-secondary">
+                    No tienes notificaciones.
+                </div>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

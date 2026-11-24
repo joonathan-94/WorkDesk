@@ -6,6 +6,7 @@ from ..extensions import db
 # Código del estado en que el SLA puede pausarse (docs/06, RN-89). Es
 # estructural: lo que el Administrador renombra es el nombre visible.
 ON_HOLD_STATE_CODE = "EN_ESPERA"
+IN_PROGRESS_STATE_CODE = "EN_PROGRESO"
 
 
 class Estado(db.Model):

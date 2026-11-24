@@ -48,6 +48,8 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_users_manage_service",
     ),
     "groups": ("test_groups",),
+    # Los dashboards por rol (v0.6.0).
+    "dashboards": ("test_dashboard_requester",),
     # Catálogos de tickets, motivos de espera, estados y transiciones.
     "catalogs": (
         "test_catalogs",

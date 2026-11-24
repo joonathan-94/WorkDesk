@@ -2048,4 +2048,298 @@ DEMO_TICKETS = (
             ),
         ),
     ),
+    # Tickets para los dashboards: cada Solicitante con solicitudes que esperan su
+    # revisión, cierres recientes y tickets en progreso.
+    DemoTicket(
+        clave="correo-jefatura-no-llega",
+        titulo="no me llega el correo de la jefatura",
+        descripcion=(
+            "desde ayer no recibo los correos de mi jefatura, los demas si llegan. necesito esos para la reunion"
+        ),
+        categoria="Correo",
+        prioridad="MEDIA",
+        creado_por="javiera.torres",
+        hace_dias=2,
+        hora="09:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                asignar="diego.soto",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Estaba en la carpeta de correo no deseado por una regla vieja. La borré y ya te llegan; revisa y me cuentas.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="mouse-oficina-contabilidad",
+        titulo="el mouse de mi puesto salta solo",
+        descripcion=(
+            "el cursor se mueve solo y hace clic donde quiere, ya me equivoque dos veces en un pago"
+        ),
+        categoria="Hardware",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=1,
+        hora="10:05",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Cambié el mouse por uno nuevo y probé en tu equipo. Avísame si vuelve a pasar.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="impresora-contabilidad-atasco",
+        titulo="la impresora de contabilidad se traba con la hoja",
+        descripcion=(
+            "cada vez que imprimo mas de tres hojas se atasca y hay que apagarla. ya limpie lo que pude"
+        ),
+        categoria="Impresoras",
+        prioridad="MEDIA",
+        creado_por="constanza.herrera",
+        hace_dias=2,
+        hora="11:15",
+        ajustes=(
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=1,
+                asignar="francisca.munoz",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Limpié los rodillos y cambié el papel que estaba húmedo. Probé con veinte hojas sin problema.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="vpn-casa-no-conecta",
+        titulo="no puedo conectarme a la red desde mi casa",
+        descripcion=(
+            "estoy en teletrabajo y no logro entrar a los archivos compartidos, me dice que no encuentra el servidor"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="ignacio.molina",
+        hace_dias=1,
+        hora="14:20",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                asignar="valentina.pizarro",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Faltaba renovar tu acceso remoto. Ya quedó activo: cierra sesión, vuelve a entrar y dime si carga.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="firma-correo-desactualizada",
+        titulo="mi firma del correo sale con el cargo antiguo",
+        descripcion=(
+            "mande un correo a un cliente y la firma dice el cargo que tenia el año pasado, quede mal"
+        ),
+        categoria="Correo",
+        prioridad="BAJA",
+        creado_por="paula.contreras",
+        hace_dias=3,
+        hora="15:40",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                asignar="diego.soto",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Actualicé tu firma con el cargo nuevo. Envíate un correo de prueba para confirmar que se ve bien.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="teclado-recepcion-teclas",
+        titulo="el teclado de recepcion tiene teclas que no responden",
+        descripcion=(
+            "la e y la o a veces no escriben, hay que apretar fuerte. los clientes se dan cuenta"
+        ),
+        categoria="Hardware",
+        prioridad="MEDIA",
+        creado_por="andres.silva",
+        hace_dias=2,
+        hora="16:30",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Cambié el teclado por otro y dejé el antiguo para repuestos. Pruébalo y me avisas.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="scanner-bodega-no-envia",
+        titulo="el scanner no manda los documentos al correo",
+        descripcion=(
+            "escaneo y aparece que se envio pero no llega nada a mi correo, lo hice tres veces"
+        ),
+        categoria="Impresoras",
+        prioridad="MEDIA",
+        creado_por="javiera.torres",
+        hace_dias=4,
+        hora="09:10",
+        ajustes=(
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=1,
+                asignar="francisca.munoz",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="francisca.munoz",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Cambié la dirección de destino del escáner y probé con tu correo; ya debería llegar.",
+            ),
+            DemoAdjustment(
+                actor="javiera.torres",
+                despues_horas=2,
+                estado="CONFIRMAR",
+                texto="Perfecto, ya me llegan los escaneos. Gracias!",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="wifi-sala-capacitacion",
+        titulo="el wifi de la sala de capacitacion es lentisimo",
+        descripcion=(
+            "con el proyector y el notebook conectados no carga ni una presentacion, la capacitacion se atraso"
+        ),
+        categoria="Redes",
+        prioridad="ALTA",
+        creado_por="sebastian.vargas",
+        hace_dias=3,
+        hora="12:00",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                asignar="valentina.pizarro",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Moví el punto de acceso a la sala y reinicié el router. Prueba con la presentación.",
+            ),
+            DemoAdjustment(
+                actor="sebastian.vargas",
+                despues_horas=2,
+                estado="CONFIRMAR",
+                texto="Ahora sí, ya carga todo. Muchas gracias por la ayuda rápida.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="notebook-sin-bateria",
+        titulo="mi notebook se apaga a los veinte minutos",
+        descripcion=(
+            "esta enchufado igual se apaga, a veces ni prende. tengo que presentar manana"
+        ),
+        categoria="Hardware",
+        prioridad="ALTA",
+        creado_por="constanza.herrera",
+        hace_dias=5,
+        hora="10:40",
+        ajustes=(
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=1,
+                asignar="diego.soto",
+                estado="INICIAR",
+            ),
+            DemoAdjustment(
+                actor="diego.soto",
+                despues_horas=3,
+                estado="RESOLVER",
+                texto="Cambié el cargador y la batería no estaba dañada. Verifica que cargue al 100%.",
+            ),
+            DemoAdjustment(
+                actor="constanza.herrera",
+                despues_horas=2,
+                estado="CONFIRMAR",
+                texto="Listo, funciona con el cargador nuevo. Gracias por el cambio.",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="casilla-correo-llena",
+        titulo="dice que mi casilla de correo esta llena",
+        descripcion=(
+            "no puedo recibir ni enviar nada, ya borre cosas pero sigue igual"
+        ),
+        categoria="Correo",
+        prioridad="MEDIA",
+        creado_por="ignacio.molina",
+        hace_dias=1,
+        hora="11:50",
+        ajustes=(
+            DemoAdjustment(
+                actor="felipe.araya",
+                despues_horas=1,
+                asignar="felipe.araya",
+                estado="INICIAR",
+            ),
+        ),
+    ),
+    DemoTicket(
+        clave="red-oficina-intermitente",
+        titulo="el internet de mi oficina se corta cada tanto",
+        descripcion=(
+            "cada diez o quince minutos se va el internet y vuelve solo, no puedo hacer videollamadas"
+        ),
+        categoria="Redes",
+        prioridad="MEDIA",
+        creado_por="andres.silva",
+        hace_dias=1,
+        hora="15:10",
+        ajustes=(
+            DemoAdjustment(
+                actor="valentina.pizarro",
+                despues_horas=1,
+                asignar="valentina.pizarro",
+                estado="INICIAR",
+            ),
+        ),
+    ),
 )

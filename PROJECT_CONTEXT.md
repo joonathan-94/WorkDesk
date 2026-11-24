@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/tickets-assignment-filters
+feature/requester-dashboard
 ```
 
-Entrega 3 de `v0.6.0 — Dashboards y carga de trabajo`: el listado de tickets gana los filtros a los que enlazarán los dashboards y la carga de trabajo, y las columnas Técnico(s) y Grupo para el personal. **Sin migraciones** (los índices de `tickets_tecnicos` y `tickets` ya existían). Ver «Filtros de asignación del listado».
+Entrega 4 de `v0.6.0 — Dashboards y carga de trabajo`: el dashboard del Solicitante, con la macro de tarjeta de indicador y los tokens de color que reutilizará el dashboard del personal, y 11 tickets de demostración más para que cada Solicitante tenga algo que ver. **Sin migraciones.** Ver «Dashboard del Solicitante».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -168,8 +168,8 @@ v0.6.0 — Dashboards y carga de trabajo
 | --- | --- | --- |
 | 1 | Revisión de lo construido: backend/API y tests | Integrada (PR #46) |
 | 2 | Revisión: README, PROJECT_CONTEXT y docs | Integrada (PR #47) |
-| 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | En curso (`feature/tickets-assignment-filters`) |
-| 4 | Dashboard del Solicitante | Pendiente |
+| 3 | Listado: filtros de asignación (técnico, grupo, sin asignar) | Integrada (PR #48) |
+| 4 | Dashboard del Solicitante | En curso (`feature/requester-dashboard`) |
 | 5 | Carga de trabajo: consultas | Pendiente |
 | 6 | Carga de trabajo: pantalla | Pendiente |
 | 7 | Dashboard operacional (Técnico, Supervisor, Administrador) | Pendiente |
@@ -183,7 +183,7 @@ Su alcance está en `docs/12_roadmap.md` (fase 6): el dashboard del Solicitante 
 - los datos de SLA (`evaluate_tickets_sla`, que evalúa por lotes con un número fijo de consultas, y las condiciones SQL de `sla/queries.py`, que filtran y cuentan en la base de datos sin evaluar ticket por ticket);
 - el filtro del listado por estado de SLA y por orden de urgencia, a donde pueden enlazar los contadores «fuera de SLA» y «próximos a vencer»;
 - las notificaciones (`count_unread`) para el dashboard del Solicitante;
-- los 76 tickets de demostración compartidos por los tests (`tests/demo_data.py`) y la prueba de pantallas con presupuesto de consultas (`tests/test_pages_smoke.py`), a la que las pantallas nuevas se añaden;
+- los 87 tickets de demostración compartidos por los tests (`tests/demo_data.py`) y la prueba de pantallas con presupuesto de consultas (`tests/test_pages_smoke.py`), a la que las pantallas nuevas se añaden;
 - el seed `seed-demo-tickets`, que se amplía en cada fase (ver "22. CLI").
 
 Pendiente, sin fase asignada, para decidirlo al planificar:
@@ -373,7 +373,7 @@ WorkDesk/
 │   ├── conftest.py            # fixtures: app, client, make_user, instantáneas de datos de demostración
 │   ├── database.py            # protección de workdesk_test, esquemas por proceso, limpieza e instantáneas
 │   ├── areas.py               # qué módulo de tests pertenece a qué área (marcadores de pytest)
-│   ├── demo_data.py           # los 76 tickets de demostración compartidos por los tests
+│   ├── demo_data.py           # los 87 tickets de demostración compartidos por los tests
 │   ├── seed_helpers.py, sla_helpers.py, ticket_helpers.py   # ayudantes compartidos
 │   └── test_*.py              # un módulo por tema (autenticación, tickets, SLA, notificaciones, seeds...)
 │
@@ -821,6 +821,20 @@ Los contadores de los dashboards y de la carga de trabajo enlazan con el listado
 - **Los valores inválidos se ignoran** (un técnico o grupo que no existe, una fecha mal escrita), como en el resto de filtros, y los enlaces de pestañas y páginas los conservan.
 - **Pantalla:** el personal ve las columnas **Técnico(s)** (el primero y cuántos más, o «Sin asignar») y **Grupo**; los filtros de técnico y grupo están en «Más filtros», con los técnicos y grupos desactivados marcados «(inactivo)» porque pueden conservar tickets. El Solicitante no ve ni las columnas ni esos filtros. La página sigue costando un número fijo de consultas: los técnicos se cargan en un lote más (4 en el servicio) y el grupo viaja en la consulta de la página.
 - Helpers reutilizables: `has_current_technician(technician_id=None)`, `active_state_condition()`, `pending_review_condition(user)`, `list_technician_options()` y `list_group_options()`.
+
+## Dashboard del Solicitante (entrega 4 de `v0.6.0`)
+
+`GET /dashboard` despacha por rol (`main/routes.py`): el Solicitante recibe `main/dashboard_requester.html`; el personal sigue con la pantalla provisional hasta la entrega 7. Las consultas viven en `src/workdesk/dashboard/requester.py` (`requester_dashboard(user, now=None)` devuelve un `RequesterDashboard`). Reglas de la fase en `docs/12` (fase 6) y diseño en `docs/11` (UI-002).
+
+- **Un único `COUNT ... FILTER`** calcula los cinco números sobre `visible_tickets_condition(user)`: *abiertos* (no `Cerrado`, igual que el listado), *en progreso* (`EN_PROGRESO`), *requieren tu revisión* (`pending_review_condition`: `Resuelto` con él como solicitante vigente), *cerrados recientemente* (`Cerrado` desde `hoy − 7 días`, día local, `CLOSED_WINDOW_DAYS`) y *actualizados hoy* (abiertos con `coalesce(fecha_modificacion, fecha_creacion)` de hoy; es un dato de apoyo, sin enlace propio).
+- **Cada contador enlaza con el listado que lo explica y su cifra es el total de ese listado:** abiertos → `/tickets`; en progreso → `?estado=<id>`; revisión → `?revision=1&vista=todos`; cerrados → `?vista=cerrados&cerrado_desde=<día>`. Un test lo comprueba para los seis solicitantes de demostración.
+- **El día de «hoy»** sale de `sla.periods.current_time()` convertido a `APP_TIMEZONE` (los tests lo fijan con `now=`).
+- **Aviso de revisión:** con un solo ticket pendiente enlaza con su detalle («Revisar resolución»); con varios, con el listado filtrado. `pending_ticket` es el que se resolvió más recientemente.
+- **Mis tickets recientes:** `list_tickets(..., sort=SORT_UPDATED, per_page=5, load_technicians=True)` (`list_tickets` ganó `per_page` y `load_technicians`: el Solicitante ve «Atendido por», nunca el grupo). **Notificaciones recientes:** `list_notifications(user, per_page=5)`.
+- **No muestra SLA, grupos, carga ni métricas globales** (RN-169, UI-002): un test busca esos textos en la respuesta de cada solicitante.
+- **Componentes para el resto de dashboards:** macro `kpi_card` en `_ui_macros.html` (toda la tarjeta es un enlace; `tone` y `alert`), hoja `static/css/dashboard.css` (cargada por el bloque `styles` del layout) y tres tokens nuevos en `app.css`: `--wd-success-soft`, `--wd-warning-soft` y `--wd-danger-soft`. Ningún color escrito a mano. Estados vacíos: «Todavía no tienes tickets» y «No tienes notificaciones».
+- **Seed de demostración:** 11 tickets nuevos al final de la lista (87 en total): una solución por revisar para cada uno de los seis solicitantes, tres cierres confirmados y dos tickets en progreso. La prueba de pantallas ya no fija el total (usa `len(DEMO_TICKETS)`).
+- **Tests:** área nueva `dashboards` (`pytest -m dashboards`, `tests/test_dashboard_requester.py`).
 
 ## Edición de tickets (entrega 6 de `v0.3.0`)
 
@@ -1582,9 +1596,7 @@ Las rutas `/notifications...` las ven los cuatro roles, cada uno las suyas: una 
 
 Una prueba automática (`tests/test_route_protection.py`) recorre todas las rutas registradas y exige que, sin sesión, todas redirijan al login (salvo `/login`, `/health` y `static`) y que toda ruta POST rechace una petición sin token CSRF. Una ruta nueva queda cubierta sin tocar el test.
 
-El dashboard actual es temporal.
-
-No representa todavía los dashboards finales del MVP.
+El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»); el del personal sigue siendo temporal y no representa todavía el dashboard final del MVP.
 
 ---
 
@@ -1832,7 +1844,7 @@ Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`set
 
 `seed-demo-tickets` (`src/workdesk/seeds/demo_tickets/` (un paquete) y `demo_tickets_data.py`):
 
-- carga 76 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
+- carga 87 tickets de demostración, escritos como los escribiría gente real y poco técnica (títulos vagos, prisa, el problema equivocado, prioridades exageradas), a nombre del equipo de `seed-demo`: cerca de un 70 % los crean Solicitantes (que quedan como su propio solicitante, como en la pantalla de creación) y el resto el personal, con 0, 1 o 2 solicitantes;
 - **datos separados de la lógica:** `demo_tickets_data.py` solo contiene la lista (`DEMO_TICKETS`, de `DemoTicket` y `DemoAdjustment`); `demo_tickets.py` tiene el motor. Cada ticket tiene una `clave` estable (nombre corto, único, que no debe cambiar una vez cargado). Para mejorar la demostración se edita la lista. Cada paso de ajuste admite campos opcionales con valor por defecto (hoy `estado`, `motivo_espera`, `texto`, `grupo`, `asignar`, `agregar_solicitante`, `retirar_solicitante`, `motivo_retiro`, `comentario`, `nota_interna` y `adjunto`) y, cuando existan cierres y comentarios, se añaden más sin invalidar los tickets ya escritos;
 - necesita `seed-catalogs` y `seed-demo`; si faltan, se detiene con un mensaje que dice qué ejecutar, y lo mismo si hay transiciones deshabilitadas que la demostración recorre («Habilítalas en Administración → Estados y transiciones»), sin cargar nada. **No crea categorías ni ubicaciones**: busca por nombre exacto `Redes`, `Hardware`, `Correo`, `Impresoras` y las ubicaciones `Suc Lo Marcoleta` y `Suc Manuel Antonio Matta` (sin distinguir mayúsculas); si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación y lo informa con un `Aviso:`. Las prioridades se resuelven por código, para sobrevivir a un renombrado;
 - usa los servicios reales (`create_ticket`, `update_ticket`, `change_priority`, `set_group`, `assign_technician`, `add_requester`, `remove_requester`, `add_comment`, `add_attachments` y `change_state`), así que valida, versiona y registra el historial igual que la aplicación. Los `ajustes` son pasos posteriores del personal (reclasificar, cambiar la prioridad con motivo, corregir el título, **cambiar el estado**) con su propio actor y retraso. Un ajuste con `estado` (`INICIAR`, `PONER_EN_ESPERA` o `REACTIVAR`) se ejecuta al final del paso; `motivo_espera` es el código de un motivo del catálogo y `texto` una explicación libre (solo con un motivo que la admita, como `OTRO`);
@@ -1866,23 +1878,23 @@ pytest
 Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisiones, tomadas al medir que el 83 % del tiempo de la suite se iba en preparar y limpiar fixtures y solo el 17 % en los tests:
 
 - **Un esquema por sesión, no por test** (`tests/database.py`, `tests/conftest.py`): el esquema se crea una vez y entre tests solo se vacían las tablas con filas (`empty_tables`, con `DELETE` y reinicio de las secuencias: `TRUNCATE` cuesta más que recrear el esquema en esta base). Se descartó envolver cada test en una transacción que se deshace porque la aplicación y los tests dependen de confirmaciones reales (`now()` cambia entre transacciones; los tests con hilos usan otras conexiones).
-- **Instantáneas** (`take_snapshot` y `restore_snapshot`): los estados caros de construir (los 76 tickets de demostración, 2,6 s) se construyen una vez por proceso y cada test restaura una copia exacta de la base (y de los adjuntos que dejó la carga) en milisegundos.
+- **Instantáneas** (`take_snapshot` y `restore_snapshot`): los estados caros de construir (los 87 tickets de demostración, 2,6 s) se construyen una vez por proceso y cada test restaura una copia exacta de la base (y de los adjuntos que dejó la carga) en milisegundos.
 - **Paralelo con `pytest-xdist`** (`-n 6`, un proceso por núcleo físico): cada proceso usa su propio esquema de PostgreSQL (`wd_test_gw0`...) dentro de `workdesk_test`, así que no hay bases nuevas y la protección sigue valiendo.
 - **Áreas** (`tests/areas.py`): cada módulo de tests pertenece a un área y su marcador se asigna solo (`pytest -m sla`, `-m "tickets or notifications"`); `unit` marca a los que no usan la base. Un módulo sin área hace fallar la recolección, así que ninguno queda fuera. Los marcadores están declarados en `pytest.ini` (`--strict-markers`).
 - **Hash de la contraseña de prueba:** se calcula una vez por proceso (hash real de Argon2id con los parámetros de producción).
-- **Datos de demostración compartidos** (`tests/demo_data.py` y los fixtures `prepared` y `seeded` de `conftest.py`): los 76 tickets de `seed-demo-tickets` sirven de datos realistas para probar cualquier pantalla. `clock` (la hora de las pruebas de SLA) también vive en `conftest.py`.
+- **Datos de demostración compartidos** (`tests/demo_data.py` y los fixtures `prepared` y `seeded` de `conftest.py`): los 87 tickets de `seed-demo-tickets` sirven de datos realistas para probar cualquier pantalla. `clock` (la hora de las pruebas de SLA) también vive en `conftest.py`.
 - **Migraciones** (`tests/test_migrations.py`): como el esquema de la suite sale de los modelos (`db.create_all()`), ninguna otra prueba comprobaba las migraciones. Esta las sube, las compara con los modelos (`db check`), las baja y las vuelve a subir en un esquema desechable de `workdesk_test`, en un subproceso (el `env.py` de Alembic reconfigura el logging de todo el proceso).
 - Mientras se desarrolla basta con el área que se toca; **antes de un commit o un Pull Request se ejecuta siempre la suite completa**.
 
 ## Estado actual de la suite
 
 ```text
-3997 tests passing (unos 5 minutos con `-n 6`)
+4022 tests passing (unos 5 minutos con `-n 6`)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
 
-Hay cinco redes de seguridad que no dependen de recordar nada al añadir código: `tests/test_route_protection.py` (toda ruta exige sesión y toda ruta POST exige CSRF), `tests/test_route_authorization.py` (propiedad del ticket y rol en cada ruta), `tests/test_pages_smoke.py` (todas las pantallas con los 76 tickets de demostración y un presupuesto de consultas por petición), `tests/test_migrations.py` (las migraciones suben, coinciden con los modelos, bajan y una instalación limpia funciona) y `tests/test_docs_coherence.py` (variables de entorno, comandos, migraciones y rutas documentadas).
+Hay cinco redes de seguridad que no dependen de recordar nada al añadir código: `tests/test_route_protection.py` (toda ruta exige sesión y toda ruta POST exige CSRF), `tests/test_route_authorization.py` (propiedad del ticket y rol en cada ruta), `tests/test_pages_smoke.py` (todas las pantallas con los 87 tickets de demostración y un presupuesto de consultas por petición), `tests/test_migrations.py` (las migraciones suben, coinciden con los modelos, bajan y una instalación limpia funciona) y `tests/test_docs_coherence.py` (variables de entorno, comandos, migraciones y rutas documentadas).
 
 El relato por entrega —cuántos tests aportó cada una, qué cubre cada módulo y las pruebas de mutación que las defendieron— está en `docs/14_historial_de_implementacion.md`.
 

@@ -69,7 +69,7 @@ La última versión estable es **`v0.5.0 — SLA y notificaciones internas`** y 
 | `v0.4.0` | Se trabaja en equipo: grupos, asignación, comentarios y notas internas, adjuntos, resolución y cierre, relaciones y bloqueo de edición | 2201 |
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 
-Hoy la suite cuenta con **3997 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **4022 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -279,7 +279,7 @@ WorkDesk/
 │   ├── conftest.py            # fixtures: app, client, make_user, instantáneas de datos de demostración
 │   ├── database.py            # protección de workdesk_test, esquemas por proceso, limpieza e instantáneas
 │   ├── areas.py               # qué módulo de tests pertenece a qué área (marcadores de pytest)
-│   ├── demo_data.py           # los 76 tickets de demostración compartidos por los tests
+│   ├── demo_data.py           # los 87 tickets de demostración compartidos por los tests
 │   ├── seed_helpers.py, sla_helpers.py, ticket_helpers.py   # ayudantes compartidos
 │   └── test_*.py              # un módulo por tema (autenticación, tickets, SLA, notificaciones, seeds...)
 │
@@ -520,7 +520,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 5 | `seed-demo` (opcional) | Carga un equipo de soporte ficticio para probar el sistema. |
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
-| 8 | `seed-demo-tickets` (opcional) | Carga 76 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
+| 8 | `seed-demo-tickets` (opcional) | Carga 87 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
 | 9 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
@@ -743,6 +743,18 @@ Para probar los distintos roles sin crear usuarios a mano, carga el equipo de de
 
 ---
 
+## El dashboard del Solicitante
+
+Al iniciar sesión como **Solicitante** se abre un resumen de tus solicitudes:
+
+- **Cuatro contadores**, cada uno un enlace al listado que lo explica: *Tickets abiertos*, *En progreso*, *Requieren tu revisión* (resueltos que esperan que confirmes o rechaces la solución) y *Cerrados recientemente* (los últimos 7 días).
+- **Un aviso** cuando tienes soluciones por revisar: con una sola, el botón abre ese ticket; con varias, abre el listado filtrado.
+- **Mis tickets recientes** (los 5 con actividad más reciente, con quién los atiende) y **Notificaciones recientes**.
+
+No muestra SLA, grupos, carga de técnicos ni métricas globales: solo lo tuyo. El dashboard del personal sigue siendo provisional hasta la entrega correspondiente de `v0.6.0`. Con los datos de demostración, cada Solicitante tiene al menos una solución por revisar.
+
+---
+
 ## Consultar y buscar tickets
 
 La opción **Tickets** (para el personal) o **Mis tickets** (para el Solicitante), en el menú lateral, lista los tickets que cada persona puede ver:
@@ -805,7 +817,7 @@ Una lista de comprobación, de media hora si la sigues entera, para ver con tus 
 
 ### Tener tickets con los que probar
 
-Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 76 tickets de demostración:
+Para ver la paginación, la búsqueda, los filtros y los historiales hacen falta muchos tickets. WorkDesk incluye un comando opcional que carga 87 tickets de demostración:
 
 ```bash
 python -m flask --app src.workdesk seed-demo-tickets
@@ -831,7 +843,7 @@ python -m flask --app src.workdesk seed-demo-tickets
 
 **Cómo se comporta**
 
-- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 76.`
+- **Puedes ejecutarlo de nuevo cuando quieras y no duplica nada.** Cada ticket de la lista tiene una `clave` estable, así que los que ya existen no se vuelven a crear: se **refrescan**. Sus fechas (creación, historial, solicitantes y última modificación) se recalculan respecto del día en que lo ejecutas, de modo que la demostración siempre parece reciente. Responde `Tickets demo creados: 0. Actualizados (ya existían): 87.`
 - Un ticket demo se reconoce aunque después le cambien el título. Si lo editaste a mano mientras probabas, esa edición se desplaza junto con el ticket para que el historial siga en orden y nada quede en el futuro. El contenido (título, descripción, categoría, prioridad...) no se sobrescribe, y los tickets que creaste a mano no se tocan nunca.
 - No crea categorías ni ubicaciones. Si falta alguna, usa `Sin clasificar` o deja el ticket sin ubicación, y te avisa con un mensaje `Aviso:`.
 - Si falta `seed-demo` o `seed-catalogs`, se detiene con un mensaje que dice qué ejecutar primero y no carga nada. Si algo falla a mitad de la carga, se revierte todo.
@@ -935,7 +947,7 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 
 Entra, por ejemplo, como `diego.soto`.
 
-1. **Tickets** muestra todos los tickets (con los datos de demostración, los 76), incluidos los que crearon otras personas.
+1. **Tickets** muestra todos los tickets (con los datos de demostración, los 87), incluidos los que crearon otras personas.
 2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
 3. **Cambiar el estado:** abre un ticket `Nuevo` y pulsa **Iniciar trabajo**: una pantalla de confirmación muestra `Nuevo → En progreso`; al confirmar, el ticket queda **En progreso** y el historial registra `Estado: «Nuevo» → «En progreso»`. Ahora el botón es **Poner en espera**: elige un motivo (por ejemplo `Otro motivo`, que permite escribir una explicación) y confirma. En el historial, tú ves `Motivo de espera: ...`; el Solicitante ve solo el cambio de estado. Pulsa **Reactivar** para volver a En progreso.
 4. Prueba el aviso de conflicto: abre un ticket en dos pestañas (A y B) y pulsa **Iniciar trabajo** en ambas. Confirma en A; al confirmar en B aparece `Otra persona modificó este ticket mientras decidías...`.
@@ -998,7 +1010,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | La campana no muestra número y **Notificaciones** está vacío | Los avisos aparecen cuando pasa algo en un ticket (asignarlo, cambiar su estado, comentar), y crear un ticket no avisa a nadie: una instalación nueva no tiene ninguno. | Para ver el centro funcionando, ejecuta `python -m flask --app src.workdesk seed-demo-notifications --username TU_USUARIO` (necesita tickets que esa cuenta pueda ver, por ejemplo los de `seed-demo-tickets`). |
 | `seed-demo-notifications`: "No existe el usuario: ..." o "Faltan los usuarios de demostración..." | El usuario de `--username` está mal escrito, o ejecutaste el comando sin opciones y falta `seed-demo`. | Revisa el nombre de usuario, o ejecuta antes `seed-demo`. |
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
-| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 76" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
+| `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 87" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -1243,7 +1255,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-3997 tests
+4022 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1251,7 +1263,7 @@ Los tests cubren, por área (la tabla de más abajo las lista): autenticación y
 Hay cinco redes de seguridad que no dependen de recordar nada al añadir código:
 
 - **`tests/test_route_protection.py` y `tests/test_route_authorization.py`** recorren el mapa de rutas real: toda ruta exige sesión, toda ruta POST exige token CSRF, el ticket ajeno responde 404 y el rol sin permiso, 403. Una ruta nueva queda cubierta sin tocar el test.
-- **`tests/test_pages_smoke.py`** abre todas las pantallas con los 76 tickets de demostración para cada rol y vigila un **presupuesto de consultas** por petición: si una pantalla empieza a hacer una consulta por fila, falla aunque funcione bien con pocos datos.
+- **`tests/test_pages_smoke.py`** abre todas las pantallas con los 87 tickets de demostración para cada rol y vigila un **presupuesto de consultas** por petición: si una pantalla empieza a hacer una consulta por fila, falla aunque funcione bien con pocos datos.
 - **`tests/test_migrations.py`** comprueba que las migraciones suben, coinciden con los modelos (`db check`), bajan y vuelven a subir, y que una instalación construida **solo con ellas** sigue los pasos de este README y deja lo esperado en la base de datos (secuencias, valores por defecto y restricciones, que `db check` no ve).
 - **`tests/test_docs_coherence.py`** exige que cada variable de entorno, comando propio, migración y ruta figuren en el README, `.env.example` y `PROJECT_CONTEXT.md`.
 - **`tests/test_security_headers.py`** vigila las cabeceras de seguridad de todas las respuestas y la forma común de los errores JSON.
@@ -1303,7 +1315,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 3997 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 4022 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 

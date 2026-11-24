@@ -1,0 +1,155 @@
+/*
+ * Dashboards (docs/11, UI-002 y 17.2). Solo tokens `--wd-*`: ningún color escrito a mano.
+ */
+
+.kpi-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    margin-bottom: 1rem;
+}
+
+.kpi-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1rem 1.1rem;
+    background: var(--wd-surface);
+    border: 1px solid var(--wd-border);
+    border-radius: var(--wd-radius);
+    box-shadow: var(--wd-shadow);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+}
+
+.kpi-card:hover,
+.kpi-card:focus-visible {
+    border-color: var(--wd-primary);
+    color: inherit;
+}
+
+.kpi-card--warning {
+    background: var(--wd-warning-soft);
+}
+
+.kpi-card--danger {
+    background: var(--wd-danger-soft);
+}
+
+.kpi-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--wd-radius);
+    font-size: 1.35rem;
+}
+
+.kpi-icon--primary {
+    background: var(--wd-primary-soft);
+    color: var(--wd-primary);
+}
+
+.kpi-icon--purple {
+    background: var(--wd-purple-soft);
+    color: var(--wd-purple);
+}
+
+.kpi-icon--success {
+    background: var(--wd-success-soft);
+    color: var(--wd-success);
+}
+
+.kpi-icon--warning {
+    background: var(--wd-warning-soft);
+    color: var(--wd-warning);
+}
+
+.kpi-icon--danger {
+    background: var(--wd-danger-soft);
+    color: var(--wd-danger);
+}
+
+.kpi-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.kpi-label {
+    font-weight: 600;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.kpi-hint {
+    color: var(--wd-text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Aviso de algo que espera a quien consulta (por ejemplo, una solución por revisar). */
+.dashboard-alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--wd-warning-soft);
+    border: 1px solid var(--wd-border);
+    border-radius: var(--wd-radius);
+}
+
+.dashboard-columns {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+@media (max-width: 991.98px) {
+    .dashboard-columns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.notification-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notification-list li {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--wd-border);
+}
+
+.notification-list li:last-child {
+    border-bottom: 0;
+}
+
+.notification-list li.is-unread {
+    background: var(--wd-primary-soft);
+}
+
+.notification-dot {
+    flex: none;
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-top: 0.4rem;
+    border-radius: 50%;
+    background: var(--wd-border);
+}
+
+.is-unread .notification-dot {
+    background: var(--wd-primary);
+}

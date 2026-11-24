@@ -143,8 +143,15 @@ def list_tickets(
     sort: str = DEFAULT_SORT,
     page: int = 1,
     now=None,
+    per_page: int = PAGE_SIZE,
+    load_technicians: bool = False,
 ):
     """Devuelve una página de los tickets que `user` puede ver.
+
+    `per_page` permite pedir una página corta (los dashboards piden 5) y
+    `load_technicians` carga los técnicos aunque quien consulta no sea del personal
+    (el Solicitante ve «Atendido por» en su dashboard).
+
 
     Aplica la visibilidad, la búsqueda y los filtros en PostgreSQL y pagina
     ahí mismo. Estado y prioridad se cargan con el mismo JOIN del filtro y
@@ -184,10 +191,13 @@ def list_tickets(
     )
 
     if staff:
-        # Las columnas Técnico(s) y Grupo: una consulta por lote, no una por fila.
+        # El grupo es un dato interno: solo el personal lo carga y lo ve.
+        statement = statement.options(joinedload(Ticket.grupo))
+
+    if staff or load_technicians:
+        # Las columnas Técnico(s): una consulta por lote, no una por fila.
         statement = statement.options(
-            joinedload(Ticket.grupo),
-            selectinload(Ticket.tecnicos).joinedload(TicketTechnician.tecnico),
+            selectinload(Ticket.tecnicos).joinedload(TicketTechnician.tecnico)
         )
 
     if tab == TAB_OPEN:
@@ -198,8 +208,8 @@ def list_tickets(
     return db.paginate(
         statement,
         page=page,
-        per_page=PAGE_SIZE,
-        max_per_page=PAGE_SIZE,
+        per_page=per_page,
+        max_per_page=per_page,
         error_out=False,
     )
 

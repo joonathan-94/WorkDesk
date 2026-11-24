@@ -23,6 +23,12 @@
     /* Notificación sin leer (docs/11, sección 30): fondo azul muy suave. */
     --wd-primary-soft: #eff6ff;
 
+    /* Fondos suaves de las tarjetas de indicadores (docs/11, 17.2): el mismo matiz
+       que los colores de estado, con el tono suficiente para un icono. */
+    --wd-success-soft: #dcfce7;
+    --wd-warning-soft: #fef3c7;
+    --wd-danger-soft: #fee2e2;
+
     --wd-radius: 8px;
 
     --wd-shadow:
