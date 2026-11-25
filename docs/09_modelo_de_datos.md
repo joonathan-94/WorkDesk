@@ -1826,22 +1826,24 @@ La definición de cada parámetro numérico (su clave, su variable de entorno, s
 
 | Clave | Variable de entorno | Por defecto | Rango |
 | --- | --- | --- | --- |
-| `autenticacion.max_intentos` | `LOGIN_MAX_FAILED_ATTEMPTS` | 5 | 1 o más |
-| `autenticacion.bloqueo_minutos` | `LOGIN_LOCK_MINUTES` | 15 | 1 o más |
+| `autenticacion.max_intentos` | `LOGIN_MAX_FAILED_ATTEMPTS` | 5 | 1 a 100 |
+| `autenticacion.bloqueo_minutos` | `LOGIN_LOCK_MINUTES` | 15 | 1 a 10 080 |
 | `autenticacion.password_longitud_minima` | `PASSWORD_MIN_LENGTH` | 12 | 8 a 128 |
-| `sesion.inactividad_minutos` | `SESSION_IDLE_MINUTES` | 30 | 1 o más |
-| `sesion.duracion_maxima_horas` | `SESSION_MAX_HOURS` | 8 | 1 o más |
-| `comentarios.ventana_edicion_minutos` | `COMMENT_EDIT_WINDOW_MINUTES` | 30 | 1 o más |
-| `reapertura.ventana_dias` | `REOPEN_WINDOW_DAYS` | 30 | 1 o más |
-| `cierre.auto_cierre_horas` | `AUTO_CLOSE_HOURS` | 24 | 1 o más |
-| `edicion.bloqueo_duracion_segundos` | `EDIT_LOCK_TTL_SECONDS` | 120 | 1 o más |
-| `edicion.bloqueo_latido_segundos` | `EDIT_LOCK_HEARTBEAT_SECONDS` | 45 | 1 o más, menor que la duración |
-| `planificador.intervalo_segundos` | `SCHEDULER_INTERVAL_SECONDS` | 60 | 1 o más |
-| `carga.tickets_activos_carga_alta` | `WORKLOAD_HIGH_ACTIVE_TICKETS` | 10 | 0 o más (0 desactiva la marca) |
-| `archivos.tamano_maximo_bytes` | `UPLOAD_MAX_BYTES` | 10 485 760 | 1 o más |
-| `archivos.cantidad_maxima_por_ticket` | `UPLOAD_MAX_FILES_PER_TICKET` | 20 | 1 o más |
+| `sesion.inactividad_minutos` | `SESSION_IDLE_MINUTES` | 30 | 1 a 1440 |
+| `sesion.duracion_maxima_horas` | `SESSION_MAX_HOURS` | 8 | 1 a 720 |
+| `comentarios.ventana_edicion_minutos` | `COMMENT_EDIT_WINDOW_MINUTES` | 30 | 1 a 43 200 |
+| `reapertura.ventana_dias` | `REOPEN_WINDOW_DAYS` | 30 | 1 a 3650 |
+| `cierre.auto_cierre_horas` | `AUTO_CLOSE_HOURS` | 24 | 1 a 8760 |
+| `edicion.bloqueo_duracion_segundos` | `EDIT_LOCK_TTL_SECONDS` | 120 | 1 a 3600 |
+| `edicion.bloqueo_latido_segundos` | `EDIT_LOCK_HEARTBEAT_SECONDS` | 45 | 1 a 3600, menor que la duración |
+| `planificador.intervalo_segundos` | `SCHEDULER_INTERVAL_SECONDS` | 60 | 1 a 86 400 |
+| `carga.tickets_activos_carga_alta` | `WORKLOAD_HIGH_ACTIVE_TICKETS` | 10 | 0 a 10 000 (0 desactiva la marca) |
+| `archivos.tamano_maximo_bytes` | `UPLOAD_MAX_BYTES` | 10 485 760 | 1 a 1 073 741 824 |
+| `archivos.cantidad_maxima_por_ticket` | `UPLOAD_MAX_FILES_PER_TICKET` | 20 | 1 a 1000 |
+| `sla.habilitado` | `SLA_ENABLED` | `true` | `true` o `false` |
+| `cierre.auto_cierre_habilitado` | `AUTO_CLOSE_ENABLED` | `true` | `true` o `false` |
 
-Las unidades son las del código (el período de reapertura es en días y el cierre automático en horas corridas), no las que sugería el diseño inicial (`reapertura.periodo_horas`, `cierre.validacion_horas`). Quedan por definir, con la pantalla de configuración, los parámetros que no son numéricos: el interruptor general del SLA, la activación del cierre automático, la obligatoriedad de la ubicación (`ubicaciones.obligatoria`) y los eventos de notificación (`notificaciones.sla.habilitada` y similares).
+Las unidades son las del código (el período de reapertura es en días y el cierre automático en horas corridas), no las que sugería el diseño inicial (`reapertura.periodo_horas`, `cierre.validacion_horas`). Quedan por definir la obligatoriedad de la ubicación (`ubicaciones.obligatoria`) y los eventos de notificación (`notificaciones.sla.habilitada` y similares).
 
 ### Lo que NO debe almacenarse aquí
 

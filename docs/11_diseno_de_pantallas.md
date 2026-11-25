@@ -2268,7 +2268,8 @@ Secciones:
 - Prioridades;
 - Ubicaciones;
 - Motivos de espera;
-- Estados y transiciones.
+- Estados y transiciones;
+- Comentarios y edición (`v0.7.0`).
 
 ### Operación y políticas
 
@@ -2276,10 +2277,12 @@ Secciones:
 - Cierre y reapertura;
 - Notificaciones;
 - Archivos;
+- Carga y planificador (`v0.7.0`);
 - Retención.
 
 ### Sistema y seguridad
 
+- Seguridad y sesión (`v0.7.0`);
 - Auditoría;
 - Respaldos;
 - Estado del sistema.
@@ -2524,7 +2527,7 @@ Estos valores son ejemplos visuales, no constantes obligatorias del sistema.
 - **La pausa en espera es por política**, como en el modelo (`docs/09`, 20.2): una casilla en el formulario de cada prioridad en lugar del único interruptor del diseño inicial, que permite pausar el reloj en unas prioridades y en otras no.
 - **El umbral de aviso** es opcional (1 a 100 %) y se propone en 80 % al definir una política nueva.
 - **Si otra persona cambió la política mientras la pantalla estaba abierta**, no se guarda nada: se avisa y se vuelve al formulario con lo vigente (como con el calendario).
-- **Quedan para `v0.7.0`**, con la tabla `configuracion`, el interruptor general «Aplicar SLA a los tickets» y los avisos configurables de «Alertas y comportamiento». Mientras tanto, desactivar las políticas desactiva el SLA y los avisos de la fase siempre se generan.
+- **Interruptor general (`v0.7.0`, entrega 3).** La pantalla «SLA» empieza con la tarjeta *Aplicar SLA a los tickets* (estado, qué implica y un botón que abre la confirmación con motivo opcional, `/admin/sla/activate` y `/deactivate`). Apagado, ninguna pantalla muestra SLA. Los avisos configurables de «Alertas y comportamiento» se tratan con la configuración de notificaciones (UI-024).
 
 ### Calendario laboral
 
@@ -2591,6 +2594,8 @@ El SLA es informativo y no impide continuar trabajando.
 
 ## UI-023 — Cierre y reapertura
 
+**Implementada (`v0.7.0`, entrega 3)** en `/admin/settings/cierre`, con el mismo patrón que las demás pantallas de configuración (*Seguridad y sesión*, *Archivos*, *Comentarios y edición*, *Carga y planificador*): un formulario con todos los campos del grupo, la ayuda y el rango de cada uno, errores junto al campo, la marca «Valor propio» con el valor inicial y «Restablecer», y un motivo opcional. Confirmación del Solicitante: la validación ya es parte del flujo y no se configura.
+
 Debe configurar:
 
 - confirmación del Solicitante;
@@ -2619,6 +2624,8 @@ No asumir obligatoriamente:
 ---
 
 ## UI-025 — Configuración de archivos
+
+**Implementada (`v0.7.0`, entrega 3)** en `/admin/settings/archivos`: el tamaño máximo por archivo (en KB) y los archivos activos por ticket. Los tipos permitidos se muestran pero no se editan: son la lista blanca de seguridad.
 
 Debe permitir definir:
 

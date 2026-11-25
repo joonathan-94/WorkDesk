@@ -11,6 +11,7 @@
 {% endblock %}
 
 {% block content %}
+    {% set show_sla = sla_enabled() %}
     {% set list_url = 'tickets.list_tickets_page' %}
     {% set summary = data.overview.summary %}
 
@@ -95,6 +96,7 @@
             alert=summary.critical > 0,
         ) }}
 
+        {% if show_sla %}
         {{ kpi_card(
             'Fuera de SLA',
             summary.overdue,
@@ -113,6 +115,7 @@
             icon='hourglass-split',
             tone='warning',
         ) }}
+        {% endif %}
 
         {{ kpi_card(
             'En espera',
@@ -169,6 +172,7 @@
                             href="{{ url_for(list_url, tecnico=me, activos=1, prioridad=data.critical_priority_id, vista='todos') }}"
                         >Críticos</a>
                     </div>
+                    {% if show_sla %}
                     <div class="col-6 col-md-4 col-xl-2">
                         <div class="kpi-value">{{ mine.at_risk if mine else 0 }}</div>
                         <a
@@ -179,6 +183,7 @@
                             {{ mine.overdue if mine else 0 }} vencidos · {{ mine.near_due if mine else 0 }} próximos
                         </div>
                     </div>
+                    {% endif %}
                     <div class="col-6 col-md-4 col-xl-2">
                         <div class="kpi-value">{{ data.my_work.resolved_recently }}</div>
                         <span class="small">Resueltos por mí en 7 días</span>
@@ -212,7 +217,9 @@
                             <th scope="col">Estado</th>
                             <th scope="col">Prioridad</th>
                             <th scope="col">Técnico(s)</th>
-                            <th scope="col">SLA</th>
+                            {% if show_sla %}
+                                <th scope="col">SLA</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -238,12 +245,14 @@
                                         <span class="text-secondary">Sin asignar</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ sla_badge(data.slas[ticket.id], show_time=False) }}</td>
+                                {% if show_sla %}
+                                    <td>{{ sla_badge(data.slas[ticket.id], show_time=False) }}</td>
+                                {% endif %}
                             </tr>
                         {% else %}
                             <tr>
                                 <td
-                                    colspan="5"
+                                    colspan="{{ 5 if show_sla else 4 }}"
                                     class="text-center text-secondary py-4"
                                 >No hay tickets en trabajo.</td>
                             </tr>
@@ -413,6 +422,9 @@
 
                     <div class="col-md-4">
                         <div class="fw-semibold">Políticas de SLA</div>
+                        {% if not show_sla %}
+                            <div class="small text-secondary">El SLA está desactivado.</div>
+                        {% endif %}
                         <div>
                             {{ data.admin.policies_defined }} de {{ data.admin.priorities_total }} prioridades con política activa
                         </div>

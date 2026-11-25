@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/configuration-table
+feature/configuration-screen
 ```
 
-Entrega 2 de `v0.7.0`: la tabla `configuracion` y la lectura de los parámetros desde ella. **Con una migración.** Ver «Configuración administrable».
+Entrega 3 de `v0.7.0`: las pantallas de configuración y los interruptores del SLA y del cierre automático. **Sin migraciones.** Ver «Pantallas de configuración e interruptores».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -181,6 +181,21 @@ La tabla `configuracion` (docs/09, 26.1) y el servicio que lee y cambia los 14 p
 - **Coste medido.** Cada petición autenticada comprueba los límites de sesión, así que lee la tabla: **tres consultas** por pantalla mínima (usuario con su rol, configuración y contador de la campana; eran dos) y tres en la consulta de la campana (`test_request_cost`). Es una consulta sobre una tabla de unas pocas filas.
 - **Interacción hallada al integrar:** `security/authorization.py` no depende de los modelos y ahora necesita leer la configuración, y `settings.py` importaba `security` para los límites de la contraseña: un ciclo de importación. Se resolvió dejando esos dos límites (8 y 128) definidos en `settings.py`, que no depende de nada, y reexportados por `security.password_policy`.
 - **Tests:** 54 nuevos (4234 → 4288), la mayoría de `tests/test_configuration.py`.
+
+## Pantallas de configuración e interruptores (entrega 3 de `v0.7.0`)
+
+El Administrador cambia desde la web los parámetros de la entrega 2 y apaga o enciende el SLA y el cierre automático. **Sin migraciones.**
+
+- **Cinco pantallas** en `/admin/settings/<grupo>`, enlazadas desde el hub: *Seguridad y sesión* (intentos fallidos, bloqueo, longitud mínima de contraseña, inactividad y duración de la sesión), *Cierre y reapertura* (activación y plazo del cierre automático, plazo de reapertura), *Archivos* (tamaño en KB y cantidad por ticket; los tipos permitidos se muestran y no se pueden cambiar), *Comentarios y edición* (ventana de edición y bloqueo) y *Carga y planificador*. Los textos viven en `admin/settings_screens.py` (solo presentación) y las reglas en `configuration.py`.
+- **Una pantalla guarda todos sus campos a la vez** (`save_settings`): se validan juntos, así que la duración y el latido del bloqueo se pueden cambiar en cualquier combinación válida, y solo se escribe y audita lo que cambió. Cada valor propio se marca «Valor propio», muestra el inicial y tiene «Restablecer».
+- **Conflicto.** La pantalla envía la huella de lo que vio (`state_token`); si otra persona cambió alguno de sus valores, no se guarda nada y se avisa.
+- **Errores junto al campo**, con el rango en las unidades de la pantalla; los mensajes que relacionan dos parámetros usan sus nombres visibles. Un tope de bytes que no es múltiplo de 1 KB (definido por entorno) se muestra redondeado y **no se reescribe** si no se toca.
+- **Máximos para todos los números** (`settings.py`): con valores editables, un plazo desmesurado (10^15 días) habría hecho fallar el cálculo de fechas de cada pantalla. Cambio de comportamiento: una variable de entorno por encima del máximo ahora impide arrancar.
+- **Interruptor del SLA** (`SLA_ENABLED`, `/admin/sla/activate` y `/deactivate`, con confirmación y motivo). Apagado **no muestra ni avisa nada**: insignias, columna y filtro del listado, orden «SLA más urgente», tarjeta del detalle, advertencia al bajar la prioridad, tarjetas y columnas de los dashboards y de la carga de trabajo, y avisos y registro de incumplimiento del planificador. **Sigue calculando** los períodos, así que al encenderlo no hay nada que reconstruir; lo que siga pendiente (también lo vencido mientras tanto) se avisa en la pasada siguiente.
+- **Cierre automático** (`AUTO_CLOSE_ENABLED`, RF-053): apagado, el planificador no cierra nada.
+- **El planificador en marcha toma la frecuencia nueva sin reiniciarse** (se lee antes de cada espera; si la base no responde usa la inicial). `--interval` sigue mandando.
+- **Fallo hallado y corregido antes de cerrar:** al pulsar Enter en un campo, el navegador usaba el primer botón de envío, que era un «Restablecer». Hay un botón «Guardar» oculto en primer lugar y un test.
+- **Tests:** 94 nuevos o ampliados (4288 → 4382): `test_settings_screens`, `test_sla_switch` y ampliaciones de `test_configuration` y `test_settings`; las pantallas nuevas entraron en `test_pages_smoke`.
 
 ## Próximo hito
 
@@ -417,7 +432,7 @@ No deben versionarse:
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
 
-Los 14 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
+Los 14 parámetros numéricos y los 2 interruptores (SLA y cierre automático) (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
 
 Variables principales:
 
@@ -436,6 +451,8 @@ SESSION_MAX_HOURS
 COMMENT_EDIT_WINDOW_MINUTES
 REOPEN_WINDOW_DAYS
 AUTO_CLOSE_HOURS
+AUTO_CLOSE_ENABLED
+SLA_ENABLED
 SCHEDULER_INTERVAL_SECONDS
 WORKLOAD_HIGH_ACTIVE_TICKETS
 EDIT_LOCK_TTL_SECONDS
@@ -462,6 +479,8 @@ SESSION_MAX_HOURS=8
 COMMENT_EDIT_WINDOW_MINUTES=30
 REOPEN_WINDOW_DAYS=30
 AUTO_CLOSE_HOURS=24
+AUTO_CLOSE_ENABLED=true
+SLA_ENABLED=true
 SCHEDULER_INTERVAL_SECONDS=60
 WORKLOAD_HIGH_ACTIVE_TICKETS=10
 EDIT_LOCK_TTL_SECONDS=120
@@ -1624,6 +1643,10 @@ GET, POST  /admin/sla/calendar
 GET, POST  /admin/sla/priorities/<id>/edit
 GET, POST  /admin/sla/priorities/<id>/deactivate
 GET, POST  /admin/sla/priorities/<id>/activate
+GET, POST  /admin/sla/activate
+GET, POST  /admin/sla/deactivate
+GET, POST  /admin/settings/<grupo>
+POST       /admin/settings/<grupo>/reset/<variable>
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -1978,7 +2001,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4288 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4382 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

@@ -9,15 +9,19 @@ from datetime import datetime
 
 from flask import flash, redirect, render_template, request, url_for
 
+from .. import settings
+from ..configuration import save_setting
 from ..extensions import db
 from ..formatting import app_zone
 from ..security import admin_only, current_actor
+from ..users.forms import ReasonForm
 from . import bp
 from .forms import (
     MAX_HOLIDAYS_TEXT_LENGTH,
     WorkCalendarForm,
     calendar_form_data,
 )
+from .periods import sla_enabled
 from .policies import list_policy_rows, on_hold_state_name
 from .work_calendar import (
     MAX_REASON_LENGTH,
@@ -53,6 +57,42 @@ def index():
         upcoming_holidays=upcoming[:UPCOMING_HOLIDAYS],
         versions=list_calendar_versions(),
     )
+
+
+@bp.route("/activate", methods=["GET", "POST"])
+@admin_only
+def switch_on():
+    return _switch(enabling=True)
+
+
+@bp.route("/deactivate", methods=["GET", "POST"])
+@admin_only
+def switch_off():
+    return _switch(enabling=False)
+
+
+def _switch(*, enabling: bool):
+    """El interruptor general «Aplicar SLA a los tickets» (docs/11, UI-022)."""
+    if sla_enabled() == enabling:
+        flash(f"El SLA ya está {'activado' if enabling else 'desactivado'}.", "info")
+
+        return redirect(url_for(INDEX_ENDPOINT))
+
+    form = ReasonForm()
+
+    if form.validate_on_submit():
+        save_setting(
+            settings.SLA_ENABLED,
+            enabling,
+            actor=current_actor(),
+            reason=form.motivo.data,
+        )
+        db.session.commit()
+        flash(f"El SLA quedó {'activado' if enabling else 'desactivado'}.", "success")
+
+        return redirect(url_for(INDEX_ENDPOINT))
+
+    return render_template("sla/switch.html", form=form, enabling=enabling)
 
 
 @bp.route("/calendar", methods=["GET", "POST"])

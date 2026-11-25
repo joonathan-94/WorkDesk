@@ -39,12 +39,12 @@ from flask import current_app
 from sqlalchemy import and_, or_
 
 from . import settings
-from .configuration import forget_cached_settings, value_of
+from .configuration import forget_cached_settings, initial_value, value_of
 from .extensions import db
 from .models import Estado, PeriodoSla, Ticket, TicketEvent
 from .notifications.events import notify_sla_breach, notify_sla_warning
 from .security.authorization import RESOLVED_STATE
-from .sla.periods import current_time
+from .sla.periods import current_time, sla_enabled
 from .tickets.lifecycle import close_automatically
 from .tickets.service import record_ticket_event
 from .tickets.storage import remove_stale_temp_files
@@ -181,6 +181,11 @@ def _send_notice(period_id: int, now: datetime) -> str | None:
 def run_sla_notices(now: datetime | None = None) -> tuple[SlaNoticeResult, int]:
     """Envía los avisos de SLA pendientes. Devuelve lo enviado y cuántos elementos
     fallaron. Cada período se procesa y confirma por separado."""
+    if not sla_enabled():
+        # Apagado no se avisa ni se registra nada: al encenderlo, lo que siga pendiente
+        # (también lo vencido mientras tanto) se avisa en la siguiente pasada.
+        return SlaNoticeResult(), 0
+
     now = now or current_time()
     warnings = breaches = failures = 0
 
@@ -226,6 +231,9 @@ def run_auto_close(now: datetime | None = None) -> tuple[int, int]:
     Devuelve cuántos cerró y cuántos fallaron. Cada ticket se cierra en su propia
     transacción y `close_automatically` comprueba el plazo con el ticket bloqueado.
     """
+    if not value_of(settings.AUTO_CLOSE_ENABLED):
+        return 0, 0
+
     now = now or current_time()
     cutoff = now - timedelta(hours=value_of(settings.AUTO_CLOSE_HOURS))
     closed = failures = 0
@@ -284,14 +292,38 @@ def _remove_stale_uploads() -> None:
         logger.info("Archivos temporales de subidas eliminados: %s", removed)
 
 
+def _wait_seconds(interval: int | Callable[[], int]) -> int:
+    """Cuánto esperar hasta la próxima pasada.
+
+    Si el intervalo es una función (el de la configuración) se lee antes de cada espera,
+    de modo que un cambio del Administrador se aplica sin reiniciar el planificador. Si no
+    se puede leer (la base de datos no responde) se usa el valor inicial: el planificador
+    debe seguir vivo.
+    """
+    if not callable(interval):
+        return interval
+
+    try:
+        forget_cached_settings()
+        return interval()
+    except Exception:
+        logger.exception("No se pudo leer el intervalo del planificador.")
+        db.session.rollback()
+        return initial_value(settings.SCHEDULER_INTERVAL_SECONDS)
+    finally:
+        db.session.remove()
+
+
 def run_loop(
-    interval_seconds: int,
+    interval_seconds: int | Callable[[], int],
     *,
     should_stop: Callable[[], bool] = lambda: False,
     sleep: Callable[[float], None] = time.sleep,
     on_result: Callable[[SchedulerResult], None] | None = None,
 ) -> None:
     """Ejecuta `run_once` cada `interval_seconds` hasta que `should_stop` lo pida.
+
+    `interval_seconds` es un número o una función que lo devuelve (ver `_wait_seconds`).
 
     Un error inesperado de una pasada se registra y no detiene el bucle: el planificador
     debe seguir vivo para la siguiente. Después de cada pasada se descarta la sesión
@@ -312,4 +344,4 @@ def run_loop(
         if should_stop():
             break
 
-        sleep(interval_seconds)
+        sleep(_wait_seconds(interval_seconds))

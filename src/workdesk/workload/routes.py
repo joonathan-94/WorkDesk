@@ -18,7 +18,7 @@ from ..security import (
     current_actor,
     roles_required,
 )
-from ..sla.periods import STOPPING_STATES
+from ..sla.periods import STOPPING_STATES, sla_enabled
 from ..tickets.queries import list_group_options, list_states
 from . import bp
 from .queries import WorkloadFilters, workload_overview
@@ -58,7 +58,12 @@ def workload_page():
     technician_id = _choice_arg("tecnico", [row.user for row in data.technicians])
     search = request.args.get("q", "").strip()[:MAX_SEARCH_LENGTH]
     sort = request.args.get("orden", DEFAULT_SORT)
-    sort = sort if sort in SORTS else DEFAULT_SORT
+    sorts = dict(SORTS)
+
+    if not sla_enabled():
+        del sorts["riesgo"]
+
+    sort = sort if sort in sorts else DEFAULT_SORT
 
     rows = _filter_and_sort(data.technicians, technician_id, search, sort)
 
@@ -107,7 +112,7 @@ def workload_page():
             "q": search,
             "orden": sort,
         },
-        sorts=SORTS,
+        sorts=sorts,
         filtered=any((filters.group_id, filters.priority_id, filters.state_id, technician_id, search)),
     )
 

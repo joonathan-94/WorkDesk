@@ -27,6 +27,7 @@
 {% endmacro %}
 
 {% block content %}
+    {% set show_sla = sla_enabled() %}
     {% set summary = data.summary %}
 
     {% call page_header(
@@ -80,6 +81,7 @@
             alert=summary.critical > 0,
         ) }}
 
+        {% if show_sla %}
         {{ kpi_card(
             'SLA en riesgo',
             summary.at_risk,
@@ -89,6 +91,7 @@
             tone='danger',
             alert=summary.at_risk > 0,
         ) }}
+        {% endif %}
     </section>
 
     <form
@@ -255,7 +258,9 @@
                         <th scope="col" class="text-end">En progreso</th>
                         <th scope="col" class="text-end">En espera</th>
                         <th scope="col" class="text-end">Críticos</th>
+                        {% if show_sla %}
                         <th scope="col" class="text-end">SLA en riesgo</th>
+                        {% endif %}
                         <th scope="col" class="text-end">Resueltos</th>
                         <th scope="col">Distribución</th>
                     </tr>
@@ -285,12 +290,14 @@
                             <td class="text-end">{{ count_link(row.in_progress, list_link(tecnico=who.id, estado=in_progress_id), 'en progreso') }}</td>
                             <td class="text-end">{{ count_link(row.on_hold, list_link(tecnico=who.id, estado=on_hold_id), 'en espera') }}</td>
                             <td class="text-end">{{ count_link(row.critical, list_link(tecnico=who.id, activos=1, prioridad=critical_id), 'críticos') }}</td>
+                            {% if show_sla %}
                             <td class="text-end">
                                 {{ count_link(row.at_risk, list_link(tecnico=who.id, activos=1, sla='riesgo'), 'con SLA en riesgo') }}
                                 {% if row.overdue %}
                                     <span class="small text-secondary">({{ row.overdue }} vencidos)</span>
                                 {% endif %}
                             </td>
+                            {% endif %}
                             <td class="text-end">{{ count_link(row.resolved, list_link(tecnico=who.id, estado=resolved_id), 'resueltos') }}</td>
                             <td class="distribution-cell">
                                 {% if row.active %}
@@ -317,7 +324,7 @@
                     {% else %}
                         <tr>
                             <td
-                                colspan="8"
+                                colspan="{{ 8 if show_sla else 7 }}"
                                 class="text-center text-secondary py-4"
                             >
                                 {% if filtered %}
@@ -358,7 +365,9 @@
                         <th scope="col" class="text-end">Activos</th>
                         <th scope="col" class="text-end">Sin asignar</th>
                         <th scope="col" class="text-end">Críticos</th>
+                        {% if show_sla %}
                         <th scope="col" class="text-end">SLA en riesgo</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -379,18 +388,22 @@
                                 <td class="text-end">{{ count_link(row.active, list_link(grupo=group.id, activos=1), 'activos') }}</td>
                                 <td class="text-end">{{ count_link(row.unassigned, list_link(grupo=group.id, activos=1, tecnico='ninguno'), 'sin asignar') }}</td>
                                 <td class="text-end">{{ count_link(row.critical, list_link(grupo=group.id, activos=1, prioridad=critical_id), 'críticos') }}</td>
-                                <td class="text-end">{{ count_link(row.at_risk, list_link(grupo=group.id, activos=1, sla='riesgo'), 'con SLA en riesgo') }}</td>
+                                {% if show_sla %}
+                                    <td class="text-end">{{ count_link(row.at_risk, list_link(grupo=group.id, activos=1, sla='riesgo'), 'con SLA en riesgo') }}</td>
+                                {% endif %}
                             {% else %}
                                 <td class="text-end">{{ row.active }}</td>
                                 <td class="text-end">{{ row.unassigned }}</td>
                                 <td class="text-end">{{ row.critical }}</td>
-                                <td class="text-end">{{ row.at_risk }}</td>
+                                {% if show_sla %}
+                                    <td class="text-end">{{ row.at_risk }}</td>
+                                {% endif %}
                             {% endif %}
                         </tr>
                     {% else %}
                         <tr>
                             <td
-                                colspan="5"
+                                colspan="{{ 5 if show_sla else 4 }}"
                                 class="text-center text-secondary py-4"
                             >Todavía no hay grupos.</td>
                         </tr>

@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% set heading = 'Activar el SLA' if enabling else 'Desactivar el SLA' %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("SLA", url_for('sla.index')),
+        (heading, None),
+    ]) }}
+
+    {{ page_header(heading) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('sla.switch_on' if enabling else 'sla.switch_off') }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                {% if enabling %}
+                    WorkDesk volverá a mostrar el SLA y a enviar sus avisos. El reloj de cada
+                    ticket se siguió calculando mientras estaba apagado, así que los avisos
+                    pendientes (también de lo vencido mientras tanto) se enviarán en la
+                    siguiente revisión del planificador.
+                {% else %}
+                    WorkDesk dejará de mostrar el SLA (insignias, filtros, indicadores y
+                    advertencias) y de enviar sus avisos, para todas las personas. El reloj de
+                    cada ticket se sigue calculando, así que podrás volver a activarlo sin
+                    perder nada. Las políticas y el calendario no cambian.
+                {% endif %}
+            </div>
+
+            {{ textarea_field(
+                form.motivo,
+                hint="Opcional. Queda registrado en la auditoría.",
+                maxlength=500,
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button
+                    class="btn {% if enabling %}btn-primary{% else %}btn-danger{% endif %}"
+                    type="submit"
+                >
+                    {{ 'Activar' if enabling else 'Desactivar' }}
+                </button>
+
+                <a class="btn btn-outline-secondary" href="{{ url_for('sla.index') }}">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

@@ -212,11 +212,16 @@ def list_tickets(
 
 
 def _ordering(sort: str) -> tuple:
-    if sort == SORT_SLA:
-        return sla_urgency_order()
+    if sort in (SORT_SLA, SORT_PRIORITY_SLA):
+        # Con el SLA apagado la urgencia no existe: queda la prioridad (si la pedía) y,
+        # dentro de ella, los más recientes.
+        urgency = (
+            sla_urgency_order()
+            if sla_periods.sla_enabled()
+            else _ORDERINGS[DEFAULT_SORT]
+        )
 
-    if sort == SORT_PRIORITY_SLA:
-        return (Prioridad.nivel.desc(), *sla_urgency_order())
+        return urgency if sort == SORT_SLA else (Prioridad.nivel.desc(), *urgency)
 
     return _ORDERINGS.get(sort, _ORDERINGS[DEFAULT_SORT])
 
@@ -276,7 +281,11 @@ def listing_conditions(user, filters: TicketFilters, now=None) -> list:
     if query_text:
         conditions.append(_search_condition(user, query_text))
 
-    if filters.sla is not None and has_any_role(user, *STAFF_ROLES):
+    if (
+        filters.sla is not None
+        and has_any_role(user, *STAFF_ROLES)
+        and sla_periods.sla_enabled()
+    ):
         conditions.append(sla_condition(filters.sla, now or sla_periods.current_time()))
 
     conditions += _assignment_conditions(user, filters)

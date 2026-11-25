@@ -45,6 +45,8 @@ from enum import StrEnum
 
 from sqlalchemy import func
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..formatting import app_zone
 from ..models import (
@@ -439,6 +441,17 @@ def _last_period(ticket_id: int) -> PeriodoSla | None:
 # --- Evaluación -----------------------------------------------------------------------
 
 
+def sla_enabled() -> bool:
+    """Si el SLA se aplica (interruptor general, docs/11, UI-022).
+
+    Apagado, WorkDesk **no muestra ni avisa nada del SLA** (insignias, filtros, orden,
+    indicadores, advertencias y avisos del planificador), pero **sigue calculando** los
+    períodos de cada ticket: al encenderlo los datos ya están al día y no hay que
+    reconstruir nada.
+    """
+    return value_of(settings.SLA_ENABLED)
+
+
 def evaluate_ticket_sla(
     ticket_id: int, now: datetime | None = None
 ) -> SlaSnapshot | None:
@@ -464,6 +477,9 @@ def evaluate_tickets_sla(
 
     if not ids:
         return {}
+
+    if not sla_enabled():
+        return dict.fromkeys(ids)
 
     now = now or current_time()
     periods = _periods_by_ticket(ids)

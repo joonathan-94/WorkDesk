@@ -129,6 +129,8 @@ La fase `v0.2.0` completó:
 
 - **Entrega 2, tabla `configuracion`:** los 14 parámetros numéricos pueden tener ahora un valor elegido por el Administrador, guardado en la base de datos (sin fila rige la variable de entorno o el valor por defecto). Todo el código lee por `value_of`, con una sola consulta por petición y sin caché entre peticiones porque el planificador es otro proceso; cada cambio se valida (también las relaciones entre dos parámetros), se audita y se serializa con un bloqueo de PostgreSQL. Por el camino aparecieron dos interacciones que ningún test de la entrega 1 podía ver: el tope de subida de Flask se fijaba al iniciar y no habría seguido al valor vigente (ahora lo fija una comprobación previa, registrada antes de la protección CSRF, que es quien lee el cuerpo), y un ciclo de importación entre `settings` y `security`. La suite pasó de 4234 a 4288 tests; cada petición autenticada pasó de dos a tres consultas.
 
+- **Entrega 3, pantallas de configuración:** el Administrador edita desde la web los parámetros (cinco pantallas por tema, con restablecer, auditoría y aviso de conflicto) y apaga o enciende el SLA y el cierre automático. Con el SLA apagado nada lo muestra ni avisa, pero los períodos se siguen calculando para que encenderlo no obligue a reconstruir nada; ese es el motivo de la decisión. Aparecieron dos riesgos que solo existen cuando una persona escribe los valores: un número desmesurado habría hecho fallar el cálculo de fechas de cada pantalla (ahora todos tienen máximo) y la tecla Enter habría pulsado un «Restablecer». La suite pasó de 4288 a 4382 tests.
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0
