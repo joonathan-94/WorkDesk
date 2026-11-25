@@ -22,6 +22,7 @@ latido y la duración del bloqueo de edición podrían, cada uno por su lado, de
 combinación inválida que ninguna de las dos validaciones vería.
 """
 
+import json
 import logging
 
 from flask import current_app, g
@@ -131,6 +132,16 @@ def effective_values() -> dict:
 def has_own_value(setting: Setting) -> bool:
     """Si el Administrador eligió un valor propio (y no rige el inicial)."""
     return setting.table_key in _stored_values()
+
+
+def stored_text(table_key: str) -> str | None:
+    """El texto guardado para una clave, o `None` si no hay fila."""
+    return _stored_values().get(table_key)
+
+
+def document_token(table_key: str) -> str:
+    """Como `state_token`, para una clave que guarda un documento (no un parámetro)."""
+    return f"{table_key}={_stored_values().get(table_key, '-')}"
 
 
 def state_token(group) -> str:
@@ -301,3 +312,71 @@ def reset_setting(setting: Setting, *, actor, reason: str | None = None) -> bool
     forget_cached_settings()
 
     return True
+
+
+def save_document(
+    table_key: str,
+    value,
+    *,
+    initial,
+    current,
+    actor,
+    reason: str | None = None,
+    base_token: str | None = None,
+) -> bool:
+    """Guarda como JSON un documento que no es un parámetro de `settings.py`.
+
+    `current` devuelve el valor vigente ya interpretado (se llama con el bloqueo tomado) e
+    `initial` es el que rige sin fila: guardar el inicial borra la fila. Mismas garantías que
+    `save_settings`: solo el Administrador, serializado, con auditoría, detección de
+    conflictos (`base_token`, ver `document_token`) y sin escribir si nada cambió. No hace
+    commit.
+    """
+    reason = _clean_reason(reason)
+    _begin_change(actor)
+
+    if base_token is not None and base_token != document_token(table_key):
+        raise SettingConflictError()
+
+    previous = current()
+
+    if value == previous:
+        return False
+
+    row = db.session.scalar(select(Configuracion).where(Configuracion.clave == table_key))
+    action = AuditAction.CONFIGURACION_MODIFICADA
+
+    if value == initial and row is not None:
+        row_id = row.id
+        db.session.delete(row)
+        db.session.flush()
+        action = AuditAction.CONFIGURACION_RESTABLECIDA
+    else:
+        if row is None:
+            row = Configuracion(
+                clave=table_key,
+                tipo_dato=ConfigDataType.JSON.value,
+                categoria=table_key.partition(".")[0],
+            )
+            db.session.add(row)
+
+        row.valor = json.dumps(value, ensure_ascii=False)
+        row.fecha_modificacion = func.now()
+        row.usuario_modificacion_id = actor.id
+        db.session.flush()
+        row_id = row.id
+
+    record_admin_event(
+        action,
+        actor=actor,
+        entity_type="configuracion",
+        entity_id=row_id,
+        detail=table_key,
+        old_value={"valor": previous},
+        new_value={"valor": value},
+        reason=reason,
+    )
+    forget_cached_settings()
+
+    return True
+

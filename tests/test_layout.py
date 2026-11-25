@@ -381,6 +381,7 @@ def test_hub_links_only_the_implemented_sections(
         "Comentarios y edición",
         "SLA",
         "Cierre y reapertura",
+        "Notificaciones",
         "Archivos",
         "Carga y planificador",
         "Seguridad y sesión",
@@ -393,6 +394,8 @@ def test_hub_links_only_the_implemented_sections(
     assert 'href="/admin/wait-reasons"' in content
     assert 'href="/admin/states"' in content
     assert 'href="/admin/sla"' in content
+
+    assert 'href="/admin/notifications"' in content
 
     for slug in ("seguridad", "cierre", "archivos", "colaboracion", "operacion"):
         assert f'href="/admin/settings/{slug}"' in content

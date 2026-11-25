@@ -2609,6 +2609,8 @@ No duplicar configuración de SLA.
 
 ## UI-024 — Configuración de notificaciones
 
+**Implementada (`v0.7.0`, entrega 4)** en `/admin/notifications`: una tabla con un evento por fila y una columna por destinatario (Solicitantes, Técnicos asignados, Supervisores). Cada casilla explica cuándo ocurre el aviso; una pareja que no existe se muestra como «—» y las obligatorias aparecen marcadas y deshabilitadas con el motivo. Un motivo opcional y «Guardar cambios». Las casillas llevan un texto para lectores de pantalla con el evento y el destinatario, y la tabla se desplaza en pantallas angostas.
+
 Debe permitir configurar eventos internos.
 
 MVP:

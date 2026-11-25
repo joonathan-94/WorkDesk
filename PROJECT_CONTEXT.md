@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/configuration-screen
+feature/notification-settings
 ```
 
-Entrega 3 de `v0.7.0`: las pantallas de configuración y los interruptores del SLA y del cierre automático. **Sin migraciones.** Ver «Pantallas de configuración e interruptores».
+Entrega 4 de `v0.7.0`: la configuración de qué avisos se envían y a quién. **Sin migraciones.** Ver «Configuración de notificaciones».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -196,6 +196,18 @@ El Administrador cambia desde la web los parámetros de la entrega 2 y apaga o e
 - **El planificador en marcha toma la frecuencia nueva sin reiniciarse** (se lee antes de cada espera; si la base no responde usa la inicial). `--interval` sigue mandando.
 - **Fallo hallado y corregido antes de cerrar:** al pulsar Enter en un campo, el navegador usaba el primer botón de envío, que era un «Restablecer». Hay un botón «Guardar» oculto en primer lugar y un test.
 - **Tests:** 94 nuevos o ampliados (4288 → 4382): `test_settings_screens`, `test_sla_switch` y ampliaciones de `test_configuration` y `test_settings`; las pantallas nuevas entraron en `test_pages_smoke`.
+
+## Configuración de notificaciones (entrega 4 de `v0.7.0`)
+
+El Administrador elige qué avisos internos se envían y a quién (RF-087, RF-121, RN-97 y RN-172; UI-024). **Sin migraciones.**
+
+- **Un catálogo, no un motor de reglas** (`notifications/preferences.py`, `RULES`). Cada aviso que WorkDesk sabe enviar es una pareja *evento → destinatarios* (solicitantes, técnicos asignados o supervisores): 21 parejas. El Administrador **solo puede apagarlas o volver a encenderlas**: no puede crear ninguna, así que nunca puede hacer llegar algo interno a un Solicitante (un test comprueba que ninguna pareja de un Solicitante corresponde a una nota interna, una reasignación o el SLA).
+- **Dos son obligatorias y no se apagan:** la revisión de una solución resuelta para los solicitantes (RN-95) y la reapertura para los técnicos (RN-96). Se ignoran aunque alguien las escriba a mano en la tabla.
+- **Un único camino de envío.** `notifications/events.py` envía todo con `_send(audiencia, evento, ...)`, que consulta el catálogo; pedir una pareja no declarada es un error de programación (`ValueError`). Un test impide llamar a `notify_many` fuera de ahí, y otro que un cambio de estado avise algo que no esté en el catálogo.
+- **Se guarda solo lo apagado**, como una lista JSON en `configuracion` (`notificaciones.desactivadas`), con la nueva `save_document` (los mismos permisos, bloqueo, auditoría y conflictos que los parámetros). Con todo encendido no hay fila; un valor corrupto se descarta con un aviso y se envía todo.
+- **Aviso de SLA próximo a vencer:** los Supervisores lo reciben solo de un ticket sin técnico; apagar el de los técnicos no lo desvía a ellos. Apagar un aviso de SLA no cambia lo que el planificador registra: el incumplimiento queda en el historial, y el aviso no se reenvía si se vuelve a encender.
+- **Pantalla** `/admin/notifications` (tarjeta *Notificaciones* del hub): una tabla evento × destinatario con la explicación de cada casilla, las obligatorias marcadas y deshabilitadas, motivo opcional y aviso de conflicto.
+- **Tests:** 34 nuevos (4382 → 4416), en `tests/test_notification_settings.py`; la pantalla entró en `test_pages_smoke`.
 
 ## Próximo hito
 
@@ -1647,6 +1659,7 @@ GET, POST  /admin/sla/activate
 GET, POST  /admin/sla/deactivate
 GET, POST  /admin/settings/<grupo>
 POST       /admin/settings/<grupo>/reset/<variable>
+GET, POST  /admin/notifications
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -2001,7 +2014,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4382 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4416 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

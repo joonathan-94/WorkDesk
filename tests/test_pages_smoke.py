@@ -87,6 +87,7 @@ ADMIN_PAGES = [
     "/admin/settings/archivos",
     "/admin/settings/colaboracion",
     "/admin/settings/operacion",
+    "/admin/notifications",
 ]
 
 # Quién entra en qué pantallas: 200 si puede, 403 si no.

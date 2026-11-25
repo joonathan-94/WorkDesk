@@ -104,6 +104,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_scheduler",
     ),
     "notifications": (
+        "test_notification_settings",
         "test_notifications",
         "test_notifications_routes",
         "test_notification_events",

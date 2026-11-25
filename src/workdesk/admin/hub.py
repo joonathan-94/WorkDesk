@@ -110,6 +110,7 @@ HUB_SECTIONS = (
                 title="Notificaciones",
                 description="Eventos y destinatarios.",
                 icon="bell",
+                endpoint="admin.notification_settings",
             ),
             HubCard(
                 title="Archivos",

@@ -13,6 +13,8 @@ aquí, en un único lugar, y la toman las operaciones de los tickets al terminar
   técnicos que siguen asignados.
 - **Crear un ticket no avisa a nadie.** Quien lo crea ya lo está viendo y el reparto
   del trabajo es de la asignación (decisión de `v0.5.0`).
+- **Todo envío pasa por `_send`**, que respeta lo que el Administrador haya apagado
+  (`notifications/preferences.py`, RN-172). Un aviso nuevo debe declararse allí.
 
 Nada de aquí hace commit: los avisos se confirman o se revierten junto con la operación
 que los provoca, igual que su evento de historial.
@@ -24,6 +26,7 @@ ticket y los usuarios que recibe.
 from ..extensions import db
 from ..models import NotificationEvent, Role, StateAction, Ticket, User
 from ..security import STAFF_ROLES, RoleCode
+from .preferences import Audience, is_enabled
 from .service import notify_many
 
 E = NotificationEvent
@@ -109,12 +112,18 @@ def notify_state_change(
     if notices is None:
         return
 
-    for people, (event, title, message) in zip(
-        (_requesters(ticket), _technicians(ticket)), notices, strict=True
+    for (audience, people), (event, title, message) in zip(
+        (
+            (Audience.SOLICITANTES, _requesters(ticket)),
+            (Audience.TECNICOS, _technicians(ticket)),
+        ),
+        notices,
+        strict=True,
     ):
-        notify_many(
-            _others(people, actor),
+        _send(
+            audience,
             event,
+            _others(people, actor),
             title=title,
             message=message.format(t=_label(ticket)),
             ticket=ticket,
@@ -123,16 +132,18 @@ def notify_state_change(
 
 def notify_assignment(ticket: Ticket, actor: User, technician: User) -> None:
     """Avisa al técnico asignado y a los solicitantes (menos a `actor`)."""
-    notify_many(
-        _others([technician], actor),
+    _send(
+        Audience.TECNICOS,
         E.TICKET_ASIGNADO,
+        _others([technician], actor),
         title="Ticket asignado",
         message=f"Se te asignó el ticket {_label(ticket)}.",
         ticket=ticket,
     )
-    notify_many(
-        _others(_requesters(ticket), actor),
+    _send(
+        Audience.SOLICITANTES,
         E.TICKET_ASIGNADO,
+        _others(_requesters(ticket), actor),
         title="Tu ticket ya tiene técnico",
         message=f"El ticket {_label(ticket)} ahora lo atiende {_name(technician)}.",
         ticket=ticket,
@@ -141,9 +152,10 @@ def notify_assignment(ticket: Ticket, actor: User, technician: User) -> None:
 
 def notify_unassignment(ticket: Ticket, actor: User, technician: User) -> None:
     """Avisa al técnico al que se quitó del ticket (si no fue él mismo)."""
-    notify_many(
-        _others([technician], actor),
+    _send(
+        Audience.TECNICOS,
         E.TICKET_REASIGNADO,
+        _others([technician], actor),
         title="Ya no estás asignado",
         message=f"Se te quitó del ticket {_label(ticket)}.",
         ticket=ticket,
@@ -153,9 +165,10 @@ def notify_unassignment(ticket: Ticket, actor: User, technician: User) -> None:
 def notify_reassignment_requesters(ticket: Ticket, actor: User, technician: User) -> None:
     """Avisa a los solicitantes de que ahora los atiende otro técnico (una reasignación
     masiva). No dice de dónde viene el ticket ni el motivo."""
-    notify_many(
-        _others(_requesters(ticket), actor),
+    _send(
+        Audience.SOLICITANTES,
         E.TICKET_ASIGNADO,
+        _others(_requesters(ticket), actor),
         title="Tu ticket cambió de técnico",
         message=f"El ticket {_label(ticket)} ahora lo atiende {_name(technician)}.",
         ticket=ticket,
@@ -169,9 +182,10 @@ def notify_bulk_reassignment(
     cuántos se movieron: una reasignación masiva no inunda a nadie con un aviso por
     ticket. No incluye el motivo ni los títulos."""
     for destination, tickets in moved.items():
-        notify_many(
-            _others([destination], actor),
+        _send(
+            Audience.TECNICOS,
             E.TICKET_REASIGNADO,
+            _others([destination], actor),
             title="Tickets reasignados a ti",
             message=(
                 f"Se te reasignaron {_count(tickets)} de {_name(source)}."
@@ -182,9 +196,10 @@ def notify_bulk_reassignment(
     total = [ticket for tickets in moved.values() for ticket in tickets]
 
     if total:
-        notify_many(
-            _others([source], actor),
+        _send(
+            Audience.TECNICOS,
             E.TICKET_REASIGNADO,
+            _others([source], actor),
             title="Tus tickets se reasignaron",
             message=f"{_count(total).capitalize()} tuyos se reasignaron a otros técnicos.",
             ticket=total[0] if len(total) == 1 else None,
@@ -205,16 +220,18 @@ def notify_escalation(
     before_ids = {user.id for user in before}
     after_ids = {user.id for user in after}
 
-    notify_many(
-        _others([user for user in after if user.id not in before_ids], actor),
+    _send(
+        Audience.TECNICOS,
         E.TICKET_REASIGNADO,
+        _others([user for user in after if user.id not in before_ids], actor),
         title="Ticket escalado",
         message=f"Se te asignó el ticket {_label(ticket)} por un escalamiento.",
         ticket=ticket,
     )
-    notify_many(
-        _others([user for user in before if user.id not in after_ids], actor),
+    _send(
+        Audience.TECNICOS,
         E.TICKET_REASIGNADO,
+        _others([user for user in before if user.id not in after_ids], actor),
         title="Ya no estás asignado",
         message=f"El ticket {_label(ticket)} se escaló a otro técnico.",
         ticket=ticket,
@@ -228,9 +245,10 @@ def notify_priority_lowered(
     (RN-88): los responsables del grupo del ticket y, si no tiene grupo o ninguno
     está activo, todos los Supervisores activos. `sla_label` es «próximo a vencer»
     o «vencido». No se copia el motivo: se lee en el historial."""
-    notify_many(
-        _others(_supervisors_of(ticket), actor),
+    _send(
+        Audience.SUPERVISORES,
         E.SLA_PRIORIDAD_BAJADA,
+        _others(_supervisors_of(ticket), actor),
         title="Prioridad bajada con el SLA en riesgo",
         message=(
             f"{_name(actor)} bajó la prioridad del ticket {_label(ticket)} de "
@@ -244,9 +262,18 @@ def notify_sla_warning(ticket: Ticket) -> None:
     """Avisa de que el ticket está próximo a vencer su SLA (RN-91): a los técnicos
     asignados y, si no tiene ninguno, a los Supervisores responsables del grupo (o a
     todos). El SLA es interno: los solicitantes nunca lo reciben."""
-    notify_many(
-        _technicians(ticket) or _supervisors_of(ticket),
+    technicians = _technicians(ticket)
+    # Los Supervisores reciben el aviso solo de un ticket sin técnico: apagar el de los
+    # técnicos no lo desvía a ellos.
+    audience, people = (
+        (Audience.TECNICOS, technicians)
+        if technicians
+        else (Audience.SUPERVISORES, _supervisors_of(ticket))
+    )
+    _send(
+        audience,
         E.SLA_PROXIMO_A_VENCER,
+        people,
         title="SLA próximo a vencer",
         message=f"El ticket {_label(ticket)} está próximo a vencer su SLA.",
         ticket=ticket,
@@ -256,13 +283,18 @@ def notify_sla_warning(ticket: Ticket) -> None:
 def notify_sla_breach(ticket: Ticket) -> None:
     """Avisa de que el ticket venció su SLA (RN-91): a los técnicos asignados y a los
     Supervisores responsables del grupo (o a todos si no hay ninguno)."""
-    notify_many(
-        [*_technicians(ticket), *_supervisors_of(ticket)],
-        E.SLA_VENCIDO,
-        title="SLA vencido",
-        message=f"El SLA del ticket {_label(ticket)} venció.",
-        ticket=ticket,
-    )
+    for audience, people in (
+        (Audience.TECNICOS, _technicians(ticket)),
+        (Audience.SUPERVISORES, _supervisors_of(ticket)),
+    ):
+        _send(
+            audience,
+            E.SLA_VENCIDO,
+            people,
+            title="SLA vencido",
+            message=f"El SLA del ticket {_label(ticket)} venció.",
+            ticket=ticket,
+        )
 
 
 def notify_comment(ticket: Ticket, actor: User, *, internal: bool) -> None:
@@ -275,25 +307,28 @@ def notify_comment(ticket: Ticket, actor: User, *, internal: bool) -> None:
     label = _label(ticket)
 
     if internal:
-        notify_many(
-            _others(_technicians(ticket), actor),
+        _send(
+            Audience.TECNICOS,
             E.NOTA_INTERNA,
+            _others(_technicians(ticket), actor),
             title="Nota interna",
             message=f"{_name(actor)} escribió una nota interna en el ticket {label}.",
             ticket=ticket,
         )
     elif _is_staff(actor):
-        notify_many(
-            _others(_requesters(ticket), actor),
+        _send(
+            Audience.SOLICITANTES,
             E.COMENTARIO_PUBLICO,
+            _others(_requesters(ticket), actor),
             title="Nueva respuesta",
             message=f"{_name(actor)} respondió en el ticket {label}.",
             ticket=ticket,
         )
     else:
-        notify_many(
-            _others(_technicians(ticket), actor),
+        _send(
+            Audience.TECNICOS,
             E.COMENTARIO_PUBLICO,
+            _others(_technicians(ticket), actor),
             title="Respuesta del solicitante",
             message=f"{_name(actor)} comentó en el ticket {label}.",
             ticket=ticket,
@@ -301,6 +336,17 @@ def notify_comment(ticket: Ticket, actor: User, *, internal: bool) -> None:
 
 
 # --- Piezas comunes -----------------------------------------------------------
+
+
+def _send(
+    audience: Audience,
+    event: NotificationEvent,
+    people: list[User],
+    **notice,
+) -> None:
+    """El único camino de envío: respeta lo que el Administrador haya apagado."""
+    if is_enabled(event, audience):
+        notify_many(people, event, **notice)
 
 
 def _requesters(ticket: Ticket) -> list[User]:
