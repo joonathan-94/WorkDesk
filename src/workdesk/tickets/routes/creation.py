@@ -6,11 +6,14 @@ import hashlib
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from ... import settings
 from ...catalogs.service import list_locations, list_priorities
+from ...configuration import value_of
 from ...extensions import db
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ...security import can_choose_requesters, can_create_ticket, current_actor
 from .. import bp
+from ..attachments import add_attachments, discard_files
 from ..forms import TicketForm
 from ..service import (
     TicketRuleError,
@@ -19,6 +22,7 @@ from ..service import (
     list_requester_candidates,
 )
 from ..similar import find_similar_tickets
+from ..storage import MAX_FILES_PER_REQUEST, allowed_extensions
 from .common import requester_choices
 
 # Prioridad que se ofrece preseleccionada al crear un ticket (docs/11, UI-004).
@@ -82,6 +86,8 @@ def new_ticket():
             form.solicitantes.data if choose_requesters else [current_user.id]
         )
 
+        paths: list[str] = []
+
         try:
             ticket = create_ticket(
                 actor=current_actor(),
@@ -92,12 +98,25 @@ def new_ticket():
                 location_id=form.ubicacion.data,
                 requester_ids=requester_ids,
             )
+            # En la misma transacción: si un archivo no es válido, no se crea el ticket.
+            attachments = add_attachments(
+                ticket,
+                actor=current_actor(),
+                uploads=request.files.getlist("archivos"),
+            )
+            paths = [attachment.ruta_archivo for attachment in attachments]
             db.session.commit()
         except TicketRuleError as error:
             # Por ejemplo, un valor de catálogo desactivado mientras se
-            # rellenaba el formulario.
+            # rellenaba el formulario, o un archivo no permitido.
             db.session.rollback()
             flash(str(error), "error")
+        except Exception:
+            # Si la base de datos falla tras guardar los archivos, se borran.
+            db.session.rollback()
+            discard_files(paths)
+
+            raise
         else:
             flash(f"Ticket #{ticket.public_id} creado correctamente.", "success")
 
@@ -112,9 +131,18 @@ def new_ticket():
         max_title=MAX_TITLE_LENGTH,
         max_description=MAX_DESCRIPTION_LENGTH,
         similar=similar,
+        # Un navegador no conserva los archivos elegidos al volver a mostrar la página.
+        files_to_choose_again=_chose_files(),
+        max_files=min(MAX_FILES_PER_REQUEST, value_of(settings.UPLOAD_MAX_FILES_PER_TICKET)),
+        max_upload_mb=value_of(settings.UPLOAD_MAX_BYTES) // (1024 * 1024),
+        allowed_extensions=allowed_extensions(),
         confirmation=signature if similar else None,
         confirmation_field=CONFIRMATION_FIELD,
     )
+
+
+def _chose_files() -> bool:
+    return any(upload.filename for upload in request.files.getlist("archivos"))
 
 
 def _signature(title: str, category_id: int) -> str:

@@ -1273,7 +1273,7 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 **Semana:** 8 y primera mitad de 9  
 **Versión:** `v0.7.0`
 
-**Estado de ejecución:** en curso. Las entregas 1 a 7 están hechas; las demás están planificadas.
+**Estado de ejecución:** en curso. Las entregas 1 a 8 están hechas; falta el cierre de la fase.
 
 ### Entregas de `v0.7.0`
 
@@ -1284,7 +1284,7 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 5. **Base de conocimiento: modelo y migración** ✓: artículos, vínculo con tickets y la columna de búsqueda de texto completo (`tsvector` en español con índice GIN).
 6. **Base de conocimiento: pantallas** ✓: listado, búsqueda, detalle, borrador y publicado, destacados, con la visibilidad por rol resuelta en la consulta.
 7. **Vínculo con tickets, promoción de una resolución (RF-104 y RF-105) y advertencia de posibles duplicados al crear un ticket (RF-061)** ✓, que comparten la búsqueda.
-8. **Adjuntos al crear un ticket y liberación manual de un bloqueo de edición.**
+8. **Adjuntos al crear un ticket y liberación manual de un bloqueo de edición** ✓.
 9. **Cierre de la fase**: revisión de todo lo anterior, comprobación de escala (~20 000 tickets), matriz de trazabilidad y etiqueta.
 
 ### Decisiones de la fase

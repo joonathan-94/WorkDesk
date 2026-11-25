@@ -180,6 +180,9 @@
             {{ other_editor.nombre }} {{ other_editor.apellido }} está
             editando este ticket. Puedes consultarlo, pero no editarlo hasta
             que termine.
+            {% if can_revoke_lock %}
+                <a class="alert-link ms-2" href="{{ url_for('tickets.revoke_ticket_lock', public_id=ticket.public_id) }}">Liberar bloqueo</a>
+            {% endif %}
         </div>
     {% endif %}
 

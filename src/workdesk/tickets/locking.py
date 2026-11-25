@@ -29,6 +29,11 @@ Solo se bloquea la edición de los datos y de la prioridad. Los demás cambios
 (estado, asignación, comentarios...) son acciones puntuales y confían en la
 versión del ticket o en ser aditivos.
 
+**Liberación manual** (RN-176): un Supervisor o el Administrador puede soltar el bloqueo
+de otra persona. Queda anotado quién fue y, desde entonces, el latido de la persona
+desalojada ya no puede recuperarlo (`renew_edit_lock`); volver a abrir la pantalla sí
+adquiere uno nuevo.
+
 Nada de aquí hace commit: lo hace quien llama. Las horas las toma de la base de
 datos (`clock_timestamp()`), no del reloj del servidor web, para que todos
 comparen contra el mismo reloj.
@@ -41,11 +46,17 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from .. import settings
+from ..audit import AuditAction, record_admin_event
 from ..configuration import value_of
 from ..extensions import db
 from ..models import Ticket, TicketEditLock, User
-from .service import TicketRuleError
+from ..security import can_revoke_edit_lock
+from .service import TicketRuleError, clean_optional_reason
 from .versioning import lock_ticket
+
+
+class EditLockRevokedError(TicketRuleError):
+    """Alguien liberó el bloqueo de esta persona: su pantalla no puede recuperarlo."""
 
 
 @dataclass(frozen=True)
@@ -105,6 +116,73 @@ def acquire_edit_lock(ticket: Ticket, actor: User) -> EditLockStatus:
     db.session.flush()
 
     return EditLockStatus(lock=lock, mine=True)
+
+
+def renew_edit_lock(ticket: Ticket, actor: User) -> EditLockStatus:
+    """El latido de una pantalla de edición abierta.
+
+    Como `acquire_edit_lock`, salvo que si el último bloqueo de `actor` en este ticket fue
+    liberado a la fuerza lanza `EditLockRevokedError` en lugar de devolvérselo.
+    """
+    lock_ticket(ticket)
+
+    latest = db.session.scalar(
+        db.select(TicketEditLock)
+        .where(
+            TicketEditLock.ticket_id == ticket.id,
+            TicketEditLock.usuario_id == actor.id,
+        )
+        .options(joinedload(TicketEditLock.liberado_por))
+        .order_by(TicketEditLock.id.desc())
+        .limit(1)
+    )
+
+    if latest is not None and latest.liberado_por is not None:
+        who = f"{latest.liberado_por.nombre} {latest.liberado_por.apellido}"
+
+        raise EditLockRevokedError(f"{who} liberó tu reserva de este ticket.")
+
+    return acquire_edit_lock(ticket, actor)
+
+
+def revoke_edit_lock(ticket: Ticket, actor: User, reason: str | None = None) -> User:
+    """Libera a la fuerza el bloqueo vigente de **otra** persona y devuelve quién era.
+
+    Solo Supervisor y Administrador (`PermissionError`). Lanza `TicketRuleError` si no hay un
+    bloqueo vigente de otra persona (ya lo soltó, expiró o es el propio). Queda auditado.
+    """
+    if not can_revoke_edit_lock(actor):
+        raise PermissionError("No puedes liberar el bloqueo de otra persona.")
+
+    reason = clean_optional_reason(reason)
+    lock_ticket(ticket)
+
+    now = _now()
+    current = _unreleased(ticket)
+
+    if (
+        current is None
+        or current.fecha_expiracion <= now
+        or current.usuario_id == actor.id
+    ):
+        raise TicketRuleError("Ya no hay un bloqueo de otra persona que liberar.")
+
+    current.fecha_liberacion = now
+    current.liberado_por_usuario_id = actor.id
+    holder = current.usuario
+    db.session.flush()
+
+    record_admin_event(
+        AuditAction.BLOQUEO_EDICION_LIBERADO,
+        actor=actor,
+        entity_type="ticket",
+        entity_id=ticket.id,
+        detail=f"#{ticket.public_id}",
+        old_value={"usuario_id": holder.id, "username": holder.username},
+        reason=reason,
+    )
+
+    return holder
 
 
 def release_edit_lock(ticket: Ticket, actor: User) -> bool:

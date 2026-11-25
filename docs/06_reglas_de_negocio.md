@@ -1696,7 +1696,7 @@ Aplica y precisa RN-114 a RN-117 en la implementación de `v0.4.0` (entrega 11),
 
 **Configuración.** `EDIT_LOCK_TTL_SECONDS` y `EDIT_LOCK_HEARTBEAT_SECONDS` son variables de entorno, validadas al iniciar (enteros mayores que cero y el latido menor que la duración, para que no expire entre dos renovaciones). Pasarán a la configuración administrable en `v0.7.0`.
 
-**Fuera de esta entrega:** la liberación manual de un bloqueo por el Supervisor o el Administrador (el bloqueo expira solo, como mucho a los 120 s) y la actualización en tiempo real de quién edita (`docs/12`, sección 32).
+**Fuera de esta entrega:** la actualización en tiempo real de quién edita (`docs/12`, sección 32). La liberación manual llegó en `v0.7.0` (RN-176).
 
 ---
 
@@ -1910,6 +1910,19 @@ Aplica RF-061 (`v0.7.0`).
 * La advertencia no impide crear: la persona puede crear el ticket de todos modos. Si cambia el título o la categoría, se comprueba otra vez.
 * Nunca se muestra un ticket que la persona no pueda ver.
 * El Administrador ajusta los días que se revisan (0 desactiva la advertencia) y las palabras que deben coincidir.
+
+---
+
+## RN-176 — Liberación manual de un bloqueo de edición
+
+Amplía RN-163 (`v0.7.0`).
+
+* El Supervisor y el Administrador pueden liberar el bloqueo vigente de **otra** persona, con una confirmación y un motivo opcional. Queda auditado con quién lo tenía.
+* La persona desalojada no puede recuperarlo desde su pantalla abierta: al intentar renovarlo se le dice quién lo liberó y no puede seguir reservando; si vuelve a abrir la pantalla obtiene uno nuevo.
+* Liberar no borra su trabajo: la garantía de integridad sigue siendo la versión del ticket.
+* Si ya no hay un bloqueo de otra persona (lo soltó, expiró o es propio), no se hace nada.
+
+Los adjuntos del formulario de creación (RN-160) se guardan en la misma operación que el ticket: si alguno no es válido, no se crea el ticket.
 
 ---
 

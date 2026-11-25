@@ -1941,6 +1941,7 @@ Los tickets utilizarán dos mecanismos complementarios:
 | `fecha_inicio` | TIMESTAMPTZ | No | Inicio. |
 | `fecha_expiracion` | TIMESTAMPTZ | No | Expiración automática. |
 | `fecha_liberacion` | TIMESTAMPTZ | Sí | Liberación explícita o normalización de un bloqueo expirado. |
+| `liberado_por_usuario_id` | BIGINT | Sí | FK a `usuarios`: quién lo liberó a la fuerza (`v0.7.0`). Solo con `fecha_liberacion`. |
 
 ### Regla de bloqueo activo
 

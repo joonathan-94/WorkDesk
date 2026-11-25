@@ -67,6 +67,7 @@ TICKET_SCREENS = (
     "tickets.delete_ticket_comment",
     "tickets.delete_ticket_attachment",
     "tickets.knowledge_page",
+    "tickets.revoke_ticket_lock",
     "tickets.remove_ticket_article",
 )
 

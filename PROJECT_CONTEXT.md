@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/knowledge-ticket-links
+feature/ticket-uploads-and-lock-release
 ```
 
-Entrega 7 de `v0.7.0`: artículos en los tickets, artículo desde la resolución y advertencia de duplicados. **Sin migraciones.** Ver «Conocimiento en los tickets y posibles duplicados».
+Entrega 8 de `v0.7.0`: adjuntos al crear un ticket y liberación de un bloqueo de edición. **Con una migración.** Ver «Adjuntos al crear y liberación de bloqueos».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -245,6 +245,16 @@ RF-104, RF-105 y RF-061. Reglas completas en `docs/06` (RN-174 y RN-175). **Sin 
 - **Medido antes de decidir:** comparando contra 20 000 tickets abiertos recientes, calcular el vector de cada título una vez por palabra tardaba 1,3 s; calculándolo una sola vez (`MATERIALIZED`) baja a 0,5 s. Un índice no mejoró en esa prueba y habría pedido una migración, así que no se creó (con volúmenes realistas, cientos o pocos miles, son decenas de milisegundos).
 - **Un ciclo de importación** entre el editor de artículos y los vínculos se resolvió importando el servicio dentro de la función que lo usa.
 - **Tests:** 61 nuevos (4543 → 4604): `test_ticket_knowledge` y `test_duplicate_warning`, entre otros.
+
+## Adjuntos al crear y liberación de bloqueos (entrega 8 de `v0.7.0`)
+
+Los dos pendientes que arrastraba la planificación. **Con una migración** (`add_lock_revoker_to_ticket_edit_locks`). Reglas en `docs/06` (RN-160 y RN-176).
+
+- **Adjuntos en «Crear ticket»** (`tickets/routes/creation.py`): el formulario es `multipart` y admite hasta 5 archivos con los mismos tipos, tamaño y máximo por ticket de siempre (se muestran bajo el campo, con los valores vigentes). Se guardan **en la misma transacción que el ticket**: si un archivo no es válido o algo falla al confirmar, no se crea nada ni queda ningún archivo en disco. Un navegador no conserva los archivos al volver a mostrar la página (error o advertencia de duplicados): se avisa que hay que elegirlos otra vez.
+- **Liberar un bloqueo de edición** (`GET, POST /tickets/<n>/lock/revoke`, solo Supervisor y Administrador, `can_revoke_edit_lock`): enlace «Liberar bloqueo» en el aviso del detalle y en la pantalla de «otra persona está editando», con confirmación, motivo opcional y auditoría (`BLOQUEO_EDICION_LIBERADO`).
+- **Por qué hizo falta una migración:** el latido de la pantalla de edición *adquiría* el bloqueo (renovar y adquirir eran la misma operación), así que la persona desalojada lo habría recuperado a los 45 segundos. La columna `liberado_por_usuario_id` (con un `CHECK` de que solo un bloqueo liberado la tiene) permite que el latido responda `409 lock_revoked` y la pantalla avise y desactive el guardado. Volver a abrir la pantalla adquiere uno nuevo, y una liberación normal (salir y volver) sigue renovando.
+- **No destruye trabajo:** si la persona desalojada envía su formulario sin JavaScript y nadie cambió el ticket, se guarda; la barrera de integridad sigue siendo la versión.
+- **Tests:** 38 nuevos (4604 → 4642): `test_ticket_create_uploads` y `test_ticket_lock_revoke`.
 
 ## Próximo hito
 
@@ -581,7 +591,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente veintiséis migraciones:
+Existen actualmente veintisiete migraciones:
 
 ```text
 create_roles_table
@@ -610,6 +620,7 @@ add_sla_notice_marks_to_sla_periods
 add_history_date_index
 create_configuration_table
 create_knowledge_base_tables
+add_lock_revoker_to_ticket_edit_locks
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -861,7 +872,7 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 
 **Creación** (`GET, POST /tickets/new`, opción "Crear ticket" del menú, para todos los roles):
 
-- Formulario con tres secciones numeradas (docs/11, UI-004): título y descripción (con contador de caracteres); categoría, prioridad y ubicación; y, solo para el personal, los solicitantes. Los adjuntos se suben desde el detalle del ticket: el formulario de creación no los incluye.
+- Formulario con tres secciones numeradas (docs/11, UI-004): título y descripción (con contador de caracteres); categoría, prioridad y ubicación; y, solo para el personal, los solicitantes. Desde `v0.7.0` (entrega 8) el formulario también admite adjuntos (ver «Adjuntos al crear y liberación de bloqueos»).
 - Las opciones salen de la base de datos y solo se ofrecen valores **activos**. La categoría es obligatoria, empieza sin elegir y `Sin clasificar` va siempre al final. La prioridad viene preseleccionada en `Media` si está activa, pero solo al abrir el formulario: un envío sin prioridad se rechaza.
 - **Solicitantes:** si crea un Solicitante, es siempre su propio solicitante y cualquier valor enviado se ignora (un envío manipulado no puede registrar a otras personas). El personal marca 0..N en una lista de casillas con buscador (mejora progresiva); los ids se validan contra los usuarios activos con rol Solicitante. Un ticket sin solicitantes es válido.
 - `TicketForm` valida con las opciones recibidas como atributos, sin `SelectField` (igual que el rol en `users/forms.py`). Los saltos de línea de la descripción se normalizan a uno solo para que el límite coincida con el contador. `IntegerListField` recoge las casillas.
@@ -1712,6 +1723,7 @@ GET, POST  /knowledge/<id>/actions/<accion>
 GET        /tickets/<public_id>/knowledge
 POST       /tickets/<public_id>/knowledge/add
 GET, POST  /tickets/<public_id>/knowledge/<link_id>/remove
+GET, POST  /tickets/<public_id>/lock/revoke
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -2069,7 +2081,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4604 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4642 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

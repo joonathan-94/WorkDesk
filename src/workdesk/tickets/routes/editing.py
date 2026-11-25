@@ -23,12 +23,25 @@ from ...configuration import value_of
 from ...extensions import db
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ...responses import json_error
-from ...security import can_change_priority, can_edit_ticket, current_actor
+from ...security import (
+    can_change_priority,
+    can_edit_ticket,
+    can_revoke_edit_lock,
+    current_actor,
+)
 from ...sla.periods import evaluate_ticket_sla
+from ...users.forms import ReasonForm
 from .. import bp
 from ..editing import MAX_REASON_LENGTH, change_priority, update_ticket
 from ..forms import PriorityChangeForm, TicketEditForm
-from ..locking import acquire_edit_lock, release_edit_lock
+from ..locking import (
+    EditLockRevokedError,
+    acquire_edit_lock,
+    current_edit_lock,
+    release_edit_lock,
+    renew_edit_lock,
+    revoke_edit_lock,
+)
 from ..service import TicketRuleError, categories_for_selection
 from ..versioning import TicketClosedError, TicketConflictError
 from .common import (
@@ -247,6 +260,7 @@ def _render_locked(ticket, lock, *, title, retry_url, saved_nothing=False):
         "tickets/edit_locked.html",
         ticket=ticket,
         lock=lock,
+        can_revoke=can_revoke_edit_lock(current_user),
         title=title,
         retry_url=retry_url,
     )
@@ -280,7 +294,15 @@ def renew_ticket_lock(public_id: str):
     if ticket_is_closed(ticket):
         return json_error("ticket_closed", "El ticket está cerrado.", 409)
 
-    holder = _hold_edit_lock(ticket)
+    try:
+        status = renew_edit_lock(ticket, current_actor())
+    except EditLockRevokedError as error:
+        db.session.rollback()
+
+        return json_error("lock_revoked", str(error), 409)
+
+    db.session.commit()
+    holder = None if status.mine else status.lock
 
     if holder is not None:
         return json_error(
@@ -291,6 +313,50 @@ def renew_ticket_lock(public_id: str):
         )
 
     return jsonify(ok=True)
+
+
+@bp.route("/<public_id>/lock/revoke", methods=["GET", "POST"])
+@login_required
+def revoke_ticket_lock(public_id: str):
+    """Confirmación para liberar el bloqueo de edición de otra persona (RN-176)."""
+    ticket = visible_ticket_or_404(public_id)
+
+    if not can_revoke_edit_lock(current_user):
+        abort(403)
+
+    back = url_for("tickets.detail", public_id=ticket.public_id)
+    lock = current_edit_lock(ticket)
+
+    if lock is None or lock.usuario_id == current_user.id:
+        flash("Ya no hay un bloqueo de otra persona que liberar.", "info")
+
+        return redirect(back)
+
+    form = ReasonForm()
+
+    if form.validate_on_submit():
+        try:
+            holder = revoke_edit_lock(ticket, current_actor(), form.motivo.data)
+        except TicketRuleError as error:
+            db.session.rollback()
+            flash(str(error), "info")
+
+            return redirect(back)
+
+        db.session.commit()
+        flash(
+            f"Se liberó el bloqueo de {holder.nombre} {holder.apellido}.", "success"
+        )
+
+        return redirect(back)
+
+    return render_template(
+        "tickets/lock_revoke.html",
+        ticket=ticket,
+        lock=lock,
+        form=form,
+        max_reason=MAX_REASON_LENGTH,
+    )
 
 
 @bp.post("/<public_id>/lock/release")
