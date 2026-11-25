@@ -6,13 +6,9 @@ from flask import Flask, current_app
 from ..extensions import db
 from ..formatting import format_duration, local_datetime
 from ..models import Prioridad, Ticket
-from ..sla.periods import (
-    SlaStatus,
-    evaluate_ticket_sla,
-    fill_missing_warning_dates,
-    list_periods,
-    rebuild_periods,
-)
+from ..sla.evaluation import SlaStatus, evaluate_ticket_sla
+from ..sla.periods import list_periods
+from ..sla.rebuild import fill_missing_warning_dates, rebuild_periods
 
 _SLA_STATUS_LABELS = {
     SlaStatus.DENTRO: "dentro de plazo",

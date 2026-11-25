@@ -28,8 +28,9 @@ aplica este módulo. Todo cierre pasa por `_closing_changes` y toda salida de
 `Resuelto` o `Cerrado` por `_CLEARED_FIELDS`: no hay otro camino que escriba
 esos campos.
 
-Nada de aquí hace commit: el cambio y sus eventos de historial se confirman o
-se revierten juntos, y el commit lo realiza quien llama.
+Nada de aquí hace commit: el cambio y sus eventos de historial (que escribe
+`lifecycle_history.py`) se confirman o se revierten juntos, y el commit lo realiza
+quien llama.
 """
 
 from dataclasses import dataclass
@@ -44,17 +45,19 @@ from ..models import (
     MotivoEspera,
     StateAction,
     Ticket,
-    TicketEvent,
-    TicketHistory,
     TransicionEstado,
     User,
-    Validation,
-    ValidationType,
 )
 from ..notifications.events import notify_state_change
 from ..security.authorization import RESOLVED_STATE
 from ..sla.periods import reconcile_sla
-from .service import CLOSED_STATE_CODE, TicketRuleError, record_ticket_event
+from .lifecycle_history import (
+    record_action_events,
+    record_automatic_close,
+    record_derived_change,
+    resolution_cycle,
+)
+from .service import CLOSED_STATE_CODE, TicketRuleError
 from .state_actions import (
     AUTO_CLOSE_REASON,
     CLOSING_ACTIONS,
@@ -230,7 +233,7 @@ def change_state(
     new_state = transition.estado_destino
 
     changes: dict = {"estado_id": new_state.id}
-    cycle = _resolution_cycle(ticket)
+    cycle = resolution_cycle(ticket)
 
     if action is StateAction.RESOLVER:
         # Cada entrada a Resuelto abre un nuevo ciclo de resolución.
@@ -243,7 +246,7 @@ def change_state(
 
     apply_ticket_changes(ticket, actor, expected_version, changes)
 
-    _record_action_events(
+    record_action_events(
         ticket,
         info,
         actor=actor,
@@ -315,21 +318,7 @@ def close_automatically(ticket: Ticket, *, resolved_before: datetime) -> bool:
         ticket.version,
         {"estado_id": new_state.id} | _closing_changes(None, reason),
     )
-    record_ticket_event(
-        ticket,
-        TicketEvent.TICKET_CERRADO,
-        actor=None,
-        detail=_state_detail(old_state, new_state),
-        old_state=old_state,
-        new_state=new_state,
-        old_value=_state_snapshot(old_state),
-        new_value=_state_snapshot(new_state)
-        | {"motivo_cierre": {"codigo": reason.codigo, "nombre": reason.nombre}},
-        context={
-            "accion": StateAction.AUTO_CIERRE.value,
-            "motivo_cierre": reason.codigo,
-        },
-    )
+    record_automatic_close(ticket, old_state, new_state, reason)
 
     reconcile_sla(ticket, None)
     notify_state_change(ticket, None, StateAction.AUTO_CIERRE)
@@ -378,17 +367,7 @@ def apply_derived_transition(
         ticket.version,
         {"estado_id": new_state.id},
     )
-    record_ticket_event(
-        ticket,
-        TicketEvent.ESTADO_CAMBIADO,
-        actor=actor,
-        detail=_state_detail(old_state, new_state),
-        old_state=old_state,
-        new_state=new_state,
-        old_value=_state_snapshot(old_state),
-        new_value=_state_snapshot(new_state),
-        context={"accion": action.value, "derivado": True},
-    )
+    record_derived_change(ticket, actor, action, old_state, new_state)
 
     return new_state
 
@@ -536,193 +515,4 @@ def _closing_changes(actor: User | None, reason: MotivoCierre) -> dict:
         "motivo_cierre_id": reason.id,
         "cerrado_por_usuario_id": None if actor is None else actor.id,
         "cerrado_automaticamente": actor is None,
-    }
-
-
-def _resolution_cycle(ticket: Ticket) -> int:
-    """Cuántas veces ha sido resuelto el ticket (los eventos
-    `TICKET_RESUELTO`). El ciclo en curso de una validación es este número."""
-    return (
-        db.session.scalar(
-            db.select(func.count())
-            .select_from(TicketHistory)
-            .where(
-                TicketHistory.ticket_id == ticket.id,
-                TicketHistory.tipo_evento == TicketEvent.TICKET_RESUELTO.value,
-            )
-        )
-        or 0
-    )
-
-
-def _record_action_events(
-    ticket: Ticket,
-    info: StateActionInfo,
-    *,
-    actor: User,
-    old_state: Estado,
-    new_state: Estado,
-    text: str | None,
-    wait_reason: MotivoEspera | None,
-    close_reason: MotivoCierre | None,
-    cycle: int,
-    extra_context: dict | None = None,
-) -> None:
-    """Registra el historial de la acción.
-
-    Cada acción deja un evento propio que lleva el estado anterior y el nuevo.
-    Confirmar y rechazar dejan además el de la validación (primero la
-    respuesta del solicitante y después lo que provoca).
-    """
-    action = info.action
-    old_value = _state_snapshot(old_state)
-    new_value = _state_snapshot(new_state)
-    context: dict = {"accion": action.value} | (extra_context or {})
-    states = {
-        "old_state": old_state,
-        "new_state": new_state,
-        "old_value": old_value,
-    }
-
-    if action is StateAction.RESOLVER:
-        record_ticket_event(
-            ticket,
-            TicketEvent.TICKET_RESUELTO,
-            actor=actor,
-            detail=_state_detail(old_state, new_state),
-            new_value=new_value | {"resolucion": text, "ciclo": cycle},
-            context=context | {"ciclo": cycle},
-            **states,
-        )
-
-        return
-
-    if action in CLOSING_ACTIONS:
-        if action is StateAction.CONFIRMAR:
-            validation = _record_validation(
-                ticket,
-                actor,
-                ValidationType.ACEPTADA,
-                cycle,
-                comment=text,
-            )
-            record_ticket_event(
-                ticket,
-                TicketEvent.VALIDACION_ACEPTADA,
-                actor=actor,
-                detail="El solicitante confirmó la solución.",
-                context=context
-                | {"validacion_id": validation.id, "ciclo": cycle},
-            )
-
-        elif text:
-            # El motivo del cierre directo o excepcional es del personal.
-            context["motivo"] = text
-
-        record_ticket_event(
-            ticket,
-            TicketEvent.TICKET_CERRADO,
-            actor=actor,
-            detail=_state_detail(old_state, new_state),
-            new_value=new_value
-            | {
-                "motivo_cierre": {
-                    "codigo": close_reason.codigo,
-                    "nombre": close_reason.nombre,
-                }
-            },
-            context=context | {"motivo_cierre": close_reason.codigo},
-            **states,
-        )
-
-        return
-
-    if action is StateAction.RECHAZAR:
-        validation = _record_validation(
-            ticket,
-            actor,
-            ValidationType.RECHAZADA,
-            cycle,
-            reason=text,
-        )
-        record_ticket_event(
-            ticket,
-            TicketEvent.VALIDACION_RECHAZADA,
-            actor=actor,
-            detail="El solicitante rechazó la solución.",
-            context=context
-            | {
-                "validacion_id": validation.id,
-                "ciclo": cycle,
-                # El motivo del rechazo es del propio solicitante: lo ve
-                # quien ve el ticket (a diferencia de `motivo`).
-                "motivo_rechazo": text,
-            },
-        )
-
-    if action in REOPENING_ACTIONS:
-        record_ticket_event(
-            ticket,
-            TicketEvent.TICKET_REABIERTO,
-            actor=actor,
-            detail=_state_detail(old_state, new_state),
-            new_value=new_value,
-            context=context | {"desde": old_state.codigo},
-            **states,
-        )
-
-        return
-
-    if text:
-        context["motivo"] = text
-
-    record_ticket_event(
-        ticket,
-        TicketEvent.ESTADO_CAMBIADO,
-        actor=actor,
-        detail=_state_detail(old_state, new_state),
-        new_value=new_value,
-        context=context,
-        wait_reason=wait_reason,
-        **states,
-    )
-
-
-def _record_validation(
-    ticket: Ticket,
-    actor: User,
-    kind: ValidationType,
-    cycle: int,
-    *,
-    comment: str | None = None,
-    reason: str | None = None,
-) -> Validation:
-    """Guarda la respuesta del solicitante a la resolución en curso."""
-    validation = Validation(
-        ticket_id=ticket.id,
-        solicitante_id=actor.id,
-        ciclo_resolucion=cycle,
-        tipo_validacion=kind.value,
-        motivo_rechazo=reason,
-        comentario_adicional=comment,
-    )
-
-    db.session.add(validation)
-    db.session.flush()
-
-    return validation
-
-
-def _state_detail(old_state: Estado, new_state: Estado) -> str:
-    return (
-        f"Estado cambiado de «{old_state.nombre_visible}» "
-        f"a «{new_state.nombre_visible}»."
-    )
-
-
-def _state_snapshot(state: Estado) -> dict:
-    return {
-        "estado_id": state.id,
-        "codigo": state.codigo,
-        "nombre": state.nombre_visible,
     }

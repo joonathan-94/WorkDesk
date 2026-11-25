@@ -16,9 +16,11 @@ Administrador entran (403 al resto).
 
 from flask import abort, flash, redirect, render_template, request, url_for
 
-from ..catalogs.service import list_priorities
+from ..catalogs.service import list_priorities, list_states
+from ..cleaning import MAX_REASON_LENGTH
 from ..extensions import db
 from ..models import Estado, Ticket, TicketTechnician, User
+from ..query_params import choice_arg
 from ..security import RoleCode, current_actor, roles_required
 from ..sla.periods import STOPPING_STATES
 from ..tickets.assignment import list_escalation_technicians
@@ -28,10 +30,9 @@ from ..tickets.queries import (
     TicketFilters,
     active_state_condition,
     list_group_options,
-    list_states,
     list_tickets,
 )
-from ..tickets.reassignment import MAX_REASON_LENGTH, distribute, reassign_tickets
+from ..tickets.reassignment import distribute, reassign_tickets
 from ..tickets.service import TicketRuleError
 from ..workload import workload_overview
 from . import bp
@@ -61,9 +62,9 @@ def _select(origin_id, *, tickets_chosen=None, destinations_chosen=None, reason=
     priorities = list_priorities("")
     groups = list_group_options()
     filters = {
-        "prioridad": _choice("prioridad", priorities),
-        "estado": _choice("estado", states),
-        "grupo": _choice("grupo", groups),
+        "prioridad": choice_arg("prioridad", priorities),
+        "estado": choice_arg("estado", states),
+        "grupo": choice_arg("grupo", groups),
     }
 
     tickets, total = [], 0
@@ -290,12 +291,6 @@ def _moves() -> list[tuple[int, int]]:
         moves.append((ticket_id, destination_id))
 
     return moves
-
-
-def _choice(name: str, options) -> int | None:
-    value = request.args.get(name, type=int)
-
-    return value if value in {option.id for option in options} else None
 
 
 def _name(user: User) -> str:

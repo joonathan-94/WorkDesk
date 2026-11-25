@@ -1,0 +1,62 @@
+<section
+    class="card"
+    aria-labelledby="history-title"
+>
+    <div class="card-body">
+        <h2
+            class="h6 mb-3"
+            id="history-title"
+        >
+            Historial
+        </h2>
+
+        <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+            {% for row in history %}
+                <li>
+                    <span class="fw-semibold">
+                        {{ row.entry.evento_nombre }}
+                    </span>
+
+                    {# Qué cambió, para todos los roles. #}
+                    {% for line in row.changes %}
+                        <span class="small d-block text-break">
+                            {{ line }}
+                        </span>
+                    {% endfor %}
+
+                    {# El motivo es una nota interna: solo lo
+                       recibe el personal (ver la ruta). #}
+                    {% if row.wait_reason %}
+                        <span class="small d-block text-secondary text-break">
+                            Motivo de espera: {{ row.wait_reason }}
+                        </span>
+                    {% endif %}
+
+                    {% if row.reason %}
+                        <span class="small d-block text-secondary text-break">
+                            Motivo: {{ row.reason }}
+                        </span>
+                    {% endif %}
+
+                    {# El motivo de un rechazo es del propio
+                       solicitante: lo ve quien ve el ticket. #}
+                    {% if row.rejection %}
+                        <span class="small d-block text-secondary text-break">
+                            Motivo del rechazo: {{ row.rejection }}
+                        </span>
+                    {% endif %}
+
+                    <span class="small text-secondary d-block">
+                        {{ row.entry.fecha_hora|local_datetime }}
+                        ·
+                        {% if row.entry.actor %}
+                            {{ row.entry.actor.nombre }} {{ row.entry.actor.apellido }}
+                        {% else %}
+                            Sistema
+                        {% endif %}
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>

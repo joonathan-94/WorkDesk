@@ -4,6 +4,7 @@
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from ...cleaning import MAX_REASON_LENGTH
 from ...extensions import db
 from ...security import can_assign_self, can_manage_assignments, current_actor
 from .. import bp
@@ -16,7 +17,6 @@ from ..assignment import (
     set_group,
     unassign_technician,
 )
-from ..editing import MAX_REASON_LENGTH
 from ..forms import EscalationForm, GroupChangeForm, TechnicianPickForm
 from ..service import TicketRuleError
 from ..versioning import TicketClosedError, TicketConflictError

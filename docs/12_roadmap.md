@@ -1119,7 +1119,7 @@ La última entrega no añadió una pantalla: revisó **toda** la fase, y empezó
 | Requisito | Estado | Dónde vive | Quién lo prueba |
 | --- | --- | --- | --- |
 | RF-077 configurar el SLA · RN-92 (configura el Administrador) · RN-165 | Hecho (el interruptor general queda para `v0.7.0`) | `sla/policies.py` y la pantalla «SLA» (`/admin/sla`) | `test_sla_policies.py`, `test_sla_policy_forms.py`, `test_sla_policies_routes.py` |
-| RF-078 cálculo del SLA · RN-166 | Hecho | `sla/periods.py` (`reconcile_sla`, `evaluate_ticket_sla`) | `test_sla_periods.py` |
+| RF-078 cálculo del SLA · RN-166 | Hecho | `sla/periods.py` (`reconcile_sla`), `sla/evaluation.py` (`evaluate_ticket_sla`) | `test_sla_periods.py` |
 | RF-079 horarios y feriados · RN-90 | Hecho | `worktime.py`, `sla/work_calendar.py` y `/admin/sla/calendar` | `test_worktime.py`, `test_work_calendar.py`, `test_work_calendar_routes.py` |
 | RF-080 pausa del SLA · RN-89 | Hecho (la pausa es por política) | `sla/periods.py` | `test_sla_periods.py`, `test_sla_policies.py` |
 | RF-081 indicador de estado · RN-91 (informar) | Hecho (solo para el personal, RN-169) | `sla/queries.py`, listado y detalle de tickets | `test_sla_indicators.py`, `test_sla_indicators_ui.py` |
@@ -1273,7 +1273,7 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 **Semana:** 8 y primera mitad de 9  
 **Versión:** `v0.7.0`
 
-**Estado de ejecución:** en curso. Las entregas 1 a 8 están hechas; falta el cierre de la fase.
+**Estado de ejecución:** en curso. Las entregas 1 a 9 están hechas; falta el cierre de la fase.
 
 ### Entregas de `v0.7.0`
 
@@ -1285,7 +1285,8 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 6. **Base de conocimiento: pantallas** ✓: listado, búsqueda, detalle, borrador y publicado, destacados, con la visibilidad por rol resuelta en la consulta.
 7. **Vínculo con tickets, promoción de una resolución (RF-104 y RF-105) y advertencia de posibles duplicados al crear un ticket (RF-061)** ✓, que comparten la búsqueda.
 8. **Adjuntos al crear un ticket y liberación manual de un bloqueo de edición** ✓.
-9. **Cierre de la fase**: revisión de todo lo anterior, comprobación de escala (~20 000 tickets), matriz de trazabilidad y etiqueta.
+9. **Estructura y protecciones** ✓: sin cambios de comportamiento. Las dos pantallas más grandes y los dos módulos más largos divididos por responsabilidad, el código duplicado reunido y cuatro protecciones nuevas (esquema de las migraciones igual al de los modelos, rutas de la base de conocimiento, reglas del frontend e interruptores documentados). Sin migraciones.
+10. **Cierre de la fase**: correcciones de la auditoría, comprobación de escala (~20 000 tickets), matriz de trazabilidad, documentación y etiqueta.
 
 ### Decisiones de la fase
 

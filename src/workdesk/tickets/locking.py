@@ -47,11 +47,12 @@ from sqlalchemy.orm import joinedload
 
 from .. import settings
 from ..audit import AuditAction, record_admin_event
+from ..cleaning import clean_optional_reason
 from ..configuration import value_of
 from ..extensions import db
 from ..models import Ticket, TicketEditLock, User
 from ..security import can_revoke_edit_lock
-from .service import TicketRuleError, clean_optional_reason
+from .service import TicketRuleError
 from .versioning import lock_ticket
 
 
@@ -154,7 +155,7 @@ def revoke_edit_lock(ticket: Ticket, actor: User, reason: str | None = None) -> 
     if not can_revoke_edit_lock(actor):
         raise PermissionError("No puedes liberar el bloqueo de otra persona.")
 
-    reason = clean_optional_reason(reason)
+    reason = clean_optional_reason(reason, TicketRuleError)
     lock_ticket(ticket)
 
     now = _now()

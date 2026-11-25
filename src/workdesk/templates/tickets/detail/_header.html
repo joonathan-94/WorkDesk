@@ -1,0 +1,167 @@
+{# Cabecera con las acciones del ticket y los avisos que dependen de su estado. #}
+{% from "_ui_macros.html" import state_badge, priority_badge %}
+
+<header class="page-header">
+    <div>
+        <h1 class="page-title text-break">
+            <span class="text-secondary">#{{ ticket.public_id }}</span>
+            {{ ticket.titulo }}
+        </h1>
+
+        <p class="page-description">
+            {{ state_badge(ticket.estado) }}
+            {{ priority_badge(ticket.prioridad) }}
+            <span class="ms-1">
+                Creado el {{ ticket.fecha_creacion|local_datetime }}
+            </span>
+        </p>
+    </div>
+
+    {# Solo se ofrecen al personal y mientras el ticket no esté cerrado;
+       cada ruta comprueba la autorización por su cuenta. #}
+    {% if show_edit or show_priority or state_actions or can_self_assign or show_assignment %}
+        <div class="d-flex flex-wrap gap-2">
+            {# Cambios de estado válidos desde el estado actual y para el
+               rol: puede haber uno o dos. #}
+            {% for option in state_actions %}
+                <a
+                    class="btn {{ 'btn-primary' if option.info.primary else 'btn-outline-secondary' }}"
+                    href="{{ url_for('tickets.change_ticket_state', public_id=ticket.public_id, action_slug=option.info.slug) }}"
+                >
+                    <i
+                        class="bi bi-{{ option.info.icon }} me-1"
+                        aria-hidden="true"
+                    ></i>
+                    {{ option.info.label }}
+                </a>
+            {% endfor %}
+
+            {# Un Técnico se asigna o deja el ticket con un clic: es
+               reversible. Supervisor y Administrador abren la pantalla
+               de asignación. #}
+            {% if can_self_assign %}
+                <form
+                    method="post"
+                    action="{{ url_for('tickets.unassign_me' if my_assignment else 'tickets.assign_me', public_id=ticket.public_id) }}"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token() }}"
+                    >
+
+                    <button
+                        class="btn btn-outline-secondary"
+                        type="submit"
+                    >
+                        <i
+                            class="bi bi-person-{{ 'dash' if my_assignment else 'plus' }} me-1"
+                            aria-hidden="true"
+                        ></i>
+                        {{ 'Dejar ticket' if my_assignment else 'Asignarme' }}
+                    </button>
+                </form>
+            {% endif %}
+
+            {% if show_assignment %}
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.assignment_page', public_id=ticket.public_id) }}"
+                >
+                    <i
+                        class="bi bi-people me-1"
+                        aria-hidden="true"
+                    ></i>
+                    Asignar
+                </a>
+            {% endif %}
+
+            {% if show_edit %}
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.edit_ticket', public_id=ticket.public_id) }}"
+                >
+                    <i
+                        class="bi bi-pencil me-1"
+                        aria-hidden="true"
+                    ></i>
+                    Editar
+                </a>
+            {% endif %}
+
+            {% if show_priority %}
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('tickets.change_ticket_priority', public_id=ticket.public_id) }}"
+                >
+                    <i
+                        class="bi bi-flag me-1"
+                        aria-hidden="true"
+                    ></i>
+                    Cambiar prioridad
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</header>
+
+{% if is_staff and is_closed %}
+    <p class="small text-secondary">
+        Un ticket cerrado no se puede editar. Primero debe reabrirse.
+    </p>
+{% endif %}
+
+{# RN-116: otra persona está editando el ticket ahora. Solo el personal
+   que podría editarlo lo ve; se puede consultar, no editar. #}
+{% if other_editor %}
+    <div
+        class="alert alert-info"
+        role="status"
+    >
+        <i
+            class="bi bi-lock me-1"
+            aria-hidden="true"
+        ></i>
+        {{ other_editor.nombre }} {{ other_editor.apellido }} está
+        editando este ticket. Puedes consultarlo, pero no editarlo hasta
+        que termine.
+        {% if can_revoke_lock %}
+            <a class="alert-link ms-2" href="{{ url_for('tickets.revoke_ticket_lock', public_id=ticket.public_id) }}">Liberar bloqueo</a>
+        {% endif %}
+    </div>
+{% endif %}
+
+{# UI-005A: el ticket está Resuelto y quien lo pidió debe responder. Los
+   botones solo se ofrecen a un solicitante vigente (cada ruta lo
+   comprueba por su cuenta). #}
+{% if validation_actions %}
+    <section
+        class="alert alert-success d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
+        aria-labelledby="validation-title"
+    >
+        <div>
+            <p
+                class="fw-semibold mb-1"
+                id="validation-title"
+            >
+                El equipo indicó que tu solicitud está resuelta.
+            </p>
+            <p class="mb-0">¿Tu solicitud quedó resuelta?</p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            {% for option in validation_actions %}
+                <a
+                    class="btn {{ 'btn-success' if option.info.slug == 'confirm' else 'btn-outline-secondary' }}"
+                    href="{{ url_for('tickets.change_ticket_state', public_id=ticket.public_id, action_slug=option.info.slug) }}"
+                >
+                    <i
+                        class="bi bi-{{ option.info.icon }} me-1"
+                        aria-hidden="true"
+                    ></i>
+                    {{ option.info.label }}
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}

@@ -19,6 +19,7 @@ from flask_login import current_user, login_required
 
 from ... import settings
 from ...catalogs.service import list_locations, list_priorities
+from ...cleaning import MAX_REASON_LENGTH
 from ...configuration import value_of
 from ...extensions import db
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
@@ -29,10 +30,10 @@ from ...security import (
     can_revoke_edit_lock,
     current_actor,
 )
-from ...sla.periods import evaluate_ticket_sla
+from ...sla.evaluation import evaluate_ticket_sla
 from ...users.forms import ReasonForm
 from .. import bp
-from ..editing import MAX_REASON_LENGTH, change_priority, update_ticket
+from ..editing import change_priority, update_ticket
 from ..forms import PriorityChangeForm, TicketEditForm
 from ..locking import (
     EditLockRevokedError,

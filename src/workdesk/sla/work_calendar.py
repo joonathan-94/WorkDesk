@@ -34,7 +34,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..audit import AuditAction, record_admin_event
-from ..cleaning import blank_to_none
+from ..cleaning import blank_to_none, clean_optional_reason
 from ..extensions import db
 from ..formatting import app_zone
 from ..models import CalendarioLaboral, Feriado, HorarioLaboral, User
@@ -48,7 +48,6 @@ from ..worktime import (
 )
 
 MAX_HOLIDAY_NAME_LENGTH = 100
-MAX_REASON_LENGTH = 500
 
 CONFLICT_MESSAGE = (
     "Otra persona guardó el calendario mientras lo editabas. Revisa los valores "
@@ -342,7 +341,7 @@ def save_work_calendar(
 
     zone_name = _clean_zone_name(zone_name)
     holidays = _clean_holidays(holidays)
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, CalendarRuleError)
     problems = schedule_problems(franjas, [holiday.fecha for holiday in holidays])
 
     if problems:
@@ -484,14 +483,3 @@ def _clean_holidays(holidays: Sequence[Holiday]) -> list[Holiday]:
         cleaned.append(Holiday(holiday.fecha, name))
 
     return sorted(cleaned, key=lambda item: item.fecha)
-
-
-def _clean_reason(reason: str | None) -> str | None:
-    reason = blank_to_none(reason)
-
-    if reason is not None and len(reason) > MAX_REASON_LENGTH:
-        raise CalendarRuleError(
-            f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres."
-        )
-
-    return reason

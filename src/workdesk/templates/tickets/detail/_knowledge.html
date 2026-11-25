@@ -1,0 +1,26 @@
+{# Base de conocimiento: el personal siempre; el Solicitante solo si hay
+   artículos que puede leer (la lista llega ya filtrada). #}
+{% if can_link_articles or article_links %}
+    <section class="card mb-4" aria-labelledby="knowledge-title">
+        <div class="card-body">
+            <h2 class="h6 mb-3" id="knowledge-title">
+                Base de conocimiento
+                <span class="text-secondary fw-normal">({{ article_links|length }})</span>
+                {% if can_link_articles %}
+                    <a class="ms-2 small fw-normal" href="{{ url_for('tickets.knowledge_page', public_id=ticket.public_id) }}">Gestionar</a>
+                {% endif %}
+            </h2>
+            {% if article_links %}
+                <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                    {% for link in article_links %}
+                        <li class="text-break">
+                            <a href="{{ url_for('knowledge.detail', article_id=link.articulo_id) }}">{{ link.articulo.titulo }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="small text-secondary mb-0">Este ticket no tiene artículos vinculados.</p>
+            {% endif %}
+        </div>
+    </section>
+{% endif %}

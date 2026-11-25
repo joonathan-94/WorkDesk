@@ -14,7 +14,8 @@ from src.workdesk.audit import AuditAction
 from src.workdesk.configuration import save_setting, value_of
 from src.workdesk.extensions import db
 from src.workdesk.models import PeriodoSla, Ticket, User
-from src.workdesk.sla.periods import current_time, evaluate_tickets_sla
+from src.workdesk.sla.evaluation import evaluate_tickets_sla
+from src.workdesk.sla.periods import current_time
 from src.workdesk.sla.queries import SlaFilter
 from src.workdesk.tickets.queries import TicketFilters, list_tickets
 from src.workdesk.workload.queries import workload_overview

@@ -12,7 +12,10 @@ el procedimiento de siempre (`flask db ...`), en un esquema propio y desechable 
    `downgrade` se ejecutan sin error y dejan la base vacía, también la de la secuencia de los
    tickets; no detecta una `downgrade` que olvide deshacer un detalle que otra migración
    anterior ya borra después); y vuelven a subir y siguen coincidiendo con los modelos.
-2. **Una instalación limpia funciona.** `db check` compara tablas, columnas e índices, pero
+2. **Las migraciones y los modelos crean exactamente lo mismo.** Se levanta un esquema
+   con las migraciones y otro con los modelos y se comparan sus columnas, restricciones
+   (también los `CHECK`), índices y secuencias, leídos del catálogo de PostgreSQL.
+3. **Una instalación limpia funciona.** `db check` compara tablas, columnas e índices, pero
    no ve las secuencias ni las restricciones `CHECK` ni los valores por defecto del servidor:
    si una migración se olvidara de la secuencia de los tickets, `db check` pasaría y nadie
    podría crear un ticket. Esta prueba sigue el README como lo haría quien clona el
@@ -35,6 +38,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
+from src.workdesk.extensions import db
 from src.workdesk.seeds.demo_tickets_data import DEMO_TICKETS
 from tests.database import checked_database_url, worker_schema
 from tests.demo_data import DEMO_PASSWORD
@@ -189,6 +193,72 @@ def test_the_migrations_apply_match_the_models_and_revert():
         # 4. Vuelven a subir.
         _ok(_flask(env, "db", "upgrade"), "db upgrade (segunda vez)")
         _ok(_flask(env, "db", "check"), "db check (tras volver a subir)")
+
+
+# Lo que define un esquema, leído del catálogo (sin la tabla de versiones de Alembic).
+SCHEMA_QUERIES = {
+    "columnas": """
+        SELECT table_name || '.' || column_name,
+               concat_ws(' | ', udt_name, character_maximum_length, is_nullable,
+                         column_default, generation_expression, identity_generation)
+        FROM information_schema.columns
+        WHERE table_schema = :schema AND table_name <> 'alembic_version'""",
+    # `contype = 'n'` son los NOT NULL, que ya se comparan como columnas.
+    "restricciones": """
+        SELECT c.relname || ' :: ' || k.conname, pg_get_constraintdef(k.oid)
+        FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = :schema AND c.relname <> 'alembic_version'
+          AND k.contype <> 'n'""",
+    "índices": """
+        SELECT indexname, indexdef FROM pg_indexes
+        WHERE schemaname = :schema AND tablename <> 'alembic_version'""",
+    "secuencias": """
+        SELECT sequence_name, concat_ws(' | ', data_type, start_value, increment)
+        FROM information_schema.sequences WHERE sequence_schema = :schema""",
+}
+
+
+def _describe_schema(engine, schema):
+    with engine.connect() as connection:
+        connection.execute(text(f'SET search_path TO "{schema}"'))
+
+        return {
+            kind: {
+                (name.replace(f"{schema}.", ""), str(value).replace(f"{schema}.", ""))
+                for name, value in connection.execute(text(query), {"schema": schema})
+            }
+            for kind, query in SCHEMA_QUERIES.items()
+        }
+
+
+def test_the_migrations_build_exactly_the_schema_of_the_models():
+    with (
+        _scratch_schema("from_migrations") as (engine, migrated, env),
+        _scratch_schema("from_models") as (_, modeled, _env),
+    ):
+        _ok(_flask(env, "db", "upgrade"), "db upgrade")
+        models_engine = create_engine(
+            checked_database_url(),
+            connect_args={"options": f"-csearch_path={modeled}"},
+        )
+
+        try:
+            db.metadata.create_all(models_engine)
+        finally:
+            models_engine.dispose()
+
+        from_migrations = _describe_schema(engine, migrated)
+        from_models = _describe_schema(engine, modeled)
+
+    for kind in SCHEMA_QUERIES:
+        assert from_models[kind] or kind == "secuencias", f"no se leyó nada de {kind}"
+        assert (
+            sorted(from_migrations[kind] - from_models[kind]),
+            sorted(from_models[kind] - from_migrations[kind]),
+        ) == ([], []), f"{kind}: (solo en las migraciones, solo en los modelos)"
+
+    assert from_models["secuencias"], "la secuencia de los tickets debe estar"
 
 
 def test_a_fresh_install_built_only_from_the_migrations_works(tmp_path):

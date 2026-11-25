@@ -1,0 +1,386 @@
+{# Pestañas y formulario de filtros del listado. #}
+<nav aria-label="Vista de tickets">
+    <ul class="nav nav-pills mb-3">
+        {% for key, label in tabs %}
+            <li class="nav-item">
+                <a
+                    class="nav-link{% if tab == key %} active{% endif %}"
+                    {% if tab == key %}aria-current="page"{% endif %}
+                    href="{{ url_for(list_url, vista=key, **filter_params) }}"
+                >
+                    {{ label }}
+                    <span class="badge rounded-pill text-bg-light ms-1">
+                        {{ counts[key] }}
+                    </span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>
+
+<form
+    class="card card-body mb-3"
+    method="get"
+    action="{{ url_for(list_url) }}"
+    role="search"
+>
+    <input
+        type="hidden"
+        name="vista"
+        value="{{ tab }}"
+    >
+
+    <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-{{ 3 if is_staff else 4 }}">
+            <label
+                class="form-label"
+                for="q"
+            >
+                Buscar
+            </label>
+
+            <input
+                class="form-control"
+                id="q"
+                name="q"
+                type="search"
+                value="{{ filters.query_text }}"
+                maxlength="100"
+                placeholder="{{ 'Número, título, contenido o solicitante' if is_staff else 'Número, título o contenido' }}"
+            >
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label
+                class="form-label"
+                for="estado"
+            >
+                Estado
+            </label>
+
+            <select
+                class="form-select"
+                id="estado"
+                name="estado"
+            >
+                <option value="">Todos</option>
+
+                {% for state in states %}
+                    <option
+                        value="{{ state.id }}"
+                        {% if state.id == filters.state_id %}selected{% endif %}
+                    >
+                        {{ state.nombre_visible }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label
+                class="form-label"
+                for="prioridad"
+            >
+                Prioridad
+            </label>
+
+            <select
+                class="form-select"
+                id="prioridad"
+                name="prioridad"
+            >
+                <option value="">Todas</option>
+
+                {% for priority in priorities %}
+                    <option
+                        value="{{ priority.id }}"
+                        {% if priority.id == filters.priority_id %}selected{% endif %}
+                    >
+                        {{ priority.nombre }}{% if not priority.activo %} (inactiva){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# El SLA es solo del personal: el Solicitante no ve este filtro. #}
+        {% if show_sla %}
+            <div class="col-sm-6 col-lg-2">
+                <label
+                    class="form-label"
+                    for="sla"
+                >
+                    SLA
+                </label>
+
+                <select
+                    class="form-select"
+                    id="sla"
+                    name="sla"
+                >
+                    <option value="">Todos</option>
+
+                    {% for option, label in sla_labels.items() %}
+                        <option
+                            value="{{ option.value }}"
+                            {% if option == filters.sla %}selected{% endif %}
+                        >
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
+
+        <div class="col-12 col-lg-{{ 3 if is_staff else 4 }}">
+            <label
+                class="form-label"
+                for="orden"
+            >
+                Ordenar por
+            </label>
+
+            <select
+                class="form-select"
+                id="orden"
+                name="orden"
+            >
+                {% for key, label in sort_labels.items() %}
+                    <option
+                        value="{{ key }}"
+                        {% if key == sort %}selected{% endif %}
+                    >
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    {# Se abre solo si alguno de sus campos está aplicado. #}
+    <details
+        class="mt-3"
+        {% if more_filters_open %}open{% endif %}
+    >
+        <summary class="fw-semibold small">Más filtros</summary>
+
+        <div class="row g-3 mt-0">
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="categoria"
+                >
+                    Categoría
+                </label>
+
+                <select
+                    class="form-select"
+                    id="categoria"
+                    name="categoria"
+                >
+                    <option value="">Todas</option>
+
+                    {% for category in categories %}
+                        <option
+                            value="{{ category.id }}"
+                            {% if category.id == filters.category_id %}selected{% endif %}
+                        >
+                            {{ category.nombre }}{% if not category.activo %} (inactiva){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="ubicacion"
+                >
+                    Ubicación
+                </label>
+
+                <select
+                    class="form-select"
+                    id="ubicacion"
+                    name="ubicacion"
+                >
+                    <option value="">Todas</option>
+
+                    {% for location in locations %}
+                        <option
+                            value="{{ location.id }}"
+                            {% if location.id == filters.location_id %}selected{% endif %}
+                        >
+                            {{ location.nombre }}{% if not location.activo %} (inactiva){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="desde"
+                >
+                    Creado desde
+                </label>
+
+                <input
+                    class="form-control"
+                    id="desde"
+                    name="desde"
+                    type="date"
+                    value="{{ filter_params.desde or '' }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="hasta"
+                >
+                    Creado hasta
+                </label>
+
+                <input
+                    class="form-control"
+                    id="hasta"
+                    name="hasta"
+                    type="date"
+                    value="{{ filter_params.hasta or '' }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label
+                    class="form-label"
+                    for="cerrado_desde"
+                >
+                    Cerrado desde
+                </label>
+
+                <input
+                    class="form-control"
+                    id="cerrado_desde"
+                    name="cerrado_desde"
+                    type="date"
+                    value="{{ filter_params.cerrado_desde or '' }}"
+                >
+            </div>
+
+            {# Técnico y grupo son solo del personal (el grupo es un dato interno). #}
+            {% if is_staff %}
+                <div class="col-sm-6 col-lg-3">
+                    <label
+                        class="form-label"
+                        for="tecnico"
+                    >
+                        Técnico
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="tecnico"
+                        name="tecnico"
+                    >
+                        <option value="">Todos</option>
+                        <option
+                            value="{{ unassigned_value }}"
+                            {% if filters.unassigned %}selected{% endif %}
+                        >
+                            Sin asignar
+                        </option>
+
+                        {% for technician in technicians %}
+                            <option
+                                value="{{ technician.id }}"
+                                {% if technician.id == filters.technician_id %}selected{% endif %}
+                            >
+                                {{ technician.apellido }}, {{ technician.nombre }}{% if not technician.activo %} (inactivo){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-sm-6 col-lg-3">
+                    <label
+                        class="form-label"
+                        for="grupo"
+                    >
+                        Grupo
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="grupo"
+                        name="grupo"
+                    >
+                        <option value="">Todos</option>
+
+                        {% for group in groups %}
+                            <option
+                                value="{{ group.id }}"
+                                {% if group.id == filters.group_id %}selected{% endif %}
+                            >
+                                {{ group.nombre }}{% if not group.activo %} (inactivo){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input
+                        class="form-check-input"
+                        id="activos"
+                        name="activos"
+                        type="checkbox"
+                        value="1"
+                        {% if filters.active_only %}checked{% endif %}
+                    >
+                    <label
+                        class="form-check-label"
+                        for="activos"
+                    >
+                        Solo en trabajo (ni resueltos ni cerrados)
+                    </label>
+                </div>
+
+                {% if not is_staff %}
+                    <div class="form-check">
+                        <input
+                            class="form-check-input"
+                            id="revision"
+                            name="revision"
+                            type="checkbox"
+                            value="1"
+                            {% if filters.pending_review %}checked{% endif %}
+                        >
+                        <label
+                            class="form-check-label"
+                            for="revision"
+                        >
+                            Solo los que esperan tu revisión
+                        </label>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </details>
+
+    <div class="d-flex gap-2 mt-3">
+        <button
+            class="btn btn-primary"
+            type="submit"
+        >
+            Filtrar
+        </button>
+
+        <a
+            class="btn btn-link"
+            href="{{ url_for(list_url, vista=tab) }}"
+        >
+            Limpiar filtros
+        </a>
+    </div>
+</form>

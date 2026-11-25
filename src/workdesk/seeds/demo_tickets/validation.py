@@ -1,13 +1,12 @@
 """Validación de los datos de demostración antes de tocar la base."""
 
 
-
+from ...cleaning import MAX_REASON_LENGTH
 from ...models import (
     StateAction,
 )
 from ...models.comment import MAX_COMMENT_LENGTH
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
-from ...tickets.editing import MAX_REASON_LENGTH
 from ...tickets.service import (
     CLOSED_STATE_CODE,
     INITIAL_STATE_CODE,

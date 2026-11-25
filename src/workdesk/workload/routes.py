@@ -8,9 +8,10 @@ que la explica y su valor es el total de ese listado.
 
 from flask import render_template, request, url_for
 
-from ..catalogs.service import list_priorities
+from ..catalogs.service import list_priorities, list_states
 from ..models.estado import IN_PROGRESS_STATE_CODE, ON_HOLD_STATE_CODE
 from ..models.prioridad import CRITICAL_PRIORITY_CODE
+from ..query_params import choice_arg
 from ..security import (
     RESOLVED_STATE,
     STAFF_ROLES,
@@ -19,7 +20,7 @@ from ..security import (
     roles_required,
 )
 from ..sla.periods import STOPPING_STATES, sla_enabled
-from ..tickets.queries import list_group_options, list_states
+from ..tickets.queries import list_group_options
 from . import bp
 from .queries import WorkloadFilters, workload_overview
 
@@ -47,15 +48,15 @@ def workload_page():
     states = [state for state in all_states if state.codigo not in STOPPING_STATES]
 
     filters = WorkloadFilters(
-        group_id=_choice_arg("grupo", groups),
-        priority_id=_choice_arg("prioridad", priorities),
-        state_id=_choice_arg("estado", states),
+        group_id=choice_arg("grupo", groups),
+        priority_id=choice_arg("prioridad", priorities),
+        state_id=choice_arg("estado", states),
     )
     data = workload_overview(current_actor(), filters)
 
     # Filtros que solo afectan a la tabla por técnico: los indicadores siguen siendo los
     # del equipo completo.
-    technician_id = _choice_arg("tecnico", [row.user for row in data.technicians])
+    technician_id = choice_arg("tecnico", [row.user for row in data.technicians])
     search = request.args.get("q", "").strip()[:MAX_SEARCH_LENGTH]
     sort = request.args.get("orden", DEFAULT_SORT)
     sorts = dict(SORTS)
@@ -141,10 +142,3 @@ def _filter_and_sort(rows, technician_id, search, sort):
     }
 
     return sorted(rows, key=keys[sort])
-
-
-def _choice_arg(name: str, options) -> int | None:
-    """Id recibido por la URL si corresponde a una de las opciones."""
-    value = request.args.get(name, type=int)
-
-    return value if value in {option.id for option in options} else None

@@ -4,6 +4,7 @@ from ..extensions import db
 from ..models import Categoria, MotivoEspera, Prioridad, Ubicacion
 from ..models.ubicacion import LOCATION_TYPE_LABELS, LocationType
 from ..security import admin_only, current_actor
+from ..status_filter import VALID_STATUSES
 from ..users.forms import ReasonForm
 from . import bp
 from .forms import CategoryForm, LocationForm, PriorityForm, WaitReasonForm
@@ -15,7 +16,6 @@ from .screens import (
     CatalogScreen,
 )
 from .service import (
-    VALID_STATUSES,
     CatalogRuleError,
     DuplicateNameError,
     activate_item,

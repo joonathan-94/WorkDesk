@@ -791,10 +791,12 @@ src/workdesk/
 ├── tickets/        núcleo de tickets (ver abajo)
 ├── users/          administración de usuarios
 ├── workload/       carga de trabajo del equipo (v0.6.0): consultas y pantalla
-├── cleaning.py     limpieza de textos compartida por servicios y formularios
+├── cleaning.py     limpieza de textos y motivos, compartida por servicios y formularios
 ├── formatting.py   fechas en hora local
 ├── navigation.py   navegación por rol
-├── search.py       búsqueda (comodines escapados)
+├── query_params.py lectura de parámetros de la URL que comparten las pantallas con filtros
+├── search.py       búsqueda (comodines escapados y texto completo en español)
+├── status_filter.py el filtro Activos / Inactivos de la administración
 └── worktime.py     tiempo laboral compartido (v0.5.0): calendario, medir y sumar plazos
 ```
 
@@ -811,6 +813,7 @@ tickets/
 ├── versioning.py      control de versión, bloqueo de la fila y errores comunes
 ├── state_actions.py   catálogo de acciones de estado (textos, roles, esenciales)
 ├── lifecycle.py       motor de estados: change_state y las acciones disponibles
+├── lifecycle_history.py lo que un cambio de estado deja escrito (historial y validaciones)
 ├── assignment.py      técnicos, grupo y escalamiento
 ├── reassignment.py    reasignación masiva de los tickets de un técnico (v0.6.0)
 ├── requesters.py      solicitantes tras crear el ticket
@@ -871,8 +874,10 @@ sla/
 │                      Administrador («30 min», «4 h», «1 h 30 min»)
 ├── policy_routes.py   definir o editar, desactivar y reactivar los objetivos de una
 │                      prioridad (/admin/sla/priorities/<id>/...)
-└── periods.py         los períodos de SLA de cada ticket: abrirlos y cerrarlos,
-                       evaluarlos y reconstruirlos desde el historial
+├── periods.py         escritura: abrir y cerrar los períodos de SLA de cada ticket
+├── evaluation.py      lectura: cómo está el SLA de uno o varios tickets ahora
+├── queries.py         la misma lectura como condiciones SQL (filtro y orden del listado)
+└── rebuild.py         recalcular períodos desde el historial (`sla-rebuild`)
 ```
 
 - **`resolve_work_calendar()` es la única función que decide cuál es el calendario vigente:** el guardado o, si todavía no hay ninguno, el de por defecto en la zona de `APP_TIMEZONE` (`09_modelo_de_datos.md`, sección 40.8). Devuelve un `ResolvedCalendar` con el reloj listo para usar y la versión de la que sale (0 si es el de por defecto). `clock_for(versión)` construye el reloj de una versión concreta, que es lo que necesitará el SLA para seguir calculando con la versión con la que abrió cada período.
@@ -898,15 +903,15 @@ Es el `SLAService` de las secciones 78 a 82, sin una clase: funciones sobre `Per
 - **Se apoya en las operaciones que ya bloquean y versionan el ticket:** corre dentro de su transacción, sin commit, y se confirma o se revierte con ellas. Un índice único parcial (un período vigente por ticket) es la última defensa.
 - **El reloj de cada período es el de su calendario.** Al abrirlo se resuelve el calendario vigente (`resolve_work_calendar`) y se anota; al cerrarlo o evaluarlo se usa el de ese período (`clock_for`), de modo que guardar un calendario nuevo no cambia lo que un período ya calculó.
 - **La hora es la de la base de datos** (`current_time`, el `now()` de la transacción), la misma que ponen los eventos del historial: un período abre en el mismo instante que el evento que lo provocó. Los tests la fijan para que el tiempo laboral sea determinista.
-- **`evaluate_ticket_sla` calcula el estado** (`DENTRO`, `PROXIMO_A_VENCER`, `VENCIDO` y `PAUSADO`) sin guardar nada: el consumo de un período vigente depende de la hora de la consulta, así que no se almacena. La entrega 7 lo usará para las insignias y la 8, para los avisos.
-- **`rebuild_ticket_periods` reconstruye los períodos repasando el historial** con la misma lógica que el cálculo en vivo (comparten `_reconcile`), y un test comprueba que ambos dan el mismo resultado para un recorrido completo. Lo usan `seed-demo-tickets` y el comando `sla-rebuild`.
+- **`evaluate_ticket_sla` (`evaluation.py`) calcula el estado** (`DENTRO`, `PROXIMO_A_VENCER`, `VENCIDO` y `PAUSADO`) sin guardar nada: el consumo de un período vigente depende de la hora de la consulta, así que no se almacena. La entrega 7 lo usará para las insignias y la 8, para los avisos.
+- **`rebuild_ticket_periods` (`rebuild.py`) reconstruye los períodos repasando el historial** con la misma lógica que el cálculo en vivo (comparten `reconcile`), y un test comprueba que ambos dan el mismo resultado para un recorrido completo. Lo usan `seed-demo-tickets` y el comando `sla-rebuild`.
 - **Dos comandos de apoyo:** `sla-rebuild` (calcula los períodos de los tickets que no tienen ninguno; `--all` recalcula también los reales y no se ejecuta en producción) y `sla-status <número>` (muestra el estado del SLA de un ticket y sus períodos).
 
 ### Indicadores de SLA (`sla/queries.py`)
 
 Las reglas funcionales están en `06_reglas_de_negocio.md` (RN-169). El estado del SLA se necesita de dos formas y las dos dan siempre el mismo resultado:
 
-- **Evaluarlo por lotes** (`evaluate_tickets_sla` en `periods.py`): el estado de las filas de una página con un **número fijo de consultas** (períodos, estados, primeras respuestas y un reloj por calendario distinto), no una por ticket. `evaluate_ticket_sla` es el caso de un solo ticket sobre la misma función. Un test comprueba que evaluar 14 tickets no cuesta más consultas que uno.
+- **Evaluarlo por lotes** (`evaluate_tickets_sla` en `evaluation.py`): el estado de las filas de una página con un **número fijo de consultas** (períodos, estados, primeras respuestas y un reloj por calendario distinto), no una por ticket. `evaluate_ticket_sla` es el caso de un solo ticket sobre la misma función. Un test comprueba que evaluar 14 tickets no cuesta más consultas que uno.
 - **Filtrar y ordenar antes de paginar** (`sla_condition` y `sla_urgency_order`): no se puede calcular tiempo laboral en SQL, pero cada período guarda sus fechas ya calculadas (vencimiento y fecha de aviso), así que el estado son comparaciones con `now`: *vencido* es que algún período llegó a su vencimiento (hasta su fin, o hasta ahora si sigue vigente) o que el período pausado o cerrado nació con más consumo que su objetivo; *pausado*, un período vigente sin vencimiento; *próximo*, un período vigente cuya fecha de aviso ya llegó; *sin SLA*, sin períodos o con el último cerrado en un ticket en trabajo.
 - **La equivalencia se comprueba, no se supone**: un test crea tickets en catorce situaciones (con pausas, reaperturas, subidas y bajadas de prioridad, sin política, sin períodos...) y compara, en más de 150 momentos —cada media hora durante tres días y un segundo antes y después de cada fecha guardada—, lo que selecciona cada opción del filtro con lo que dice la evaluación. Si se cambia una de las dos hay que cambiar la otra.
 - **El instante es uno solo por pantalla**: el listado lo toma una vez y lo pasa al filtro, a los contadores y a las insignias; así no pueden contradecirse en un borde. El orden por urgencia usa una subconsulta correlacionada sobre el período vigente (índice único parcial por ticket).

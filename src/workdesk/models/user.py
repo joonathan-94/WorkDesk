@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from flask_login import UserMixin
 from sqlalchemy import (
@@ -17,9 +17,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
+from ._modification import ModificationMixin
 
 
-class User(UserMixin, db.Model):
+class User(UserMixin, ModificationMixin, db.Model):
     __tablename__ = "usuarios"
     __table_args__ = (
         CheckConstraint(
@@ -164,8 +165,3 @@ class User(UserMixin, db.Model):
 
     def get_id(self) -> str:
         return f"{self.id}:{self.token_version}"
-
-    def mark_modified(self, actor: "User") -> None:
-        """Registra quién y cuándo modificó el usuario por última vez."""
-        self.fecha_modificacion = datetime.now(UTC)
-        self.usuario_modificacion_id = actor.id

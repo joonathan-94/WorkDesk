@@ -10,6 +10,7 @@ revierten juntos, y el commit lo realiza quien llama. Quién puede editar lo
 decide la capa de rutas (`can_edit_ticket`, `can_change_priority`).
 """
 
+from ..cleaning import clean_required_reason
 from ..extensions import db
 from ..models import (
     Categoria,
@@ -20,15 +21,10 @@ from ..models import (
     User,
 )
 from ..notifications.events import notify_priority_lowered
-from ..sla.periods import (
-    SLA_STATUS_LABELS,
-    SlaStatus,
-    evaluate_ticket_sla,
-    reconcile_sla,
-)
+from ..sla.evaluation import SLA_STATUS_LABELS, SlaStatus, evaluate_ticket_sla
+from ..sla.periods import reconcile_sla
 from .service import (
     CLOSED_STATE_CODE,
-    MAX_REASON_LENGTH,
     TicketRuleError,
     clean_title_and_description,
     record_ticket_event,
@@ -174,15 +170,9 @@ def change_priority(
     if not priority.activo:
         raise TicketRuleError("La prioridad seleccionada no está disponible.")
 
-    reason = (reason or "").strip()
-
-    if not reason:
-        raise TicketRuleError("Indica el motivo del cambio de prioridad.")
-
-    if len(reason) > MAX_REASON_LENGTH:
-        raise TicketRuleError(
-            f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres."
-        )
+    reason = clean_required_reason(
+        reason, TicketRuleError, "Indica el motivo del cambio de prioridad."
+    )
 
     old_priority = ticket.prioridad
     # Cómo estaba el SLA antes del cambio: bajar la prioridad con el SLA en riesgo

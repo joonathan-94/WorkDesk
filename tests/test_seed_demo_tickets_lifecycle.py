@@ -22,7 +22,8 @@ from src.workdesk.seeds.demo_tickets_data import (
     DEMO_TICKETS,
     DemoAdjustment,
 )
-from src.workdesk.sla.periods import SlaStatus, evaluate_ticket_sla, list_periods
+from src.workdesk.sla.evaluation import SlaStatus, evaluate_ticket_sla
+from src.workdesk.sla.periods import list_periods
 from tests.demo_data import NOW, prepare
 from tests.seed_helpers import (
     ACTION_DESTINATION,

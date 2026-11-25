@@ -1,0 +1,33 @@
+<div class="text-center text-secondary border rounded p-4">
+    {% if is_filtered %}
+        <p class="mb-2">No se encontraron tickets con esos criterios.</p>
+
+        <a
+            class="btn btn-outline-secondary btn-sm"
+            href="{{ url_for(list_url, vista=tab) }}"
+        >
+            Limpiar filtros
+        </a>
+    {% else %}
+        <p class="mb-2">
+            {% if tab == 'abiertos' %}
+                No hay tickets abiertos.
+            {% elif tab == 'cerrados' %}
+                No hay tickets cerrados.
+            {% elif is_staff %}
+                Todavía no hay tickets registrados.
+            {% else %}
+                Todavía no tienes tickets.
+            {% endif %}
+        </p>
+
+        {% if tab != 'cerrados' %}
+            <a
+                class="btn btn-primary btn-sm"
+                href="{{ url_for('tickets.new_ticket') }}"
+            >
+                Crear ticket
+            </a>
+        {% endif %}
+    {% endif %}
+</div>

@@ -30,7 +30,7 @@ from ..models.estado import ON_HOLD_STATE_CODE
 from ..models.ticket_history import TicketEvent
 from ..security import RoleCode, can_view_workload
 from ..sla import periods as sla_periods
-from ..sla.periods import SlaSnapshot, evaluate_tickets_sla
+from ..sla.evaluation import SlaSnapshot, evaluate_tickets_sla
 from ..sla.work_calendar import resolve_work_calendar
 from ..tickets.queries import (
     SORT_PRIORITY_SLA,

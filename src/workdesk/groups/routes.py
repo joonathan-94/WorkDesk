@@ -11,11 +11,11 @@ from ..security import (
     current_actor,
     roles_required,
 )
+from ..status_filter import VALID_STATUSES
 from ..users.forms import ReasonForm
 from . import bp
 from .forms import GroupForm, UserPickForm
 from .service import (
-    VALID_STATUSES,
     GroupRuleError,
     activate_group,
     add_member,

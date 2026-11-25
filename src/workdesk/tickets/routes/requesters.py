@@ -4,10 +4,10 @@
 from flask import abort, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
+from ...cleaning import MAX_REASON_LENGTH
 from ...security import can_manage_requesters, current_actor
 from ...users.forms import ReasonForm
 from .. import bp
-from ..editing import MAX_REASON_LENGTH
 from ..forms import RequesterPickForm
 from ..requesters import add_requester, list_addable_requesters, remove_requester
 from .common import (

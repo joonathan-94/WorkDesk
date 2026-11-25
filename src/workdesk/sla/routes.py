@@ -10,6 +10,7 @@ from datetime import datetime
 from flask import flash, redirect, render_template, request, url_for
 
 from .. import settings
+from ..cleaning import MAX_REASON_LENGTH
 from ..configuration import save_setting
 from ..extensions import db
 from ..formatting import app_zone
@@ -24,7 +25,6 @@ from .forms import (
 from .periods import sla_enabled
 from .policies import list_policy_rows, on_hold_state_name
 from .work_calendar import (
-    MAX_REASON_LENGTH,
     CalendarConflictError,
     CalendarRuleError,
     NothingToChangeError,

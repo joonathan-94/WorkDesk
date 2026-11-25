@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 from sqlalchemy import event
 
+from src.workdesk.catalogs.service import list_states
 from src.workdesk.extensions import db
 from src.workdesk.models import (
     Estado,
@@ -23,7 +24,6 @@ from src.workdesk.tickets.queries import (
     TAB_OPEN,
     TicketFilters,
     count_tickets_by_tab,
-    list_states,
     list_tickets,
     visible_tickets_condition,
 )

@@ -21,7 +21,8 @@ import pytest
 from src.workdesk.extensions import db
 from src.workdesk.groups.service import create_group
 from src.workdesk.models import CommentType, StateAction
-from src.workdesk.sla.periods import SlaStatus, evaluate_ticket_sla, list_periods
+from src.workdesk.sla.evaluation import SlaStatus, evaluate_ticket_sla
+from src.workdesk.sla.periods import list_periods
 from src.workdesk.tickets.assignment import (
     assign_technician,
     escalate_ticket,

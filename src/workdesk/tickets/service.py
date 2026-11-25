@@ -36,7 +36,6 @@ CLOSED_STATE_CODE = "CERRADO"
 
 # Máximo de caracteres de un motivo (cambio de prioridad, asignación,
 # solicitantes...).
-MAX_REASON_LENGTH = 500
 
 
 class TicketRuleError(ValueError):
@@ -322,19 +321,6 @@ def record_ticket_event(
     db.session.flush()
 
     return entry
-
-
-def clean_optional_reason(reason: str | None) -> str | None:
-    """Recorta un motivo opcional: devuelve None si queda vacío y lanza
-    `TicketRuleError` si supera `MAX_REASON_LENGTH`."""
-    reason = (reason or "").strip()
-
-    if len(reason) > MAX_REASON_LENGTH:
-        raise TicketRuleError(
-            f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres."
-        )
-
-    return reason or None
 
 
 def full_name(user: User) -> str:

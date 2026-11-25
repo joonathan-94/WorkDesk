@@ -1,0 +1,132 @@
+{% from "_ui_macros.html" import state_badge, priority_badge %}
+{% set requesters = ticket.solicitantes_vigentes %}
+
+<section
+    class="card"
+    aria-labelledby="summary-title"
+>
+    <div class="card-body">
+        <h2
+            class="h6 mb-3"
+            id="summary-title"
+        >
+            Resumen
+        </h2>
+
+        <dl class="mb-0">
+            <dt class="small text-secondary fw-normal">Estado</dt>
+            <dd>{{ state_badge(ticket.estado) }}</dd>
+
+            <dt class="small text-secondary fw-normal">Prioridad</dt>
+            <dd>{{ priority_badge(ticket.prioridad) }}</dd>
+
+            <dt class="small text-secondary fw-normal">Categoría</dt>
+            <dd>{{ ticket.categoria.nombre }}</dd>
+
+            <dt class="small text-secondary fw-normal">Ubicación</dt>
+            <dd>{{ ticket.ubicacion.nombre if ticket.ubicacion else '—' }}</dd>
+
+            {# Quién atiende el ticket. El personal ve además el
+               grupo; el Solicitante, solo "Atendido por" (docs/11,
+               UI-005). #}
+            {% set assigned = ticket.tecnicos_vigentes %}
+
+            <dt class="small text-secondary fw-normal">
+                {% if is_staff %}
+                    {{ 'Técnico' if assigned|length == 1 else 'Técnicos' }}
+                {% else %}
+                    Atendido por
+                {% endif %}
+            </dt>
+            <dd>
+                {% if assigned %}
+                    <ul class="list-unstyled mb-0">
+                        {% for assignment in assigned %}
+                            <li>
+                                {{ assignment.tecnico.nombre }}
+                                {{ assignment.tecnico.apellido }}
+                                {% if is_staff and not assignment.tecnico.activo %}
+                                    <span class="small text-secondary">(inactivo)</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    {{ 'Sin asignar' if is_staff else 'Aún sin asignar' }}
+                {% endif %}
+            </dd>
+
+            {% if is_staff %}
+                <dt class="small text-secondary fw-normal">Grupo</dt>
+                <dd>
+                    {{ ticket.grupo.nombre if ticket.grupo else '—' }}
+                    {% if ticket.grupo and not ticket.grupo.activo %}
+                        <span class="small text-secondary">(inactivo)</span>
+                    {% endif %}
+                </dd>
+            {% endif %}
+
+            <dt class="small text-secondary fw-normal">Creado</dt>
+            <dd>{{ ticket.fecha_creacion|local_datetime }}</dd>
+
+            <dt class="small text-secondary fw-normal">Actualizado</dt>
+            <dd>{{ ticket.fecha_actualizacion|local_datetime }}</dd>
+
+            {% if ticket.fecha_resolucion %}
+                <dt class="small text-secondary fw-normal">Fecha de resolución</dt>
+                <dd>{{ ticket.fecha_resolucion|local_datetime }}</dd>
+            {% endif %}
+
+            {% if ticket.fecha_cierre %}
+                <dt class="small text-secondary fw-normal">Fecha de cierre</dt>
+                <dd>
+                    {{ ticket.fecha_cierre|local_datetime }}
+                    {% if ticket.motivo_cierre %}
+                        <span class="small d-block text-secondary">
+                            {{ ticket.motivo_cierre.nombre }}
+                        </span>
+                    {% endif %}
+                </dd>
+            {% endif %}
+
+            {# El personal ve además quién lo creó y los solicitantes
+               (docs/11, UI-005); el Solicitante no. #}
+            {% if is_staff %}
+                <dt class="small text-secondary fw-normal">Creado por</dt>
+                <dd>
+                    {{ ticket.creado_por.nombre }} {{ ticket.creado_por.apellido }}
+                </dd>
+
+                <dt class="small text-secondary fw-normal">
+                    {{ 'Solicitante' if requesters|length == 1 else 'Solicitantes' }}
+
+                    {# Agregar o retirar solicitantes: solo el personal
+                       y mientras el ticket no esté cerrado (la ruta
+                       lo comprueba por su cuenta). #}
+                    {% if show_requesters %}
+                        <a
+                            class="ms-1"
+                            href="{{ url_for('tickets.requesters_page', public_id=ticket.public_id) }}"
+                        >
+                            Gestionar
+                        </a>
+                    {% endif %}
+                </dt>
+                <dd class="mb-0">
+                    {% if requesters %}
+                        <ul class="list-unstyled mb-0">
+                            {% for requester in requesters %}
+                                <li>
+                                    {{ requester.solicitante.nombre }}
+                                    {{ requester.solicitante.apellido }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        Sin solicitante
+                    {% endif %}
+                </dd>
+            {% endif %}
+        </dl>
+    </div>
+</section>

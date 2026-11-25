@@ -12,6 +12,7 @@ la ruta): un usuario sin permiso recibe `PermissionError`.
 from sqlalchemy import func, update
 
 from ..audit import AuditAction, record_admin_event
+from ..cleaning import clean_optional_reason
 from ..extensions import db
 from ..models import Article, ArticleVisibility, Categoria
 from ..models.article import MAX_ARTICLE_CONTENT_LENGTH, MAX_ARTICLE_TITLE_LENGTH
@@ -23,7 +24,6 @@ from ..security import (
 )
 
 ENTITY = "articulo_conocimiento"
-MAX_REASON_LENGTH = 500
 
 
 class ArticleRuleError(ValueError):
@@ -86,15 +86,6 @@ def _active_category(category_id: int, *, current: int | None = None) -> Categor
         raise ArticleRuleError("Elige una categoría disponible.")
 
     return category
-
-
-def _clean_reason(reason: str | None) -> str | None:
-    reason = (reason or "").strip()
-
-    if len(reason) > MAX_REASON_LENGTH:
-        raise ArticleRuleError(f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres.")
-
-    return reason or None
 
 
 # --- Escritura -----------------------------------------------------------------------------
@@ -229,7 +220,7 @@ def publish_article(
 ) -> bool:
     """Publica un borrador. `False` si ya estaba publicado."""
     _require(can_publish_article(actor))
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, ArticleRuleError)
 
     if not article.activo:
         raise ArticleRuleError("Reactiva el artículo antes de publicarlo.")
@@ -253,7 +244,7 @@ def unpublish_article(
 ) -> bool:
     """Vuelve un artículo a borrador (deja de estar destacado). `False` si ya lo era."""
     _require(can_publish_article(actor))
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, ArticleRuleError)
 
     if not article.publicado:
         return False
@@ -298,7 +289,7 @@ def deactivate_article(
 ) -> bool:
     """Retira un artículo sin borrarlo (deja de estar destacado)."""
     _require(can_deactivate_article(actor))
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, ArticleRuleError)
 
     if not article.activo:
         return False
@@ -324,7 +315,7 @@ def activate_article(
 ) -> bool:
     """Reactiva un artículo desactivado; vuelve con su estado de publicación."""
     _require(can_deactivate_article(actor))
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, ArticleRuleError)
 
     if article.activo:
         return False

@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from uuid import uuid4
 
 from ..audit import AuditAction, record_admin_event
+from ..cleaning import clean_required_reason
 from ..extensions import db
 from ..models import Role, StateAction, Ticket, TicketEvent, User
 from ..notifications.events import (
@@ -49,8 +50,6 @@ from .service import (
     record_ticket_event,
 )
 from .versioning import TicketClosedError, begin_ticket_operation
-
-MAX_REASON_LENGTH = 500
 
 
 @dataclass(frozen=True)
@@ -145,7 +144,11 @@ def _validate_request(actor, source_id, moves, reason):
     if not actor.is_active:
         raise TicketRuleError("El usuario no está activo.")
 
-    reason = _clean_reason(reason)
+    reason = clean_required_reason(
+        " ".join((reason or "").split()),
+        TicketRuleError,
+        "Indica el motivo de la reasignación (por ejemplo, vacaciones).",
+    )
     source = _get_source(source_id)
 
     if not moves:
@@ -227,20 +230,6 @@ def _move(
 # --- Piezas ---------------------------------------------------------------------------
 
 
-def _clean_reason(reason: str | None) -> str:
-    reason = " ".join((reason or "").split())
-
-    if not reason:
-        raise TicketRuleError("Indica el motivo de la reasignación (por ejemplo, vacaciones).")
-
-    if len(reason) > MAX_REASON_LENGTH:
-        raise TicketRuleError(
-            f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres."
-        )
-
-    return reason
-
-
 def _get_source(user_id: int) -> User:
     """El técnico de origen: cualquier usuario que aún conserve tickets asignados. Puede estar
     desactivado, o ya no ser Técnico (cambió de rol): su trabajo debe poder redistribuirse
@@ -302,7 +291,6 @@ def _audit(actor: User, source: User, result: ReassignmentResult, reason: str) -
 
 
 __all__ = [
-    "MAX_REASON_LENGTH",
     "MovedTicket",
     "ReassignmentResult",
     "SkippedTicket",

@@ -1,10 +1,12 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, func, true
 from sqlalchemy.orm import Mapped, mapped_column
 
+from ._modification import ModificationMixin
 
-class CatalogAuditMixin:
+
+class CatalogAuditMixin(ModificationMixin):
     """Columnas de vigencia y trazabilidad comunes a los catálogos editables.
 
     `activo` solo impide elegir el valor en operaciones nuevas: los tickets
@@ -41,8 +43,3 @@ class CatalogAuditMixin:
         ForeignKey("usuarios.id", ondelete="RESTRICT"),
         nullable=True,
     )
-
-    def mark_modified(self, actor) -> None:
-        """Registra quién y cuándo modificó el registro por última vez."""
-        self.fecha_modificacion = datetime.now(UTC)
-        self.usuario_modificacion_id = actor.id

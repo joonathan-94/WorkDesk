@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
+from ..cleaning import MAX_REASON_LENGTH
 from ..extensions import db
 from ..models import ArticleLinkType
 from ..security import (
@@ -27,7 +28,7 @@ from ..tickets.service import (
     categories_for_selection,
     get_ticket_by_public_id,
 )
-from ..users.forms import MAX_REASON_LENGTH, ReasonForm
+from ..users.forms import ReasonForm
 from . import bp
 from .forms import ArticleForm
 from .queries import (

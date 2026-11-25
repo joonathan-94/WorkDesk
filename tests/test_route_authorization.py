@@ -15,6 +15,8 @@ queda cubierta sin tocar el test y es *segura por defecto*:
 - **Áreas de administración.** `users`, `catalogs`, `admin` y `sla` son del
   Administrador y `groups` del Administrador y los Supervisores: el resto de
   roles recibe 403.
+- **Base de conocimiento.** Un Solicitante solo usa las rutas de lectura de
+  `KNOWLEDGE_READING`; todas las demás responden 403.
 
 Si un test falla porque se añadió una ruta, no se debe «arreglar» el test: o se
 protege la ruta (comprobar el acceso al ticket antes de nada y, después, el rol),
@@ -48,6 +50,9 @@ REQUESTER_ENDPOINTS = {
 # eran del Administrador, pero este recorrido no las cubría.
 ADMIN_ONLY_PREFIXES = ("users.", "catalogs.", "admin.", "sla.")
 STAFF_METHODS = ("GET", "POST")
+# Las únicas rutas de la base de conocimiento para todos: la visibilidad de cada
+# artículo la decide la consulta.
+KNOWLEDGE_READING = {"knowledge.index", "knowledge.detail"}
 
 
 def ticket_routes(app):
@@ -165,7 +170,7 @@ def test_the_routes_a_requester_may_use_do_respond_to_them(
 # --- Áreas de administración ---------------------------------------------------
 
 
-def area_violations(client, app, prefixes, roles) -> list[str]:
+def area_violations(client, app, prefixes, roles, skip=()) -> list[str]:
     """Rutas de las áreas `prefixes` que no responden 403 con la sesión
     abierta. El rol se comprueba antes de buscar nada, así que cualquier valor
     sirve para los parámetros."""
@@ -173,7 +178,7 @@ def area_violations(client, app, prefixes, roles) -> list[str]:
     violations = []
 
     for rule in app.url_map.iter_rules():
-        if not rule.endpoint.startswith(prefixes):
+        if not rule.endpoint.startswith(prefixes) or rule.endpoint in skip:
             continue
 
         url = adapter.build(rule.endpoint, {name: 1 for name in rule.arguments})
@@ -230,6 +235,21 @@ def test_the_workload_area_is_closed_to_requesters(client, app, make_user, catal
     login(client, make_user("SOLICITANTE", username="persona"))
 
     assert area_violations(client, app, ("workload.",), "SOLICITANTE") == []
+
+
+def test_a_requester_can_only_read_the_knowledge_base(client, app, make_user, catalog):
+    login(client, make_user("SOLICITANTE", username="persona"))
+    endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
+
+    # Las rutas de lectura existen y hay rutas de gestión que revisar.
+    assert KNOWLEDGE_READING <= endpoints
+    assert {"knowledge.manage", "knowledge.new_article"} <= endpoints
+    assert (
+        area_violations(
+            client, app, ("knowledge.",), "SOLICITANTE", skip=KNOWLEDGE_READING
+        )
+        == []
+    )
 
 
 def test_there_are_administration_routes_to_check(app):
