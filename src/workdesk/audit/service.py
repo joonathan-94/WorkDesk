@@ -80,6 +80,16 @@ class AuditAction(StrEnum):
     CONFIGURACION_MODIFICADA = "CONFIGURACION_MODIFICADA"
     CONFIGURACION_RESTABLECIDA = "CONFIGURACION_RESTABLECIDA"
 
+    # Base de conocimiento (`entidad_tipo` es "articulo_conocimiento"; `entidad_id`, el
+    # artículo). El contenido no se copia en la auditoría: se registra qué cambió.
+    ARTICULO_CREADO = "ARTICULO_CREADO"
+    ARTICULO_MODIFICADO = "ARTICULO_MODIFICADO"
+    ARTICULO_PUBLICADO = "ARTICULO_PUBLICADO"
+    ARTICULO_DESPUBLICADO = "ARTICULO_DESPUBLICADO"
+    ARTICULO_DESTACADO = "ARTICULO_DESTACADO"
+    ARTICULO_ACTIVADO = "ARTICULO_ACTIVADO"
+    ARTICULO_DESACTIVADO = "ARTICULO_DESACTIVADO"
+
     # Reasignación masiva de los tickets de un técnico a otros (`entidad_tipo` es
     # "tecnico"; `entidad_id`, el técnico de origen). Una sola entrada por operación,
     # con los tickets movidos y omitidos; el rastro de cada ticket va en su historial.

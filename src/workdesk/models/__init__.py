@@ -1,4 +1,8 @@
 from .admin_audit_log import AdminAuditLog as AdminAuditLog
+from .article import Article as Article
+from .article import ArticleLinkType as ArticleLinkType
+from .article import ArticleVisibility as ArticleVisibility
+from .article import TicketArticle as TicketArticle
 from .attachment import Attachment as Attachment
 from .calendario_laboral import CalendarioLaboral as CalendarioLaboral
 from .calendario_laboral import Feriado as Feriado

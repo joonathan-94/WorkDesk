@@ -1,6 +1,8 @@
 from .catalogs import seed_catalogs as seed_catalogs
 from .demo import seed_demo_groups as seed_demo_groups
 from .demo import seed_demo_users as seed_demo_users
+from .demo_articles import DemoArticlesError as DemoArticlesError
+from .demo_articles import seed_demo_articles as seed_demo_articles
 from .demo_notifications import DemoNotificationsError as DemoNotificationsError
 from .demo_notifications import seed_demo_notifications as seed_demo_notifications
 from .demo_tickets import DemoTicketsError as DemoTicketsError

@@ -1878,6 +1878,19 @@ Aplica RN-97, RF-087 y RF-121 (`v0.7.0`). Solo el Administrador elige qué aviso
 
 ---
 
+## RN-173 — Artículos de la base de conocimiento
+
+Aplica RF-102 y RF-103 (`v0.7.0`).
+
+* **Estados.** Un artículo es borrador o publicado y, aparte, público o privado. *Público* no significa abierto a Internet: lo lee cualquier persona con sesión; *privado*, solo el personal. Desactivar no borra.
+* **Lectura.** El Solicitante lee los publicados y públicos. El Técnico lee los publicados y sus propios borradores. El Supervisor lee todos los activos; el Administrador, todos.
+* **Escritura.** El personal crea borradores. El Técnico edita sus borradores; el Supervisor y el Administrador editan cualquiera y son quienes publican, retiran de publicación y destacan. Solo el Administrador desactiva y reactiva.
+* **Categoría.** Se usa el catálogo de categorías de los tickets. Una categoría desactivada puede conservarse, pero no elegirse.
+* **Destacados.** Solo puede destacarse un artículo publicado y activo; al retirarlo de publicación o desactivarlo deja de estarlo.
+* **Concurrencia y trazabilidad.** Si otra persona cambió el artículo, no se guarda nada. Cada operación se audita; el texto del artículo no se copia.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas
