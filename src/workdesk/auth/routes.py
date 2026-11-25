@@ -16,6 +16,8 @@ from flask_login import (
     logout_user,
 )
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..models import User
 from ..responses import json_error
@@ -132,10 +134,8 @@ def login():
         if not verify_password(user.password_hash, password):
             register_failed_login(
                 user=user,
-                max_attempts=current_app.config[
-                    "LOGIN_MAX_FAILED_ATTEMPTS"
-                ],
-                lock_minutes=current_app.config["LOGIN_LOCK_MINUTES"],
+                max_attempts=value_of(settings.LOGIN_MAX_FAILED_ATTEMPTS),
+                lock_minutes=value_of(settings.LOGIN_LOCK_MINUTES),
                 now=now,
             )
 

@@ -1,13 +1,13 @@
 import secrets
 import string
 
+from ..settings import PASSWORD_LENGTH_CEILING, PASSWORD_LENGTH_FLOOR
 from .passwords import verify_password
 
-# Suelo absoluto: ninguna configuración puede exigir menos que esto.
-MIN_LENGTH_FLOOR = 8
+# Los límites se definen en `settings.py` (ver allí por qué).
+MIN_LENGTH_FLOOR = PASSWORD_LENGTH_FLOOR
 
-# Tope para evitar que una entrada enorme encarezca el hashing sin motivo.
-MAX_LENGTH = 128
+MAX_LENGTH = PASSWORD_LENGTH_CEILING
 
 TEMPORARY_PASSWORD_LENGTH = 16
 

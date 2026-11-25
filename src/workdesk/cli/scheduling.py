@@ -1,8 +1,10 @@
 """El comando del planificador (`src/workdesk/scheduler.py`)."""
 
 import click
-from flask import Flask, current_app
+from flask import Flask
 
+from .. import settings
+from ..configuration import value_of
 from ..scheduler import SchedulerResult, run_loop, run_once
 
 
@@ -49,7 +51,7 @@ def register(app: Flask) -> None:
 
             return
 
-        seconds = interval or current_app.config["SCHEDULER_INTERVAL_SECONDS"]
+        seconds = interval or value_of(settings.SCHEDULER_INTERVAL_SECONDS)
         click.echo(f"Planificador en marcha (cada {seconds} s). Ctrl+C para detenerlo.")
 
         try:

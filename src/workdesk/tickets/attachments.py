@@ -27,6 +27,8 @@ from flask import current_app
 from sqlalchemy import exists, false, func, or_
 from sqlalchemy.orm import joinedload
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..models import (
     Attachment,
@@ -121,6 +123,13 @@ def attachment_path(attachment: Attachment):
 # --- Subir y eliminar -------------------------------------------------
 
 
+def upload_request_limit() -> int:
+    """Cuántos bytes admite como máximo una petición que sube archivos, con los valores de
+    hoy: el máximo de archivos por envío con su tamaño máximo cada uno, más un margen para
+    el resto del formulario. Flask la usa para rechazar con 413 antes de leer el cuerpo."""
+    return value_of(settings.UPLOAD_MAX_BYTES) * MAX_FILES_PER_REQUEST + 1024 * 1024
+
+
 def add_attachments(
     ticket: Ticket,
     *,
@@ -157,11 +166,12 @@ def add_attachments(
         )
     )
 
-    if current + len(files) > config["UPLOAD_MAX_FILES_PER_TICKET"]:
+    max_files = value_of(settings.UPLOAD_MAX_FILES_PER_TICKET)
+    max_bytes = value_of(settings.UPLOAD_MAX_BYTES)
+
+    if current + len(files) > max_files:
         raise TicketRuleError(
-            "Un ticket admite hasta "
-            f"{config['UPLOAD_MAX_FILES_PER_TICKET']} archivos y este ya "
-            f"tiene {current}."
+            f"Un ticket admite hasta {max_files} archivos y este ya tiene {current}."
         )
 
     stored = []
@@ -174,7 +184,7 @@ def add_attachments(
                     store_upload(
                         upload,
                         config["UPLOADS_DIR"],
-                        config["UPLOAD_MAX_BYTES"],
+                        max_bytes,
                     )
                 )
             except UploadError as error:

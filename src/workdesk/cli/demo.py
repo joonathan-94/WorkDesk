@@ -5,6 +5,8 @@ import os
 import click
 from flask import Flask, current_app
 
+from .. import settings
+from ..configuration import value_of
 from ..security import PasswordPolicyError, validate_password_policy
 from ..seeds import (
     DemoNotificationsError,
@@ -45,7 +47,7 @@ def register(app: Flask) -> None:
         try:
             validate_password_policy(
                 password,
-                min_length=current_app.config["PASSWORD_MIN_LENGTH"],
+                min_length=value_of(settings.PASSWORD_MIN_LENGTH),
             )
         except PasswordPolicyError as error:
             raise click.ClickException(str(error)) from error

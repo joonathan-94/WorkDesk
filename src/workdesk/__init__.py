@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask
+from flask import Flask, request
 
 from .account import bp as account_bp
 from .admin import bp as admin_bp
@@ -9,6 +9,7 @@ from .auth.session import load_user
 from .catalogs import bp as catalogs_bp
 from .cli import register_commands
 from .config import Config
+from .configuration import forget_cached_settings
 from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
 from .formatting import format_duration, local_datetime
@@ -24,6 +25,7 @@ from .settings import validate_settings
 from .sla import bp as sla_bp
 from .system import bp as system_bp
 from .tickets import bp as tickets_bp
+from .tickets.attachments import upload_request_limit
 from .tickets.storage import MAX_FILES_PER_REQUEST
 from .users import bp as users_bp
 from .workload import bp as workload_bp
@@ -46,6 +48,13 @@ def create_app(
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    # Cada petición empieza sin lo que otra leyó de la configuración. Con un app context por
+    # petición (producción) no haría falta, pero `g` pertenece al app context: si hay uno
+    # abierto durante varias peticiones (los tests, un proceso largo), la caché sobreviviría.
+    app.before_request(forget_cached_settings)
+    # Antes que la protección CSRF: ella lee el formulario, y con él el cuerpo entero, así
+    # que el tope de la subida debe estar puesto antes de que llegue.
+    _limit_upload_requests(app)
     csrf.init_app(app)
 
     login_manager.session_protection = "strong"
@@ -110,8 +119,23 @@ def _configure_uploads(app: Flask) -> None:
     if not app.config.get("UPLOADS_DIR"):
         app.config["UPLOADS_DIR"] = os.path.join(app.instance_path, "uploads")
 
-    # Flask rechaza con 413, antes de leer el cuerpo, una petición mayor que
-    # esto: el máximo de archivos por envío más un margen para el formulario.
+    # Tope general de cualquier petición, calculado con el valor inicial. Las que suben
+    # archivos usan el valor vigente de la configuración (`_limit_upload_requests`).
     app.config["MAX_CONTENT_LENGTH"] = (
         app.config["UPLOAD_MAX_BYTES"] * MAX_FILES_PER_REQUEST + 1024 * 1024
     )
+
+
+def _limit_upload_requests(app: Flask) -> None:
+    """Pone a las peticiones que suben archivos el tope del tamaño vigente.
+
+    El Administrador puede cambiar el tamaño máximo de un archivo sin reiniciar la
+    aplicación, así que el tope de Flask (que se fija al iniciar) no basta: un máximo bajado
+    de 10 MB a 2 MB seguiría dejando entrar cuerpos de 51 MB. Solo se consulta la
+    configuración en las peticiones `multipart`, las únicas que llevan archivos.
+    """
+
+    @app.before_request
+    def limit_upload_size():
+        if request.method == "POST" and request.mimetype == "multipart/form-data":
+            request.max_content_length = upload_request_limit()

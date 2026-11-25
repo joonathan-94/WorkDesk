@@ -1,6 +1,5 @@
 from flask import (
     abort,
-    current_app,
     flash,
     make_response,
     redirect,
@@ -10,6 +9,8 @@ from flask import (
 )
 from flask_login import current_user
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..security import (
     PasswordPolicyError,
@@ -376,7 +377,7 @@ def _choose_temporary_password(form) -> str:
     """Contraseña temporal según el modo elegido: generada o escrita."""
     if form.password_mode.data == PASSWORD_MODE_GENERATE:
         return generate_temporary_password(
-            current_app.config["PASSWORD_MIN_LENGTH"]
+            value_of(settings.PASSWORD_MIN_LENGTH)
         )
 
     return form.temporary_password.data

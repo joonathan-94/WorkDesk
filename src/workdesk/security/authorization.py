@@ -5,6 +5,9 @@ from functools import wraps
 from flask import abort, current_app, request
 from flask_login import current_user
 
+from .. import settings
+from ..configuration import value_of
+
 
 class RoleCode(StrEnum):
     """Códigos estables de los cuatro roles estructurales (tabla roles)."""
@@ -47,6 +50,11 @@ STAFF_ROLES = (
 
 
 def can_manage_users(user) -> bool:
+    return has_any_role(user, RoleCode.ADMINISTRADOR)
+
+
+def can_manage_settings(user) -> bool:
+    """Solo el Administrador cambia los parámetros de la aplicación (docs/03, RF-113)."""
     return has_any_role(user, RoleCode.ADMINISTRADOR)
 
 
@@ -168,7 +176,7 @@ def can_reopen_ticket(user, ticket, *, now=None, window_days=None) -> bool:
         return False
 
     if window_days is None:
-        window_days = current_app.config["REOPEN_WINDOW_DAYS"]
+        window_days = value_of(settings.REOPEN_WINDOW_DAYS)
 
     now = datetime.now(UTC) if now is None else now
 
@@ -294,7 +302,7 @@ def can_edit_comment(user, comment, *, now=None, window_minutes=None) -> bool:
         return False
 
     if window_minutes is None:
-        window_minutes = current_app.config["COMMENT_EDIT_WINDOW_MINUTES"]
+        window_minutes = value_of(settings.COMMENT_EDIT_WINDOW_MINUTES)
 
     now = datetime.now(UTC) if now is None else now
 
@@ -354,7 +362,7 @@ def can_delete_attachment(user, attachment, *, now=None, window_minutes=None) ->
         return False
 
     if window_minutes is None:
-        window_minutes = current_app.config["COMMENT_EDIT_WINDOW_MINUTES"]
+        window_minutes = value_of(settings.COMMENT_EDIT_WINDOW_MINUTES)
 
     now = datetime.now(UTC) if now is None else now
 

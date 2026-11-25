@@ -33,9 +33,10 @@ def audit_entries() -> list[AdminAuditLog]:
     return list(db.session.scalars(db.select(AdminAuditLog).order_by(AdminAuditLog.id)))
 
 
-def run_in_threads(app, tasks):
+def run_in_threads(app, tasks, rule_errors=(TicketRuleError,)):
     """Ejecuta `tasks` a la vez, cada una en su hilo y su transacción, y devuelve el
-    resultado de cada una: «ok» si confirmó o el mensaje de la regla que la rechazó.
+    resultado de cada una: «ok» si confirmó o el mensaje de la regla que la rechazó
+    (`rule_errors` dice qué excepciones cuentan como una regla).
     Sirve para comprobar que dos personas que actúan a la vez no se pisan."""
     barrier = threading.Barrier(len(tasks))
     outcomes = []
@@ -48,7 +49,7 @@ def run_in_threads(app, tasks):
                 task()
                 db.session.commit()
                 outcomes.append("ok")
-            except TicketRuleError as error:
+            except rule_errors as error:
                 db.session.rollback()
                 outcomes.append(str(error))
             finally:

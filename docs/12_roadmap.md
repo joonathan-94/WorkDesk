@@ -1273,12 +1273,12 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 **Semana:** 8 y primera mitad de 9  
 **Versión:** `v0.7.0`
 
-**Estado de ejecución:** en curso. La entrega 1 está hecha; las demás están planificadas.
+**Estado de ejecución:** en curso. Las entregas 1 y 2 están hechas; las demás están planificadas.
 
 ### Entregas de `v0.7.0`
 
 1. **Revisión previa** ✓: auditoría de lo construido en las fases anteriores. El login deja de delatar qué usuarios existen por el tiempo de respuesta y vacía la sesión anterior, una consulta menos en cada pantalla (el rol viaja con el usuario), una única definición de los 14 parámetros numéricos (`settings.py`), limpieza de las subidas cortadas y documentación alineada. Sin migraciones.
-2. **Tabla `configuracion`**: modelo, migración, lectura (una consulta por petición, sin caché entre peticiones, para que el servidor web y el planificador vean siempre el valor vigente), auditoría de cada cambio y las variables de entorno como valor inicial. El tope de subida de Flask debe seguir al valor vigente.
+2. **Tabla `configuracion`** ✓: modelo, migración, lectura (una consulta por petición, sin caché entre peticiones, para que el servidor web y el planificador vean siempre el valor vigente), auditoría de cada cambio y las variables de entorno como valor inicial. El tope de subida de Flask debe seguir al valor vigente.
 3. **Pantalla de configuración** de los parámetros de sesión, contraseñas, comentarios, reapertura, cierre automático, archivos, carga alta y bloqueo de edición, y el interruptor general del SLA.
 4. **Configuración de notificaciones**: qué eventos se envían y a quién, sin un motor de reglas, respetando que un Solicitante nunca recibe lo interno.
 5. **Base de conocimiento: modelo y migración**: artículos, vínculo con tickets y la columna de búsqueda de texto completo (`tsvector` en español con índice GIN).

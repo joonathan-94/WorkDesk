@@ -1,6 +1,7 @@
-from flask import current_app
 
+from .. import settings
 from ..audit import AuditAction, record_admin_event
+from ..configuration import value_of
 from ..models import User
 from ..security import (
     hash_password,
@@ -15,7 +16,7 @@ class CurrentPasswordError(ValueError):
 
 
 def _min_length() -> int:
-    return current_app.config["PASSWORD_MIN_LENGTH"]
+    return value_of(settings.PASSWORD_MIN_LENGTH)
 
 
 def change_own_password(

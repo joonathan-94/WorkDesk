@@ -13,7 +13,12 @@ aplicación.
 import os
 from dataclasses import dataclass
 
-from .security.password_policy import MAX_LENGTH, MIN_LENGTH_FLOOR
+# Límites de la longitud mínima de contraseña. Viven aquí (y no en `security`) porque este
+# módulo no puede depender de nada de la aplicación: `security` lee la configuración.
+# Suelo absoluto: ninguna configuración puede exigir menos que esto.
+PASSWORD_LENGTH_FLOOR = 8
+# Tope para evitar que una entrada enorme encarezca el hashing sin motivo.
+PASSWORD_LENGTH_CEILING = 128
 
 
 @dataclass(frozen=True)
@@ -65,8 +70,8 @@ PASSWORD_MIN_LENGTH = IntSetting(
     "PASSWORD_MIN_LENGTH",
     "autenticacion.password_longitud_minima",
     12,
-    MIN_LENGTH_FLOOR,
-    MAX_LENGTH,
+    PASSWORD_LENGTH_FLOOR,
+    PASSWORD_LENGTH_CEILING,
 )
 SESSION_IDLE_MINUTES = IntSetting("SESSION_IDLE_MINUTES", "sesion.inactividad_minutos", 30)
 SESSION_MAX_HOURS = IntSetting("SESSION_MAX_HOURS", "sesion.duracion_maxima_horas", 8)
@@ -118,11 +123,12 @@ INT_SETTINGS: tuple[IntSetting, ...] = (
 )
 
 
-def validate_settings(config) -> None:
-    """Comprueba todos los parámetros de `config` y lanza `RuntimeError` con lo que falla.
+def settings_problems(config) -> list[str]:
+    """Todo lo que está mal en los valores de `config` (vacío si todo es válido).
 
-    Informa todos los problemas a la vez, no solo el primero, para que quien configura no
-    tenga que reiniciar la aplicación una vez por cada error.
+    `config` es cualquier mapeo de nombre de variable a valor: la configuración de la
+    aplicación al iniciar o los valores vigentes con un cambio propuesto. Informa todos los
+    problemas a la vez, no solo el primero.
     """
     problems = [
         message
@@ -139,5 +145,14 @@ def validate_settings(config) -> None:
             f"{EDIT_LOCK_HEARTBEAT_SECONDS.key} debe ser menor que {EDIT_LOCK_TTL_SECONDS.key}."
         )
 
-    if problems:
+    return problems
+
+
+def validate_settings(config) -> None:
+    """Comprueba todos los parámetros de `config` y lanza `RuntimeError` con lo que falla.
+
+    Informa todos los problemas a la vez para que quien configura no tenga que reiniciar la
+    aplicación una vez por cada error.
+    """
+    if problems := settings_problems(config):
         raise RuntimeError(" ".join(problems))

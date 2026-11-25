@@ -6,6 +6,8 @@ from .calendario_laboral import HorarioLaboral as HorarioLaboral
 from .categoria import Categoria as Categoria
 from .comment import Comment as Comment
 from .comment import CommentType as CommentType
+from .configuracion import ConfigDataType as ConfigDataType
+from .configuracion import Configuracion as Configuracion
 from .edit_lock import TicketEditLock as TicketEditLock
 from .estado import Estado as Estado
 from .grupo import Grupo as Grupo
