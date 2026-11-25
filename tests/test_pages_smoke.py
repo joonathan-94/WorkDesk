@@ -91,6 +91,7 @@ ADMIN_PAGES = [
     "/admin/settings/archivos",
     "/admin/settings/colaboracion",
     "/admin/settings/operacion",
+    "/admin/settings/duplicados",
     "/admin/notifications",
 ]
 
@@ -120,6 +121,7 @@ TICKET_SCREENS = [
     "status/close",
     "status/close-exceptional",
     "status/reopen",
+    "knowledge",
 ]
 
 

@@ -13,6 +13,7 @@ from . import common as common
 from . import creation as creation
 from . import detail as detail
 from . import editing as editing
+from . import knowledge as knowledge
 from . import listing as listing
 from . import relations as relations
 from . import requesters as requesters

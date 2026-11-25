@@ -1891,6 +1891,28 @@ Aplica RF-102 y RF-103 (`v0.7.0`).
 
 ---
 
+## RN-174 — Artículos vinculados a un ticket
+
+Aplica RF-104 y RF-105 (`v0.7.0`).
+
+* El personal vincula artículos activos que puede leer y los desvincula; un mismo artículo, una sola vez por ticket. Se permite también en un ticket cerrado porque no lo modifica.
+* El vínculo y su retirada quedan en el historial como eventos internos.
+* Cada persona ve en el ticket solo los artículos que puede leer.
+* Un artículo creado desde la resolución nace como borrador, con el título, la categoría y la resolución propuestos (nunca la descripción), y queda vinculado como origen en la misma operación.
+
+---
+
+## RN-175 — Posibles tickets duplicados
+
+Aplica RF-061 (`v0.7.0`).
+
+* Antes de crear un ticket se muestran los abiertos y recientes, de la misma categoría o sin clasificar, cuyo título comparte las palabras suficientes. La búsqueda entiende el español y no distingue tildes.
+* La advertencia no impide crear: la persona puede crear el ticket de todos modos. Si cambia el título o la categoría, se comprueba otra vez.
+* Nunca se muestra un ticket que la persona no pueda ver.
+* El Administrador ajusta los días que se revisan (0 desactiva la advertencia) y las palabras que deben coincidir.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

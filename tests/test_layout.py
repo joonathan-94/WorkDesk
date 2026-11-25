@@ -383,6 +383,7 @@ def test_hub_links_only_the_implemented_sections(
         "Motivos de espera",
         "Estados y transiciones",
         "Comentarios y edición",
+        "Posibles duplicados",
         "SLA",
         "Cierre y reapertura",
         "Notificaciones",
@@ -401,7 +402,14 @@ def test_hub_links_only_the_implemented_sections(
 
     assert 'href="/admin/notifications"' in content
 
-    for slug in ("seguridad", "cierre", "archivos", "colaboracion", "operacion"):
+    for slug in (
+        "seguridad",
+        "cierre",
+        "archivos",
+        "colaboracion",
+        "duplicados",
+        "operacion",
+    ):
         assert f'href="/admin/settings/{slug}"' in content
     assert content.count("Próximamente") == len(planned)
 

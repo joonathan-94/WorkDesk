@@ -1,0 +1,34 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}Desvincular artículo{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Tickets", url_for('tickets.list_tickets_page')),
+        ("#" ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ("Desvincular artículo", None),
+    ]) }}
+
+    {{ page_header("Desvincular artículo") }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.remove_ticket_article', public_id=ticket.public_id, link_id=link.id) }}"
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                «{{ link.articulo.titulo }}» dejará de aparecer en el ticket
+                #{{ ticket.public_id }}. El artículo y el ticket no cambian.
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger" type="submit">Desvincular</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('tickets.knowledge_page', public_id=ticket.public_id) }}">Cancelar</a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

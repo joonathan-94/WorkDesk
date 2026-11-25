@@ -21,6 +21,7 @@ from .authorization import can_delete_comment as can_delete_comment
 from .authorization import can_edit_article as can_edit_article
 from .authorization import can_edit_comment as can_edit_comment
 from .authorization import can_edit_ticket as can_edit_ticket
+from .authorization import can_link_articles as can_link_articles
 from .authorization import can_manage_assignments as can_manage_assignments
 from .authorization import can_manage_group_members as can_manage_group_members
 from .authorization import can_manage_groups as can_manage_groups

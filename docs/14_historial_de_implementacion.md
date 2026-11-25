@@ -137,6 +137,8 @@ La fase `v0.2.0` completó:
 
 - **Entrega 6, base de conocimiento (pantallas):** portada con búsqueda, categorías, destacados y recientes; detalle de lectura; gestión y editor para el personal, y cada acción editorial con su confirmación. Decisión que se aparta del patrón de los tickets: ante un conflicto al editar se conserva el texto escrito (un artículo puede ser largo) sin permitir pisar el cambio ajeno. La suite pasó de 4484 a 4543 tests.
 
+- **Entrega 7, conocimiento en los tickets y duplicados:** artículos vinculados a tickets, artículo creado desde la resolución y aviso de posibles duplicados al crear un ticket, que nunca impide crearlo ni enseña tickets ajenos. La medición a escala destapó que la comparación calculaba el vector de cada título una vez por palabra; calculándolo una sola vez pasó de 1,3 s a 0,5 s con 20 000 candidatos. La suite pasó de 4543 a 4604 tests.
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0

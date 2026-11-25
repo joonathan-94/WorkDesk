@@ -35,6 +35,15 @@
                 <input type="hidden" name="version" value="{{ form.version.data or '' }}">
             {% endif %}
 
+            {% if source %}
+                <input type="hidden" name="ticket" value="{{ source.public_id }}">
+                <div class="alert alert-info">
+                    Creado desde la resolución del ticket
+                    <a class="alert-link" href="{{ url_for('tickets.detail', public_id=source.public_id) }}">#{{ source.public_id }}</a>:
+                    quedará vinculado a él. Revisa que no incluya datos personales antes de guardar.
+                </div>
+            {% endif %}
+
             {# Al pulsar Enter en el título, el navegador usa el primer botón: guardar. #}
             <button class="visually-hidden" type="submit" tabindex="-1" aria-hidden="true">Guardar</button>
 

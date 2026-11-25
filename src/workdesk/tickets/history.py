@@ -223,6 +223,20 @@ def _relation_removed(old, new, entry):
     return [f"Relación con #{old.get('ticket', '?')} eliminada"]
 
 
+# --- Base de conocimiento ---------------------------------------------------------
+
+
+@describes(TicketEvent.ARTICULO_VINCULADO, TicketEvent.ARTICULO_DESVINCULADO)
+def _article_link(old, new, entry):
+    data = new or old
+    lines = [f"Artículo: {_shown(data.get('titulo'))}"]
+
+    if data.get("tipo") == "ORIGEN_RESOLUCION":
+        lines.append("Creado desde la resolución")
+
+    return lines
+
+
 # --- SLA --------------------------------------------------------------------
 
 

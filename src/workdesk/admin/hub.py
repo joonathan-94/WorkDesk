@@ -88,6 +88,13 @@ HUB_SECTIONS = (
                 endpoint="admin.settings_screen",
                 args=(("slug", "colaboracion"),),
             ),
+            HubCard(
+                title="Posibles duplicados",
+                description="Aviso de tickets parecidos al crear uno.",
+                icon="files",
+                endpoint="admin.settings_screen",
+                args=(("slug", "duplicados"),),
+            ),
         ),
     ),
     HubSection(

@@ -58,6 +58,8 @@ class TicketEvent(StrEnum):
     RELACION_AGREGADA = "RELACION_AGREGADA"
     RELACION_ELIMINADA = "RELACION_ELIMINADA"
     SLA_VENCIDO = "SLA_VENCIDO"
+    ARTICULO_VINCULADO = "ARTICULO_VINCULADO"
+    ARTICULO_DESVINCULADO = "ARTICULO_DESVINCULADO"
 
 
 class HistoryVisibility(StrEnum):
@@ -121,6 +123,10 @@ DEFAULT_EVENT_VISIBILITY = {
     # TICKET_CERRADO, con el motivo «Duplicado».
     TicketEvent.RELACION_AGREGADA: HistoryVisibility.INTERNO,
     TicketEvent.RELACION_ELIMINADA: HistoryVisibility.INTERNO,
+    # El vínculo con un artículo es trabajo del personal: puede apuntar a un borrador o
+    # a un artículo privado.
+    TicketEvent.ARTICULO_VINCULADO: HistoryVisibility.INTERNO,
+    TicketEvent.ARTICULO_DESVINCULADO: HistoryVisibility.INTERNO,
     # El SLA es solo del personal (docs/06, RN-169): el Solicitante no ve que un
     # ticket venció ni cuándo. Lo registra el planificador (RN-91 y RN-170).
     TicketEvent.SLA_VENCIDO: HistoryVisibility.INTERNO,
@@ -151,6 +157,8 @@ TICKET_EVENT_LABELS = {
     TicketEvent.TICKET_REABIERTO: "Ticket reabierto",
     TicketEvent.RELACION_AGREGADA: "Relación agregada",
     TicketEvent.RELACION_ELIMINADA: "Relación eliminada",
+    TicketEvent.ARTICULO_VINCULADO: "Artículo vinculado",
+    TicketEvent.ARTICULO_DESVINCULADO: "Artículo desvinculado",
     TicketEvent.SLA_VENCIDO: "SLA vencido",
 }
 

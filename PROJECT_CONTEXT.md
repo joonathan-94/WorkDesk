@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/knowledge-base-screens
+feature/knowledge-ticket-links
 ```
 
-Entrega 6 de `v0.7.0`: las pantallas de la base de conocimiento. **Sin migraciones.** Ver «Base de conocimiento: pantallas».
+Entrega 7 de `v0.7.0`: artículos en los tickets, artículo desde la resolución y advertencia de duplicados. **Sin migraciones.** Ver «Conocimiento en los tickets y posibles duplicados».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -233,6 +233,18 @@ Blueprint `knowledge` (`/knowledge`): `knowledge/routes.py` (lectura) y `editor_
 - **Acciones editoriales** (`/knowledge/<id>/actions/<accion>`: publicar, retirar de publicación, destacar, quitar destacado, desactivar y reactivar): cada una con su confirmación y motivo opcional (destacar no lo pide), la versión en el formulario y un aviso si ya no corresponde al estado. Solo el POST cambia algo.
 - **Número fijo de consultas** en la portada, la búsqueda y la gestión, con 1 o 14 artículos (hay un test).
 - **Tests:** 59 nuevos (4484 → 4543), la mayoría de `tests/test_knowledge_screens.py`; las pantallas entraron en `test_pages_smoke` y en el menú de `test_layout`.
+
+## Conocimiento en los tickets y posibles duplicados (entrega 7 de `v0.7.0`)
+
+RF-104, RF-105 y RF-061. Reglas completas en `docs/06` (RN-174 y RN-175). **Sin migraciones.**
+
+- **Vínculos** (`tickets/knowledge_links.py`, sin commit). El personal vincula a un ticket cualquier artículo **activo que pueda leer**, una sola vez (índice único con savepoint), y lo desvincula con confirmación. **También en un ticket cerrado**: no cambia el ticket (ni versión ni «Actualizado») y es cuando una resolución suele convertirse en conocimiento. Cada cambio deja un evento **interno** (`ARTICULO_VINCULADO` y `ARTICULO_DESVINCULADO`). Pantalla `/tickets/<n>/knowledge` (buscar publicados y vincular); el detalle tiene la tarjeta «Base de conocimiento».
+- **Cada persona recibe solo lo que puede leer:** la lista sale de una consulta con la visibilidad de artículos, así que un Solicitante ve en su ticket los publicados y públicos y nada más (sin tarjeta si no hay ninguno).
+- **Artículo desde la resolución** (`/knowledge/new?ticket=<n>`, desde la resolución del detalle o la pantalla del ticket): propone el título, la categoría y la resolución, **no la descripción** (puede tener datos personales), avisa de revisarlo y al guardar crea el borrador y lo vincula como `ORIGEN_RESOLUCION` en la misma transacción. Sin resolución escrita o sin acceso al ticket responde 404.
+- **Posibles duplicados** (`tickets/similar.py`). Al enviar el formulario de creación, si hay tickets **abiertos y recientes** de la misma categoría (o sin clasificar) cuyo título comparte palabras, se muestran antes de crear, con «Crear de todos modos». **Nunca impide crear**, funciona sin JavaScript y **solo enseña tickets que la persona ya puede ver**. La confirmación vale para ese título y categoría: si cambian, se vuelve a comprobar. Configurable en «Posibles duplicados» (`DUPLICATE_WINDOW_DAYS`, 30, 0 la desactiva; `DUPLICATE_MIN_WORDS`, 2).
+- **Medido antes de decidir:** comparando contra 20 000 tickets abiertos recientes, calcular el vector de cada título una vez por palabra tardaba 1,3 s; calculándolo una sola vez (`MATERIALIZED`) baja a 0,5 s. Un índice no mejoró en esa prueba y habría pedido una migración, así que no se creó (con volúmenes realistas, cientos o pocos miles, son decenas de milisegundos).
+- **Un ciclo de importación** entre el editor de artículos y los vínculos se resolvió importando el servicio dentro de la función que lo usa.
+- **Tests:** 61 nuevos (4543 → 4604): `test_ticket_knowledge` y `test_duplicate_warning`, entre otros.
 
 ## Próximo hito
 
@@ -470,7 +482,7 @@ No deben versionarse:
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
 
-Los 14 parámetros numéricos y los 2 interruptores (SLA y cierre automático) (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
+Los 16 parámetros numéricos y los 2 interruptores (SLA y cierre automático) (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
 
 Variables principales:
 
@@ -491,6 +503,8 @@ REOPEN_WINDOW_DAYS
 AUTO_CLOSE_HOURS
 AUTO_CLOSE_ENABLED
 SLA_ENABLED
+DUPLICATE_WINDOW_DAYS
+DUPLICATE_MIN_WORDS
 SCHEDULER_INTERVAL_SECONDS
 WORKLOAD_HIGH_ACTIVE_TICKETS
 EDIT_LOCK_TTL_SECONDS
@@ -519,6 +533,8 @@ REOPEN_WINDOW_DAYS=30
 AUTO_CLOSE_HOURS=24
 AUTO_CLOSE_ENABLED=true
 SLA_ENABLED=true
+DUPLICATE_WINDOW_DAYS=30
+DUPLICATE_MIN_WORDS=2
 SCHEDULER_INTERVAL_SECONDS=60
 WORKLOAD_HIGH_ACTIVE_TICKETS=10
 EDIT_LOCK_TTL_SECONDS=120
@@ -1693,6 +1709,9 @@ GET        /knowledge/manage
 GET, POST  /knowledge/new
 GET, POST  /knowledge/<id>/edit
 GET, POST  /knowledge/<id>/actions/<accion>
+GET        /tickets/<public_id>/knowledge
+POST       /tickets/<public_id>/knowledge/add
+GET, POST  /tickets/<public_id>/knowledge/<link_id>/remove
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -1971,7 +1990,7 @@ python -m flask --app src.workdesk seed-demo-articles
 
 Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`setup`: `seed-roles`, `seed-catalogs` y `create-admin`; `demo`: los tres `seed-demo*` de usuarios, tickets y notificaciones; `knowledge`: `seed-demo-articles`; `sla`: `sla-rebuild` y `sla-status`; `scheduling`: `run-scheduler`), y `register_commands` los registra todos desde la Application Factory. Solo orquestan: la lógica está en los servicios.
 
-`seed-demo-articles` (`seeds/demo_articles.py` y `demo_articles_data.py`, entrega 5 de `v0.7.0`) carga 11 artículos de ejemplo con los servicios reales: publicados y borradores, públicos y privados, destacados y de distintas categorías, con fechas de publicación repartidas en el tiempo. Necesita `seed-demo` y `seed-catalogs`, usa las categorías Redes, Hardware, Correo e Impresoras si existen (si no, la de respaldo y lo avisa), no repite un artículo del mismo título y no se ejecuta en producción.
+`seed-demo-articles` (`seeds/demo_articles.py` y `demo_articles_data.py`, entrega 5 de `v0.7.0`) carga 11 artículos de ejemplo con los servicios reales y, si están los tickets de `seed-demo-tickets`, vincula cinco de ellos con su ticket (también en artículos ya cargados): publicados y borradores, públicos y privados, destacados y de distintas categorías, con fechas de publicación repartidas en el tiempo. Necesita `seed-demo` y `seed-catalogs`, usa las categorías Redes, Hardware, Correo e Impresoras si existen (si no, la de respaldo y lo avisa), no repite un artículo del mismo título y no se ejecuta en producción.
 
 `sla-rebuild` y `sla-status` calculan y muestran los períodos de SLA de los tickets (ver "Períodos de SLA").
 
@@ -2050,7 +2069,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4543 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4604 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

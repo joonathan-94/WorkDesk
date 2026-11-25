@@ -2069,6 +2069,8 @@ La configuración de notificaciones (UI-024) y sus eventos y destinatarios no fo
 
 ## UI-009 — Base de conocimiento
 
+**En los tickets (`v0.7.0`, entrega 7).** El detalle muestra la tarjeta *Base de conocimiento* (el personal, siempre, con «Gestionar»; el Solicitante, solo si hay artículos que puede leer). La pantalla del ticket busca artículos publicados, los vincula, los desvincula con confirmación y ofrece crear uno desde la resolución. Al crear un ticket, si hay otros parecidos se muestran en un aviso sobre el formulario, con enlaces que abren aparte y el botón «Crear de todos modos».
+
 **Implementada (`v0.7.0`, entrega 6)** en `/knowledge`: buscador, categorías (las del catálogo de tickets que tengan artículos legibles, con su número), destacados, recientes, resultados paginados y «Crear ticket». La gestión del personal está en `/knowledge/manage`.
 
 ### Objetivo

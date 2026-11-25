@@ -12,15 +12,21 @@ from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from ..extensions import db
+from ..models import ArticleLinkType
 from ..security import (
     STAFF_ROLES,
     can_deactivate_article,
     can_edit_article,
     can_publish_article,
+    can_view_ticket,
     current_actor,
     roles_required,
 )
-from ..tickets.service import categories_for_selection
+from ..tickets.service import (
+    TicketRuleError,
+    categories_for_selection,
+    get_ticket_by_public_id,
+)
 from ..users.forms import MAX_REASON_LENGTH, ReasonForm
 from . import bp
 from .forms import ArticleForm
@@ -88,12 +94,13 @@ def _category_choices(current=None) -> list[tuple[int, str]]:
     return choices
 
 
-def _render_editor(form, article=None, *, error: str | None = None):
+def _render_editor(form, article=None, *, error: str | None = None, source=None):
     return render_template(
         "knowledge/form.html",
         form=form,
         article=article,
         error=error,
+        source=source,
         can_publish=can_publish_article(current_user)
         and (article is None or (article.activo and not article.publicado)),
         publish_button=PUBLISH_BUTTON,
@@ -110,16 +117,52 @@ def _wants_to_publish() -> bool:
     return True
 
 
+def _source_ticket():
+    """El ticket cuya resolución se convierte en artículo, si la petición lo indica.
+
+    Debe poder verlo la persona y tener una resolución escrita; si no, 404 (como un ticket
+    inexistente)."""
+    number = request.values.get("ticket", "").strip()
+
+    if not number:
+        return None
+
+    ticket = get_ticket_by_public_id(number) if number.isdecimal() else None
+
+    if (
+        ticket is None
+        or not can_view_ticket(current_user, ticket)
+        or not ticket.resolucion
+    ):
+        abort(404)
+
+    return ticket
+
+
+def _prefill(form, ticket) -> None:
+    """Propone título, categoría y contenido; la persona los revisa antes de guardar. La
+    descripción del ticket no se copia: puede tener datos personales."""
+    form.titulo.data = ticket.titulo
+    form.contenido.data = ticket.resolucion
+
+    if ticket.categoria_id in {code for code, _name in form.category_choices}:
+        form.categoria.data = ticket.categoria_id
+
+
 @bp.route("/new", methods=["GET", "POST"])
 @staff_only
 def new_article():
+    source = _source_ticket()
     form = ArticleForm(category_choices=_category_choices())
 
     if request.method == "GET":
         form.visibilidad.data = form.visibility_choices[0][0]
 
+        if source is not None:
+            _prefill(form, source)
+
     if not form.validate_on_submit():
-        return _render_editor(form)
+        return _render_editor(form, source=source)
 
     publish = _wants_to_publish()
 
@@ -134,10 +177,23 @@ def new_article():
 
         if publish:
             publish_article(article, actor=current_actor(), expected_version=article.version)
-    except ArticleRuleError as error:
+
+        if source is not None:
+            # Importado aquí: `tickets.knowledge_links` usa este paquete, así que
+            # importarlo arriba cerraría un ciclo al cargar la aplicación.
+            from ..tickets.knowledge_links import link_article
+
+            # En la misma transacción: o quedan el artículo y su vínculo, o ninguno.
+            link_article(
+                source,
+                article.id,
+                actor=current_actor(),
+                kind=ArticleLinkType.ORIGEN_RESOLUCION,
+            )
+    except (ArticleRuleError, TicketRuleError) as error:
         db.session.rollback()
 
-        return _render_editor(form, error=str(error))
+        return _render_editor(form, error=str(error), source=source)
 
     db.session.commit()
     flash(
