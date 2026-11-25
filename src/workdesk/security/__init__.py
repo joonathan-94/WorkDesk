@@ -32,6 +32,7 @@ from .authorization import can_manage_users as can_manage_users
 from .authorization import can_publish_article as can_publish_article
 from .authorization import can_reopen_ticket as can_reopen_ticket
 from .authorization import can_resolve_ticket as can_resolve_ticket
+from .authorization import can_revoke_edit_lock as can_revoke_edit_lock
 from .authorization import can_validate_resolution as can_validate_resolution
 from .authorization import can_view_article as can_view_article
 from .authorization import can_view_attachment as can_view_attachment

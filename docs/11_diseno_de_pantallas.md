@@ -1684,6 +1684,8 @@ En mobile utilizar cards.
 
 ## UI-004 — Crear ticket
 
+**Adjuntos (`v0.7.0`, entrega 8).** La primera sección tiene un campo para adjuntar archivos con sus límites vigentes. Si la pantalla se vuelve a mostrar (un error o el aviso de duplicados) pide elegirlos otra vez.
+
 ### Objetivo
 
 Crear una solicitud sin exigir conocimiento de la estructura interna de soporte.

@@ -139,6 +139,8 @@ La fase `v0.2.0` completó:
 
 - **Entrega 7, conocimiento en los tickets y duplicados:** artículos vinculados a tickets, artículo creado desde la resolución y aviso de posibles duplicados al crear un ticket, que nunca impide crearlo ni enseña tickets ajenos. La medición a escala destapó que la comparación calculaba el vector de cada título una vez por palabra; calculándolo una sola vez pasó de 1,3 s a 0,5 s con 20 000 candidatos. La suite pasó de 4543 a 4604 tests.
 
+- **Entrega 8, adjuntos al crear y liberación de bloqueos:** se pueden adjuntar archivos al crear un ticket (todo o nada) y el Supervisor o el Administrador pueden liberar el bloqueo de edición de otra persona, con auditoría. Lo que obligó a una migración: el latido de la pantalla volvía a adquirir el bloqueo, así que la liberación no habría durado. La suite pasó de 4604 a 4642 tests.
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0

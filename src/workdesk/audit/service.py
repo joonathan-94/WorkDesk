@@ -90,6 +90,10 @@ class AuditAction(StrEnum):
     ARTICULO_ACTIVADO = "ARTICULO_ACTIVADO"
     ARTICULO_DESACTIVADO = "ARTICULO_DESACTIVADO"
 
+    # Liberación manual del bloqueo de edición de otra persona (`entidad_tipo` "ticket";
+    # `entidad_id`, el ticket; el valor anterior, quién lo tenía).
+    BLOQUEO_EDICION_LIBERADO = "BLOQUEO_EDICION_LIBERADO"
+
     # Reasignación masiva de los tickets de un técnico a otros (`entidad_tipo` es
     # "tecnico"; `entidad_id`, el técnico de origen). Una sola entrada por operación,
     # con los tickets movidos y omitidos; el rastro de cada ticket va en su historial.

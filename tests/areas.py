@@ -77,6 +77,8 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_ticket_attachments",
         "test_ticket_comments",
         "test_ticket_edit_lock",
+        "test_ticket_create_uploads",
+        "test_ticket_lock_revoke",
         "test_ticket_history",
         "test_ticket_history_visibility",
         "test_ticket_model",

@@ -124,6 +124,11 @@ def can_deactivate_article(user) -> bool:
     return has_any_role(user, RoleCode.ADMINISTRADOR)
 
 
+def can_revoke_edit_lock(user) -> bool:
+    """Liberar el bloqueo de edición de otra persona: Supervisor y Administrador."""
+    return has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR)
+
+
 def can_link_articles(user) -> bool:
     """Vincular artículos a un ticket y quitarlos: el personal (docs/06, RN-174)."""
     return has_any_role(user, *STAFF_ROLES)

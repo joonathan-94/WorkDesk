@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% block title %}Liberar bloqueo: ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Tickets", url_for('tickets.list_tickets_page')),
+        ("#" ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ("Liberar bloqueo", None),
+    ]) }}
+
+    {{ page_header("Liberar bloqueo de edición", '#' ~ ticket.public_id ~ ' · ' ~ ticket.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('tickets.revoke_ticket_lock', public_id=ticket.public_id) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+
+            <div class="alert alert-warning">
+                {{ lock.usuario.nombre }} {{ lock.usuario.apellido }} está editando este
+                ticket desde {{ lock.fecha_inicio|local_datetime }}. Al liberarlo, su
+                pantalla le avisará y no podrá seguir reservándolo sin volver a abrirla:
+                lo que haya escrito y no guardado puede perderse.
+            </div>
+
+            {{ textarea_field(
+                form.motivo,
+                hint="Opcional. Queda registrado en la auditoría.",
+                maxlength=max_reason,
+            ) }}
+
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-danger" type="submit">Liberar bloqueo</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

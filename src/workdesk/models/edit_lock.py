@@ -41,6 +41,11 @@ class TicketEditLock(db.Model):
             "fecha_liberacion IS NULL OR fecha_liberacion >= fecha_inicio",
             name="ck_bloqueos_edicion_liberacion_posterior",
         ),
+        # Solo un bloqueo liberado puede decir quién lo liberó.
+        CheckConstraint(
+            "liberado_por_usuario_id IS NULL OR fecha_liberacion IS NOT NULL",
+            name="ck_bloqueos_edicion_liberador_con_fecha",
+        ),
         # Nunca dos bloqueos no liberados del mismo ticket.
         Index(
             "uq_bloqueos_edicion_ticket_no_liberado",
@@ -87,5 +92,14 @@ class TicketEditLock(db.Model):
         nullable=True,
     )
 
+    # Quién lo liberó a la fuerza (Supervisor o Administrador). NULL si lo soltó su dueño
+    # o expiró. Mientras sea el último de esa persona, su pantalla no puede renovarlo.
+    liberado_por_usuario_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("usuarios.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
     ticket = relationship("Ticket")
-    usuario = relationship("User")
+    usuario = relationship("User", foreign_keys=[usuario_id])
+    liberado_por = relationship("User", foreign_keys=[liberado_por_usuario_id])
