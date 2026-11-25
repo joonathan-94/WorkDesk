@@ -135,6 +135,8 @@ La fase `v0.2.0` completó:
 
 - **Entrega 5, base de conocimiento (modelo):** artículos con borrador y publicación, público y privado, destacados, permisos por rol resueltos en la consulta y búsqueda en español. El hallazgo que decidió el diseño: el diccionario español de PostgreSQL no encuentra «configuración» cuando se escribe sin tilde, así que se indexa además el texto sin tildes, sin extensiones. Se reutiliza el catálogo de categorías de los tickets. La suite pasó de 4416 a 4484 tests.
 
+- **Entrega 6, base de conocimiento (pantallas):** portada con búsqueda, categorías, destacados y recientes; detalle de lectura; gestión y editor para el personal, y cada acción editorial con su confirmación. Decisión que se aparta del patrón de los tickets: ante un conflicto al editar se conserva el texto escrito (un artículo puede ser largo) sin permitir pisar el cambio ajeno. La suite pasó de 4484 a 4543 tests.
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0

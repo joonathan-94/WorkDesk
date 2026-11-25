@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/knowledge-base-model
+feature/knowledge-base-screens
 ```
 
-Entrega 5 de `v0.7.0`: el modelo, los permisos y la búsqueda de la base de conocimiento. **Con una migración.** Ver «Base de conocimiento: modelo y búsqueda».
+Entrega 6 de `v0.7.0`: las pantallas de la base de conocimiento. **Sin migraciones.** Ver «Base de conocimiento: pantallas».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -220,6 +220,19 @@ Reglas completas en `docs/06` (RN-173) y `docs/09` (23). **Incluye una migració
 - **Medido** con 20 000 artículos en una tabla temporal: una palabra poco frecuente usa el índice GIN y tarda 0,1 ms; dos palabras presentes en casi todos recorren la tabla (la decisión correcta del planificador) y tardan 33 ms.
 - **El contenido es texto plano** (los saltos de línea se conservan y el HTML se escapa al mostrarlo): sin Markdown ni dependencias nuevas.
 - **Tests:** 68 nuevos (4416 → 4484), en `tests/test_knowledge_model.py` (área `knowledge`).
+
+## Base de conocimiento: pantallas (entrega 6 de `v0.7.0`)
+
+Blueprint `knowledge` (`/knowledge`): `knowledge/routes.py` (lectura) y `editor_routes.py` (gestión). Diseño en `docs/11` (UI-009 a UI-011). **Sin migraciones.**
+
+- **Portada** (`GET /knowledge`, los cuatro roles, entrada «Base de conocimiento» del menú): búsqueda, categorías con artículos y su número, destacados y recientes, y un acceso a «Crear ticket». Con búsqueda o categoría muestra los resultados paginados (20); una categoría sin artículos legibles se ignora.
+- **Detalle** (`/knowledge/<id>`): columna de lectura de ancho controlado, el texto escapado que conserva los saltos de línea, artículos relacionados de la misma categoría y los botones que la persona puede usar. **El Solicitante no ve nada editorial** (autor, estado, destacado ni botones). Un artículo que no se puede leer responde 404 como uno inexistente.
+- **Gestión** (`/knowledge/manage`, personal): los artículos que cada quien puede ver, por estado (Todos, Borradores, Publicados y, para el Administrador, Desactivados), con acceso a editar.
+- **Editor** (`/knowledge/new` y `/<id>/edit`): título, categoría, visibilidad y contenido con contador. Quien puede publicar tiene además «Publicar» / «Guardar y publicar»; añadir ese botón a mano sin permiso responde 403. Los errores salen junto a cada campo y no se pierde lo escrito; una categoría desactivada sigue elegible en el artículo que la tiene.
+- **Conflicto sin perder trabajo:** si otra persona cambió el artículo, no se guarda nada, **el texto escrito se conserva** (puede ser largo) con la versión antigua, así que reenviar tampoco pisa el cambio, y se ofrece abrir la versión actual.
+- **Acciones editoriales** (`/knowledge/<id>/actions/<accion>`: publicar, retirar de publicación, destacar, quitar destacado, desactivar y reactivar): cada una con su confirmación y motivo opcional (destacar no lo pide), la versión en el formulario y un aviso si ya no corresponde al estado. Solo el POST cambia algo.
+- **Número fijo de consultas** en la portada, la búsqueda y la gestión, con 1 o 14 artículos (hay un test).
+- **Tests:** 59 nuevos (4484 → 4543), la mayoría de `tests/test_knowledge_screens.py`; las pantallas entraron en `test_pages_smoke` y en el menú de `test_layout`.
 
 ## Próximo hito
 
@@ -1674,6 +1687,12 @@ GET, POST  /admin/sla/deactivate
 GET, POST  /admin/settings/<grupo>
 POST       /admin/settings/<grupo>/reset/<variable>
 GET, POST  /admin/notifications
+GET        /knowledge
+GET        /knowledge/<id>
+GET        /knowledge/manage
+GET, POST  /knowledge/new
+GET, POST  /knowledge/<id>/edit
+GET, POST  /knowledge/<id>/actions/<accion>
 GET        /groups
 GET, POST  /groups/new
 GET        /groups/<id>
@@ -1755,7 +1774,7 @@ El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Reasignación (Supervisor y Administrador), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Reasignación (Supervisor y Administrador), Base de conocimiento (todos), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos, de grupos y de SLA; Grupos (del Supervisor), en las de grupos; Notificaciones, en el centro de notificaciones; Mi cuenta, en `/account` y en el cambio de contraseña.
 - `layout_context` entrega además `unread_notifications` (el número de no leídas del usuario): una consulta por página autenticada, resuelta por el índice `(usuario_id, leida, fecha_creacion)`.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
@@ -2031,7 +2050,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4484 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4543 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

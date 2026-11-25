@@ -1,0 +1,73 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import text_field, textarea_field, select_field %}
+
+{% set heading = 'Editar artículo' if article else 'Nuevo artículo' %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Base de conocimiento", url_for('knowledge.index')),
+        (heading, None),
+    ]) }}
+
+    {{ page_header(heading, "Un borrador solo lo ve el personal que puede revisarlo hasta que se publica.") }}
+
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+            {% if article %}
+                <a class="alert-link" href="{{ url_for('knowledge.detail', article_id=article.id) }}" target="_blank" rel="noopener">Abrir la versión actual</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('knowledge.edit_article', article_id=article.id) if article else url_for('knowledge.new_article') }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+            {% if article %}
+                <input type="hidden" name="version" value="{{ form.version.data or '' }}">
+            {% endif %}
+
+            {# Al pulsar Enter en el título, el navegador usa el primer botón: guardar. #}
+            <button class="visually-hidden" type="submit" tabindex="-1" aria-hidden="true">Guardar</button>
+
+            {{ text_field(form.titulo, required=True, maxlength=200) }}
+            {{ select_field(form.categoria, form.category_choices, placeholder="Elige una categoría", required=True) }}
+            {{ select_field(form.visibilidad, form.visibility_choices, required=True) }}
+            {{ textarea_field(
+                form.contenido,
+                hint="Texto sin formato: los saltos de línea se conservan.",
+                maxlength=20000,
+                rows=14,
+                required=True,
+                counter=True,
+            ) }}
+
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button class="btn btn-primary" type="submit">
+                    {{ 'Guardar cambios' if article else 'Guardar borrador' }}
+                </button>
+                {% if can_publish %}
+                    <button class="btn btn-outline-primary" type="submit" name="{{ publish_button }}" value="1">
+                        {{ 'Guardar y publicar' if article else 'Publicar' }}
+                    </button>
+                {% endif %}
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ url_for('knowledge.detail', article_id=article.id) if article else url_for('knowledge.index') }}"
+                >Cancelar</a>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/common/char-counter.js') }}"></script>
+{% endblock %}

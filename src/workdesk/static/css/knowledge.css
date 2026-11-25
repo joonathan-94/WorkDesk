@@ -1,0 +1,26 @@
+/* Base de conocimiento (docs/11, UI-009 y UI-010). Solo tokens --wd-*. */
+
+/* El ancho de lectura de un artículo se controla: no ocupa toda la pantalla. */
+.article-reading {
+    max-width: 76ch;
+}
+
+.article-list__item {
+    padding: 12px 0;
+
+    border-top: 1px solid var(--wd-border);
+}
+
+.article-list__item:first-child {
+    padding-top: 0;
+
+    border-top: 0;
+}
+
+.article-list__item:last-child {
+    padding-bottom: 0;
+}
+
+.article-list__excerpt {
+    overflow-wrap: anywhere;
+}

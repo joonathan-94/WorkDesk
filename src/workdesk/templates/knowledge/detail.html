@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import breadcrumb %}
+{% from "knowledge/_cards.html" import article_list, article_badges %}
+
+{% block title %}{{ article.titulo }}{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/knowledge.css') }}">
+{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Base de conocimiento", url_for('knowledge.index')),
+        (article.categoria.nombre, url_for('knowledge.index', categoria=article.categoria_id)),
+        (article.titulo, None),
+    ]) }}
+
+    <article class="article-reading">
+        <header class="mb-3">
+            <h1 class="h3 text-break">{{ article.titulo }}</h1>
+            <p class="small text-secondary mb-2">
+                {{ article.categoria.nombre }}
+                {% if article.fecha_publicacion %}
+                    · Publicado el {{ article.fecha_publicacion|local_datetime }}
+                {% endif %}
+                {% if is_staff %}
+                    · Escrito por {{ article.autor.nombre }} {{ article.autor.apellido }}
+                {% endif %}
+            </p>
+            {% if is_staff %}
+                <div class="mb-2">{{ article_badges(article) }}</div>
+            {% endif %}
+        </header>
+
+        {% if can_edit or can_publish or can_deactivate %}
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if can_edit %}
+                    <a class="btn btn-primary btn-sm" href="{{ url_for('knowledge.edit_article', article_id=article.id) }}">Editar</a>
+                {% endif %}
+                {% if can_publish and article.activo %}
+                    {% if article.publicado %}
+                        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('knowledge.article_action', article_id=article.id, action='unfeature' if article.destacado else 'feature') }}">
+                            {{ 'Quitar destacado' if article.destacado else 'Destacar' }}
+                        </a>
+                        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('knowledge.article_action', article_id=article.id, action='unpublish') }}">Retirar de publicación</a>
+                    {% else %}
+                        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('knowledge.article_action', article_id=article.id, action='publish') }}">Publicar</a>
+                    {% endif %}
+                {% endif %}
+                {% if can_deactivate %}
+                    <a class="btn btn-sm {{ 'btn-outline-danger' if article.activo else 'btn-outline-primary' }}" href="{{ url_for('knowledge.article_action', article_id=article.id, action='deactivate' if article.activo else 'activate') }}">
+                        {{ 'Desactivar' if article.activo else 'Reactivar' }}
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="card card-body mb-3">
+            <p class="ticket-text">{{ article.contenido }}</p>
+        </div>
+
+        {% if related %}
+            <section class="card mb-3" aria-labelledby="related-title">
+                <div class="card-body">
+                    <h2 class="h6" id="related-title">Artículos relacionados</h2>
+                    {{ article_list(related, "") }}
+                </div>
+            </section>
+        {% endif %}
+
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" href="{{ url_for('knowledge.index') }}">Volver a Base de conocimiento</a>
+            <a class="btn btn-outline-primary" href="{{ url_for('tickets.new_ticket') }}">Crear ticket</a>
+        </div>
+    </article>
+{% endblock %}

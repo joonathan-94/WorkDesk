@@ -73,6 +73,7 @@ def test_a_technician_sees_tickets_and_create_ticket():
         "Tickets",
         "Crear ticket",
         "Carga de trabajo",
+        "Base de conocimiento",
         "Notificaciones",
     ]
 
@@ -84,6 +85,7 @@ def test_a_supervisor_also_sees_the_groups_they_manage():
         "Crear ticket",
         "Carga de trabajo",
         "Reasignación",
+        "Base de conocimiento",
         "Notificaciones",
         "Grupos",
     ]
@@ -94,6 +96,7 @@ def test_a_solicitante_sees_only_their_own_tickets_option():
         "Dashboard",
         "Mis tickets",
         "Crear ticket",
+        "Base de conocimiento",
         "Notificaciones",
     ]
 
@@ -105,6 +108,7 @@ def test_administrator_sees_the_administration_hub():
         "Crear ticket",
         "Carga de trabajo",
         "Reasignación",
+        "Base de conocimiento",
         "Notificaciones",
         "Administración",
     ]
