@@ -1,6 +1,6 @@
 """Los datos de demostración que comparten los tests.
 
-Los 76 tickets de `seed-demo-tickets` (con su equipo, sus grupos, el historial, los
+Los 108 tickets de `seed-demo-tickets` (con su equipo, sus grupos, el historial, los
 comentarios, los adjuntos, las resoluciones y los períodos de SLA) sirven de datos
 realistas para probar cualquier pantalla. Cargarlos cuesta unos 2,6 s, así que los fixtures
 `prepared` y `seeded` (en `conftest.py`) los cargan una vez por proceso y cada test parte

@@ -70,7 +70,7 @@ La última versión estable es **`v0.6.0 — Dashboards y carga de trabajo`** y 
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 
-Hoy la suite cuenta con **4175 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **4234 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -1312,7 +1312,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4175 tests
+4234 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1390,7 +1390,7 @@ Preparar una base limpia para cada uno de los miles de tests era lo que más tie
 
 - **El esquema se crea una vez** por sesión (una vez por proceso al ejecutar en paralelo) y se elimina al terminar.
 - **Entre un test y el siguiente solo se vacían las tablas que quedaron con filas** y se reinician las secuencias: cada test sigue empezando con la base vacía y los identificadores en 1. No se envuelve cada test en una transacción que se deshace, porque la aplicación y los tests dependen de confirmaciones reales (`now()` cambia entre transacciones y los tests con hilos usan conexiones distintas).
-- **Los estados caros de construir se guardan en una instantánea.** Los 76 tickets de demostración se cargan una vez por proceso (unos 2,6 s) y cada test restaura una copia exacta en milisegundos.
+- **Los estados caros de construir se guardan en una instantánea.** Los 108 tickets de demostración se cargan una vez por proceso (unos 2,6 s) y cada test restaura una copia exacta en milisegundos.
 - **En paralelo, cada proceso trabaja en su propio esquema de PostgreSQL** (`wd_test_gw0`, `wd_test_gw1`...) dentro de la misma base `workdesk_test`: no hay que crear bases nuevas y la protección sigue valiendo.
 - **El hash de la contraseña de prueba se calcula una sola vez** por proceso (es un hash real de Argon2id con los parámetros de producción; el login de los tests lo verifica con el código real).
 

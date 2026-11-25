@@ -22,6 +22,7 @@ from ..responses import json_error
 from ..security import (
     hash_password,
     password_needs_rehash,
+    spend_verification_time,
     verify_password,
 )
 from . import bp
@@ -117,12 +118,14 @@ def login():
         )
 
         if user is None or not user.activo:
+            spend_verification_time(password)
             flash("Usuario o contraseña incorrectos.", "error")
             return render_template("auth/login.html")
 
         now = datetime.now(UTC)
 
         if refresh_login_lock(user, now):
+            spend_verification_time(password)
             flash("Usuario o contraseña incorrectos.", "error")
             return render_template("auth/login.html")
 
@@ -148,6 +151,10 @@ def login():
 
         db.session.commit()
 
+        # Una sesión nueva en cada inicio de sesión: nada de lo que hubiera en la cookie
+        # anterior (un token CSRF, un dato escrito por otra persona en ese navegador)
+        # sobrevive a la autenticación.
+        session.clear()
         login_user(user)
         start_session_clock(now)
 

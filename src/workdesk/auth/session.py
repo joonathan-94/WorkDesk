@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from flask import current_app, session
+from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models import User
@@ -40,7 +41,10 @@ def load_user(session_id: str) -> User | None:
     except (TypeError, ValueError):
         return None
 
-    user = db.session.get(User, user_pk)
+    # El rol se trae en la misma consulta: casi toda pantalla lo consulta (menú, políticas)
+    # y cargarlo aparte costaba una consulta más en cada petición. Solo aquí y no en el
+    # modelo, para no cambiar las consultas de usuarios que bloquean filas o filtran por rol.
+    user = db.session.get(User, user_pk, options=[joinedload(User.rol)])
 
     if user is None or not user.activo:
         return None

@@ -274,7 +274,7 @@ def catalog(app, seeded_roles, seeded_catalogs):
             ),
         }
 
-# --- Los 76 tickets de demostración (ver `tests/demo_data.py`) ---------------------------
+# --- Los 108 tickets de demostración (ver `tests/demo_data.py`) ---------------------------
 #
 # Cargarlos cuesta unos 2,6 s y casi la mitad de los tests parten de ellos: se cargan una
 # vez por proceso y cada test restaura una copia exacta de la base (ver `tests/database.py`)

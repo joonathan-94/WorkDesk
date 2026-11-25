@@ -25,9 +25,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Variables de entorno que el código lee: `os.getenv("X")`, `get_bool_env("X")` y la de la
+# Variables de entorno que el código lee: `os.getenv("X")`, `get_bool_env("X")`, los parámetros
+# de `settings.py` (`IntSetting("X", ...)`, que se leen del entorno) y la de la
 # contraseña de los usuarios demo (una constante que el comando lee con `os.getenv`).
-_ENV_CALL = re.compile(r'(?:getenv|get_bool_env)\(\s*"([A-Z][A-Z0-9_]*)"')
+_ENV_CALL = re.compile(r'(?:getenv|get_bool_env|IntSetting)\(\s*"([A-Z][A-Z0-9_]*)"')
 _ENV_CONSTANT = re.compile(r'[A-Z_]+_ENV = "([A-Z][A-Z0-9_]*)"')
 
 # Una línea de la lista de rutas: `GET       /ruta`, `GET POST  /ruta` (README) o

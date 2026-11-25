@@ -21,6 +21,7 @@ import contextlib
 import hashlib
 import os
 import re
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -209,3 +210,36 @@ def _human_size(size: int) -> str:
         return f"{size / (1024 * 1024):.0f} MB"
 
     return f"{size / 1024:.0f} KB"
+
+
+# Un archivo temporal más viejo que esto es el resto de una subida que se cortó.
+STALE_TEMP_SECONDS = 60 * 60
+
+
+def remove_stale_temp_files(
+    root, *, max_age_seconds: int = STALE_TEMP_SECONDS, now: float | None = None
+) -> int:
+    """Borra los archivos de `root/_tmp` que lleven más de `max_age_seconds` sin cambios.
+
+    `store_upload` borra su temporal ante cualquier error, pero si el proceso muere a mitad
+    de una subida (se corta la luz, se mata el servidor) el archivo queda para siempre.
+    Una subida real tarda segundos: pasada una hora, el temporal es un resto. Devuelve
+    cuántos borró; si la carpeta no existe no hace nada.
+    """
+    temp_dir = Path(root) / TEMP_DIR
+    limit = (time.time() if now is None else now) - max_age_seconds
+    removed = 0
+
+    if not temp_dir.is_dir():
+        return 0
+
+    for path in temp_dir.iterdir():
+        try:
+            if path.is_file() and path.stat().st_mtime < limit:
+                path.unlink()
+                removed += 1
+        except FileNotFoundError:
+            # Otra pasada (u otro planificador) lo borró entre el listado y el borrado.
+            continue
+
+    return removed

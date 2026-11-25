@@ -65,7 +65,7 @@ v0.6.0 — Dashboards y carga de trabajo
 La versión `v0.6.0` está:
 
 - implementada;
-- testeada (4175 tests);
+- testeada (4175 tests al cerrarla);
 - documentada;
 - mergeada en `main` (PR #46 a #55).
 
@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/dashboards-workload-close-v0-6-0
+chore/review-before-v0-7-0
 ```
 
-Entrega 10 de `v0.6.0`: el cierre de la fase (revisión de todo lo construido, comprobación de escala y matriz de trazabilidad). **Sin migraciones.** Ver «Cierre de `v0.6.0`».
+Entrega 1 de `v0.7.0`: revisión previa a la fase (seguridad del login, coste por petición, definición única de parámetros y limpieza). **Sin migraciones.** Ver «Revisión previa a `v0.7.0`».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -156,6 +156,19 @@ La entrega 10 revisó toda la fase antes de darla por terminada. Se midió prime
 - **Interacciones comprobadas:** las pantallas nuevas son `no-store` (hay tests), ninguna pasa por la campana ni por la renovación de la sesión, un Solicitante recibe 403 en `/workload` y en `/reassign` también en los POST, y la reasignación bloquea primero el ticket y en orden de id (un test con dos hilos en órdenes contrarios falla si se quita ese orden).
 
 Lo que `v0.6.0` deja pendiente, con su destino, está en `docs/12_roadmap.md` (fase 6, «Cierre de la fase»).
+
+## Revisión previa a `v0.7.0` (entrega 1 de `v0.7.0`)
+
+Primera entrega de la fase: auditar lo construido antes de construir encima. Se midió y se leyó el código de las fases anteriores buscando lo que se hubiera arrastrado; se corrigió lo que la medición o la lectura justificaba. **Sin migraciones.** Cambian dos comportamientos del login y la validación de la configuración (ver abajo); todo lo demás es interno.
+
+- **El login ya no delata qué usuarios existen por el tiempo de respuesta.** Un usuario inexistente, inactivo o bloqueado recibía el error sin calcular ningún hash, y uno que existe con la contraseña equivocada pagaba Argon2id (decenas de milisegundos): el mensaje era idéntico pero el tiempo no. Ahora esos tres caminos gastan una verificación de relleno (`security/passwords.py`, `spend_verification_time`, con un hash válido calculado una sola vez). Un test comprueba la causa y no el cronómetro, que sería frágil.
+- **El inicio de sesión vacía la sesión anterior** (`session.clear()` antes de `login_user`): lo que hubiera en la cookie antes de autenticarse ya no sobrevive. El reloj de la sesión se escribe después, así que los límites de sesión siguen funcionando.
+- **Una consulta menos en cada pantalla.** Medido: una pantalla completa costaba tres consultas antes de hacer su trabajo (usuario, **rol** y contador de la campana) porque `User.rol` se cargaba aparte, de forma perezosa. `load_user` trae ahora el usuario con su rol en una sola consulta (`joinedload`, solo ahí y no en el modelo: un `joinedload` global habría cambiado las consultas que bloquean filas de usuarios, como la comprobación del último Administrador). Una pantalla mínima cuesta 2 consultas y la consulta de la campana, que cada pestaña repite cada 30 segundos, también 2. `tests/test_request_cost.py` fija las cifras exactas y es el contador con el que se medirá el coste de leer la configuración desde la base de datos.
+- **Una sola definición de cada parámetro numérico** (`src/workdesk/settings.py`). Antes, el nombre, el valor por defecto y el rango de cada parámetro estaban repartidos entre `config.py` y seis funciones de validación de `create_app`. Ahora cada uno es un `IntSetting` (variable de entorno, clave futura de la tabla `configuracion`, valor por defecto y rango), `Config` los lee de ahí y `validate_settings` los valida **todos a la vez** (antes se paraba en el primer error). Los 14 parámetros y sus claves están en `docs/09` (sección 26.1), con una prueba que exige que cada clave figure allí. Cambio de comportamiento: ahora también se rechazan valores sin sentido de `LOGIN_MAX_FAILED_ATTEMPTS` y `LOGIN_LOCK_MINUTES` (menores que 1), que antes pasaban sin validar, y una variable de entorno que no es un número dice cuál es en lugar de fallar con un `ValueError` al importar.
+- **El planificador limpia los restos de subidas cortadas.** Si el proceso moría a mitad de una subida, su archivo temporal quedaba en `uploads/_tmp` para siempre. Cada pasada borra los de más de una hora (`tickets/storage.py`, `remove_stale_temp_files`); un fallo del disco se registra y no detiene las demás tareas.
+- **Documentación desfasada:** los textos que decían «76 tickets de demostración» (son 108) y los nombres de las claves de configuración de `docs/09` (`reapertura.periodo_horas` y `cierre.validacion_horas` no coincidían con el código, que usa días y horas corridas).
+- **Medido y dejado como está:** las 53 claves foráneas sin índice son casi todas columnas «quién lo hizo» sobre `usuarios`, que nunca se borra, e indexarlas solo encarecería las escrituras. La única que se consulta es `historial_ticket.actor_usuario_id` («resueltos por mí» del Técnico): con 250 000 eventos en una tabla temporal tarda 12 ms con el índice de fecha que ya existe y 1,3 ms con uno por actor, así que no se justifica pagar ese índice en cada escritura del historial. Ninguna función supera la complejidad 12 y no hay código muerto ni `TODO`, por lo que no se modularizó nada por tamaño. Los seis `except Exception` limpian y vuelven a lanzar la excepción o la registran.
+- **Tests:** 59 nuevos (4175 → 4234): `test_login_hardening` (6), `test_request_cost` (9), `test_settings` (40) y cuatro del barrido de temporales en `test_scheduler`. Cada guardián se probó con mutaciones (quitar la verificación de relleno en cada camino, el `session.clear()`, el `joinedload`, un parámetro del registro, la comprobación del latido y el barrido): las ocho hacen fallar al menos un test.
 
 ## Próximo hito
 
@@ -351,6 +364,7 @@ WorkDesk/
 │       ├── responses.py
 │       ├── scheduler.py
 │       ├── search.py
+│       ├── settings.py
 │       └── worktime.py
 ├── tests/
 │   ├── conftest.py            # fixtures: app, client, make_user, instantáneas de datos de demostración
@@ -390,6 +404,8 @@ No deben versionarse:
 # 7. Configuración
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
+
+Los 14 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial; con la tabla `configuracion` (`v0.7.0`) seguirán siéndolo.
 
 Variables principales:
 
@@ -1949,7 +1965,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4175 tests passing (unos 5 minutos con `-n 6`)
+4234 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

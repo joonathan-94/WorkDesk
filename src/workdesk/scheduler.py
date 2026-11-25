@@ -45,6 +45,7 @@ from .security.authorization import RESOLVED_STATE
 from .sla.periods import current_time
 from .tickets.lifecycle import close_automatically
 from .tickets.service import record_ticket_event
+from .tickets.storage import remove_stale_temp_files
 from .tickets.versioning import lock_ticket
 
 logger = logging.getLogger(__name__)
@@ -252,6 +253,7 @@ def run_once(now: datetime | None = None) -> SchedulerResult:
     now = now or current_time()
     notices, notice_failures = run_sla_notices(now)
     closed, close_failures = run_auto_close(now)
+    _remove_stale_uploads()
 
     return SchedulerResult(
         warnings=notices.warnings,
@@ -259,6 +261,22 @@ def run_once(now: datetime | None = None) -> SchedulerResult:
         closed=closed,
         failures=notice_failures + close_failures,
     )
+
+
+def _remove_stale_uploads() -> None:
+    """Limpia los restos de subidas cortadas (ver `remove_stale_temp_files`).
+
+    Es un mantenimiento del disco, no de los tickets: un fallo (permisos, disco) se
+    registra y no impide las demás tareas ni cuenta como error de un elemento.
+    """
+    try:
+        removed = remove_stale_temp_files(current_app.config["UPLOADS_DIR"])
+    except OSError:
+        logger.exception("No se pudieron limpiar los archivos temporales de subidas.")
+        return
+
+    if removed:
+        logger.info("Archivos temporales de subidas eliminados: %s", removed)
 
 
 def run_loop(
