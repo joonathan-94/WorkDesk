@@ -1,0 +1,53 @@
+{% from "_ui_macros.html" import state_badge %}
+
+{# Relaciones con otros tickets: solo las ve el personal. #}
+{% if show_relations %}
+    <section
+        class="card mb-4"
+        id="relaciones"
+        aria-labelledby="relations-title"
+    >
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="relations-title"
+            >
+                Relaciones
+                <span class="text-secondary fw-normal">({{ relation_views|length }})</span>
+                <a
+                    class="ms-2 small fw-normal"
+                    href="{{ url_for('tickets.relations_page', public_id=ticket.public_id) }}"
+                >
+                    {{ 'Gestionar' if can_edit_relations else 'Ver' }}
+                </a>
+            </h2>
+
+            {% if relation_views %}
+                <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                    {% for view in relation_views %}
+                        <li class="text-break">
+                            <span class="small text-secondary">
+                                {% if view.kind == KIND_DUPLICATE_OF %}
+                                    Duplicado de
+                                {% elif view.kind == KIND_PRINCIPAL_OF %}
+                                    Su duplicado
+                                {% else %}
+                                    Relacionado con
+                                {% endif %}
+                            </span>
+                            <a href="{{ url_for('tickets.detail', public_id=view.other.public_id) }}">
+                                #{{ view.other.public_id }}
+                            </a>
+                            {{ view.other.titulo }}
+                            {{ state_badge(view.other.estado) }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="small text-secondary mb-0">
+                    Este ticket no está relacionado con otros.
+                </p>
+            {% endif %}
+        </div>
+    </section>
+{% endif %}

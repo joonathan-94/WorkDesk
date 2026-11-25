@@ -17,7 +17,7 @@ from ...models import (
     TicketEvent,
     TicketHistory,
 )
-from ...sla.periods import rebuild_ticket_periods
+from ...sla.rebuild import rebuild_ticket_periods
 from ...sla.work_calendar import resolve_work_calendar
 from ...tickets.assignment import assign_technician, set_group
 from ...tickets.attachments import add_attachments

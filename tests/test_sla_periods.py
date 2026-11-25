@@ -28,17 +28,15 @@ from src.workdesk.models import (
     TicketRequester,
 )
 from src.workdesk.models.comment import CommentType
+from src.workdesk.sla.evaluation import SlaStatus, evaluate_ticket_sla
 from src.workdesk.sla.periods import (
-    SlaStatus,
     accumulated_seconds,
     current_time,
-    evaluate_ticket_sla,
     first_response_at,
     list_periods,
-    rebuild_periods,
-    rebuild_ticket_periods,
     reconcile_sla,
 )
+from src.workdesk.sla.rebuild import rebuild_periods, rebuild_ticket_periods
 from src.workdesk.sla.work_calendar import save_work_calendar
 from src.workdesk.tickets.comments import add_comment, delete_comment
 from src.workdesk.tickets.editing import change_priority

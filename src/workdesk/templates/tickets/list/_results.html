@@ -1,0 +1,106 @@
+{% from "_ui_macros.html" import state_badge, priority_badge, sla_badge %}
+{% from "tickets/list/_macros.html" import requesters_summary, technicians_summary %}
+
+{# Tabla en pantallas medianas y grandes. #}
+<div class="card d-none d-md-block">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Título</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Prioridad</th>
+                    {% if show_sla %}
+                        <th scope="col">SLA</th>
+                    {% endif %}
+                    <th scope="col">Categoría</th>
+                    {% if is_staff %}
+                        <th scope="col">Solicitante(s)</th>
+                        <th scope="col">Técnico(s)</th>
+                        <th scope="col">Grupo</th>
+                    {% endif %}
+                    <th scope="col">Actualizado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for ticket in pagination.items %}
+                    <tr>
+                        <td>
+                            <a
+                                class="fw-semibold text-decoration-none"
+                                href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                            >
+                                #{{ ticket.public_id }}
+                            </a>
+                        </td>
+                        <td class="text-break">
+                            <a
+                                class="text-reset text-decoration-none"
+                                href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+                            >
+                                {{ ticket.titulo }}
+                            </a>
+                        </td>
+                        <td>{{ state_badge(ticket.estado) }}</td>
+                        <td>{{ priority_badge(ticket.prioridad) }}</td>
+                        {% if show_sla %}
+                            <td>{{ sla_badge(slas[ticket.id]) }}</td>
+                        {% endif %}
+                        <td>{{ ticket.categoria.nombre }}</td>
+                        {% if is_staff %}
+                            <td>{{ requesters_summary(ticket) }}</td>
+                            <td>{{ technicians_summary(ticket) }}</td>
+                            <td>
+                                {% if ticket.grupo %}
+                                    {{ ticket.grupo.nombre }}
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                        <td class="text-nowrap text-secondary small">
+                            {{ ticket.fecha_actualizacion|local_datetime }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Tarjetas en pantallas pequeñas (docs/11, UI-003). #}
+<div class="d-md-none d-flex flex-column gap-2">
+    {% for ticket in pagination.items %}
+        <a
+            class="card card-body text-decoration-none text-reset"
+            href="{{ url_for('tickets.detail', public_id=ticket.public_id) }}"
+        >
+            <span class="d-flex justify-content-between gap-2">
+                <span class="fw-semibold text-break">
+                    <span class="text-secondary">#{{ ticket.public_id }}</span>
+                    {{ ticket.titulo }}
+                </span>
+            </span>
+
+            <span class="mt-2">
+                {{ state_badge(ticket.estado) }}
+                {{ priority_badge(ticket.prioridad) }}
+                {% if show_sla %}
+                    {{ sla_badge(slas[ticket.id], show_time=False) }}
+                {% endif %}
+            </span>
+
+            <span class="small text-secondary mt-2">
+                {{ ticket.categoria.nombre }}
+                {% if is_staff %}
+                    · {{ requesters_summary(ticket) }}
+                    · {{ technicians_summary(ticket) }}
+                    {% if ticket.grupo %}· {{ ticket.grupo.nombre }}{% endif %}
+                {% endif %}
+                · {{ ticket.fecha_actualizacion|local_datetime }}
+            </span>
+        </a>
+    {% endfor %}
+</div>

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import (
@@ -16,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
+from ._modification import ModificationMixin
 
 
 class StateAction(StrEnum):
@@ -65,7 +66,7 @@ STATE_ACTION_LABELS = {
 }
 
 
-class TransicionEstado(db.Model):
+class TransicionEstado(ModificationMixin, db.Model):
     """Transición habilitada entre dos de los seis estados (docs/09, 12.2).
 
     El conjunto de filas es el de transiciones estructuralmente válidas del
@@ -146,8 +147,3 @@ class TransicionEstado(db.Model):
             return STATE_ACTION_LABELS[StateAction(self.accion)]
         except ValueError:
             return self.accion
-
-    def mark_modified(self, actor) -> None:
-        """Registra quién y cuándo modificó la transición por última vez."""
-        self.fecha_modificacion = datetime.now(UTC)
-        self.usuario_modificacion_id = actor.id

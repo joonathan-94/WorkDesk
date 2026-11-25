@@ -43,7 +43,12 @@ from ..tickets.state_actions import (
     STATE_ACTIONS,
 )
 from .forms import MAX_STATE_DESCRIPTION_LENGTH, MAX_STATE_NAME_LENGTH
-from .service import CatalogRuleError, DuplicateNameError, NothingToChangeError
+from .service import (
+    CatalogRuleError,
+    DuplicateNameError,
+    NothingToChangeError,
+    list_states,
+)
 
 _DUPLICATE_STATE_NAME = "Ya hay otro estado con ese nombre."
 
@@ -76,11 +81,6 @@ class TransitionRow:
 
 
 # --- Consultas --------------------------------------------------------
-
-
-def list_states() -> list[Estado]:
-    """Los seis estados en su orden del flujo."""
-    return list(db.session.scalars(db.select(Estado).order_by(Estado.orden)))
 
 
 def count_tickets_by_state() -> dict[int, int]:

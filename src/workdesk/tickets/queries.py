@@ -268,11 +268,6 @@ def list_group_options() -> list[Grupo]:
     return list(db.session.scalars(db.select(Grupo).order_by(func.lower(Grupo.nombre))))
 
 
-def list_states() -> list[Estado]:
-    """Los estados en su orden visual, para el filtro del listado."""
-    return list(db.session.scalars(db.select(Estado).order_by(Estado.orden)))
-
-
 def listing_conditions(user, filters: TicketFilters, now=None) -> list:
     conditions = [visible_tickets_condition(user)]
 

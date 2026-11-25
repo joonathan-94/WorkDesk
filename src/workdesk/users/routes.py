@@ -18,6 +18,7 @@ from ..security import (
     current_actor,
     generate_temporary_password,
 )
+from ..status_filter import VALID_STATUSES
 from . import bp
 from .forms import (
     PASSWORD_MODE_CHOICES,
@@ -29,7 +30,6 @@ from .forms import (
     ResetPasswordForm,
 )
 from .service import (
-    VALID_STATUSES,
     DuplicateUserError,
     UnknownRoleError,
     UserRuleError,
@@ -357,7 +357,6 @@ def reset_password_page(user_id: int):
 
 
 # --- Utilidades -------------------------------------------------------
-
 
 
 def _get_or_404(user_id: int):

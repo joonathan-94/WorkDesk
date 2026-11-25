@@ -448,10 +448,12 @@ WorkDesk/
 │       ├── formatting.py
 │       ├── logging_config.py
 │       ├── navigation.py
+│       ├── query_params.py
 │       ├── responses.py
 │       ├── scheduler.py
 │       ├── search.py
 │       ├── settings.py
+│       ├── status_filter.py
 │       └── worktime.py
 ├── tests/
 │   ├── conftest.py            # fixtures: app, client, make_user, instantáneas de datos de demostración
@@ -899,7 +901,7 @@ Módulo `src/workdesk/tickets/` (blueprint `tickets`, prefijo `/tickets`): `rout
 - **Filtros** (`TicketFilters`): estado, prioridad, categoría, ubicación y fechas de creación (días de `APP_TIMEZONE`; "hasta" incluye el día completo). Las opciones de los desplegables incluyen los valores desactivados (marcados "(inactiva)") porque los tickets antiguos los usan. Los valores inválidos de la URL se ignoran.
 - **Orden:** `recientes` (por defecto), `antiguos`, `prioridad` (por nivel) y `actualizados` (`Ticket.fecha_actualizacion`: la última modificación o, si no hay, la creación); siempre con desempate por antigüedad.
 - **Parámetros de la URL:** `q`, `vista`, `estado`, `prioridad`, `categoria`, `ubicacion`, `desde`, `hasta`, `orden` y `page` (y, desde `v0.6.0`, los de «Filtros de asignación del listado»). Los enlaces de pestañas y de páginas conservan los que están aplicados.
-- **Plantilla** `tickets/list.html`: tabla desde pantallas medianas y tarjetas en móvil; columna "Solicitante(s)" solo para el personal; "Más filtros" es un `<details>` que se abre solo si hay un filtro de ese grupo aplicado; paginación con números de página.
+- **Plantilla** `tickets/list.html` (con sus parciales en `tickets/list/`; el detalle tiene los suyos en `tickets/detail/`): tabla desde pantallas medianas y tarjetas en móvil; columna "Solicitante(s)" solo para el personal; "Más filtros" es un `<details>` que se abre solo si hay un filtro de ese grupo aplicado; paginación con números de página.
 - **Menú y buscador:** "Tickets" (personal) y "Mis tickets" (Solicitante) apuntan al mismo listado (`navigation.py`) y se marcan activas también en el detalle. El buscador de la barra superior (`layouts/app.html`, visible desde pantallas medianas) envía `q` a este listado con `vista=todos`, para que un ticket cerrado también se encuentre.
 
 ## Filtros de asignación del listado (entrega 3 de `v0.6.0`)
@@ -1176,7 +1178,7 @@ Reglas completas en `docs/06` (RN-158) y `docs/09` (14.1). Las reglas están en 
 - `list_addable_requesters(ticket)`: los solicitantes activos que aún no lo son (incluye al creador si es Solicitante).
 - Un ticket cerrado lanza `TicketClosedError`. Un ticket puede quedarse sin solicitantes (RN-12).
 - **No sube la versión** ni toca `fecha_modificacion` («Actualizado»): quien abrió la edición antes del cambio guarda sin conflicto (hay un test). Dos altas o dos retiros simultáneos se resuelven con el bloqueo de la fila (tests con dos hilos).
-- **Piezas compartidas:** `begin_ticket_operation(ticket, actor, expire=)` vive en `tickets/versioning.py` (antes era el `_begin` de `assignment.py`, que ahora la usa); `full_name`, `person_snapshot`, `clean_optional_reason` y `MAX_REASON_LENGTH` viven en `tickets/service.py` y los usan asignación, solicitantes y edición.
+- **Piezas compartidas:** `begin_ticket_operation(ticket, actor, expire=)` vive en `tickets/versioning.py` (antes era el `_begin` de `assignment.py`, que ahora la usa); `full_name` y `person_snapshot` viven en `tickets/service.py`; la limpieza de motivos (`clean_optional_reason`, `clean_required_reason` y `MAX_REASON_LENGTH`) es de `cleaning.py`, para todo el proyecto.
 
 **Acceso al ticket.** Retirar a un solicitante le quita el acceso (`can_view_ticket` ignora las participaciones con `fecha_retiro`; la condición SQL del listado ya hacía lo mismo y un test comprueba que ambas coinciden tras agregar, retirar y volver a agregar), **salvo que además sea el creador**: el creador original conserva siempre el acceso. Quien se agrega ve el ticket y todo su historial público, también lo anterior a su incorporación. La búsqueda del personal por solicitante sigue a los cambios (un retirado deja de encontrarse).
 
@@ -1260,7 +1262,7 @@ Reglas completas en `docs/06` (RN-156) y `docs/09` (12.2). Las reglas están en 
 
 **Política:** `can_change_state(user)` (Técnico, Supervisor y Administrador; el Solicitante no cambia estados operativos). Que la transición exista desde el estado actual lo decide `available_actions` / `change_state`.
 
-**Servicio** (`tickets/lifecycle.py`, sin commit):
+**Servicio** (`tickets/lifecycle.py`, sin commit; el historial y las validaciones que deja cada cambio los escribe `tickets/lifecycle_history.py`):
 
 - `available_actions(ticket, user)`: las acciones que ese usuario puede ejecutar ahora (implementada, transición activa desde el estado actual y política de rol), con su estado de destino. Un ticket cerrado solo ofrece reabrirlo.
 - `change_state(ticket, actor=, action=, expected_version=, wait_reason_id=, text=, close_reason_id=)`: bloquea la fila del ticket (`SELECT ... FOR UPDATE`) y la vuelve a leer, así que la transición se valida contra el estado real; comprueba el ticket cerrado (`TicketClosedError`), la versión (`TicketConflictError`) y que exista una transición activa desde el estado actual (`StateTransitionError`); aplica el cambio con `apply_ticket_changes` (sube la versión) y registra `ESTADO_CAMBIADO` con el estado anterior y el nuevo (columnas `estado_anterior_id` y `estado_nuevo_id`, snapshots en `valor_anterior` y `valor_nuevo`) y `contexto["accion"]`. Dos personas que actúan a la vez producen una sola transición (hay un test con dos hilos).
@@ -1373,7 +1375,7 @@ Entrega 4 de `v0.5.0`, en el paquete `src/workdesk/sla/` (módulo `periods.py`).
 
 **Modelo** (`models/periodo_sla.py`, `PeriodoSla`, tabla `tickets_sla_periodos`): `ticket_id`, `politica_sla_id`, `prioridad_id`, `calendario_laboral_id`, los objetivos copiados (`tiempo_objetivo_respuesta_minutos`, `tiempo_objetivo_resolucion_minutos`) y `pausa_en_espera`, `fecha_inicio`, `fecha_fin` (NULL mientras está vigente), `segundos_consumidos`, `fecha_vencimiento_respuesta`, `fecha_vencimiento_resolucion`, `usuario_cambio_id` y `motivo_cambio`. Restricciones: fin no anterior al inicio, consumo no negativo, objetivos positivos, claves foráneas `ON DELETE RESTRICT` e **índice único parcial** `(ticket_id) WHERE fecha_fin IS NULL` (un solo período vigente por ticket). Se aparta de `docs/09` en que `calendario_laboral_id` admite NULL (el calendario por defecto no tiene fila). Propiedades `esta_vigente` y `esta_pausado`.
 
-**Cómo funciona** (`sla/periods.py`, sin commit):
+**Cómo funciona** (sin commit; `sla/periods.py` escribe, `sla/evaluation.py` lee y `sla/rebuild.py` reconstruye):
 
 - **`reconcile_sla(ticket, actor, reason=)` es el único punto de entrada.** La llaman `create_ticket` (sin usuario: el período de la creación no anota quién cambió), `change_priority` (con el motivo) y `change_state` al terminar. No recibe qué pasó: mira la prioridad y el estado del ticket y deja los períodos como deben estar, así que es idempotente. Las asignaciones (`Nuevo` ↔ `Asignado`) no la llaman: no cambian el reloj.
 - **Modo del reloj según el estado:** corriendo (en trabajo), pausado (`En espera` con una política que pausa) o detenido (`Resuelto`, `Cerrado`, o prioridad sin política). Cambiar de modo o de prioridad cierra el período vigente (anota lo consumido, en tiempo laboral, con el calendario del propio período) y abre otro.
@@ -1382,7 +1384,7 @@ Entrega 4 de `v0.5.0`, en el paquete `src/workdesk/sla/` (módulo `periods.py`).
 - **Primera respuesta** (`first_response_at`): el primer comentario público del personal que sigue visible. Se evalúa al abrir cada período y deja de tener vencimiento una vez respondida.
 - **`evaluate_ticket_sla(ticket_id, now=)`** calcula sin guardar nada un `SlaSnapshot`: estado (`SlaStatus`: `DENTRO`, `PROXIMO_A_VENCER`, `VENCIDO`, `PAUSADO`), consumo acumulado, porcentaje, vencimientos, si la primera respuesta venció y si el ticket ya incumplió alguna vez (un incumplimiento no se borra al bajar la prioridad). Devuelve `None` si el ticket no tiene SLA. El umbral de aviso se lee de la política de origen.
 - **`current_time()`** es el `now()` de la base de datos (el mismo instante que los eventos del historial); los tests lo reemplazan para fijar «la hora».
-- **`rebuild_ticket_periods(ticket)`** reconstruye los períodos repasando el historial (creación, cambios de prioridad y de estado) con la misma lógica que el cálculo en vivo (comparten `_reconcile`; un test comprueba que dan el mismo resultado para un recorrido completo). Usa la política y el calendario vigentes hoy, porque el historial no guarda cuáles eran. **`rebuild_periods(only_missing=, public_id=)`** lo aplica a varios tickets.
+- **`rebuild_ticket_periods(ticket)`** reconstruye los períodos repasando el historial (creación, cambios de prioridad y de estado) con la misma lógica que el cálculo en vivo (comparten `reconcile`; un test comprueba que dan el mismo resultado para un recorrido completo). Usa la política y el calendario vigentes hoy, porque el historial no guarda cuáles eran. **`rebuild_periods(only_missing=, public_id=)`** lo aplica a varios tickets.
 
 **Comandos** (`cli/sla.py`):
 
@@ -1436,7 +1438,7 @@ Reglas completas en `docs/06` (RN-168) y `docs/10` (28.1, «Notificaciones inter
 
 Entrega 7 de `v0.5.0`. Reglas completas en `docs/06` (RN-169, que precisa RN-88 y RN-91), `docs/09` (20.3), `docs/10` (28.1, «Indicadores de SLA») y `docs/11` (UI-003 y UI-005). **Incluye una migración** (`add_warning_threshold_to_sla_periods`). El SLA es **solo del personal**.
 
-**Qué cambió en los períodos** (`models/periodo_sla.py`, `sla/periods.py`):
+**Qué cambió en los períodos** (`models/periodo_sla.py`, `sla/periods.py` y `sla/evaluation.py`):
 
 - Dos columnas nuevas en `tickets_sla_periodos`: `umbral_aviso_porcentaje` (copia del umbral de la política, como los objetivos) y `fecha_umbral_aviso` (cuándo el consumo lo alcanza, en tiempo laboral, calculada al abrir el período como el vencimiento). `warning_seconds` da el consumo exacto (el entero siguiente a `objetivo * porcentaje / 100`) y un test comprueba que es el primer segundo que alcanza el porcentaje. Dos `CHECK`: el umbral entre 1 y 100 y la fecha de aviso entre el inicio y el vencimiento (y solo con el reloj en marcha). La migración copia el umbral de la política a los períodos existentes; `sla-rebuild` completa su fecha (`fill_missing_warning_dates`).
 - **Cambia un criterio anterior:** el umbral ya no se lee de la política al evaluar (editarlo alteraba un SLA en curso); se hereda como los objetivos. Y un ticket resuelto o cerrado nunca está «próximo a vencer»: queda dentro de plazo o vencido.

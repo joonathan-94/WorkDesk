@@ -1,0 +1,43 @@
+{# Lista de adjuntos con su descarga. La descarga y la eliminación comprueban
+   la autorización en el servidor; aquí solo se decide qué enlaces mostrar. #}
+{% macro file_list(rows, is_closed) %}
+    {% if rows %}
+        <ul class="list-unstyled small mb-0 mt-2">
+            {% for row in rows %}
+                {% set file = row.file %}
+                <li class="d-flex flex-wrap align-items-center gap-2">
+                    <i
+                        class="bi bi-paperclip"
+                        aria-hidden="true"
+                    ></i>
+                    <a
+                        class="text-break"
+                        href="{{ url_for('tickets.download_ticket_attachment', public_id=file.ticket.public_id, attachment_id=file.id) }}"
+                    >
+                        {{ file.nombre_original }}
+                    </a>
+                    <span class="text-secondary">
+                        {% if file.tamano_bytes >= 1048576 %}
+                            {{ '%.1f'|format(file.tamano_bytes / 1048576) }} MB
+                        {% else %}
+                            {{ ((file.tamano_bytes + 1023) // 1024) }} KB
+                        {% endif %}
+                        ·
+                        {{ file.subido_por.nombre }} {{ file.subido_por.apellido }}
+                        ·
+                        {{ file.fecha_subida|local_datetime }}
+                    </span>
+
+                    {% if row.can_delete and not is_closed %}
+                        <a
+                            class="text-danger"
+                            href="{{ url_for('tickets.delete_ticket_attachment', public_id=file.ticket.public_id, attachment_id=file.id) }}"
+                        >
+                            Eliminar
+                        </a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endmacro %}

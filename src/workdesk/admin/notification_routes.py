@@ -4,6 +4,7 @@ Administrador. El catálogo de avisos y sus reglas están en `notifications/pref
 from flask import flash, redirect, render_template, request, url_for
 from wtforms import HiddenField
 
+from ..cleaning import MAX_REASON_LENGTH
 from ..configuration import SettingConflictError, SettingRuleError
 from ..extensions import db
 from ..models.notificacion import NOTIFICATION_EVENT_LABELS
@@ -16,7 +17,7 @@ from ..notifications.preferences import (
     save_disabled_keys,
 )
 from ..security import admin_only, current_actor
-from ..users.forms import MAX_REASON_LENGTH, ReasonForm
+from ..users.forms import ReasonForm
 from . import bp
 
 SCREEN_ENDPOINT = "admin.notification_settings"

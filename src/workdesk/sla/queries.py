@@ -3,7 +3,7 @@ docs/10, 28.1).
 
 Filtrar y ordenar el listado por SLA tiene que ocurrir en la base de datos, antes de
 paginar, así que el estado del SLA se expresa aquí como condiciones SQL sobre
-`tickets`. Son el **equivalente exacto** de `evaluate_tickets_sla` (`periods.py`): un
+`tickets`. Son el **equivalente exacto** de `evaluate_tickets_sla` (`evaluation.py`): un
 test comprueba que ambos dan el mismo resultado para cada tipo de ticket y en cada
 momento, incluidos los bordes (un segundo antes y después de cada fecha de aviso y de
 vencimiento). Si se cambia uno hay que cambiar el otro.
@@ -32,7 +32,8 @@ from sqlalchemy import DateTime, and_, exists, func, literal, not_, or_, select
 from sqlalchemy.orm import aliased
 
 from ..models import Estado, PeriodoSla, Ticket
-from .periods import STOPPING_STATES, SlaSnapshot, SlaStatus
+from .evaluation import SlaSnapshot, SlaStatus
+from .periods import STOPPING_STATES
 
 
 class SlaFilter(StrEnum):

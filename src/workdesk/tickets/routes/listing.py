@@ -7,9 +7,16 @@ from datetime import date
 from flask import render_template, request
 from flask_login import current_user, login_required
 
-from ...catalogs.service import list_categories, list_locations, list_priorities
+from ...catalogs.service import (
+    list_categories,
+    list_locations,
+    list_priorities,
+    list_states,
+)
+from ...query_params import choice_arg
 from ...security import STAFF_ROLES, has_any_role
 from ...sla import periods as sla_periods
+from ...sla.evaluation import evaluate_tickets_sla
 from ...sla.queries import SLA_FILTER_LABELS, parse_filter
 from .. import bp
 from ..queries import (
@@ -23,7 +30,6 @@ from ..queries import (
     TicketFilters,
     count_tickets_by_tab,
     list_group_options,
-    list_states,
     list_technician_options,
     list_tickets,
 )
@@ -52,10 +58,10 @@ def list_tickets_page():
 
     filters = TicketFilters(
         query_text=request.args.get("q", "").strip()[:MAX_SEARCH_LENGTH],
-        state_id=_choice_arg("estado", states),
-        priority_id=_choice_arg("prioridad", priorities),
-        category_id=_choice_arg("categoria", categories),
-        location_id=_choice_arg("ubicacion", locations),
+        state_id=choice_arg("estado", states),
+        priority_id=choice_arg("prioridad", priorities),
+        category_id=choice_arg("categoria", categories),
+        location_id=choice_arg("ubicacion", locations),
         created_from=_date_arg("desde"),
         created_to=_date_arg("hasta"),
         # El SLA es solo del personal: para un Solicitante el parámetro no existe.
@@ -64,9 +70,9 @@ def list_tickets_page():
             if is_staff and sla_periods.sla_enabled()
             else None
         ),
-        technician_id=None if unassigned else _choice_arg("tecnico", technicians),
+        technician_id=None if unassigned else choice_arg("tecnico", technicians),
         unassigned=unassigned,
-        group_id=_choice_arg("grupo", groups),
+        group_id=choice_arg("grupo", groups),
         active_only=request.args.get("activos") == "1",
         # Solo un Solicitante tiene resoluciones que revisar.
         pending_review=not is_staff and request.args.get("revision") == "1",
@@ -103,7 +109,7 @@ def list_tickets_page():
     )
     # El SLA de las filas de la página, en un número fijo de consultas (solo personal).
     slas = (
-        sla_periods.evaluate_tickets_sla([t.id for t in pagination.items], now)
+        evaluate_tickets_sla([t.id for t in pagination.items], now)
         if is_staff
         else {}
     )
@@ -168,13 +174,6 @@ def list_tickets_page():
         unassigned_value=UNASSIGNED_VALUE,
         is_staff=is_staff,
     )
-
-
-def _choice_arg(name: str, options) -> int | None:
-    """Id recibido por la URL si corresponde a una de las opciones."""
-    value = request.args.get(name, type=int)
-
-    return value if value in {option.id for option in options} else None
 
 
 def _date_arg(name: str) -> date | None:

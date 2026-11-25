@@ -8,7 +8,7 @@ from wtforms.validators import (
     ValidationError,
 )
 
-from ..cleaning import strip_text
+from ..cleaning import MAX_REASON_LENGTH, strip_text
 
 PASSWORD_MODE_GENERATE = "generate"
 PASSWORD_MODE_MANUAL = "manual"
@@ -18,7 +18,6 @@ PASSWORD_MODE_CHOICES = (
     (PASSWORD_MODE_MANUAL, "Escribirla yo"),
 )
 
-MAX_REASON_LENGTH = 500
 
 # Minúsculas, números, punto, guion y guion bajo; empieza por letra o número.
 USERNAME_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
@@ -104,7 +103,6 @@ class ProfileForm(ContactForm):
             ),
         ],
     )
-
 
 
 class TemporaryPasswordForm(FlaskForm):

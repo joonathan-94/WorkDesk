@@ -20,6 +20,7 @@ operaciones bloquean la fila del ticket antes de validar.
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
+from ..cleaning import clean_optional_reason, clean_required_reason
 from ..extensions import db
 from ..models import (
     Grupo,
@@ -37,13 +38,7 @@ from ..notifications.events import (
 )
 from ..security import RoleCode
 from .lifecycle import apply_derived_transition
-from .service import (
-    TicketRuleError,
-    clean_optional_reason,
-    full_name,
-    person_snapshot,
-    record_ticket_event,
-)
+from .service import TicketRuleError, full_name, person_snapshot, record_ticket_event
 from .versioning import (
     TicketConflictError,
     apply_ticket_changes,
@@ -160,7 +155,7 @@ def unassign_technician(
     if assignment is None:
         raise TicketRuleError("Ese técnico ya no está asignado al ticket.")
 
-    reason = clean_optional_reason(reason)
+    reason = clean_optional_reason(reason, TicketRuleError)
     technician = assignment.tecnico
 
     close_assignment(assignment, actor, reason)
@@ -269,7 +264,9 @@ def escalate_ticket(
     _begin(ticket, actor)
     _check_version(ticket, expected_version)
 
-    reason = _clean_required_reason(reason)
+    reason = clean_required_reason(
+        reason, TicketRuleError, "Indica el motivo del escalamiento."
+    )
     old_group = ticket.grupo
     new_group = old_group if group_id is None else _get_group(ticket, group_id)
     group_changes = group_id is not None and not _same_group(old_group, new_group)
@@ -452,12 +449,3 @@ def _escalation_snapshot(group: Grupo | None, assignments) -> dict:
         "grupo": _group_snapshot(group),
         "tecnicos": [person_snapshot(a.tecnico) for a in assignments],
     }
-
-
-def _clean_required_reason(reason: str | None) -> str:
-    reason = (reason or "").strip()
-
-    if not reason:
-        raise TicketRuleError("Indica el motivo del escalamiento.")
-
-    return clean_optional_reason(reason)

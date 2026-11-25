@@ -3,26 +3,12 @@ from wtforms import Field, StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 from ..catalogs.forms import OptionalIntegerField
-from ..cleaning import strip_text
+from ..cleaning import MAX_REASON_LENGTH, normalize_newlines, strip_text
 from ..models import CommentType
 from ..models.comment import MAX_COMMENT_LENGTH
 from ..models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
-from .editing import MAX_REASON_LENGTH
 from .relations import MAX_RELATION_COMMENT_LENGTH
 from .state_actions import MAX_WAIT_TEXT_LENGTH
-
-
-def _normalize_text(value):
-    """Recorta y unifica los saltos de línea.
-
-    Los navegadores envían los saltos de un textarea como CRLF: contarían
-    como dos caracteres y el límite no coincidiría con el contador que ve la
-    persona (que cuenta uno por salto).
-    """
-    if not isinstance(value, str):
-        return value
-
-    return value.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
 def _require_choice(field, choices, message):
@@ -80,7 +66,7 @@ class _TicketFieldsForm(FlaskForm):
 
     descripcion = TextAreaField(
         "Descripción",
-        filters=[_normalize_text],
+        filters=[normalize_newlines],
         validators=[
             DataRequired(message="Describe tu solicitud."),
             Length(
@@ -181,7 +167,7 @@ class PriorityChangeForm(FlaskForm):
 
     motivo = TextAreaField(
         "Motivo del cambio",
-        filters=[_normalize_text],
+        filters=[normalize_newlines],
         validators=[
             DataRequired(message="Indica el motivo del cambio."),
             Length(
@@ -225,7 +211,7 @@ class StateChangeForm(FlaskForm):
 
     texto = TextAreaField(
         "Explicación",
-        filters=[_normalize_text],
+        filters=[normalize_newlines],
     )
 
     def __init__(
@@ -296,7 +282,7 @@ class RelationForm(FlaskForm):
 
     comentario = TextAreaField(
         "Comentario",
-        filters=[_normalize_text],
+        filters=[normalize_newlines],
         validators=[
             Length(
                 max=MAX_RELATION_COMMENT_LENGTH,
@@ -316,16 +302,20 @@ class DuplicateForm(RelationForm):
         _require_version(field)
 
 
-class TechnicianPickForm(FlaskForm):
-    """Elegir al técnico que se asigna a un ticket. Las opciones se pasan
-    como atributo (sin `SelectField`, como el resto de formularios)."""
-
-    tecnico = OptionalIntegerField("Técnico")
+class _ChoicesForm(FlaskForm):
+    """Un formulario cuyas opciones se pasan como atributo (sin `SelectField`, como
+    en el resto del proyecto)."""
 
     def __init__(self, *args, choices, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.choices = list(choices)
+
+
+class TechnicianPickForm(_ChoicesForm):
+    """Elegir al técnico que se asigna a un ticket."""
+
+    tecnico = OptionalIntegerField("Técnico")
 
     def validate_tecnico(self, field):
         _require_choice(
@@ -341,7 +331,7 @@ class CommentEditForm(FlaskForm):
 
     contenido = TextAreaField(
         "Comentario",
-        filters=[_normalize_text],
+        filters=[normalize_newlines],
         validators=[
             DataRequired(message="Escribe el comentario."),
             Length(
@@ -367,17 +357,10 @@ class CommentForm(CommentEditForm):
             raise ValidationError("Elige el tipo de comentario.")
 
 
-class RequesterPickForm(FlaskForm):
-    """Elegir a la persona que se agrega como solicitante de un ticket. Las
-    opciones se pasan como atributo (sin `SelectField`, como el resto de
-    formularios)."""
+class RequesterPickForm(_ChoicesForm):
+    """Elegir a la persona que se agrega como solicitante de un ticket."""
 
     solicitante = OptionalIntegerField("Solicitante")
-
-    def __init__(self, *args, choices, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.choices = list(choices)
 
     def validate_solicitante(self, field):
         _require_choice(
@@ -387,16 +370,11 @@ class RequesterPickForm(FlaskForm):
         )
 
 
-class GroupChangeForm(FlaskForm):
+class GroupChangeForm(_ChoicesForm):
     """Fijar el grupo de un ticket. Un valor vacío lo deja sin grupo."""
 
     version = OptionalIntegerField("Versión")
     grupo = OptionalIntegerField("Grupo")
-
-    def __init__(self, *args, choices, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.choices = list(choices)
 
     def validate_version(self, field):
         _require_version(field)
@@ -420,7 +398,7 @@ class EscalationForm(FlaskForm):
 
     motivo = TextAreaField(
         "Motivo del escalamiento",
-        filters=[_normalize_text],
+        filters=[normalize_newlines],
         validators=[
             DataRequired(message="Indica el motivo del escalamiento."),
             Length(

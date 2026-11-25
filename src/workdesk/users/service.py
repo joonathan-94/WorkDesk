@@ -12,13 +12,10 @@ from ..groups.service import close_user_group_links
 from ..models import Role, User
 from ..search import escape_like
 from ..security import RoleCode
+from ..status_filter import STATUS_ACTIVE, STATUS_INACTIVE
 
 PAGE_SIZE = 20
 MAX_SEARCH_LENGTH = 100
-
-STATUS_ACTIVE = "activo"
-STATUS_INACTIVE = "inactivo"
-VALID_STATUSES = frozenset({STATUS_ACTIVE, STATUS_INACTIVE})
 
 
 class DuplicateUserError(ValueError):

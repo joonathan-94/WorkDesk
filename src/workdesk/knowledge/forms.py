@@ -6,7 +6,7 @@ from wtforms import StringField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 from ..catalogs.forms import OptionalIntegerField
-from ..cleaning import strip_text
+from ..cleaning import normalize_newlines, strip_text
 from ..models.article import MAX_ARTICLE_CONTENT_LENGTH, MAX_ARTICLE_TITLE_LENGTH
 from ..models.article import ArticleVisibility as Visibility
 
@@ -14,14 +14,6 @@ VISIBILITY_CHOICES = (
     (Visibility.PRIVADO.value, "Privado: solo el personal de soporte"),
     (Visibility.PUBLICO.value, "Público: también los solicitantes"),
 )
-
-
-def _normalize_newlines(value):
-    # Así el límite coincide con el contador del navegador (ver el formulario de tickets).
-    if not isinstance(value, str):
-        return value
-
-    return value.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
 class ArticleForm(FlaskForm):
@@ -40,7 +32,7 @@ class ArticleForm(FlaskForm):
     )
     contenido = TextAreaField(
         "Contenido",
-        filters=[_normalize_newlines],
+        filters=[normalize_newlines],
         validators=[
             DataRequired(message="El contenido es obligatorio."),
             Length(

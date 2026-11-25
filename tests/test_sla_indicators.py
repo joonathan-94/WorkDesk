@@ -20,14 +20,12 @@ from sqlalchemy.exc import IntegrityError
 
 from src.workdesk.extensions import db
 from src.workdesk.models import PeriodoSla, Ticket
-from src.workdesk.sla.periods import (
+from src.workdesk.sla.evaluation import (
     SlaStatus,
     evaluate_ticket_sla,
     evaluate_tickets_sla,
-    fill_missing_warning_dates,
-    list_periods,
-    warning_seconds,
 )
+from src.workdesk.sla.periods import list_periods, warning_seconds
 from src.workdesk.sla.queries import (
     SLA_PARTITION,
     SlaFilter,
@@ -35,6 +33,7 @@ from src.workdesk.sla.queries import (
     sla_condition,
     sla_urgency_order,
 )
+from src.workdesk.sla.rebuild import fill_missing_warning_dates
 from src.workdesk.sla.work_calendar import save_work_calendar
 from src.workdesk.worktime import Franja, parse_time
 from tests.sla_helpers import (

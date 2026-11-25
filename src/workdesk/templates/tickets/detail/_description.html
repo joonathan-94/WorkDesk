@@ -1,0 +1,40 @@
+<section
+    class="card mb-4"
+    aria-labelledby="description-title"
+>
+    <div class="card-body">
+        <h2
+            class="h6 mb-3"
+            id="description-title"
+        >
+            Descripción
+        </h2>
+
+        <p class="ticket-text">{{ ticket.descripcion }}</p>
+    </div>
+</section>
+
+{# La explicación de la solución, si quien resolvió la escribió. La
+   ve quien ve el ticket: es lo que el solicitante revisa. #}
+{% if ticket.resolucion %}
+    <section
+        class="card mb-4"
+        aria-labelledby="resolution-title"
+    >
+        <div class="card-body">
+            <h2
+                class="h6 mb-3"
+                id="resolution-title"
+            >
+                Resolución
+            </h2>
+
+            <p class="ticket-text mb-0">{{ ticket.resolucion }}</p>
+            {% if can_link_articles %}
+                <a class="small d-inline-block mt-2" href="{{ url_for('knowledge.new_article', ticket=ticket.public_id) }}">
+                    Crear artículo desde la resolución
+                </a>
+            {% endif %}
+        </div>
+    </section>
+{% endif %}

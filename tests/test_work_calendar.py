@@ -13,6 +13,7 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 
+from src.workdesk.cleaning import MAX_REASON_LENGTH
 from src.workdesk.extensions import db
 from src.workdesk.models import (
     AdminAuditLog,
@@ -30,7 +31,6 @@ from src.workdesk.sla.forms import (
 )
 from src.workdesk.sla.work_calendar import (
     MAX_HOLIDAY_NAME_LENGTH,
-    MAX_REASON_LENGTH,
     CalendarConflictError,
     CalendarRuleError,
     Holiday,

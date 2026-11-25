@@ -18,10 +18,7 @@ from ..cleaning import blank_to_none
 from ..extensions import db
 from ..models import Grupo, GrupoSupervisor, Role, User, UsuarioGrupo
 from ..security import RoleCode, can_manage_groups, has_any_role
-
-STATUS_ACTIVE = "activo"
-STATUS_INACTIVE = "inactivo"
-VALID_STATUSES = frozenset({STATUS_ACTIVE, STATUS_INACTIVE})
+from ..status_filter import STATUS_ACTIVE, STATUS_INACTIVE
 
 ENTITY_TYPE = "grupo"
 

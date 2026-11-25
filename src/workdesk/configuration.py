@@ -29,13 +29,12 @@ from flask import current_app, g
 from sqlalchemy import func, select
 
 from .audit import AuditAction, record_admin_event
+from .cleaning import clean_optional_reason
 from .extensions import db
 from .models import ConfigDataType, Configuracion
 from .settings import ALL_SETTINGS, BoolSetting, Setting, settings_problems
 
 logger = logging.getLogger(__name__)
-
-MAX_REASON_LENGTH = 500
 
 # Identificador del bloqueo consultivo de PostgreSQL que serializa los cambios. Un número
 # cualquiera pero fijo: solo importa que ningún otro código use el mismo.
@@ -68,7 +67,7 @@ def _stored_values() -> dict[str, str]:
 
     if cached is None:
         rows = db.session.execute(select(Configuracion.clave, Configuracion.valor))
-        cached = {key: value for key, value in rows}
+        cached = dict(rows.all())
         setattr(g, _CACHE_ATTRIBUTE, cached)
 
     return cached
@@ -160,15 +159,6 @@ def state_token(group) -> str:
 # --- Cambios ------------------------------------------------------------------------------
 
 
-def _clean_reason(reason: str | None) -> str | None:
-    reason = (reason or "").strip()
-
-    if len(reason) > MAX_REASON_LENGTH:
-        raise SettingRuleError(f"El motivo no puede superar los {MAX_REASON_LENGTH} caracteres.")
-
-    return reason or None
-
-
 def _begin_change(actor) -> None:
     """Comprueba el permiso y toma el bloqueo que serializa los cambios."""
     # Importado aquí y no arriba: `security.authorization` lee la configuración y este
@@ -250,7 +240,7 @@ def save_settings(
     Lanza `PermissionError` si `actor` no es Administrador y `SettingRuleError` si algo no es
     válido. No hace commit.
     """
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, SettingRuleError)
     _begin_change(actor)
 
     if base_token is not None and base_token != state_token(group):
@@ -282,7 +272,7 @@ def reset_setting(setting: Setting, *, actor, reason: str | None = None) -> bool
     Devuelve `False` si no tenía valor propio. Lanza lo mismo que `save_settings`; volver al
     inicial también se valida, porque puede dejar dos parámetros incompatibles entre sí.
     """
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, SettingRuleError)
     _begin_change(actor)
 
     row = _row_of(setting)
@@ -332,7 +322,7 @@ def save_document(
     conflictos (`base_token`, ver `document_token`) y sin escribir si nada cambió. No hace
     commit.
     """
-    reason = _clean_reason(reason)
+    reason = clean_optional_reason(reason, SettingRuleError)
     _begin_change(actor)
 
     if base_token is not None and base_token != document_token(table_key):
@@ -379,4 +369,3 @@ def save_document(
     forget_cached_settings()
 
     return True
-

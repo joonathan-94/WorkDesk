@@ -10,6 +10,7 @@ from wtforms import BooleanField, HiddenField
 from wtforms.validators import InputRequired
 
 from ..catalogs.forms import OptionalIntegerField
+from ..cleaning import MAX_REASON_LENGTH
 from ..configuration import (
     SettingConflictError,
     SettingRuleError,
@@ -23,7 +24,7 @@ from ..configuration import (
 from ..extensions import db
 from ..security import admin_only, current_actor
 from ..tickets.storage import allowed_extensions
-from ..users.forms import MAX_REASON_LENGTH, ReasonForm
+from ..users.forms import ReasonForm
 from . import bp
 from .settings_screens import GROUPS_BY_SLUG, SettingsGroup
 

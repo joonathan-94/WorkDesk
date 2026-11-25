@@ -29,12 +29,12 @@ Reglas que conviene tener presentes:
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
+from ..cleaning import clean_optional_reason
 from ..extensions import db
 from ..models import Role, Ticket, TicketEvent, TicketRequester, User
 from ..security import RoleCode
 from .service import (
     TicketRuleError,
-    clean_optional_reason,
     full_name,
     list_requester_candidates,
     person_snapshot,
@@ -138,7 +138,7 @@ def remove_requester(
     if link is None:
         raise TicketRuleError("Esa persona ya no es solicitante del ticket.")
 
-    reason = clean_optional_reason(reason)
+    reason = clean_optional_reason(reason, TicketRuleError)
     requester = link.solicitante
 
     # La hora la pone la base de datos, como `fecha_asociacion`.

@@ -13,13 +13,17 @@ from sqlalchemy.exc import IntegrityError
 from ..audit import AuditAction, record_admin_event
 from ..cleaning import blank_to_none
 from ..extensions import db
-from ..models import Categoria, MotivoEspera, Prioridad, Ubicacion, User
+from ..models import (
+    Categoria,
+    Estado,
+    MotivoEspera,
+    Prioridad,
+    Ubicacion,
+    User,
+)
 from ..models.categoria import FALLBACK_CATEGORY_CODE
 from ..models.ubicacion import LocationType
-
-STATUS_ACTIVE = "activo"
-STATUS_INACTIVE = "inactivo"
-VALID_STATUSES = frozenset({STATUS_ACTIVE, STATUS_INACTIVE})
+from ..status_filter import STATUS_ACTIVE, STATUS_INACTIVE
 
 # Valor de `entidad_tipo` en la auditoría para cada catálogo.
 ENTITY_TYPES = {
@@ -70,6 +74,11 @@ def list_categories(status: str = "") -> list[Categoria]:
         Categoria.orden.asc().nulls_last(),
         db.func.lower(Categoria.nombre),
     )
+
+
+def list_states() -> list[Estado]:
+    """Los estados en el orden del flujo."""
+    return list(db.session.scalars(db.select(Estado).order_by(Estado.orden)))
 
 
 def list_priorities(status: str = "") -> list[Prioridad]:

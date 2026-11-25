@@ -19,13 +19,12 @@ from .flow import (
     get_state,
     get_transition,
     group_by_origin,
-    list_states,
     list_transitions,
     transition_blocker,
     update_state,
 )
 from .forms import MAX_STATE_DESCRIPTION_LENGTH, MAX_STATE_NAME_LENGTH, StateForm
-from .service import CatalogRuleError, DuplicateNameError
+from .service import CatalogRuleError, DuplicateNameError, list_states
 
 STATES_ENDPOINT = "catalogs.states_page"
 

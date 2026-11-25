@@ -1,0 +1,27 @@
+{# Solicitante(s) vigentes de un ticket: el primero y cuántos más. #}
+{% macro requesters_summary(ticket) %}
+    {% set current = ticket.solicitantes_vigentes %}
+
+    {% if current %}
+        {{ current[0].solicitante.nombre }} {{ current[0].solicitante.apellido }}
+        {% if current|length > 1 %}
+            <span class="text-secondary">+{{ current|length - 1 }}</span>
+        {% endif %}
+    {% else %}
+        <span class="text-secondary">—</span>
+    {% endif %}
+{% endmacro %}
+
+{# Técnico(s) asignados ahora: el primero y cuántos más. #}
+{% macro technicians_summary(ticket) %}
+    {% set current = ticket.tecnicos_vigentes %}
+
+    {% if current %}
+        {{ current[0].tecnico.nombre }} {{ current[0].tecnico.apellido }}
+        {% if current|length > 1 %}
+            <span class="text-secondary">+{{ current|length - 1 }}</span>
+        {% endif %}
+    {% else %}
+        <span class="text-secondary">Sin asignar</span>
+    {% endif %}
+{% endmacro %}

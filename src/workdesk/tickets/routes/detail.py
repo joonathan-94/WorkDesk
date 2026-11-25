@@ -34,7 +34,8 @@ from ...security import (
     current_actor,
     has_any_role,
 )
-from ...sla.periods import evaluate_ticket_sla, list_periods
+from ...sla.evaluation import evaluate_ticket_sla
+from ...sla.periods import list_periods
 from .. import bp
 from ..attachments import list_attachments
 from ..comments import list_comments
