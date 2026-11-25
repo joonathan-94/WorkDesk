@@ -1842,6 +1842,8 @@ La definición de cada parámetro numérico (su clave, su variable de entorno, s
 | `carga.tickets_activos_carga_alta` | `WORKLOAD_HIGH_ACTIVE_TICKETS` | 10 | 0 a 10 000 (0 desactiva la marca) |
 | `archivos.tamano_maximo_bytes` | `UPLOAD_MAX_BYTES` | 10 485 760 | 1 a 1 073 741 824 |
 | `archivos.cantidad_maxima_por_ticket` | `UPLOAD_MAX_FILES_PER_TICKET` | 20 | 1 a 1000 |
+| `duplicados.ventana_dias` | `DUPLICATE_WINDOW_DAYS` | 30 | 0 a 365 (0 desactiva la advertencia) |
+| `duplicados.palabras_en_comun` | `DUPLICATE_MIN_WORDS` | 2 | 1 a 5 |
 | `sla.habilitado` | `SLA_ENABLED` | `true` | `true` o `false` |
 | `cierre.auto_cierre_habilitado` | `AUTO_CLOSE_ENABLED` | `true` | `true` o `false` |
 

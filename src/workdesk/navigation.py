@@ -66,6 +66,8 @@ TICKET_SCREENS = (
     "tickets.edit_ticket_comment",
     "tickets.delete_ticket_comment",
     "tickets.delete_ticket_attachment",
+    "tickets.knowledge_page",
+    "tickets.remove_ticket_article",
 )
 
 MAIN_NAVIGATION = (

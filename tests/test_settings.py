@@ -100,13 +100,17 @@ def test_the_password_length_is_bounded_on_both_sides():
             validate_settings(config)
 
 
-def test_zero_turns_off_the_high_workload_mark_but_nothing_else_accepts_it():
-    config = _valid_config()
-    config["WORKLOAD_HIGH_ACTIVE_TICKETS"] = 0
-    validate_settings(config)
+def test_zero_turns_a_feature_off_only_where_that_makes_sense():
+    # 0 apaga la marca de carga alta y la advertencia de duplicados.
+    off_switches = {"WORKLOAD_HIGH_ACTIVE_TICKETS", "DUPLICATE_WINDOW_DAYS"}
+
+    for key in off_switches:
+        config = _valid_config()
+        config[key] = 0
+        validate_settings(config)
 
     for setting in INT_SETTINGS:
-        if setting.key == "WORKLOAD_HIGH_ACTIVE_TICKETS":
+        if setting.key in off_switches:
             continue
 
         config = _valid_config()

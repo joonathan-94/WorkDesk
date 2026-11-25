@@ -678,3 +678,14 @@ def test_a_technician_cannot_edit_their_article_once_it_is_published(ctx):
             category_id=article.categoria_id,
             visibility=article.visibilidad,
         )
+
+
+def test_the_demo_articles_are_linked_to_the_demo_tickets_once(seeded, app):
+    with app.app_context():
+        first = seed_demo_articles()
+        second = seed_demo_articles()
+        links = db.session.scalar(db.select(db.func.count(TicketArticle.id)))
+        expected = sum(1 for item in DEMO_ARTICLES if item.ticket_key)
+
+        assert first.linked == expected == links == 5
+        assert second.linked == 0

@@ -21,6 +21,27 @@
         <div class="card-body">
             {{ form.csrf_token }}
 
+            {% if similar %}
+                <input type="hidden" name="{{ confirmation_field }}" value="{{ confirmation }}">
+                <div class="alert alert-warning" role="alert" id="duplicados">
+                    <h2 class="h6">Puede que ya exista un ticket sobre esto</h2>
+                    <p class="small">
+                        Todavía no se creó nada. Revisa estos tickets abiertos; si el tuyo es
+                        distinto, pulsa «Crear de todos modos».
+                    </p>
+                    <ul class="mb-0">
+                        {% for candidate in similar %}
+                            <li class="text-break">
+                                <a class="alert-link" href="{{ url_for('tickets.detail', public_id=candidate.public_id) }}" target="_blank" rel="noopener">
+                                    #{{ candidate.public_id }} {{ candidate.titulo }}
+                                </a>
+                                <span class="small">({{ candidate.estado.nombre_visible }})</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
             <section
                 class="form-section"
                 aria-labelledby="section-need"
@@ -167,7 +188,7 @@
                         class="bi bi-plus-lg me-1"
                         aria-hidden="true"
                     ></i>
-                    Crear ticket
+                    {{ 'Crear de todos modos' if similar else 'Crear ticket' }}
                 </button>
             </div>
         </div>

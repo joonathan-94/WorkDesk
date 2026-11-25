@@ -56,6 +56,8 @@ class Config:
     EDIT_LOCK_HEARTBEAT_SECONDS = settings.EDIT_LOCK_HEARTBEAT_SECONDS.from_environment()
     UPLOAD_MAX_BYTES = settings.UPLOAD_MAX_BYTES.from_environment()
     UPLOAD_MAX_FILES_PER_TICKET = settings.UPLOAD_MAX_FILES_PER_TICKET.from_environment()
+    DUPLICATE_WINDOW_DAYS = settings.DUPLICATE_WINDOW_DAYS.from_environment()
+    DUPLICATE_MIN_WORDS = settings.DUPLICATE_MIN_WORDS.from_environment()
     # Interruptores generales (también en `settings.py`): el SLA y el cierre automático.
     SLA_ENABLED = settings.SLA_ENABLED.from_environment()
     AUTO_CLOSE_ENABLED = settings.AUTO_CLOSE_ENABLED.from_environment()

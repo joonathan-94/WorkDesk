@@ -164,6 +164,27 @@ GROUPS = (
         ),
     ),
     SettingsGroup(
+        slug="duplicados",
+        title="Posibles duplicados",
+        description="La advertencia de tickets parecidos al crear uno. Nunca impide crearlo.",
+        fields=(
+            SettingField(
+                settings.DUPLICATE_WINDOW_DAYS,
+                "Días hacia atrás que se revisan",
+                "Se comparan los tickets abiertos creados en ese plazo; 0 desactiva la "
+                "advertencia.",
+                unit="días",
+            ),
+            SettingField(
+                settings.DUPLICATE_MIN_WORDS,
+                "Palabras del título que deben coincidir",
+                "Con menos palabras avisa más a menudo; con más, solo ante títulos muy "
+                "parecidos.",
+                unit="palabras",
+            ),
+        ),
+    ),
+    SettingsGroup(
         slug="operacion",
         title="Carga y planificador",
         description="Marca de carga alta y frecuencia de las tareas automáticas.",

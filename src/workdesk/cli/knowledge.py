@@ -12,7 +12,8 @@ def register(app: Flask) -> None:
         """Carga artículos de ejemplo en la base de conocimiento.
 
         Requiere seed-demo (los autores) y seed-catalogs (las categorías). Usa las
-        categorías Redes, Hardware, Correo e Impresoras si existen. No duplica los
+        categorías Redes, Hardware, Correo e Impresoras si existen. Si están los tickets
+        de seed-demo-tickets, vincula algunos. No duplica los
         artículos ya cargados y no se ejecuta con APP_ENV=production.
         """
 
@@ -28,7 +29,8 @@ def register(app: Flask) -> None:
 
         click.echo(
             f"Artículos demo creados: {result.created}. "
-            f"Omitidos (ya existían): {result.skipped}."
+            f"Omitidos (ya existían): {result.skipped}. "
+            f"Vínculos con tickets demo: {result.linked}."
         )
 
         for warning in result.warnings:

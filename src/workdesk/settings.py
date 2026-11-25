@@ -177,6 +177,15 @@ UPLOAD_MAX_FILES_PER_TICKET = IntSetting(
     maximum=1000,
 )
 
+# Posibles duplicados al crear un ticket: cuántos días atrás se mira (0 desactiva la
+# advertencia) y cuántas palabras del título deben coincidir.
+DUPLICATE_WINDOW_DAYS = IntSetting(
+    "DUPLICATE_WINDOW_DAYS", "duplicados.ventana_dias", 30, minimum=0, maximum=365
+)
+DUPLICATE_MIN_WORDS = IntSetting(
+    "DUPLICATE_MIN_WORDS", "duplicados.palabras_en_comun", 2, maximum=5
+)
+
 # Interruptores generales. Con el SLA apagado no se muestra ni se avisa; el reloj de cada
 # ticket se sigue calculando para que al encenderlo los datos estén al día.
 SLA_ENABLED = BoolSetting("SLA_ENABLED", "sla.habilitado", True)
@@ -199,6 +208,8 @@ INT_SETTINGS: tuple[IntSetting, ...] = (
     WORKLOAD_HIGH_ACTIVE_TICKETS,
     UPLOAD_MAX_BYTES,
     UPLOAD_MAX_FILES_PER_TICKET,
+    DUPLICATE_WINDOW_DAYS,
+    DUPLICATE_MIN_WORDS,
 )
 
 

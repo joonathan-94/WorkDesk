@@ -1,0 +1,86 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "knowledge/_cards.html" import article_badges %}
+
+{% block title %}Conocimiento del ticket #{{ ticket.public_id }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Tickets", url_for('tickets.list_tickets_page')),
+        ("#" ~ ticket.public_id, url_for('tickets.detail', public_id=ticket.public_id)),
+        ("Base de conocimiento", None),
+    ]) }}
+
+    {% call page_header("Base de conocimiento del ticket", ticket.titulo) %}
+        {% if ticket.resolucion %}
+            <a class="btn btn-primary" href="{{ url_for('knowledge.new_article', ticket=ticket.public_id) }}">
+                <i class="bi bi-journal-plus me-1" aria-hidden="true"></i>
+                Crear artículo desde la resolución
+            </a>
+        {% endif %}
+    {% endcall %}
+
+    <section class="card mb-3" aria-labelledby="linked-title">
+        <div class="card-body">
+            <h2 class="h6" id="linked-title">Artículos vinculados ({{ links|length }})</h2>
+            {% if links %}
+                <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                    {% for link in links %}
+                        <li class="d-flex flex-wrap justify-content-between gap-2">
+                            <span class="text-break">
+                                <a href="{{ url_for('knowledge.detail', article_id=link.articulo_id) }}">{{ link.articulo.titulo }}</a>
+                                <span class="small text-secondary">
+                                    {{ 'Creado desde la resolución' if link.tipo_vinculacion == 'ORIGEN_RESOLUCION' else 'Referencia' }}
+                                </span>
+                                {{ article_badges(link.articulo) }}
+                            </span>
+                            <a
+                                class="btn btn-link btn-sm p-0"
+                                href="{{ url_for('tickets.remove_ticket_article', public_id=ticket.public_id, link_id=link.id) }}"
+                                aria-label="Desvincular {{ link.articulo.titulo }}"
+                            >Desvincular</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="small text-secondary mb-0">Este ticket no tiene artículos vinculados.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card" aria-labelledby="search-title">
+        <div class="card-body">
+            <h2 class="h6" id="search-title">Vincular un artículo publicado</h2>
+
+            <form method="get" action="{{ url_for('tickets.knowledge_page', public_id=ticket.public_id) }}" role="search">
+                <label class="visually-hidden" for="q">Buscar artículos</label>
+                <div class="input-group mb-3">
+                    <input class="form-control" type="search" id="q" name="q" value="{{ query }}" maxlength="{{ query_max }}" placeholder="Buscar artículos...">
+                    <button class="btn btn-outline-primary" type="submit">Buscar</button>
+                </div>
+            </form>
+
+            {% if query %}
+                {% if results %}
+                    <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
+                        {% for article in results %}
+                            <li class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <span class="text-break">
+                                    <a href="{{ url_for('knowledge.detail', article_id=article.id) }}">{{ article.titulo }}</a>
+                                    <span class="small text-secondary">{{ article.categoria.nombre }}</span>
+                                </span>
+                                <form method="post" action="{{ url_for('tickets.add_ticket_article', public_id=ticket.public_id) }}">
+                                    {{ form.csrf_token }}
+                                    <input type="hidden" name="article_id" value="{{ article.id }}">
+                                    <button class="btn btn-outline-secondary btn-sm" type="submit" aria-label="Vincular {{ article.titulo }}">Vincular</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="small text-secondary mb-0">No hay artículos para vincular con «{{ query }}».</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

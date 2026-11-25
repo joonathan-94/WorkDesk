@@ -46,6 +46,16 @@ def indexed_text_sql(column: str, weight: str) -> str:
     )
 
 
+def search_vector(column):
+    """El `tsvector` de una columna calculado en la consulta (para columnas sin uno
+    guardado, como el título de un ticket). Equivale a `indexed_text_sql`."""
+    plain = func.translate(func.lower(column), ACCENTED, UNACCENTED)
+
+    return func.to_tsvector(cast(literal("spanish"), REGCONFIG), column).op("||")(
+        func.to_tsvector(cast(literal("simple"), REGCONFIG), plain)
+    )
+
+
 def text_search_query(text: str):
     """La consulta (`tsquery`) para lo que escribió una persona, contra `indexed_text_sql`.
 

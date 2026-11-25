@@ -1,5 +1,7 @@
-"""Creación de tickets (docs/06, RN-153).
+"""Creación de tickets (docs/06, RN-153 y RN-175).
 """
+
+import hashlib
 
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -16,10 +18,14 @@ from ..service import (
     create_ticket,
     list_requester_candidates,
 )
+from ..similar import find_similar_tickets
 from .common import requester_choices
 
 # Prioridad que se ofrece preseleccionada al crear un ticket (docs/11, UI-004).
 DEFAULT_PRIORITY_CODE = "MEDIA"
+
+# El campo oculto que dice qué advertencia de duplicados ya vio la persona.
+CONFIRMATION_FIELD = "confirmado"
 
 
 @bp.route("/new", methods=["GET", "POST"])
@@ -54,7 +60,22 @@ def new_ticket():
         **_initial_values(priorities, is_new_form=request.method == "GET"),
     )
 
+    similar = []
+    signature = None
+
     if form.validate_on_submit():
+        signature = _signature(form.titulo.data, form.categoria.data)
+
+        # Solo se avisa si la persona no confirmó ya esta misma combinación de título y
+        # categoría: si los cambia, se vuelve a comprobar. Nunca impide crear.
+        if request.form.get(CONFIRMATION_FIELD) != signature:
+            similar = find_similar_tickets(
+                current_user,
+                title=form.titulo.data,
+                category_id=form.categoria.data,
+            )
+
+    if form.is_submitted() and not form.errors and not similar and signature:
         # El Solicitante siempre es su propio solicitante; el personal
         # elige a quién (puede ser nadie).
         requester_ids = (
@@ -90,7 +111,14 @@ def new_ticket():
         choose_requesters=choose_requesters,
         max_title=MAX_TITLE_LENGTH,
         max_description=MAX_DESCRIPTION_LENGTH,
+        similar=similar,
+        confirmation=signature if similar else None,
+        confirmation_field=CONFIRMATION_FIELD,
     )
+
+
+def _signature(title: str, category_id: int) -> str:
+    return hashlib.sha256(f"{category_id}|{title}".encode()).hexdigest()[:32]
 
 
 def _initial_values(priorities, *, is_new_form: bool) -> dict:

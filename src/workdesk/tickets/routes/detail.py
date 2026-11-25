@@ -25,6 +25,7 @@ from ...security import (
     can_delete_comment,
     can_edit_comment,
     can_edit_ticket,
+    can_link_articles,
     can_manage_assignments,
     can_manage_relations,
     can_manage_requesters,
@@ -38,6 +39,7 @@ from ..attachments import list_attachments
 from ..comments import list_comments
 from ..forms import CommentForm
 from ..history import describe_history_changes
+from ..knowledge_links import list_links
 from ..lifecycle import available_actions
 from ..locking import current_edit_lock
 from ..relations import KIND_DUPLICATE_OF, KIND_PRINCIPAL_OF, list_relations
@@ -112,6 +114,9 @@ def render_detail(ticket, comment_form):
         max_comment=MAX_COMMENT_LENGTH,
         # El SLA es solo del personal: el Solicitante no recibe ni la consulta.
         sla=evaluate_ticket_sla(ticket.id) if is_staff else None,
+        # Artículos vinculados que esta persona puede leer (el filtro está en la consulta).
+        article_links=list_links(ticket, current_user),
+        can_link_articles=can_link_articles(current_user),
         sla_period_rows=_sla_period_rows(ticket) if is_staff else [],
     )
 

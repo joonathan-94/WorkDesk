@@ -18,11 +18,14 @@ class DemoArticle:
     published_days_ago: int | None
     public: bool = True
     featured: bool = False
+    # La clave de un ticket de demostración al que se vincula, si está cargado.
+    ticket_key: str | None = None
 
 
 DEMO_ARTICLES = (
     DemoArticle(
         title="La impresora no imprime: qué revisar antes de pedir ayuda",
+        ticket_key="impresora-no-imprime",
         category="Impresoras",
         author="felipe.araya",
         published_days_ago=2,
@@ -39,6 +42,7 @@ DEMO_ARTICLES = (
     ),
     DemoArticle(
         title="Cómo conectarte al wifi de la oficina",
+        ticket_key="wifi-bodega",
         category="Redes",
         author="valentina.pizarro",
         published_days_ago=5,
@@ -52,6 +56,7 @@ DEMO_ARTICLES = (
     ),
     DemoArticle(
         title="Tu correo no sincroniza en el celular",
+        ticket_key="correo-celular",
         category="Correo",
         author="diego.soto",
         published_days_ago=9,
@@ -63,6 +68,7 @@ DEMO_ARTICLES = (
     ),
     DemoArticle(
         title="Contraseña bloqueada o olvidada",
+        ticket_key="restablecer-clave-correo",
         category="Correo",
         author="felipe.araya",
         published_days_ago=14,
@@ -76,6 +82,7 @@ DEMO_ARTICLES = (
     ),
     DemoArticle(
         title="El computador está muy lento",
+        ticket_key="computador-lento",
         category="Hardware",
         author="diego.soto",
         published_days_ago=20,

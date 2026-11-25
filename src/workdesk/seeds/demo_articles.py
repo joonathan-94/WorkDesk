@@ -1,7 +1,8 @@
 """Carga de los artículos de demostración (solo desarrollo).
 
 Usa los servicios reales (así valida y audita como la aplicación) y reconoce cada artículo
-por su título: volver a ejecutarlo no duplica ni toca lo que ya existe. Las fechas se
+por su título: volver a ejecutarlo no duplica ni toca lo que ya existe. Si están los tickets
+de demostración, vincula algunos artículos con ellos (también los cargados antes). Las fechas se
 escriben aparte, porque los servicios sellan la hora actual y los «artículos recientes»
 necesitan antigüedades distintas.
 """
@@ -13,8 +14,17 @@ from sqlalchemy import func, update
 
 from ..extensions import db
 from ..knowledge.service import create_article, publish_article, set_featured
-from ..models import Article, ArticleVisibility, Categoria, User
+from ..models import (
+    Article,
+    ArticleVisibility,
+    Categoria,
+    Ticket,
+    TicketArticle,
+    TicketHistory,
+    User,
+)
 from ..models.categoria import FALLBACK_CATEGORY_CODE
+from ..tickets.knowledge_links import link_article
 from .demo_articles_data import DEMO_ARTICLES
 
 # Quién publica (el personal que escribe solo crea borradores).
@@ -29,6 +39,7 @@ class DemoArticlesError(RuntimeError):
 class DemoArticlesResult:
     created: int = 0
     skipped: int = 0
+    linked: int = 0
     warnings: list[str] = field(default_factory=list)
 
 
@@ -98,6 +109,7 @@ def seed_demo_articles() -> DemoArticlesResult:
             _create(item, users, category_of(item.category))
             result.created += 1
 
+        result.linked = _link_to_demo_tickets(users[PUBLISHER])
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -136,3 +148,41 @@ def _create(item, users: dict[str, User], category: Categoria) -> None:
         )
         .execution_options(synchronize_session=False)
     )
+
+
+def _demo_ticket(key: str) -> Ticket | None:
+    """El ticket que `seed-demo-tickets` creó con esa clave (la marca está en su historial)."""
+    return db.session.scalar(
+        db.select(Ticket)
+        .join(TicketHistory, TicketHistory.ticket_id == Ticket.id)
+        .where(TicketHistory.contexto["demo_clave"].astext == key)
+        .limit(1)
+    )
+
+
+def _link_to_demo_tickets(actor: User) -> int:
+    """Vincula los artículos con sus tickets de demostración; devuelve cuántos vínculos
+    nuevos hizo."""
+    linked = 0
+
+    for item in DEMO_ARTICLES:
+        if item.ticket_key is None or (ticket := _demo_ticket(item.ticket_key)) is None:
+            continue
+
+        article = db.session.scalar(db.select(Article).where(Article.titulo == item.title))
+
+        if article is None or not article.activo:
+            continue
+
+        exists = db.session.scalar(
+            db.select(TicketArticle.id).where(
+                TicketArticle.ticket_id == ticket.id,
+                TicketArticle.articulo_id == article.id,
+            )
+        )
+
+        if exists is None:
+            link_article(ticket, article.id, actor=actor)
+            linked += 1
+
+    return linked
