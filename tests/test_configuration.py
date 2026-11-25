@@ -27,6 +27,7 @@ from sqlalchemy import event
 from src.workdesk import configuration, settings
 from src.workdesk.audit import AuditAction
 from src.workdesk.configuration import (
+    SettingConflictError,
     SettingRuleError,
     effective_values,
     forget_cached_settings,
@@ -34,11 +35,13 @@ from src.workdesk.configuration import (
     initial_value,
     reset_setting,
     save_setting,
+    save_settings,
+    state_token,
     value_of,
 )
 from src.workdesk.extensions import db
 from src.workdesk.models import Configuracion, User
-from src.workdesk.settings import INT_SETTINGS
+from src.workdesk.settings import ALL_SETTINGS, INT_SETTINGS
 from tests.ticket_helpers import audit_entries, login, run_in_threads
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,7 +70,7 @@ def admin(app, admin_user):
 def test_without_a_row_the_initial_value_rules(admin):
     assert value_of(settings.SESSION_IDLE_MINUTES) == 30
     assert not has_own_value(settings.SESSION_IDLE_MINUTES)
-    assert effective_values() == {s.key: s.default for s in INT_SETTINGS}
+    assert effective_values() == {s.key: s.default for s in ALL_SETTINGS}
 
 
 def test_the_initial_value_follows_the_app_configuration(app):
@@ -121,7 +124,7 @@ def test_a_row_for_a_key_the_code_does_not_know_is_ignored(admin):
     db.session.commit()
     forget_cached_settings()
 
-    assert effective_values() == {s.key: s.default for s in INT_SETTINGS}
+    assert effective_values() == {s.key: s.default for s in ALL_SETTINGS}
 
 
 # --- Cuánto cuesta leer -----------------------------------------------------------------
@@ -493,7 +496,7 @@ ALLOWED_TO_READ_CONFIG = {
 
 
 def test_no_module_reads_a_setting_from_app_config_directly():
-    keys = "|".join(re.escape(s.key) for s in INT_SETTINGS)
+    keys = "|".join(re.escape(s.key) for s in ALL_SETTINGS)
     direct = re.compile(rf"""config(?:\.get\(|\[)\s*["'](?:{keys})["']""")
     offenders = []
 
@@ -558,3 +561,107 @@ def test_the_upload_limit_is_applied_before_the_csrf_check_reads_the_body(
     )
 
     assert response.status_code == 413
+
+
+# --- Interruptores y guardado en lote -------------------------------------------------
+
+
+def test_a_switch_is_stored_as_text_and_read_as_a_boolean(admin):
+    assert value_of(settings.SLA_ENABLED) is True
+
+    save_setting(settings.SLA_ENABLED, False, actor=admin)
+    db.session.commit()
+    row = _row(settings.SLA_ENABLED)
+
+    assert (row.valor, row.tipo_dato, row.categoria) == ("false", "BOOLEANO", "sla")
+    assert value_of(settings.SLA_ENABLED) is False
+    assert audit_entries()[-1].valor_nuevo == {"valor": False}
+
+
+@pytest.mark.parametrize("wrong", ["false", 0, 1, None])
+def test_a_switch_only_accepts_a_boolean(admin, wrong):
+    with pytest.raises(SettingRuleError, match="verdadero o falso"):
+        save_setting(settings.AUTO_CLOSE_ENABLED, wrong, actor=admin)
+
+
+@pytest.mark.parametrize("bad", ["si", "0", "TRUE "])
+def test_a_stored_switch_that_is_not_valid_is_ignored(admin, bad):
+    db.session.add(Configuracion(clave=settings.SLA_ENABLED.table_key, valor=bad))
+    db.session.commit()
+    forget_cached_settings()
+
+    assert value_of(settings.SLA_ENABLED) is True
+
+
+def test_two_related_settings_can_change_together(admin):
+    # Uno por uno, 300 de latido sería inválido con 120 de duración; juntos son válidos.
+    saved = save_settings(
+        {
+            settings.EDIT_LOCK_HEARTBEAT_SECONDS: 300,
+            settings.EDIT_LOCK_TTL_SECONDS: 600,
+        },
+        actor=admin,
+    )
+    db.session.commit()
+
+    assert set(saved) == {settings.EDIT_LOCK_HEARTBEAT_SECONDS, settings.EDIT_LOCK_TTL_SECONDS}
+    assert value_of(settings.EDIT_LOCK_HEARTBEAT_SECONDS) == 300
+
+
+def test_a_batch_with_one_bad_value_saves_nothing(admin):
+    with pytest.raises(SettingRuleError):
+        save_settings(
+            {settings.REOPEN_WINDOW_DAYS: 10, settings.AUTO_CLOSE_HOURS: 0}, actor=admin
+        )
+
+    db.session.rollback()
+
+    assert db.session.scalar(db.select(db.func.count(Configuracion.id))) == 0
+    assert audit_entries() == []
+
+
+def test_a_batch_audits_only_what_changed(admin):
+    saved = save_settings(
+        {settings.REOPEN_WINDOW_DAYS: 10, settings.AUTO_CLOSE_HOURS: 24}, actor=admin
+    )
+    db.session.commit()
+
+    assert saved == [settings.REOPEN_WINDOW_DAYS]
+    assert [e.detalle for e in audit_entries()] == ["reapertura.ventana_dias"]
+
+
+def test_a_stale_state_token_is_a_conflict(admin):
+    group = (settings.REOPEN_WINDOW_DAYS, settings.AUTO_CLOSE_HOURS)
+    seen = state_token(group)
+
+    save_setting(settings.AUTO_CLOSE_HOURS, 48, actor=admin)
+    db.session.commit()
+
+    with pytest.raises(SettingConflictError):
+        save_settings(
+            {settings.REOPEN_WINDOW_DAYS: 10}, actor=admin, base_token=seen, group=group
+        )
+
+    db.session.rollback()
+    assert value_of(settings.REOPEN_WINDOW_DAYS) == 30
+
+
+def test_a_change_outside_the_group_does_not_conflict(admin):
+    group = (settings.REOPEN_WINDOW_DAYS,)
+    seen = state_token(group)
+    save_setting(settings.AUTO_CLOSE_HOURS, 48, actor=admin)
+    db.session.commit()
+
+    saved = save_settings(
+        {settings.REOPEN_WINDOW_DAYS: 10}, actor=admin, base_token=seen, group=group
+    )
+
+    assert saved == [settings.REOPEN_WINDOW_DAYS]
+
+
+@pytest.mark.parametrize("setting", INT_SETTINGS, ids=lambda s: s.key)
+def test_every_setting_has_an_upper_bound_that_is_enforced(admin, setting):
+    assert setting.maximum is not None
+
+    with pytest.raises(SettingRuleError, match=setting.key):
+        save_setting(setting, setting.maximum + 1, actor=admin)

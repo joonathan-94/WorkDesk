@@ -14,6 +14,38 @@
         "Define los objetivos de atención y resolución según la prioridad del ticket, y el calendario laboral en que corre su reloj."
     ) }}
 
+    {# --- Estado general ------------------------------------------------------ #}
+    <section class="card mb-4" aria-labelledby="switch-title">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h2 class="h6 mb-2" id="switch-title">Aplicar SLA a los tickets</h2>
+
+                {% if sla_enabled() %}
+                    <span class="badge badge-soft badge-soft-success">Activado</span>
+                    <p class="small text-secondary mb-0 mt-2">
+                        WorkDesk muestra el SLA y envía sus avisos.
+                    </p>
+                {% else %}
+                    <span class="badge badge-soft badge-soft-neutral">Desactivado</span>
+                    <p class="small text-secondary mb-0 mt-2">
+                        El SLA no se muestra ni avisa a nadie; el reloj de cada ticket se sigue
+                        calculando.
+                    </p>
+                {% endif %}
+            </div>
+
+            {% if sla_enabled() %}
+                <a class="btn btn-outline-danger" href="{{ url_for('sla.switch_off') }}">
+                    Desactivar SLA
+                </a>
+            {% else %}
+                <a class="btn btn-primary" href="{{ url_for('sla.switch_on') }}">
+                    Activar SLA
+                </a>
+            {% endif %}
+        </div>
+    </section>
+
     {# --- Objetivos por prioridad -------------------------------------------- #}
     {% include "sla/_policies.html" %}
 

@@ -59,7 +59,11 @@ def list_tickets_page():
         created_from=_date_arg("desde"),
         created_to=_date_arg("hasta"),
         # El SLA es solo del personal: para un Solicitante el parámetro no existe.
-        sla=parse_filter(request.args.get("sla")) if is_staff else None,
+        sla=(
+            parse_filter(request.args.get("sla"))
+            if is_staff and sla_periods.sla_enabled()
+            else None
+        ),
         technician_id=None if unassigned else _choice_arg("tecnico", technicians),
         unassigned=unassigned,
         group_id=_choice_arg("grupo", groups),
@@ -76,7 +80,7 @@ def list_tickets_page():
 
     sort_labels = dict(SORT_LABELS)
 
-    if is_staff:
+    if is_staff and sla_periods.sla_enabled():
         sort_labels[SORT_SLA] = SORT_SLA_LABEL
 
     sort = request.args.get("orden", DEFAULT_SORT)

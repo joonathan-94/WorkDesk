@@ -1,4 +1,5 @@
-"""Definición única de los parámetros numéricos configurables de WorkDesk.
+"""Definición única de los parámetros configurables de WorkDesk (números e
+interruptores).
 
 Cada parámetro tiene aquí su nombre, su valor por defecto y el rango en que tiene sentido.
 Hasta `v0.7.0` el valor sale de una variable de entorno; con la tabla `configuracion` esas
@@ -63,9 +64,56 @@ class IntSetting:
             raise RuntimeError(f"{self.key} debe ser un entero (se recibió «{raw}»).") from None
 
 
+_TRUE_VALUES = ("1", "true", "yes", "on")
+_FALSE_VALUES = ("0", "false", "no", "off")
+
+
+@dataclass(frozen=True)
+class BoolSetting:
+    """Un interruptor: su variable de entorno, su clave en la tabla y su valor inicial."""
+
+    key: str
+    table_key: str
+    default: bool
+
+    def problem(self, value: object) -> str | None:
+        """Por qué `value` no es válido, o `None` si lo es."""
+        if not isinstance(value, bool):
+            return f"{self.key} debe ser verdadero o falso."
+
+        return None
+
+    def from_environment(self) -> bool:
+        """El valor de la variable de entorno, o el de por defecto si no está definida."""
+        raw = os.getenv(self.key)
+
+        if raw is None or not raw.strip():
+            return self.default
+
+        value = raw.strip().lower()
+
+        if value in _TRUE_VALUES:
+            return True
+
+        if value in _FALSE_VALUES:
+            return False
+
+        raise RuntimeError(f"{self.key} debe ser true o false (se recibió «{raw}»).")
+
+
+Setting = IntSetting | BoolSetting
+
+
 # Autenticación y sesión.
-LOGIN_MAX_FAILED_ATTEMPTS = IntSetting("LOGIN_MAX_FAILED_ATTEMPTS", "autenticacion.max_intentos", 5)
-LOGIN_LOCK_MINUTES = IntSetting("LOGIN_LOCK_MINUTES", "autenticacion.bloqueo_minutos", 15)
+#
+# Los máximos existen porque el Administrador escribe estos números: sin ellos, un valor
+# desmesurado (un plazo de 10**15 días) rompería el cálculo de fechas de cada pantalla.
+LOGIN_MAX_FAILED_ATTEMPTS = IntSetting(
+    "LOGIN_MAX_FAILED_ATTEMPTS", "autenticacion.max_intentos", 5, maximum=100
+)
+LOGIN_LOCK_MINUTES = IntSetting(
+    "LOGIN_LOCK_MINUTES", "autenticacion.bloqueo_minutos", 15, maximum=10_080
+)
 PASSWORD_MIN_LENGTH = IntSetting(
     "PASSWORD_MIN_LENGTH",
     "autenticacion.password_longitud_minima",
@@ -73,37 +121,68 @@ PASSWORD_MIN_LENGTH = IntSetting(
     PASSWORD_LENGTH_FLOOR,
     PASSWORD_LENGTH_CEILING,
 )
-SESSION_IDLE_MINUTES = IntSetting("SESSION_IDLE_MINUTES", "sesion.inactividad_minutos", 30)
-SESSION_MAX_HOURS = IntSetting("SESSION_MAX_HOURS", "sesion.duracion_maxima_horas", 8)
+SESSION_IDLE_MINUTES = IntSetting(
+    "SESSION_IDLE_MINUTES", "sesion.inactividad_minutos", 30, maximum=1440
+)
+SESSION_MAX_HOURS = IntSetting("SESSION_MAX_HOURS", "sesion.duracion_maxima_horas", 8, maximum=720)
 
 # Tickets: comentarios, reapertura, cierre automático y bloqueo de edición.
 COMMENT_EDIT_WINDOW_MINUTES = IntSetting(
-    "COMMENT_EDIT_WINDOW_MINUTES", "comentarios.ventana_edicion_minutos", 30
+    "COMMENT_EDIT_WINDOW_MINUTES",
+    "comentarios.ventana_edicion_minutos",
+    30,
+    maximum=43_200,
 )
-REOPEN_WINDOW_DAYS = IntSetting("REOPEN_WINDOW_DAYS", "reapertura.ventana_dias", 30)
-AUTO_CLOSE_HOURS = IntSetting("AUTO_CLOSE_HOURS", "cierre.auto_cierre_horas", 24)
+REOPEN_WINDOW_DAYS = IntSetting("REOPEN_WINDOW_DAYS", "reapertura.ventana_dias", 30, maximum=3650)
+AUTO_CLOSE_HOURS = IntSetting("AUTO_CLOSE_HOURS", "cierre.auto_cierre_horas", 24, maximum=8760)
 EDIT_LOCK_TTL_SECONDS = IntSetting(
-    "EDIT_LOCK_TTL_SECONDS", "edicion.bloqueo_duracion_segundos", 120
+    "EDIT_LOCK_TTL_SECONDS",
+    "edicion.bloqueo_duracion_segundos",
+    120,
+    maximum=3600,
 )
 EDIT_LOCK_HEARTBEAT_SECONDS = IntSetting(
-    "EDIT_LOCK_HEARTBEAT_SECONDS", "edicion.bloqueo_latido_segundos", 45
+    "EDIT_LOCK_HEARTBEAT_SECONDS",
+    "edicion.bloqueo_latido_segundos",
+    45,
+    maximum=3600,
 )
 
 # Planificador y carga de trabajo (0 desactiva la marca de carga alta).
 SCHEDULER_INTERVAL_SECONDS = IntSetting(
-    "SCHEDULER_INTERVAL_SECONDS", "planificador.intervalo_segundos", 60
+    "SCHEDULER_INTERVAL_SECONDS",
+    "planificador.intervalo_segundos",
+    60,
+    maximum=86_400,
 )
 WORKLOAD_HIGH_ACTIVE_TICKETS = IntSetting(
-    "WORKLOAD_HIGH_ACTIVE_TICKETS", "carga.tickets_activos_carga_alta", 10, minimum=0
+    "WORKLOAD_HIGH_ACTIVE_TICKETS",
+    "carga.tickets_activos_carga_alta",
+    10,
+    minimum=0,
+    maximum=10_000,
 )
 
 # Archivos adjuntos (10 MB por archivo).
 UPLOAD_MAX_BYTES = IntSetting(
-    "UPLOAD_MAX_BYTES", "archivos.tamano_maximo_bytes", 10 * 1024 * 1024
+    "UPLOAD_MAX_BYTES",
+    "archivos.tamano_maximo_bytes",
+    10 * 1024 * 1024,
+    maximum=1024 * 1024 * 1024,
 )
 UPLOAD_MAX_FILES_PER_TICKET = IntSetting(
-    "UPLOAD_MAX_FILES_PER_TICKET", "archivos.cantidad_maxima_por_ticket", 20
+    "UPLOAD_MAX_FILES_PER_TICKET",
+    "archivos.cantidad_maxima_por_ticket",
+    20,
+    maximum=1000,
 )
+
+# Interruptores generales. Con el SLA apagado no se muestra ni se avisa; el reloj de cada
+# ticket se sigue calculando para que al encenderlo los datos estén al día.
+SLA_ENABLED = BoolSetting("SLA_ENABLED", "sla.habilitado", True)
+AUTO_CLOSE_ENABLED = BoolSetting("AUTO_CLOSE_ENABLED", "cierre.auto_cierre_habilitado", True)
+
+BOOL_SETTINGS: tuple[BoolSetting, ...] = (SLA_ENABLED, AUTO_CLOSE_ENABLED)
 
 INT_SETTINGS: tuple[IntSetting, ...] = (
     LOGIN_MAX_FAILED_ATTEMPTS,
@@ -123,6 +202,9 @@ INT_SETTINGS: tuple[IntSetting, ...] = (
 )
 
 
+ALL_SETTINGS: tuple[Setting, ...] = INT_SETTINGS + BOOL_SETTINGS
+
+
 def settings_problems(config) -> list[str]:
     """Todo lo que está mal en los valores de `config` (vacío si todo es válido).
 
@@ -132,7 +214,7 @@ def settings_problems(config) -> list[str]:
     """
     problems = [
         message
-        for setting in INT_SETTINGS
+        for setting in ALL_SETTINGS
         if (message := setting.problem(config[setting.key]))
     ]
 

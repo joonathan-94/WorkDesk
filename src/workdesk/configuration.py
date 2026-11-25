@@ -30,7 +30,7 @@ from sqlalchemy import func, select
 from .audit import AuditAction, record_admin_event
 from .extensions import db
 from .models import ConfigDataType, Configuracion
-from .settings import INT_SETTINGS, IntSetting, settings_problems
+from .settings import ALL_SETTINGS, BoolSetting, Setting, settings_problems
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,16 @@ _CACHE_ATTRIBUTE = "_workdesk_stored_settings"
 
 class SettingRuleError(ValueError):
     """El cambio de configuración no es válido; el mensaje se muestra tal cual."""
+
+
+class SettingConflictError(SettingRuleError):
+    """Otra persona cambió estos valores mientras la pantalla estaba abierta."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Otra persona cambió esta configuración mientras la editabas. Revisa los "
+            "valores actuales y vuelve a guardar."
+        )
 
 
 def forget_cached_settings() -> None:
@@ -63,18 +73,22 @@ def _stored_values() -> dict[str, str]:
     return cached
 
 
-def _parse(setting: IntSetting, raw: str) -> int | None:
-    """El valor guardado como entero válido, o `None` (con un aviso) si no lo es.
+def _parse(setting: Setting, raw: str):
+    """El valor guardado ya convertido y válido, o `None` (con un aviso) si no lo es.
 
     Un valor corrupto (alguien tocó la tabla a mano, o una versión futura cambió el rango)
     no debe tumbar cada pantalla: se ignora y rige el valor inicial.
     """
-    try:
-        value = int(raw)
-    except ValueError:
-        value = None
+    if isinstance(setting, BoolSetting):
+        value = {"true": True, "false": False}.get(raw)
+        problem = "no es true ni false" if value is None else None
+    else:
+        try:
+            value = int(raw)
+        except ValueError:
+            value = None
 
-    problem = "no es un entero" if value is None else setting.problem(value)
+        problem = "no es un entero" if value is None else setting.problem(value)
 
     if problem:
         logger.warning(
@@ -87,13 +101,20 @@ def _parse(setting: IntSetting, raw: str) -> int | None:
     return value
 
 
-def initial_value(setting: IntSetting) -> int:
+def _serialize(value) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+
+    return str(value)
+
+
+def initial_value(setting: Setting):
     """El valor que rige cuando el Administrador no eligió uno propio."""
     return current_app.config[setting.key]
 
 
-def value_of(setting: IntSetting) -> int:
-    """El valor vigente de `setting` (ver el módulo)."""
+def value_of(setting: Setting):
+    """El valor vigente de `setting` (un entero o un booleano según su tipo; ver el módulo)."""
     raw = _stored_values().get(setting.table_key)
 
     if raw is not None and (value := _parse(setting, raw)) is not None:
@@ -102,14 +123,27 @@ def value_of(setting: IntSetting) -> int:
     return initial_value(setting)
 
 
-def effective_values() -> dict[str, int]:
+def effective_values() -> dict:
     """Todos los valores vigentes, por nombre de variable de entorno."""
-    return {setting.key: value_of(setting) for setting in INT_SETTINGS}
+    return {setting.key: value_of(setting) for setting in ALL_SETTINGS}
 
 
-def has_own_value(setting: IntSetting) -> bool:
+def has_own_value(setting: Setting) -> bool:
     """Si el Administrador eligió un valor propio (y no rige el inicial)."""
     return setting.table_key in _stored_values()
+
+
+def state_token(group) -> str:
+    """Una huella de lo guardado para los parámetros de `group`.
+
+    Una pantalla la envía al guardar: si ya no coincide, otra persona cambió alguno
+    mientras se editaba y no se guarda nada.
+    """
+    stored = _stored_values()
+
+    return ";".join(
+        f"{setting.table_key}={stored.get(setting.table_key, '-')}" for setting in group
+    )
 
 
 # --- Cambios ------------------------------------------------------------------------------
@@ -139,47 +173,36 @@ def _begin_change(actor) -> None:
     forget_cached_settings()
 
 
-def _check_valid(setting: IntSetting, new_value: object) -> None:
-    candidate = {**effective_values(), setting.key: new_value}
+def _check_valid(changes: dict) -> None:
+    candidate = effective_values()
+    candidate.update({setting.key: value for setting, value in changes.items()})
 
     if problems := settings_problems(candidate):
         raise SettingRuleError(" ".join(problems))
 
 
-def save_setting(
-    setting: IntSetting,
-    value: int,
-    *,
-    actor,
-    reason: str | None = None,
-) -> bool:
-    """Guarda un valor propio para `setting`. Devuelve `False` si ya era el vigente.
+def _row_of(setting: Setting) -> Configuracion | None:
+    return db.session.scalar(
+        select(Configuracion).where(Configuracion.clave == setting.table_key)
+    )
 
-    Lanza `PermissionError` si `actor` no es Administrador y `SettingRuleError` si el valor
-    no es válido (solo o junto a los demás parámetros). No hace commit.
-    """
-    reason = _clean_reason(reason)
-    _begin_change(actor)
-    _check_valid(setting, value)
 
-    current = value_of(setting)
-
-    if value == current:
-        return False
-
-    row = db.session.scalar(select(Configuracion).where(Configuracion.clave == setting.table_key))
+def _write(setting: Setting, value, previous, *, actor, reason) -> None:
+    row = _row_of(setting)
+    kind = ConfigDataType.BOOLEANO if isinstance(setting, BoolSetting) else ConfigDataType.ENTERO
 
     if row is None:
         row = Configuracion(
             clave=setting.table_key,
-            valor=str(value),
-            tipo_dato=ConfigDataType.ENTERO.value,
+            valor=_serialize(value),
+            tipo_dato=kind.value,
             categoria=setting.table_key.partition(".")[0],
             usuario_modificacion_id=actor.id,
         )
         db.session.add(row)
     else:
-        row.valor = str(value)
+        row.valor = _serialize(value)
+        row.tipo_dato = kind.value
         row.fecha_modificacion = func.now()
         row.usuario_modificacion_id = actor.id
 
@@ -191,31 +214,73 @@ def save_setting(
         entity_type="configuracion",
         entity_id=row.id,
         detail=setting.table_key,
-        old_value={"valor": current},
+        old_value={"valor": previous},
         new_value={"valor": value},
         reason=reason,
     )
+
+
+def save_settings(
+    changes: dict,
+    *,
+    actor,
+    reason: str | None = None,
+    base_token: str | None = None,
+    group=(),
+) -> list:
+    """Guarda varios valores propios a la vez y devuelve los parámetros que cambiaron.
+
+    Se validan **juntos**, así que dos parámetros relacionados (la duración y el latido del
+    bloqueo) pueden cambiarse a la vez en cualquier combinación válida. Los que ya tenían ese
+    valor no se escriben ni se auditan. Con `base_token` (ver `state_token`, calculada sobre
+    `group`) se rechaza con `SettingConflictError` si alguno de esos parámetros cambió desde
+    entonces.
+
+    Lanza `PermissionError` si `actor` no es Administrador y `SettingRuleError` si algo no es
+    válido. No hace commit.
+    """
+    reason = _clean_reason(reason)
+    _begin_change(actor)
+
+    if base_token is not None and base_token != state_token(group):
+        raise SettingConflictError()
+
+    _check_valid(changes)
+
+    previous = {setting: value_of(setting) for setting in changes}
+    pending = {
+        setting: value for setting, value in changes.items() if value != previous[setting]
+    }
+
+    for setting, value in pending.items():
+        _write(setting, value, previous[setting], actor=actor, reason=reason)
+
     forget_cached_settings()
 
-    return True
+    return list(pending)
 
 
-def reset_setting(setting: IntSetting, *, actor, reason: str | None = None) -> bool:
+def save_setting(setting: Setting, value, *, actor, reason: str | None = None) -> bool:
+    """Como `save_settings` para un solo parámetro. `False` si ya era el vigente."""
+    return bool(save_settings({setting: value}, actor=actor, reason=reason))
+
+
+def reset_setting(setting: Setting, *, actor, reason: str | None = None) -> bool:
     """Borra el valor propio de `setting` para que vuelva a regir el inicial.
 
-    Devuelve `False` si no tenía valor propio. Lanza lo mismo que `save_setting`; volver al
+    Devuelve `False` si no tenía valor propio. Lanza lo mismo que `save_settings`; volver al
     inicial también se valida, porque puede dejar dos parámetros incompatibles entre sí.
     """
     reason = _clean_reason(reason)
     _begin_change(actor)
 
-    row = db.session.scalar(select(Configuracion).where(Configuracion.clave == setting.table_key))
+    row = _row_of(setting)
 
     if row is None:
         return False
 
     initial = initial_value(setting)
-    _check_valid(setting, initial)
+    _check_valid({setting: initial})
 
     previous = value_of(setting)
     row_id = row.id
@@ -236,4 +301,3 @@ def reset_setting(setting: IntSetting, *, actor, reason: str | None = None) -> b
     forget_cached_settings()
 
     return True
-

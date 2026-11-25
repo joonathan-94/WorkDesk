@@ -765,7 +765,7 @@
 
             {# El SLA es solo del personal (docs/06, RN-169): el Solicitante no
                recibe ni la consulta. #}
-            {% if is_staff %}
+            {% if is_staff and sla_enabled() %}
                 <section
                     class="card mt-3"
                     aria-labelledby="sla-title"

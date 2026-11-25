@@ -13,7 +13,14 @@ import pytest
 
 from src.workdesk import settings
 from src.workdesk.config import Config
-from src.workdesk.settings import INT_SETTINGS, IntSetting, validate_settings
+from src.workdesk.settings import (
+    ALL_SETTINGS,
+    BOOL_SETTINGS,
+    INT_SETTINGS,
+    BoolSetting,
+    IntSetting,
+    validate_settings,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,7 +29,7 @@ NOT_ADMINISTRABLE = {"LOG_MAX_BYTES", "LOG_BACKUP_COUNT"}
 
 
 def _valid_config() -> dict:
-    return {setting.key: setting.default for setting in INT_SETTINGS}
+    return {setting.key: setting.default for setting in ALL_SETTINGS}
 
 
 def test_every_numeric_setting_of_config_is_defined_in_settings():
@@ -36,15 +43,29 @@ def test_every_numeric_setting_of_config_is_defined_in_settings():
 
 
 def test_there_are_no_two_definitions_of_the_same_key():
-    keys = [setting.key for setting in INT_SETTINGS]
+    keys = [setting.key for setting in ALL_SETTINGS]
 
     assert len(keys) == len(set(keys))
 
 
 def test_the_listed_settings_are_all_the_ones_defined_in_the_module():
-    defined = {value for value in vars(settings).values() if isinstance(value, IntSetting)}
+    defined = {
+        value
+        for value in vars(settings).values()
+        if isinstance(value, IntSetting | BoolSetting)
+    }
 
-    assert defined == set(INT_SETTINGS)
+    assert defined == set(ALL_SETTINGS)
+
+
+def test_every_switch_of_config_is_defined_in_settings():
+    switches = {
+        name
+        for name, value in vars(Config).items()
+        if isinstance(value, bool) and name.endswith("_ENABLED")
+    }
+
+    assert switches == {setting.key for setting in BOOL_SETTINGS}
 
 
 def test_every_default_is_valid_by_its_own_rule():
@@ -141,7 +162,7 @@ def test_an_environment_value_that_is_not_a_number_says_which_one(monkeypatch):
 
 
 def test_every_setting_has_its_own_well_formed_table_key():
-    keys = [setting.table_key for setting in INT_SETTINGS]
+    keys = [setting.table_key for setting in ALL_SETTINGS]
 
     assert len(keys) == len(set(keys))
     assert all(re.fullmatch(r"[a-z]+\.[a-z_]+", key) for key in keys), keys
@@ -152,6 +173,40 @@ def test_the_data_model_document_names_every_table_key():
     # un parámetro cambia de clave o aparece uno nuevo, el documento debe decirlo.
     document = (ROOT / "docs" / "09_modelo_de_datos.md").read_text(encoding="utf-8")
 
-    missing = [s.table_key for s in INT_SETTINGS if s.table_key not in document]
+    missing = [s.table_key for s in ALL_SETTINGS if s.table_key not in document]
 
     assert not missing, f"docs/09 no menciona: {missing}"
+
+
+@pytest.mark.parametrize("setting", INT_SETTINGS, ids=lambda s: s.key)
+def test_each_setting_rejects_a_value_above_its_maximum(setting):
+    config = _valid_config()
+    config[setting.key] = setting.maximum + 1
+
+    with pytest.raises(RuntimeError, match=setting.key):
+        validate_settings(config)
+
+
+@pytest.mark.parametrize("setting", BOOL_SETTINGS, ids=lambda s: s.key)
+def test_each_switch_rejects_something_that_is_not_a_boolean(setting):
+    for wrong in ("true", 1, None):
+        config = _valid_config()
+        config[setting.key] = wrong
+
+        with pytest.raises(RuntimeError, match=setting.key):
+            validate_settings(config)
+
+
+def test_a_switch_reads_the_usual_spellings_from_the_environment(monkeypatch):
+    setting = BoolSetting("SLA_ENABLED", "sla.habilitado", True)
+
+    for raw, expected in (("false", False), (" NO ", False), ("0", False), ("on", True)):
+        monkeypatch.setenv("SLA_ENABLED", raw)
+        assert setting.from_environment() is expected
+
+    monkeypatch.setenv("SLA_ENABLED", "")
+    assert setting.from_environment() is True
+
+    monkeypatch.setenv("SLA_ENABLED", "quizás")
+    with pytest.raises(RuntimeError, match="SLA_ENABLED"):
+        setting.from_environment()

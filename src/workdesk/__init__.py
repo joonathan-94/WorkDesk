@@ -23,6 +23,7 @@ from .security import can_manage_users
 from .security.headers import register_security_headers
 from .settings import validate_settings
 from .sla import bp as sla_bp
+from .sla.periods import sla_enabled
 from .system import bp as system_bp
 from .tickets import bp as tickets_bp
 from .tickets.attachments import upload_request_limit
@@ -90,6 +91,9 @@ def create_app(
     # Las plantillas consultan las políticas para decidir qué mostrar. Eso
     # es solo presentación: la autorización real se aplica en las rutas.
     app.context_processor(lambda: {"can_manage_users": can_manage_users})
+    # Como función y no como valor: solo las pantallas que muestran el SLA consultan
+    # la configuración (el inicio de sesión o una página de error, no).
+    app.context_processor(lambda: {"sla_enabled": sla_enabled})
     app.context_processor(layout_context)
 
     return app

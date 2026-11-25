@@ -378,7 +378,12 @@ def test_hub_links_only_the_implemented_sections(
         "Ubicaciones",
         "Motivos de espera",
         "Estados y transiciones",
+        "Comentarios y edición",
         "SLA",
+        "Cierre y reapertura",
+        "Archivos",
+        "Carga y planificador",
+        "Seguridad y sesión",
     ]
     assert 'href="/users"' in content
     assert 'href="/groups"' in content
@@ -388,6 +393,9 @@ def test_hub_links_only_the_implemented_sections(
     assert 'href="/admin/wait-reasons"' in content
     assert 'href="/admin/states"' in content
     assert 'href="/admin/sla"' in content
+
+    for slug in ("seguridad", "cierre", "archivos", "colaboracion", "operacion"):
+        assert f'href="/admin/settings/{slug}"' in content
     assert content.count("Próximamente") == len(planned)
 
 
@@ -396,7 +404,7 @@ def test_hub_endpoints_exist(app):
         for section in HUB_SECTIONS:
             for card in section.cards:
                 if card.endpoint:
-                    assert url_for(card.endpoint)
+                    assert url_for(card.endpoint, **card.url_args)
 
 
 # --- Activos locales (sin CDN) ---------------------------------------

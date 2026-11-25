@@ -25,7 +25,7 @@ Todo se calcula en PostgreSQL con un número fijo de consultas, sin una por téc
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import false, func
 
 from .. import settings
 from ..configuration import value_of
@@ -177,6 +177,10 @@ def _counts(now: datetime) -> dict:
     """Los contadores comunes, como expresiones `COUNT ... FILTER`. Necesitan `Ticket`,
     `Estado` y `Prioridad` en el `FROM` (con `JOIN` externo, un ticket ausente no cuenta)."""
     active = active_state_condition()
+    # Con el SLA apagado ninguna cifra de SLA cuenta nada (y la pantalla no las muestra).
+    enabled = sla_periods.sla_enabled()
+    near_due = sla_condition(SlaFilter.PROXIMO, now) if enabled else false()
+    overdue = sla_condition(SlaFilter.VENCIDO, now) if enabled else false()
 
     return {
         "active": func.count(Ticket.id).filter(active),
@@ -185,12 +189,8 @@ def _counts(now: datetime) -> dict:
         "critical": func.count(Ticket.id).filter(
             active, Prioridad.codigo == CRITICAL_PRIORITY_CODE
         ),
-        "near_due": func.count(Ticket.id).filter(
-            active, sla_condition(SlaFilter.PROXIMO, now)
-        ),
-        "overdue": func.count(Ticket.id).filter(
-            active, sla_condition(SlaFilter.VENCIDO, now)
-        ),
+        "near_due": func.count(Ticket.id).filter(active, near_due),
+        "overdue": func.count(Ticket.id).filter(active, overdue),
     }
 
 

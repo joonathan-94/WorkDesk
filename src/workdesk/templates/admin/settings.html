@@ -1,0 +1,98 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import number_field, checkbox_field, textarea_field %}
+
+{% block title %}{{ group.title }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        (group.title, None),
+    ]) }}
+
+    {{ page_header(group.title, group.description) }}
+
+    {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('admin.settings_screen', slug=group.slug) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+            {{ form.base }}
+
+            {# Al pulsar Enter en un campo, el navegador usa el primer botón de envío del
+               formulario: debe ser «Guardar» y no un «Restablecer». #}
+            <button class="visually-hidden" type="submit" tabindex="-1" aria-hidden="true">
+                Guardar cambios
+            </button>
+
+            {% for row in rows %}
+                {% set item = row.field %}
+                {% set control = form[item.setting.key] %}
+
+                <div class="mb-2">
+                    {% if item.is_switch %}
+                        {{ checkbox_field(control, hint=item.help) }}
+                    {% else %}
+                        {{ number_field(
+                            control,
+                            hint=item.help ~ " Entre " ~ row.limits[0] ~ " y " ~ row.limits[1]
+                                ~ " " ~ item.unit ~ ".",
+                            min=row.limits[0],
+                            max=row.limits[1],
+                        ) }}
+                    {% endif %}
+
+                    {% if row.has_own_value %}
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <span class="badge badge-soft badge-soft-warning">Valor propio</span>
+                            <span class="small text-secondary">
+                                Inicial:
+                                {% if item.is_switch %}
+                                    {{ 'activado' if row.initial else 'desactivado' }}
+                                {% else %}
+                                    {{ row.initial }} {{ item.unit }}
+                                {% endif %}
+                            </span>
+                            <button
+                                class="btn btn-link btn-sm p-0"
+                                type="submit"
+                                formaction="{{ url_for('admin.settings_reset', slug=group.slug, key=item.setting.key) }}"
+                                aria-label="Restablecer {{ item.label }}"
+                            >
+                                Restablecer
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            {% if extensions %}
+                <p class="small text-secondary">
+                    Tipos permitidos (no se pueden cambiar, por seguridad):
+                    {{ extensions|join(", ") }}.
+                </p>
+            {% endif %}
+
+            {{ textarea_field(
+                form.motivo,
+                hint="Opcional. Queda registrado en la auditoría.",
+                maxlength=reason_max,
+            ) }}
+
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" type="submit">Guardar cambios</button>
+
+                <a class="btn btn-outline-secondary" href="{{ url_for('admin.index') }}">
+                    Volver
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

@@ -1854,6 +1854,19 @@ Aplica RN-58, RN-59 y RN-91 en la implementación de `v0.5.0` (entrega 8). Lo ej
 
 ---
 
+## RN-171 — Configuración administrable e interruptores
+
+Aplica RF-053, RF-113, RF-119, RF-120 y RF-122 (`v0.7.0`). Solo el Administrador cambia la configuración, desde Administración.
+
+* **Valor vigente.** El que el Administrador guardó; si no guardó ninguno, el inicial (variable de entorno o valor por defecto). Restablecer borra el valor propio.
+* **Validación.** Cada parámetro tiene un rango; los que se relacionan (la renovación del bloqueo de edición debe ser menor que su duración) se validan juntos, con los valores vigentes. Un cambio inválido no guarda nada.
+* **Auditoría y conflictos.** Cada valor que cambia deja un registro con el anterior, el nuevo y el motivo opcional. Si otra persona cambió algún valor de la pantalla mientras estaba abierta, no se guarda nada.
+* **Aplicar SLA a los tickets.** Apagado, WorkDesk no muestra ni avisa nada del SLA a nadie (indicadores, filtros, orden, advertencias, dashboards, carga de trabajo y avisos del planificador), pero sigue calculando los períodos de cada ticket. Al encenderlo se muestran de nuevo, y los avisos pendientes (también de lo vencido mientras estaba apagado) se envían en la siguiente revisión.
+* **Cierre automático.** Apagado, un ticket resuelto espera a que se confirme, se rechace o se cierre a mano.
+* **Plazos que ya corren.** Un cambio de plazo rige para lo que se evalúe después: no reescribe lo ya ocurrido.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

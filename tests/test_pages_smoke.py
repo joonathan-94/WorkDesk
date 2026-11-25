@@ -81,6 +81,12 @@ ADMIN_PAGES = [
     "/admin/priorities",
     "/admin/locations",
     "/admin/wait-reasons",
+    "/admin/sla/deactivate",
+    "/admin/settings/seguridad",
+    "/admin/settings/cierre",
+    "/admin/settings/archivos",
+    "/admin/settings/colaboracion",
+    "/admin/settings/operacion",
 ]
 
 # Quién entra en qué pantallas: 200 si puede, 403 si no.

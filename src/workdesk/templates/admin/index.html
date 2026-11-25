@@ -27,7 +27,7 @@
                         {% if card.endpoint %}
                             <a
                                 class="hub-card"
-                                href="{{ url_for(card.endpoint) }}"
+                                href="{{ url_for(card.endpoint, **card.url_args) }}"
                             >
                                 <span
                                     class="hub-card__icon"

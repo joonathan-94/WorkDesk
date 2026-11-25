@@ -51,13 +51,16 @@ def register(app: Flask) -> None:
 
             return
 
+        # Sin `--interval` se usa el de la configuración, que se vuelve a leer antes de cada
+        # espera.
+        wait = interval or (lambda: value_of(settings.SCHEDULER_INTERVAL_SECONDS))
         seconds = interval or value_of(settings.SCHEDULER_INTERVAL_SECONDS)
         click.echo(f"Planificador en marcha (cada {seconds} s). Ctrl+C para detenerlo.")
 
         try:
             # En el bucle solo se informa cuando hubo algo que hacer.
             run_loop(
-                seconds,
+                wait,
                 on_result=lambda result: report(result) if any(vars(result).values()) else None,
             )
         except KeyboardInterrupt:

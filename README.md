@@ -70,7 +70,7 @@ La última versión estable es **`v0.6.0 — Dashboards y carga de trabajo`** y 
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 
-Hoy la suite cuenta con **4288 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **4382 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -496,6 +496,8 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `COMMENT_EDIT_WINDOW_MINUTES` | `30` | Minutos durante los que el autor de un comentario puede editarlo o eliminarlo (el Supervisor y el Administrador pueden siempre). Debe ser mayor que cero. |
 | `REOPEN_WINDOW_DAYS` | `30` | Días, desde el cierre, durante los que un solicitante puede reabrir su ticket (el personal puede siempre). Debe ser mayor que cero. |
 | `AUTO_CLOSE_HOURS` | `24` | Horas que un ticket puede estar Resuelto sin que su solicitante lo valide antes de que el planificador lo cierre solo (también si no tiene solicitantes). Debe ser mayor que cero. |
+| `SLA_ENABLED` | `true` | Si el SLA se muestra y avisa. Se puede cambiar desde Administración → SLA (el valor guardado reemplaza a esta variable). |
+| `AUTO_CLOSE_ENABLED` | `true` | Si el planificador cierra solo los tickets resueltos que nadie valida. Se puede cambiar desde Administración → Cierre y reapertura. |
 | `SCHEDULER_INTERVAL_SECONDS` | `60` | Cada cuántos segundos revisa el planificador (`run-scheduler`) los avisos de SLA y los cierres automáticos cuando se deja en marcha. Debe ser mayor que cero. |
 | `WORKLOAD_HIGH_ACTIVE_TICKETS` | `10` | A partir de cuántos tickets activos (ni Resueltos ni Cerrados) se marca a un técnico con «carga alta» en la carga de trabajo. Solo informa: nunca bloquea una asignación. `0` desactiva la marca. Debe ser un entero mayor o igual que cero. |
 | `EDIT_LOCK_TTL_SECONDS` | `120` | Segundos que dura el bloqueo de edición de un ticket sin renovarse. Debe ser mayor que cero. |
@@ -1127,6 +1129,10 @@ GET POST  /admin/sla/calendar
 GET POST  /admin/sla/priorities/<id>/edit
 GET POST  /admin/sla/priorities/<id>/deactivate
 GET POST  /admin/sla/priorities/<id>/activate
+GET POST  /admin/sla/activate
+GET POST  /admin/sla/deactivate
+GET POST  /admin/settings/<grupo>
+POST      /admin/settings/<grupo>/reset/<variable>
 GET       /groups
 GET POST  /groups/new
 GET       /groups/<id>
@@ -1312,7 +1318,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4288 tests
+4382 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.

@@ -16,6 +16,12 @@ class HubCard:
     description: str
     icon: str
     endpoint: str | None = None
+    # Argumentos de la ruta, como pares (nombre, valor).
+    args: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def url_args(self) -> dict[str, str]:
+        return dict(self.args)
 
 
 @dataclass(frozen=True)
@@ -75,6 +81,13 @@ HUB_SECTIONS = (
                 icon="diagram-2",
                 endpoint="catalogs.states_page",
             ),
+            HubCard(
+                title="Comentarios y edición",
+                description="Plazo de corrección y bloqueo de edición.",
+                icon="chat-square-text",
+                endpoint="admin.settings_screen",
+                args=(("slug", "colaboracion"),),
+            ),
         ),
     ),
     HubSection(
@@ -90,6 +103,8 @@ HUB_SECTIONS = (
                 title="Cierre y reapertura",
                 description="Plazos de validación y reapertura.",
                 icon="arrow-repeat",
+                endpoint="admin.settings_screen",
+                args=(("slug", "cierre"),),
             ),
             HubCard(
                 title="Notificaciones",
@@ -100,6 +115,15 @@ HUB_SECTIONS = (
                 title="Archivos",
                 description="Tamaño y tipos permitidos.",
                 icon="paperclip",
+                endpoint="admin.settings_screen",
+                args=(("slug", "archivos"),),
+            ),
+            HubCard(
+                title="Carga y planificador",
+                description="Carga alta y tareas automáticas.",
+                icon="speedometer2",
+                endpoint="admin.settings_screen",
+                args=(("slug", "operacion"),),
             ),
             HubCard(
                 title="Retención",
@@ -111,6 +135,13 @@ HUB_SECTIONS = (
     HubSection(
         title="Sistema y seguridad",
         cards=(
+            HubCard(
+                title="Seguridad y sesión",
+                description="Bloqueo de cuentas, contraseñas y sesión.",
+                icon="lock",
+                endpoint="admin.settings_screen",
+                args=(("slug", "seguridad"),),
+            ),
             HubCard(
                 title="Auditoría",
                 description="Registro de acciones administrativas.",

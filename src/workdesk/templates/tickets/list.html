@@ -4,6 +4,8 @@
 {% block title %}{{ 'Tickets' if is_staff else 'Mis tickets' }}{% endblock %}
 
 {% block content %}
+    {# El SLA es solo del personal y se puede apagar entero (SLA general). #}
+    {% set show_sla = is_staff and sla_enabled() %}
     {# Solicitante(s) vigentes de un ticket: el primero y cuántos más. #}
     {% macro requesters_summary(ticket) %}
         {% set current = ticket.solicitantes_vigentes %}
@@ -157,7 +159,7 @@
             </div>
 
             {# El SLA es solo del personal: el Solicitante no ve este filtro. #}
-            {% if is_staff %}
+            {% if show_sla %}
                 <div class="col-sm-6 col-lg-2">
                     <label
                         class="form-label"
@@ -461,7 +463,7 @@
                             <th scope="col">Título</th>
                             <th scope="col">Estado</th>
                             <th scope="col">Prioridad</th>
-                            {% if is_staff %}
+                            {% if show_sla %}
                                 <th scope="col">SLA</th>
                             {% endif %}
                             <th scope="col">Categoría</th>
@@ -495,7 +497,7 @@
                                 </td>
                                 <td>{{ state_badge(ticket.estado) }}</td>
                                 <td>{{ priority_badge(ticket.prioridad) }}</td>
-                                {% if is_staff %}
+                                {% if show_sla %}
                                     <td>{{ sla_badge(slas[ticket.id]) }}</td>
                                 {% endif %}
                                 <td>{{ ticket.categoria.nombre }}</td>
@@ -537,7 +539,7 @@
                     <span class="mt-2">
                         {{ state_badge(ticket.estado) }}
                         {{ priority_badge(ticket.prioridad) }}
-                        {% if is_staff %}
+                        {% if show_sla %}
                             {{ sla_badge(slas[ticket.id], show_time=False) }}
                         {% endif %}
                     </span>
