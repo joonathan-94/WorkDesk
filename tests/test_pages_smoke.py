@@ -1,7 +1,7 @@
-"""Humo y presupuesto de consultas de las pantallas, con los 76 tickets de demostración.
+"""Humo y presupuesto de consultas de las pantallas, con los 108 tickets de demostración.
 
 Las pruebas de cada módulo cubren sus pantallas con los datos mínimos que arman. Esta recorre
-las pantallas con datos realistas (los 76 tickets de `seed-demo-tickets`: cerrados,
+las pantallas con datos realistas (los 108 tickets de `seed-demo-tickets`: cerrados,
 resueltos, reabiertos, duplicados, con adjuntos, con SLA vencido o en pausa...) y comprueba
 dos cosas que los casos mínimos no ven:
 
@@ -199,7 +199,7 @@ def test_every_page_answers_as_expected_for_each_role(seeded, client, make_user,
 
 
 def test_a_listing_costs_the_same_with_few_or_many_tickets(seeded, client, make_user):
-    # Con los 76 tickets de la demostración el listado hace las mismas consultas que con
+    # Con los 108 tickets de la demostración el listado hace las mismas consultas que con
     # una página: no hay una consulta por fila (el techo de arriba lo vigila de forma
     # general; esto lo comprueba entre páginas).
     sign_in(client, "SUPERVISOR", make_user)

@@ -123,6 +123,10 @@ La fase `v0.2.0` completó:
 
 ---
 
+## En curso: `v0.7.0`
+
+- **Entrega 1, revisión previa:** se auditó lo construido buscando lo arrastrado de las fases anteriores. El login ya no delata qué usuarios existen por el tiempo de respuesta (un usuario inexistente, inactivo o bloqueado no calculaba ningún hash y respondía mucho más rápido que uno que existe con la contraseña equivocada) y vacía la sesión anterior al autenticarse. Cada pantalla pasó de tres consultas previas a dos al traer el rol junto con el usuario. Los 14 parámetros numéricos tienen ahora una única definición (`settings.py`) en lugar de repartirse entre `config.py` y seis validaciones. El planificador limpia los restos de subidas cortadas. La suite pasó de 4175 a 4234 tests. Medido y dejado como está: los índices de las claves «quién lo hizo» (12 ms contra 1,3 ms con 250 000 eventos para «resueltos por mí», que no justifica encarecer cada escritura del historial) y el tamaño de los módulos (ninguna función supera la complejidad 12).
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0

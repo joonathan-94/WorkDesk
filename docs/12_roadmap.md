@@ -1273,6 +1273,28 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 **Semana:** 8 y primera mitad de 9  
 **Versión:** `v0.7.0`
 
+**Estado de ejecución:** en curso. La entrega 1 está hecha; las demás están planificadas.
+
+### Entregas de `v0.7.0`
+
+1. **Revisión previa** ✓: auditoría de lo construido en las fases anteriores. El login deja de delatar qué usuarios existen por el tiempo de respuesta y vacía la sesión anterior, una consulta menos en cada pantalla (el rol viaja con el usuario), una única definición de los 14 parámetros numéricos (`settings.py`), limpieza de las subidas cortadas y documentación alineada. Sin migraciones.
+2. **Tabla `configuracion`**: modelo, migración, lectura (una consulta por petición, sin caché entre peticiones, para que el servidor web y el planificador vean siempre el valor vigente), auditoría de cada cambio y las variables de entorno como valor inicial. El tope de subida de Flask debe seguir al valor vigente.
+3. **Pantalla de configuración** de los parámetros de sesión, contraseñas, comentarios, reapertura, cierre automático, archivos, carga alta y bloqueo de edición, y el interruptor general del SLA.
+4. **Configuración de notificaciones**: qué eventos se envían y a quién, sin un motor de reglas, respetando que un Solicitante nunca recibe lo interno.
+5. **Base de conocimiento: modelo y migración**: artículos, vínculo con tickets y la columna de búsqueda de texto completo (`tsvector` en español con índice GIN).
+6. **Base de conocimiento: pantallas**: listado, búsqueda, detalle, borrador y publicado, destacados, con la visibilidad por rol resuelta en la consulta.
+7. **Vínculo con tickets, promoción de una resolución (RF-104 y RF-105) y advertencia de posibles duplicados al crear un ticket (RF-061)**, que comparten la búsqueda.
+8. **Adjuntos al crear un ticket y liberación manual de un bloqueo de edición.**
+9. **Cierre de la fase**: revisión de todo lo anterior, comprobación de escala (~20 000 tickets), matriz de trazabilidad y etiqueta.
+
+### Decisiones de la fase
+
+Se tomaron al planificarla:
+
+- **La configuración se lee de la base de datos una vez por petición** y no se guarda entre peticiones: el planificador es otro proceso y una caché dentro del servidor web no vería los cambios del Administrador (ni a la inversa).
+- **La búsqueda de la base de conocimiento usa el texto completo de PostgreSQL** (diccionario en español e índice GIN, sin dependencias nuevas). Es más de lo que pedía el plan (`ILIKE`) pero evita rehacerla cuando se reutilice en la deflexión de tickets (`docs/13`, EVO-01).
+- **Entran** los pendientes pequeños (adjuntos al crear un ticket, liberar un bloqueo de edición y el interruptor del SLA). **Se difieren** las excepciones de SLA (RF-083), los tickets «sin actividad reciente» y los avisos de sobrecarga, que necesitan reglas por decidir, y la retención (RF-110 y RF-123), que irá con los backups en `v0.8.0`.
+
 ## 20.1. Administración
 
 Implementar CRUD/configuración necesaria para:

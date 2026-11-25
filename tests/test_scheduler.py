@@ -12,6 +12,7 @@ ticket Media creado el lunes a las 10:00 llega a su umbral el martes a las 10:36
 el martes a las 13:00.
 """
 
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -37,6 +38,7 @@ from src.workdesk.tickets.assignment import assign_technician
 from src.workdesk.tickets.history import describe_history_changes
 from src.workdesk.tickets.lifecycle import close_automatically
 from src.workdesk.tickets.service import list_ticket_history
+from src.workdesk.tickets.storage import TEMP_DIR, remove_stale_temp_files
 from tests.sla_helpers import (
     act,
     at,
@@ -1005,3 +1007,58 @@ def test_the_command_rejects_a_non_positive_interval(app):
     result = app.test_cli_runner().invoke(args=["run-scheduler", "--interval", "0"])
 
     assert result.exit_code != 0
+
+
+# --- Restos de subidas cortadas ---------------------------------------------------------
+
+
+def _temp_file(app, name, *, age_seconds):
+    """Un archivo en `_tmp` con la antigüedad indicada."""
+    folder = os.path.join(app.config["UPLOADS_DIR"], TEMP_DIR)
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, name)
+
+    with open(path, "wb") as handle:
+        handle.write(b"resto")
+
+    moment = time.time() - age_seconds
+    os.utime(path, (moment, moment))
+
+    return path
+
+
+def test_the_scheduler_removes_temp_uploads_left_by_a_cut_upload(app):
+    old = _temp_file(app, "resto-viejo", age_seconds=2 * 3600)
+    recent = _temp_file(app, "subida-en-curso", age_seconds=30)
+
+    with app.app_context():
+        scheduler.run_once()
+
+    # Una subida que está ocurriendo ahora mismo no se toca.
+    assert not os.path.exists(old)
+    assert os.path.exists(recent)
+
+
+def test_cleaning_with_no_temp_folder_does_nothing(app):
+    assert remove_stale_temp_files(app.config["UPLOADS_DIR"] + "-inexistente") == 0
+
+
+def test_the_age_limit_is_exclusive_of_what_is_still_young(app):
+    just_under = _temp_file(app, "casi", age_seconds=3500)
+    just_over = _temp_file(app, "pasado", age_seconds=3700)
+
+    assert remove_stale_temp_files(app.config["UPLOADS_DIR"]) == 1
+    assert os.path.exists(just_under)
+    assert not os.path.exists(just_over)
+
+
+def test_a_cleaning_failure_does_not_stop_the_scheduler(app, monkeypatch):
+    def broken(_root):
+        raise PermissionError("sin permiso")
+
+    monkeypatch.setattr(scheduler, "remove_stale_temp_files", broken)
+
+    with app.app_context():
+        result = scheduler.run_once()
+
+    assert result.failures == 0

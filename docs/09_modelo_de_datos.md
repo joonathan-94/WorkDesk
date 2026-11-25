@@ -1820,23 +1820,28 @@ El historial de cambios se conserva en `auditoria_administrativa`.
 
 **Implementación inicial.** La tabla `configuracion` se implementa cuando exista la administración (`v0.7.0`). Hasta entonces, los parámetros de sesión y de autenticación se leen de variables de entorno (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`, `PASSWORD_MIN_LENGTH`) y esas variables pasan a ser los valores iniciales de las claves equivalentes.
 
-### Ejemplos de parámetros
+### Parámetros definidos
 
-```text
-sesion.inactividad_minutos
-sesion.duracion_maxima_horas
-autenticacion.max_intentos
-autenticacion.bloqueo_minutos
-autenticacion.password_longitud_minima
-comentarios.ventana_edicion_minutos
-cierre.validacion_horas
-cierre.auto_cierre_habilitado
-reapertura.periodo_horas
-archivos.tamano_maximo_bytes
-archivos.cantidad_maxima_por_ticket
-ubicaciones.obligatoria
-notificaciones.sla.habilitada
-```
+La definición de cada parámetro numérico (su clave, su variable de entorno, su valor por defecto y su rango) vive en un solo lugar del código, `src/workdesk/settings.py`, y esta tabla es su reflejo. Hasta que exista la tabla, el valor sale de la variable de entorno; después, la variable pasa a ser solo el valor inicial. Una prueba comprueba que cada clave de la lista aparece aquí.
+
+| Clave | Variable de entorno | Por defecto | Rango |
+| --- | --- | --- | --- |
+| `autenticacion.max_intentos` | `LOGIN_MAX_FAILED_ATTEMPTS` | 5 | 1 o más |
+| `autenticacion.bloqueo_minutos` | `LOGIN_LOCK_MINUTES` | 15 | 1 o más |
+| `autenticacion.password_longitud_minima` | `PASSWORD_MIN_LENGTH` | 12 | 8 a 128 |
+| `sesion.inactividad_minutos` | `SESSION_IDLE_MINUTES` | 30 | 1 o más |
+| `sesion.duracion_maxima_horas` | `SESSION_MAX_HOURS` | 8 | 1 o más |
+| `comentarios.ventana_edicion_minutos` | `COMMENT_EDIT_WINDOW_MINUTES` | 30 | 1 o más |
+| `reapertura.ventana_dias` | `REOPEN_WINDOW_DAYS` | 30 | 1 o más |
+| `cierre.auto_cierre_horas` | `AUTO_CLOSE_HOURS` | 24 | 1 o más |
+| `edicion.bloqueo_duracion_segundos` | `EDIT_LOCK_TTL_SECONDS` | 120 | 1 o más |
+| `edicion.bloqueo_latido_segundos` | `EDIT_LOCK_HEARTBEAT_SECONDS` | 45 | 1 o más, menor que la duración |
+| `planificador.intervalo_segundos` | `SCHEDULER_INTERVAL_SECONDS` | 60 | 1 o más |
+| `carga.tickets_activos_carga_alta` | `WORKLOAD_HIGH_ACTIVE_TICKETS` | 10 | 0 o más (0 desactiva la marca) |
+| `archivos.tamano_maximo_bytes` | `UPLOAD_MAX_BYTES` | 10 485 760 | 1 o más |
+| `archivos.cantidad_maxima_por_ticket` | `UPLOAD_MAX_FILES_PER_TICKET` | 20 | 1 o más |
+
+Las unidades son las del código (el período de reapertura es en días y el cierre automático en horas corridas), no las que sugería el diseño inicial (`reapertura.periodo_horas`, `cierre.validacion_horas`). Quedan por definir, con la pantalla de configuración, los parámetros que no son numéricos: el interruptor general del SLA, la activación del cierre automático, la obligatoriedad de la ubicación (`ubicaciones.obligatoria`) y los eventos de notificación (`notificaciones.sla.habilitada` y similares).
 
 ### Lo que NO debe almacenarse aquí
 
