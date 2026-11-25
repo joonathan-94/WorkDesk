@@ -1626,6 +1626,8 @@ UNIQUE (ticket_id, articulo_id)
 
 `tipo_vinculacion` describe la naturaleza de la única asociación vigente entre ese ticket y ese artículo: `REFERENCIA` u `ORIGEN_RESOLUCION`.
 
+**Implementación (`v0.7.0`, entrega 5).** Se crean las dos tablas. `articulos_conocimiento` añade a los campos propuestos `categoria_id` (FK a `categorias`: se reutiliza el catálogo de los tickets), `destacado`, `version` (control de concurrencia) y `vector_busqueda` (columna generada `tsvector`, con índice GIN). Restricciones: visibilidad válida, título y contenido no vacíos, publicación y fecha juntas, destacado solo si publicado y activo, desactivación coherente y versión positiva. `titulo` admite 200 caracteres y el contenido, 20 000 (los comprueba la aplicación). La búsqueda combina el diccionario `spanish` con las palabras sin tildes, sin extensiones de PostgreSQL.
+
 ---
 
 # 24. Historial operativo del ticket

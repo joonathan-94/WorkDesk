@@ -1,4 +1,5 @@
 from .authorization import CLOSED_STATE as CLOSED_STATE
+from .authorization import PUBLIC_ARTICLE as PUBLIC_ARTICLE
 from .authorization import RESOLVED_STATE as RESOLVED_STATE
 from .authorization import STAFF_ROLES as STAFF_ROLES
 from .authorization import RoleCode as RoleCode
@@ -12,9 +13,12 @@ from .authorization import can_choose_requesters as can_choose_requesters
 from .authorization import can_close_directly as can_close_directly
 from .authorization import can_close_exceptionally as can_close_exceptionally
 from .authorization import can_comment_publicly as can_comment_publicly
+from .authorization import can_create_article as can_create_article
 from .authorization import can_create_ticket as can_create_ticket
+from .authorization import can_deactivate_article as can_deactivate_article
 from .authorization import can_delete_attachment as can_delete_attachment
 from .authorization import can_delete_comment as can_delete_comment
+from .authorization import can_edit_article as can_edit_article
 from .authorization import can_edit_comment as can_edit_comment
 from .authorization import can_edit_ticket as can_edit_ticket
 from .authorization import can_manage_assignments as can_manage_assignments
@@ -24,9 +28,11 @@ from .authorization import can_manage_relations as can_manage_relations
 from .authorization import can_manage_requesters as can_manage_requesters
 from .authorization import can_manage_settings as can_manage_settings
 from .authorization import can_manage_users as can_manage_users
+from .authorization import can_publish_article as can_publish_article
 from .authorization import can_reopen_ticket as can_reopen_ticket
 from .authorization import can_resolve_ticket as can_resolve_ticket
 from .authorization import can_validate_resolution as can_validate_resolution
+from .authorization import can_view_article as can_view_article
 from .authorization import can_view_attachment as can_view_attachment
 from .authorization import can_view_audit as can_view_audit
 from .authorization import can_view_comment as can_view_comment

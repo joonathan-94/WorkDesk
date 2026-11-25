@@ -2410,6 +2410,8 @@ PostgreSQL Full Text Search
 
 No se utilizarán inicialmente motores como Elasticsearch únicamente para implementar búsqueda de tickets.
 
+**Adelantada para la base de conocimiento (`v0.7.0`).** La búsqueda de artículos usa el texto completo de PostgreSQL desde el principio (se reutilizará en las mejoras posteriores): una columna `tsvector` generada, un índice GIN y una consulta que combina el diccionario `spanish` con las palabras sin tildes (`translate`), sin instalar extensiones. La lógica compartida está en `search.py`. La búsqueda de tickets sigue con `ILIKE`.
+
 ---
 
 # 92. Detección básica de duplicados

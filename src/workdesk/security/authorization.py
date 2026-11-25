@@ -58,6 +58,72 @@ def can_manage_settings(user) -> bool:
     return has_any_role(user, RoleCode.ADMINISTRADOR)
 
 
+# --- Base de conocimiento (docs/11, UI-009 a UI-011; docs/06, RN-173) ------------------
+
+
+def can_view_article(user, article) -> bool:
+    """Quién puede leer un artículo.
+
+    - Administrador: todos, también los desactivados (para reactivarlos).
+    - Supervisor: todos los activos.
+    - Técnico: los publicados y sus propios borradores.
+    - Solicitante: los publicados y públicos.
+
+    `visible_articles_condition` es el equivalente en SQL y un test comprueba que
+    coinciden.
+    """
+    if has_any_role(user, RoleCode.ADMINISTRADOR):
+        return True
+
+    if not article.activo:
+        return False
+
+    if has_any_role(user, RoleCode.SUPERVISOR):
+        return True
+
+    if has_any_role(user, RoleCode.TECNICO):
+        return article.publicado or article.autor_usuario_id == user.id
+
+    if has_any_role(user, RoleCode.SOLICITANTE):
+        return article.publicado and article.visibilidad == PUBLIC_ARTICLE
+
+    return False
+
+
+def can_create_article(user) -> bool:
+    """El personal escribe artículos (como borradores)."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_edit_article(user, article) -> bool:
+    """Un Técnico edita sus propios borradores; el Supervisor y el Administrador, cualquier
+    artículo activo (el Administrador también uno desactivado)."""
+    if has_any_role(user, RoleCode.ADMINISTRADOR):
+        return True
+
+    if not article.activo:
+        return False
+
+    if has_any_role(user, RoleCode.SUPERVISOR):
+        return True
+
+    return (
+        has_any_role(user, RoleCode.TECNICO)
+        and not article.publicado
+        and article.autor_usuario_id == user.id
+    )
+
+
+def can_publish_article(user) -> bool:
+    """Publicar, retirar de publicación y destacar: Supervisor y Administrador."""
+    return has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR)
+
+
+def can_deactivate_article(user) -> bool:
+    """Desactivar y reactivar un artículo: solo el Administrador."""
+    return has_any_role(user, RoleCode.ADMINISTRADOR)
+
+
 def can_create_ticket(user) -> bool:
     """Los cuatro roles pueden crear tickets (docs/06, RN-09)."""
     return has_any_role(user, *RoleCode)
@@ -111,6 +177,10 @@ def can_change_state(user) -> bool:
 
 # Códigos de estado que las políticas necesitan. Repiten los de `Estado` para
 # que este módulo no dependa de los modelos; un test comprueba que coinciden.
+# El código de la visibilidad pública de un artículo (se repite para que este módulo no
+# dependa de los modelos; un test comprueba que coinciden).
+PUBLIC_ARTICLE = "PUBLICO"
+
 CLOSED_STATE = "CERRADO"
 RESOLVED_STATE = "RESUELTO"
 

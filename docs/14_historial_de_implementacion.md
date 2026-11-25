@@ -133,6 +133,8 @@ La fase `v0.2.0` completó:
 
 - **Entrega 4, configuración de notificaciones:** el Administrador apaga y enciende avisos concretos (evento y destinatarios) desde una tabla. Se evitó un motor de reglas: los avisos posibles son un catálogo cerrado y solo se pueden apagar, así que ningún ajuste puede enviar algo interno a un Solicitante; dos avisos que exigen las reglas de negocio quedan fijos. Para que fuera verificable, todo envío pasa por una única función y un test impide saltársela. La suite pasó de 4382 a 4416 tests.
 
+- **Entrega 5, base de conocimiento (modelo):** artículos con borrador y publicación, público y privado, destacados, permisos por rol resueltos en la consulta y búsqueda en español. El hallazgo que decidió el diseño: el diccionario español de PostgreSQL no encuentra «configuración» cuando se escribe sin tilde, así que se indexa además el texto sin tildes, sin extensiones. Se reutiliza el catálogo de categorías de los tickets. La suite pasó de 4416 a 4484 tests.
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0

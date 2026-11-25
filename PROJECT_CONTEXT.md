@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/notification-settings
+feature/knowledge-base-model
 ```
 
-Entrega 4 de `v0.7.0`: la configuración de qué avisos se envían y a quién. **Sin migraciones.** Ver «Configuración de notificaciones».
+Entrega 5 de `v0.7.0`: el modelo, los permisos y la búsqueda de la base de conocimiento. **Con una migración.** Ver «Base de conocimiento: modelo y búsqueda».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -208,6 +208,18 @@ El Administrador elige qué avisos internos se envían y a quién (RF-087, RF-12
 - **Aviso de SLA próximo a vencer:** los Supervisores lo reciben solo de un ticket sin técnico; apagar el de los técnicos no lo desvía a ellos. Apagar un aviso de SLA no cambia lo que el planificador registra: el incumplimiento queda en el historial, y el aviso no se reenvía si se vuelve a encender.
 - **Pantalla** `/admin/notifications` (tarjeta *Notificaciones* del hub): una tabla evento × destinatario con la explicación de cada casilla, las obligatorias marcadas y deshabilitadas, motivo opcional y aviso de conflicto.
 - **Tests:** 34 nuevos (4382 → 4416), en `tests/test_notification_settings.py`; la pantalla entró en `test_pages_smoke`.
+
+## Base de conocimiento: modelo y búsqueda (entrega 5 de `v0.7.0`)
+
+Reglas completas en `docs/06` (RN-173) y `docs/09` (23). **Incluye una migración** (`create_knowledge_base_tables`). Todavía **no hay pantallas** (entrega 6).
+
+- **Modelo** (`models/article.py`): `Article` (`articulos_conocimiento`) y `TicketArticle` (`tickets_articulos_conocimiento`, un mismo par ticket-artículo una sola vez; las pantallas del vínculo son de la entrega 7). Respecto de docs/09 se añaden `categoria_id` (se **reutiliza el catálogo de categorías de los tickets**, no hay un catálogo aparte), `destacado`, `version` y la columna generada `vector_busqueda`. La base de datos impide un publicado sin fecha, un destacado sin publicar o inactivo, una desactivación incoherente y textos vacíos.
+- **Quién ve qué** (`security/authorization.py` y `knowledge/queries.py`): el Solicitante, los publicados y públicos; el Técnico, los publicados y sus propios borradores; el Supervisor, todos los activos; el Administrador, todos. `visible_articles_condition` es el equivalente SQL de `can_view_article` y un test comprueba que coinciden para los cuatro roles, el autor ajeno, el usuario inactivo y el anónimo con 16 tipos de artículo. La búsqueda y los listados de lectura ofrecen solo lo publicado y activo.
+- **Quién escribe** (`knowledge/service.py`, sin commit, y cada operación comprueba el permiso): el personal crea borradores; el Técnico edita solo los suyos mientras sean borradores; el Supervisor y el Administrador editan cualquiera, publican, retiran de publicación y destacan; solo el Administrador desactiva y reactiva (no hay borrado). Todo cambio es un `UPDATE` condicionado a la versión: si otra persona lo cambió, `ArticleConflictError` y nada se pisa (hay un test con dos hilos). Cada operación se audita (siete acciones `ARTICULO_*`); **el contenido no se copia en la auditoría**, solo que cambió.
+- **Búsqueda en español** (`search.py`, compartida con la futura advertencia de tickets parecidos). PostgreSQL entiende el español («impresoras» encuentra «impresora») pero no perdona las tildes: «configuración» se indexa como `configur` y quien escribe «configuracion» no la encontraría. Por eso se indexa y se consulta con el diccionario español y además con las palabras sin tildes (`translate`), sin instalar ninguna extensión (`unaccent` habría exigido permisos y no sirve en una columna generada). El título pesa más que el contenido, `websearch_to_tsquery` admite cualquier texto y todas las palabras deben aparecer.
+- **Medido** con 20 000 artículos en una tabla temporal: una palabra poco frecuente usa el índice GIN y tarda 0,1 ms; dos palabras presentes en casi todos recorren la tabla (la decisión correcta del planificador) y tardan 33 ms.
+- **El contenido es texto plano** (los saltos de línea se conservan y el HTML se escapa al mostrarlo): sin Markdown ni dependencias nuevas.
+- **Tests:** 68 nuevos (4416 → 4484), en `tests/test_knowledge_model.py` (área `knowledge`).
 
 ## Próximo hito
 
@@ -347,6 +359,7 @@ WorkDesk/
 │       ├── cli/
 │       ├── dashboard/
 │       ├── groups/
+│       ├── knowledge/
 │       ├── main/
 │       ├── models/
 │       ├── notifications/
@@ -539,7 +552,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente veinticinco migraciones:
+Existen actualmente veintiséis migraciones:
 
 ```text
 create_roles_table
@@ -567,6 +580,7 @@ add_warning_threshold_to_sla_periods
 add_sla_notice_marks_to_sla_periods
 add_history_date_index
 create_configuration_table
+create_knowledge_base_tables
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -1933,9 +1947,12 @@ python -m flask --app src.workdesk sla-rebuild
 python -m flask --app src.workdesk sla-status <número>
 python -m flask --app src.workdesk run-scheduler [--once] [--interval <segundos>]
 python -m flask --app src.workdesk seed-demo-notifications [--username <usuario>]
+python -m flask --app src.workdesk seed-demo-articles
 ```
 
-Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`setup`: `seed-roles`, `seed-catalogs` y `create-admin`; `demo`: los tres `seed-demo*`; `sla`: `sla-rebuild` y `sla-status`; `scheduling`: `run-scheduler`), y `register_commands` los registra todos desde la Application Factory. Solo orquestan: la lógica está en los servicios.
+Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`setup`: `seed-roles`, `seed-catalogs` y `create-admin`; `demo`: los tres `seed-demo*` de usuarios, tickets y notificaciones; `knowledge`: `seed-demo-articles`; `sla`: `sla-rebuild` y `sla-status`; `scheduling`: `run-scheduler`), y `register_commands` los registra todos desde la Application Factory. Solo orquestan: la lógica está en los servicios.
+
+`seed-demo-articles` (`seeds/demo_articles.py` y `demo_articles_data.py`, entrega 5 de `v0.7.0`) carga 11 artículos de ejemplo con los servicios reales: publicados y borradores, públicos y privados, destacados y de distintas categorías, con fechas de publicación repartidas en el tiempo. Necesita `seed-demo` y `seed-catalogs`, usa las categorías Redes, Hardware, Correo e Impresoras si existen (si no, la de respaldo y lo avisa), no repite un artículo del mismo título y no se ejecuta en producción.
 
 `sla-rebuild` y `sla-status` calculan y muestran los períodos de SLA de los tickets (ver "Períodos de SLA").
 
@@ -2014,7 +2031,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4416 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4484 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
