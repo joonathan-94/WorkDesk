@@ -7,10 +7,12 @@ comentario que no pasa la validación).
 
 from datetime import UTC, datetime
 
-from flask import current_app, render_template
+from flask import render_template
 from flask_login import current_user, login_required
 
+from ... import settings
 from ...catalogs.service import list_priorities
+from ...configuration import value_of
 from ...models import StateAction
 from ...models.comment import MAX_COMMENT_LENGTH
 from ...security import (
@@ -94,7 +96,7 @@ def render_detail(ticket, comment_form):
         ticket_files=files_by_comment.get(None, []),
         show_uploader=can_attach_files(current_user, ticket) and not is_closed,
         max_files=MAX_FILES_PER_REQUEST,
-        max_upload_mb=current_app.config["UPLOAD_MAX_BYTES"] // (1024 * 1024),
+        max_upload_mb=value_of(settings.UPLOAD_MAX_BYTES) // (1024 * 1024),
         allowed_extensions=allowed_extensions(),
         # Relaciones: solo el personal las ve (el Solicitante no recibe ni la
         # consulta).

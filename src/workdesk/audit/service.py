@@ -74,6 +74,12 @@ class AuditAction(StrEnum):
     POLITICA_SLA_ACTIVADA = "POLITICA_SLA_ACTIVADA"
     POLITICA_SLA_DESACTIVADA = "POLITICA_SLA_DESACTIVADA"
 
+    # Parámetros administrables (`entidad_tipo` es "configuracion"; `entidad_id`, la fila
+    # de la tabla; `detalle`, la clave del parámetro). Un cambio guarda un valor propio y
+    # restablecer lo borra para que vuelva a regir el valor inicial.
+    CONFIGURACION_MODIFICADA = "CONFIGURACION_MODIFICADA"
+    CONFIGURACION_RESTABLECIDA = "CONFIGURACION_RESTABLECIDA"
+
     # Reasignación masiva de los tickets de un técnico a otros (`entidad_tipo` es
     # "tecnico"; `entidad_id`, el técnico de origen). Una sola entrada por operación,
     # con los tickets movidos y omitidos; el rastro de cada ticket va en su historial.

@@ -28,6 +28,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_pages_smoke",
         "test_request_cost",
         "test_settings",
+        "test_configuration",
         "test_migrations",
         "test_docs_coherence",
         "test_suite_infrastructure",

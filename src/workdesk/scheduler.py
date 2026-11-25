@@ -38,6 +38,8 @@ from datetime import datetime, timedelta
 from flask import current_app
 from sqlalchemy import and_, or_
 
+from . import settings
+from .configuration import forget_cached_settings, value_of
 from .extensions import db
 from .models import Estado, PeriodoSla, Ticket, TicketEvent
 from .notifications.events import notify_sla_breach, notify_sla_warning
@@ -225,7 +227,7 @@ def run_auto_close(now: datetime | None = None) -> tuple[int, int]:
     transacción y `close_automatically` comprueba el plazo con el ticket bloqueado.
     """
     now = now or current_time()
-    cutoff = now - timedelta(hours=current_app.config["AUTO_CLOSE_HOURS"])
+    cutoff = now - timedelta(hours=value_of(settings.AUTO_CLOSE_HOURS))
     closed = failures = 0
 
     for ticket_id in _pending_close_ids(cutoff):
@@ -250,6 +252,9 @@ def run_auto_close(now: datetime | None = None) -> tuple[int, int]:
 def run_once(now: datetime | None = None) -> SchedulerResult:
     """Ejecuta las dos tareas una vez. `now` es el instante de referencia (por defecto,
     el de la base de datos); lo usan los tests."""
+    # Lo que un pase anterior leyó de la configuración puede haber cambiado: el planificador
+    # vive más que una petición, así que no hay nada que lo renueve solo.
+    forget_cached_settings()
     now = now or current_time()
     notices, notice_failures = run_sla_notices(now)
     closed, close_failures = run_auto_close(now)

@@ -1818,7 +1818,7 @@ La configuración vigente corresponde al valor actual de la clave.
 
 El historial de cambios se conserva en `auditoria_administrativa`.
 
-**Implementación inicial.** La tabla `configuracion` se implementa cuando exista la administración (`v0.7.0`). Hasta entonces, los parámetros de sesión y de autenticación se leen de variables de entorno (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`, `PASSWORD_MIN_LENGTH`) y esas variables pasan a ser los valores iniciales de las claves equivalentes.
+**Implementación (`v0.7.0`, entrega 2).** La tabla existe. Una fila es un valor elegido por el Administrador y **sin fila rige el valor inicial**: la variable de entorno equivalente o, si no está definida, el valor por defecto de la tabla de «Parámetros definidos». Por eso no hay que cargar nada para arrancar y «volver al valor inicial» es borrar la fila. Las claves, los rangos y los valores por defecto los define el código (`src/workdesk/settings.py`), no la tabla: una fila con una clave desconocida se ignora y un valor guardado que ya no es válido se descarta con un aviso. Cada cambio y cada restablecimiento se audita (`CONFIGURACION_MODIFICADA`, `CONFIGURACION_RESTABLECIDA`).
 
 ### Parámetros definidos
 

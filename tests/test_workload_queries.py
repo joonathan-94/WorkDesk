@@ -401,7 +401,9 @@ def test_the_number_of_queries_does_not_depend_on_the_size_of_the_team(
     after = count_queries(app, run)
 
     assert before == after
-    assert before == 7, before
+    # Siete de la carga de trabajo y una más: la configuración (el umbral de carga alta),
+    # que la primera lectura de la petición trae de la base de datos.
+    assert before == 8, before
 
     with app.app_context():
         assert len(overview().technicians) >= 34

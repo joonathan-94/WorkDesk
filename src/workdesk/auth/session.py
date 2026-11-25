@@ -1,8 +1,10 @@
 from datetime import datetime
 
-from flask import current_app, session
+from flask import session
 from sqlalchemy.orm import joinedload
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..models import User
 
@@ -88,8 +90,8 @@ def session_has_expired(now: datetime) -> bool:
     if not isinstance(last_activity, (int, float)):
         return True
 
-    idle_limit = current_app.config["SESSION_IDLE_MINUTES"] * 60
-    max_limit = current_app.config["SESSION_MAX_HOURS"] * 3600
+    idle_limit = value_of(settings.SESSION_IDLE_MINUTES) * 60
+    max_limit = value_of(settings.SESSION_MAX_HOURS) * 3600
 
     current = now.timestamp()
 

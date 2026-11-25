@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-chore/review-before-v0-7-0
+feature/configuration-table
 ```
 
-Entrega 1 de `v0.7.0`: revisión previa a la fase (seguridad del login, coste por petición, definición única de parámetros y limpieza). **Sin migraciones.** Ver «Revisión previa a `v0.7.0`».
+Entrega 2 de `v0.7.0`: la tabla `configuracion` y la lectura de los parámetros desde ella. **Con una migración.** Ver «Configuración administrable».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -169,6 +169,18 @@ Primera entrega de la fase: auditar lo construido antes de construir encima. Se 
 - **Documentación desfasada:** los textos que decían «76 tickets de demostración» (son 108) y los nombres de las claves de configuración de `docs/09` (`reapertura.periodo_horas` y `cierre.validacion_horas` no coincidían con el código, que usa días y horas corridas).
 - **Medido y dejado como está:** las 53 claves foráneas sin índice son casi todas columnas «quién lo hizo» sobre `usuarios`, que nunca se borra, e indexarlas solo encarecería las escrituras. La única que se consulta es `historial_ticket.actor_usuario_id` («resueltos por mí» del Técnico): con 250 000 eventos en una tabla temporal tarda 12 ms con el índice de fecha que ya existe y 1,3 ms con uno por actor, así que no se justifica pagar ese índice en cada escritura del historial. Ninguna función supera la complejidad 12 y no hay código muerto ni `TODO`, por lo que no se modularizó nada por tamaño. Los seis `except Exception` limpian y vuelven a lanzar la excepción o la registran.
 - **Tests:** 59 nuevos (4175 → 4234): `test_login_hardening` (6), `test_request_cost` (9), `test_settings` (40) y cuatro del barrido de temporales en `test_scheduler`. Cada guardián se probó con mutaciones (quitar la verificación de relleno en cada camino, el `session.clear()`, el `joinedload`, un parámetro del registro, la comprobación del latido y el barrido): las ocho hacen fallar al menos un test.
+
+## Configuración administrable (entrega 2 de `v0.7.0`)
+
+La tabla `configuracion` (docs/09, 26.1) y el servicio que lee y cambia los 14 parámetros numéricos de `settings.py`. **Incluye una migración** (`create_configuration_table`). Todavía **no hay pantalla** (entrega 3): hasta entonces un valor propio solo se guarda desde el servicio.
+
+- **Qué valor rige.** Una fila de `configuracion` es un valor elegido por el Administrador y **sin fila rige el valor inicial** (la variable de entorno o el valor por defecto de `settings.py`, que se llena en `app.config` al iniciar). Así la aplicación arranca sin cargar nada, no hay que ejecutar ningún seed y «volver al valor inicial» es borrar la fila. No hay campo `activo` (docs/09): lo vigente es el valor actual y el historial está en la auditoría. Las definiciones (claves, rangos y valores por defecto) siguen en `settings.py`: una fila con una clave que el código no conoce se ignora, y un valor guardado que ya no es válido (alguien tocó la tabla a mano) se descarta con un aviso en el log, para que un dato corrupto no tumbe cada pantalla.
+- **Lectura** (`src/workdesk/configuration.py`, `value_of(settings.X)`). La primera lectura de una petición trae toda la tabla en **una consulta** y la guarda en `g`; las demás no cuestan nada. **No hay caché entre peticiones**, a propósito: el planificador es otro proceso y una caché dentro del servidor web no vería un cambio del Administrador (ni al revés). El planificador descarta lo leído al empezar cada pasada. Un test (`test_no_module_reads_a_setting_from_app_config_directly`) impide que algún módulo vuelva a leer estos parámetros de `app.config`: así un valor guardado nunca se ignora en un rincón.
+- **Cambios** (`save_setting`, `reset_setting`; sin commit). Exigen ser Administrador (`can_manage_settings`, `PermissionError`), validan con las mismas reglas que al iniciar (`settings_problems`, también la que relaciona el latido con la duración del bloqueo de edición, calculada con los valores **vigentes** y no con los iniciales), auditan (`CONFIGURACION_MODIFICADA` y `CONFIGURACION_RESTABLECIDA`; la clave va en `detalle` y los valores bajo `valor`, porque la auditoría rechaza claves como `password`) y no hacen nada, ni auditan, si el valor ya era el vigente. Restablecer también se valida: volver la duración a su valor inicial puede dejar el latido por encima. **Se serializan con un bloqueo consultivo de PostgreSQL** (`pg_advisory_xact_lock`): dos Administradores que cambian a la vez la duración y el latido podrían, cada uno por su lado, dejar una combinación inválida que ninguna validación vería por separado (hay un test con dos hilos). El mismo valor nuevo desde dos sitios a la vez deja una fila y una auditoría.
+- **El tope de subida sigue a la configuración.** Flask fija `MAX_CONTENT_LENGTH` al iniciar, así que bajar el tamaño máximo de un archivo no habría surtido efecto sobre el cuerpo de la petición (de 10 MB a 2 MB seguían entrando cuerpos de 51 MB). Un `before_request` registrado **antes de la protección CSRF** (que lee el formulario y con él todo el cuerpo) pone a las peticiones `multipart` el tope del valor vigente (`upload_request_limit`). Una petición normal conserva el tope general y no consulta nada. Esto obligó a cambiar un test que fijaba el tope con `MAX_CONTENT_LENGTH`: ahora lo fija con `UPLOAD_MAX_BYTES`, que es de donde sale.
+- **Coste medido.** Cada petición autenticada comprueba los límites de sesión, así que lee la tabla: **tres consultas** por pantalla mínima (usuario con su rol, configuración y contador de la campana; eran dos) y tres en la consulta de la campana (`test_request_cost`). Es una consulta sobre una tabla de unas pocas filas.
+- **Interacción hallada al integrar:** `security/authorization.py` no depende de los modelos y ahora necesita leer la configuración, y `settings.py` importaba `security` para los límites de la contraseña: un ciclo de importación. Se resolvió dejando esos dos límites (8 y 128) definidos en `settings.py`, que no depende de nada, y reexportados por `security.password_policy`.
+- **Tests:** 54 nuevos (4234 → 4288), la mayoría de `tests/test_configuration.py`.
 
 ## Próximo hito
 
@@ -405,7 +417,7 @@ No deben versionarse:
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
 
-Los 14 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial; con la tabla `configuracion` (`v0.7.0`) seguirán siéndolo.
+Los 14 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
 
 Variables principales:
 
@@ -496,7 +508,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente veinticuatro migraciones:
+Existen actualmente veinticinco migraciones:
 
 ```text
 create_roles_table
@@ -523,6 +535,7 @@ create_notifications_table
 add_warning_threshold_to_sla_periods
 add_sla_notice_marks_to_sla_periods
 add_history_date_index
+create_configuration_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -1965,7 +1978,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4234 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4288 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

@@ -8,7 +8,6 @@ que se comprueba siempre al guardar.
 
 from flask import (
     abort,
-    current_app,
     flash,
     jsonify,
     redirect,
@@ -18,7 +17,9 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
+from ... import settings
 from ...catalogs.service import list_locations, list_priorities
+from ...configuration import value_of
 from ...extensions import db
 from ...models.ticket import MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH
 from ...responses import json_error
@@ -259,9 +260,9 @@ def _lock_context(ticket) -> dict:
         "lock_release_url": url_for(
             "tickets.release_ticket_lock", public_id=ticket.public_id
         ),
-        "lock_heartbeat": current_app.config["EDIT_LOCK_HEARTBEAT_SECONDS"],
+        "lock_heartbeat": value_of(settings.EDIT_LOCK_HEARTBEAT_SECONDS),
         "lock_ttl_minutes": max(
-            1, round(current_app.config["EDIT_LOCK_TTL_SECONDS"] / 60)
+            1, round(value_of(settings.EDIT_LOCK_TTL_SECONDS) / 60)
         ),
     }
 

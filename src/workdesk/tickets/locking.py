@@ -37,10 +37,11 @@ comparen contra el mismo reloj.
 from dataclasses import dataclass
 from datetime import timedelta
 
-from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..models import Ticket, TicketEditLock, User
 from .service import TicketRuleError
@@ -154,4 +155,4 @@ def _now():
 
 
 def _ttl() -> timedelta:
-    return timedelta(seconds=current_app.config["EDIT_LOCK_TTL_SECONDS"])
+    return timedelta(seconds=value_of(settings.EDIT_LOCK_TTL_SECONDS))

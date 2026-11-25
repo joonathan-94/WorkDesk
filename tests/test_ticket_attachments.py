@@ -705,11 +705,15 @@ def test_an_oversized_file_is_rejected_with_a_message(client, app, catalog, team
 
 def test_a_request_over_the_total_limit_answers_413(client, app, catalog, team):
     public_id = new_ticket(app, catalog, team)
-    app.config["MAX_CONTENT_LENGTH"] = 2000
+    # El tope de una subida sale del tamaño máximo por archivo (ahora el vigente de la
+    # configuración): cinco archivos de ese tamaño más un margen de 1 MiB para el formulario.
+    app.config["UPLOAD_MAX_BYTES"] = 100
     login(client, team["tec"])
 
     response = post_files(
-        client, f"/tickets/{public_id}/attachments", ("enorme.png", PNG + b"x" * 5000),
+        client,
+        f"/tickets/{public_id}/attachments",
+        ("enorme.png", PNG + b"x" * (2 * 1024 * 1024)),
     )
 
     assert response.status_code == 413

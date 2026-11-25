@@ -10,12 +10,14 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user, logout_user
 
+from .. import settings
 from ..auth.credentials import CurrentPasswordError, change_own_password
 from ..auth.security import (
     refresh_login_lock,
     register_failed_login,
     reset_login_failures,
 )
+from ..configuration import value_of
 from ..extensions import db
 from ..security import PasswordPolicyError, current_actor
 from ..users.forms import ContactForm
@@ -123,8 +125,8 @@ def _handle_password_change(form: ChangePasswordForm):
 def _register_wrong_current_password(user, form, error, now):
     register_failed_login(
         user=user,
-        max_attempts=current_app.config["LOGIN_MAX_FAILED_ATTEMPTS"],
-        lock_minutes=current_app.config["LOGIN_LOCK_MINUTES"],
+        max_attempts=value_of(settings.LOGIN_MAX_FAILED_ATTEMPTS),
+        lock_minutes=value_of(settings.LOGIN_LOCK_MINUTES),
         now=now,
     )
     db.session.commit()

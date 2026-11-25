@@ -25,9 +25,10 @@ Todo se calcula en PostgreSQL con un número fijo de consultas, sin una por téc
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from flask import current_app
 from sqlalchemy import func
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..models import (
     Estado,
@@ -142,7 +143,7 @@ def workload_overview(
 
     filters = filters or WorkloadFilters()
     now = now or sla_periods.current_time()
-    threshold = current_app.config["WORKLOAD_HIGH_ACTIVE_TICKETS"]
+    threshold = value_of(settings.WORKLOAD_HIGH_ACTIVE_TICKETS)
 
     technicians = _technician_loads(filters, now, threshold)
     by_group = _group_rows(filters, now)

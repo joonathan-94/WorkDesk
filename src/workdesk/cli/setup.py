@@ -1,8 +1,10 @@
 """Comandos de la preparación inicial: roles, catálogos y el Administrador."""
 
 import click
-from flask import Flask, current_app
+from flask import Flask
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..models import Role, User
 from ..security import (
@@ -112,7 +114,7 @@ def register(app: Flask) -> None:
         try:
             validate_password_policy(
                 password,
-                min_length=current_app.config["PASSWORD_MIN_LENGTH"],
+                min_length=value_of(settings.PASSWORD_MIN_LENGTH),
             )
         except PasswordPolicyError as error:
             raise click.ClickException(str(error)) from error
