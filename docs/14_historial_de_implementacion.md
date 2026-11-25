@@ -131,6 +131,8 @@ La fase `v0.2.0` completó:
 
 - **Entrega 3, pantallas de configuración:** el Administrador edita desde la web los parámetros (cinco pantallas por tema, con restablecer, auditoría y aviso de conflicto) y apaga o enciende el SLA y el cierre automático. Con el SLA apagado nada lo muestra ni avisa, pero los períodos se siguen calculando para que encenderlo no obligue a reconstruir nada; ese es el motivo de la decisión. Aparecieron dos riesgos que solo existen cuando una persona escribe los valores: un número desmesurado habría hecho fallar el cálculo de fechas de cada pantalla (ahora todos tienen máximo) y la tecla Enter habría pulsado un «Restablecer». La suite pasó de 4288 a 4382 tests.
 
+- **Entrega 4, configuración de notificaciones:** el Administrador apaga y enciende avisos concretos (evento y destinatarios) desde una tabla. Se evitó un motor de reglas: los avisos posibles son un catálogo cerrado y solo se pueden apagar, así que ningún ajuste puede enviar algo interno a un Solicitante; dos avisos que exigen las reglas de negocio quedan fijos. Para que fuera verificable, todo envío pasa por una única función y un test impide saltársela. La suite pasó de 4382 a 4416 tests.
+
 # 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
 
 ## Hito completado: v0.3.0

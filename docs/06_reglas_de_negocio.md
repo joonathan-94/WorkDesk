@@ -1867,6 +1867,17 @@ Aplica RF-053, RF-113, RF-119, RF-120 y RF-122 (`v0.7.0`). Solo el Administrador
 
 ---
 
+## RN-172 — Configuración de notificaciones
+
+Aplica RN-97, RF-087 y RF-121 (`v0.7.0`). Solo el Administrador elige qué avisos internos se envían, desde Administración.
+
+* **Catálogo cerrado.** Los avisos posibles son los de RN-168 y RN-170, cada uno para sus destinatarios (solicitantes, técnicos asignados o supervisores). Se pueden apagar y volver a encender, pero no crear: un Solicitante nunca recibe algo interno.
+* **Obligatorios.** Siempre se envían la revisión de una solución resuelta a los solicitantes (RN-95) y la reapertura a los técnicos (RN-96).
+* **Efecto.** Un aviso apagado deja de crearse desde ese momento; los ya enviados no se borran y los que se omitieron no se reenvían al volver a encenderlo. Lo que se registra en el historial (incluido un incumplimiento de SLA) no cambia.
+* **Auditoría y conflictos.** Como el resto de la configuración (RN-171).
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

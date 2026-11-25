@@ -1,0 +1,103 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% block title %}Notificaciones{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("Notificaciones", None),
+    ]) }}
+
+    {{ page_header(
+        "Configuración de notificaciones",
+        "Elige qué avisos internos se envían y a quién. Quien provoca un cambio nunca recibe su propio aviso."
+    ) }}
+
+    {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin.notification_settings') }}" novalidate>
+        {{ form.csrf_token }}
+        {{ form.base }}
+
+        <div class="card mb-3">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Evento</th>
+                            {% for audience, label in audiences %}
+                                <th scope="col">{{ label }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <th scope="row">{{ row.label }}</th>
+
+                                {% for audience, label in audiences %}
+                                    {% set cell = row.cells.get(audience) %}
+                                    <td>
+                                        {% if cell %}
+                                            {% set rule = cell.rule %}
+                                            <div class="form-check">
+                                                <input
+                                                    class="form-check-input"
+                                                    type="checkbox"
+                                                    id="aviso-{{ rule.key }}"
+                                                    name="{{ checkbox_name }}"
+                                                    value="{{ rule.key }}"
+                                                    {% if cell.checked %}checked{% endif %}
+                                                    {% if rule.locked %}disabled{% endif %}
+                                                >
+                                                <label
+                                                    class="form-check-label small"
+                                                    for="aviso-{{ rule.key }}"
+                                                >
+                                                    <span class="visually-hidden">
+                                                        {{ row.label }}, {{ label }}:
+                                                    </span>
+                                                    {{ rule.description }}
+                                                </label>
+                                                {% if rule.locked %}
+                                                    <div class="small text-secondary">
+                                                        <i class="bi bi-lock" aria-hidden="true"></i>
+                                                        Siempre activo. {{ rule.locked }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-secondary" aria-label="No aplica">—</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card form-card">
+            <div class="card-body">
+                {{ textarea_field(
+                    form.motivo,
+                    hint="Opcional. Queda registrado en la auditoría.",
+                    maxlength=reason_max,
+                ) }}
+
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-primary" type="submit">Guardar cambios</button>
+
+                    <a class="btn btn-outline-secondary" href="{{ url_for('admin.index') }}">
+                        Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}
