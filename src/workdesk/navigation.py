@@ -115,6 +115,14 @@ MAIN_NAVIGATION = (
         roles=(RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR),
         active_prefixes=("reassignment.",),
     ),
+    # La base de conocimiento la consultan los cuatro roles; qué artículos ve cada uno lo
+    # decide la consulta.
+    NavItem(
+        label="Base de conocimiento",
+        endpoint="knowledge.index",
+        icon="book",
+        active_prefixes=("knowledge.",),
+    ),
     # Los avisos del propio usuario: los ven los cuatro roles (docs/11, 5.x).
     NavItem(
         label="Notificaciones",

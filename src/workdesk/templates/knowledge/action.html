@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+{% from "_form_macros.html" import textarea_field %}
+
+{% block title %}{{ spec.title }}{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Base de conocimiento", url_for('knowledge.index')),
+        (article.titulo, url_for('knowledge.detail', article_id=article.id)),
+        (spec.title, None),
+    ]) }}
+
+    {{ page_header(spec.title ~ ': ' ~ article.titulo) }}
+
+    <form
+        class="card form-card"
+        method="post"
+        action="{{ url_for('knowledge.article_action', article_id=article.id, action=action) }}"
+        novalidate
+    >
+        <div class="card-body">
+            {{ form.csrf_token }}
+            <input type="hidden" name="version" value="{{ article.version }}">
+
+            <div class="alert alert-warning">{{ spec.explanation }}</div>
+
+            {% if spec.asks_reason %}
+                {{ textarea_field(
+                    form.motivo,
+                    hint="Opcional. Queda registrado en la auditoría.",
+                    maxlength=reason_max,
+                ) }}
+            {% endif %}
+
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn {{ 'btn-danger' if spec.danger else 'btn-primary' }}" type="submit">
+                    {{ spec.button }}
+                </button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('knowledge.detail', article_id=article.id) }}">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+{% endblock %}

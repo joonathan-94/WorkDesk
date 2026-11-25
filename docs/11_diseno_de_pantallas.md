@@ -2069,6 +2069,8 @@ La configuración de notificaciones (UI-024) y sus eventos y destinatarios no fo
 
 ## UI-009 — Base de conocimiento
 
+**Implementada (`v0.7.0`, entrega 6)** en `/knowledge`: buscador, categorías (las del catálogo de tickets que tengan artículos legibles, con su número), destacados, recientes, resultados paginados y «Crear ticket». La gestión del personal está en `/knowledge/manage`.
+
 ### Objetivo
 
 Permitir autoservicio antes de crear una solicitud.
@@ -2131,6 +2133,8 @@ No mostrar:
 
 ## UI-010 — Detalle de artículo
 
+**Implementada** en `/knowledge/<id>`, con columna de lectura de unos 76 caracteres. El Solicitante ve título, categoría, fecha de publicación, texto y relacionados; el personal ve además autor y estado, y las acciones que le corresponden.
+
 Debe contener:
 
 - breadcrumb;
@@ -2146,6 +2150,8 @@ El ancho de lectura debe ser controlado y no utilizar toda la pantalla.
 ---
 
 ## UI-011 — Editor de artículo
+
+**Implementada** en `/knowledge/new` y `/knowledge/<id>/edit`. Guardar es la acción principal (también al pulsar Enter); «Publicar» aparece a quien puede. Publicar, retirar, destacar y desactivar tienen además su propia pantalla de confirmación desde el detalle. Ante un conflicto se conserva lo escrito.
 
 Acceso según permisos.
 

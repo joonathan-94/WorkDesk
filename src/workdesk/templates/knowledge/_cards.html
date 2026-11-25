@@ -1,0 +1,40 @@
+{# Tarjetas y filas de artículos que comparten la portada y los relacionados. #}
+
+{% macro article_list(articles, empty_text) %}
+    {% if articles %}
+        <ul class="list-unstyled mb-0 article-list">
+            {% for article in articles %}
+                <li class="article-list__item">
+                    <a class="fw-semibold text-decoration-none" href="{{ url_for('knowledge.detail', article_id=article.id) }}">
+                        {{ article.titulo }}
+                    </a>
+                    <div class="small text-secondary">
+                        {{ article.categoria.nombre }}
+                        {% if article.fecha_publicacion %}
+                            · {{ article.fecha_publicacion|local_datetime }}
+                        {% endif %}
+                    </div>
+                    <p class="small mb-0 article-list__excerpt">{{ article.contenido|truncate(160) }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-secondary mb-0">{{ empty_text }}</p>
+    {% endif %}
+{% endmacro %}
+
+{% macro article_badges(article) %}
+    {% if not article.activo %}
+        <span class="badge badge-soft badge-soft-neutral">Desactivado</span>
+    {% elif article.publicado %}
+        <span class="badge badge-soft badge-soft-success">Publicado</span>
+    {% else %}
+        <span class="badge badge-soft badge-soft-warning">Borrador</span>
+    {% endif %}
+    <span class="badge badge-soft badge-soft-neutral">
+        {{ 'Privado' if article.es_privado else 'Público' }}
+    </span>
+    {% if article.destacado %}
+        <span class="badge badge-soft badge-soft-warning">Destacado</span>
+    {% endif %}
+{% endmacro %}

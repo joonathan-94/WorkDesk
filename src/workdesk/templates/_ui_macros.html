@@ -184,3 +184,42 @@
         </span>
     {% endif %}
 {% endmacro %}
+
+{# Paginación con números de página. `params` son los filtros que los enlaces conservan. #}
+{% macro pagination_nav(pagination, endpoint, params={}) %}
+    {% if pagination.pages > 1 %}
+        <nav class="mt-3" aria-label="Paginación">
+            <ul class="pagination justify-content-center flex-wrap mb-0">
+                <li class="page-item{% if not pagination.has_prev %} disabled{% endif %}">
+                    {% if pagination.has_prev %}
+                        <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **params) }}">Anterior</a>
+                    {% else %}
+                        <span class="page-link">Anterior</span>
+                    {% endif %}
+                </li>
+
+                {% for number in pagination.iter_pages() %}
+                    {% if number is none %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% else %}
+                        <li class="page-item{% if number == pagination.page %} active{% endif %}">
+                            <a
+                                class="page-link"
+                                {% if number == pagination.page %}aria-current="page"{% endif %}
+                                href="{{ url_for(endpoint, page=number, **params) }}"
+                            >{{ number }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                <li class="page-item{% if not pagination.has_next %} disabled{% endif %}">
+                    {% if pagination.has_next %}
+                        <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **params) }}">Siguiente</a>
+                    {% else %}
+                        <span class="page-link">Siguiente</span>
+                    {% endif %}
+                </li>
+            </ul>
+        </nav>
+    {% endif %}
+{% endmacro %}

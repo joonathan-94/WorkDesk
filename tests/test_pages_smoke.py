@@ -60,12 +60,16 @@ PAGES_FOR_EVERYONE = [
     "/tickets?tecnico=ninguno&activos=1&vista=todos",
     "/tickets?revision=1&cerrado_desde=2026-11-01&vista=todos",
     "/tickets/new",
+    "/knowledge",
+    "/knowledge?q=impresora",
     "/notifications",
     "/notifications?vista=no-leidas",
     "/account",
 ]
 # La carga de trabajo es del personal: el Solicitante recibe 403.
 STAFF_PAGES = [
+    "/knowledge/manage",
+    "/knowledge/new",
     "/workload",
     "/workload?grupo=1&prioridad=1&estado=1",
     "/workload?q=a&orden=nombre",
