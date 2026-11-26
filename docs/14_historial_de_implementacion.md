@@ -123,26 +123,18 @@ La fase `v0.2.0` completó:
 
 ---
 
-## En curso: `v0.7.0`
+## Implementado en `v0.7.0`
 
-- **Entrega 1, revisión previa:** se auditó lo construido buscando lo arrastrado de las fases anteriores. El login ya no delata qué usuarios existen por el tiempo de respuesta (un usuario inexistente, inactivo o bloqueado no calculaba ningún hash y respondía mucho más rápido que uno que existe con la contraseña equivocada) y vacía la sesión anterior al autenticarse. Cada pantalla pasó de tres consultas previas a dos al traer el rol junto con el usuario. Los 14 parámetros numéricos tienen ahora una única definición (`settings.py`) en lugar de repartirse entre `config.py` y seis validaciones. El planificador limpia los restos de subidas cortadas. La suite pasó de 4175 a 4234 tests. Medido y dejado como está: los índices de las claves «quién lo hizo» (12 ms contra 1,3 ms con 250 000 eventos para «resueltos por mí», que no justifica encarecer cada escritura del historial) y el tamaño de los módulos (ninguna función supera la complejidad 12).
+- la configuración administrable: 16 parámetros y 3 interruptores en la tabla `configuracion`, con cinco pantallas por tema, restablecer, auditoría y aviso de conflicto; las variables de entorno pasan a ser solo el valor inicial;
+- el interruptor general del SLA y el del cierre automático, y la ubicación obligatoria al crear un ticket (RF-019);
+- la configuración de los avisos internos: qué evento se avisa a quién, como un catálogo que se apaga y enciende;
+- la base de conocimiento: artículos con borrador y publicación, público y privado, destacados, búsqueda en español sin depender de las tildes, vínculo con tickets y artículos nacidos de una resolución;
+- la advertencia de posibles duplicados al crear un ticket, los adjuntos desde el formulario de creación y la liberación de un bloqueo de edición ajeno;
+- tres migraciones (de 24 a 27) y la suite de 4175 a 4681 tests.
 
-- **Entrega 2, tabla `configuracion`:** los 14 parámetros numéricos pueden tener ahora un valor elegido por el Administrador, guardado en la base de datos (sin fila rige la variable de entorno o el valor por defecto). Todo el código lee por `value_of`, con una sola consulta por petición y sin caché entre peticiones porque el planificador es otro proceso; cada cambio se valida (también las relaciones entre dos parámetros), se audita y se serializa con un bloqueo de PostgreSQL. Por el camino aparecieron dos interacciones que ningún test de la entrega 1 podía ver: el tope de subida de Flask se fijaba al iniciar y no habría seguido al valor vigente (ahora lo fija una comprobación previa, registrada antes de la protección CSRF, que es quien lee el cuerpo), y un ciclo de importación entre `settings` y `security`. La suite pasó de 4234 a 4288 tests; cada petición autenticada pasó de dos a tres consultas.
+---
 
-- **Entrega 3, pantallas de configuración:** el Administrador edita desde la web los parámetros (cinco pantallas por tema, con restablecer, auditoría y aviso de conflicto) y apaga o enciende el SLA y el cierre automático. Con el SLA apagado nada lo muestra ni avisa, pero los períodos se siguen calculando para que encenderlo no obligue a reconstruir nada; ese es el motivo de la decisión. Aparecieron dos riesgos que solo existen cuando una persona escribe los valores: un número desmesurado habría hecho fallar el cálculo de fechas de cada pantalla (ahora todos tienen máximo) y la tecla Enter habría pulsado un «Restablecer». La suite pasó de 4288 a 4382 tests.
-
-- **Entrega 4, configuración de notificaciones:** el Administrador apaga y enciende avisos concretos (evento y destinatarios) desde una tabla. Se evitó un motor de reglas: los avisos posibles son un catálogo cerrado y solo se pueden apagar, así que ningún ajuste puede enviar algo interno a un Solicitante; dos avisos que exigen las reglas de negocio quedan fijos. Para que fuera verificable, todo envío pasa por una única función y un test impide saltársela. La suite pasó de 4382 a 4416 tests.
-
-- **Entrega 5, base de conocimiento (modelo):** artículos con borrador y publicación, público y privado, destacados, permisos por rol resueltos en la consulta y búsqueda en español. El hallazgo que decidió el diseño: el diccionario español de PostgreSQL no encuentra «configuración» cuando se escribe sin tilde, así que se indexa además el texto sin tildes, sin extensiones. Se reutiliza el catálogo de categorías de los tickets. La suite pasó de 4416 a 4484 tests.
-
-- **Entrega 6, base de conocimiento (pantallas):** portada con búsqueda, categorías, destacados y recientes; detalle de lectura; gestión y editor para el personal, y cada acción editorial con su confirmación. Decisión que se aparta del patrón de los tickets: ante un conflicto al editar se conserva el texto escrito (un artículo puede ser largo) sin permitir pisar el cambio ajeno. La suite pasó de 4484 a 4543 tests.
-
-- **Entrega 7, conocimiento en los tickets y duplicados:** artículos vinculados a tickets, artículo creado desde la resolución y aviso de posibles duplicados al crear un ticket, que nunca impide crearlo ni enseña tickets ajenos. La medición a escala destapó que la comparación calculaba el vector de cada título una vez por palabra; calculándolo una sola vez pasó de 1,3 s a 0,5 s con 20 000 candidatos. La suite pasó de 4543 a 4604 tests.
-
-- **Entrega 8, adjuntos al crear y liberación de bloqueos:** se pueden adjuntar archivos al crear un ticket (todo o nada) y el Supervisor o el Administrador pueden liberar el bloqueo de edición de otra persona, con auditoría. Lo que obligó a una migración: el latido de la pantalla volvía a adquirir el bloqueo, así que la liberación no habría durado. La suite pasó de 4604 a 4642 tests.
-- **Entrega 9, estructura y protecciones:** sin cambios de comportamiento, para llegar al cierre con el código ordenado. El detalle del ticket (924 líneas) y el listado (647) pasaron a parciales; se comprobó que 484 pantallas generadas antes y después son idénticas. `sla/periods.py` se partió en escritura (`periods.py`), lectura (`evaluation.py`) y reconstrucción (`rebuild.py`), y lo que un cambio de estado deja escrito salió de `lifecycle.py` a `lifecycle_history.py`. Se reunió lo que estaba copiado: la limpieza de motivos (seis copias de su largo máximo), la lectura de un id de la URL, el filtro Activos / Inactivos, la lista de estados y `mark_modified`. Cuatro protecciones nuevas, probadas con diez mutaciones: las migraciones y los modelos crean el mismo esquema (también los `CHECK`, que `db check` no mira), el Solicitante solo lee la base de conocimiento, el frontend no escribe colores ni JavaScript en línea ni carga nada de Internet, y los interruptores deben estar documentados. Medido y dejado como está: con 20 000 tickets todas las pantallas responden en menos de medio segundo; se probó resolver el estado del SLA con una sola subconsulta y no mejoró.
-
-# 2. Hitos de v0.3.0, v0.4.0, v0.5.0 y v0.6.0
+# 2. Hitos de v0.3.0 a v0.7.0
 
 ## Hito completado: v0.3.0
 
@@ -290,6 +282,67 @@ Errores reales que aparecieron por el camino:
 - Entrega 10: la matriz de trazabilidad encontró tres cosas prometidas y no mostradas (los resueltos por técnico, los tickets en progreso y en espera del Técnico y los tickets por prioridad del Supervisor) y un error de la reasignación con quien dejó de ser Técnico.
 
 Cierre de la fase (entrega 10). Se midió antes de cambiar nada, se comprobó la escala con ~20 000 tickets, se compararon los requisitos con el código y se actuó donde hacía falta: lo detallado está en `docs/12_roadmap.md` (fase 6, «Cierre de la fase»), con su matriz de trazabilidad, y en `PROJECT_CONTEXT.md` («Cierre de `v0.6.0`»).
+
+---
+
+## Hito completado: v0.7.0
+
+```text
+v0.7.0 — Administración y base de conocimiento
+```
+
+Es la fase en que el Administrador deja de depender del `.env`: lo que antes era una variable de entorno se cambia desde la web, con su rango, su auditoría y su aviso si otra persona lo cambió a la vez. Y es la fase en que el conocimiento del equipo empieza a quedarse escrito, cerca de los tickets que lo originan. Se construyó en diez entregas, cada una con su rama, sus tests y su Pull Request.
+
+| # | Entrega | Estado | Tests al cerrar |
+| --- | --- | --- | --- |
+| 1 | Revisión previa | Integrada (PR #56) | 4234 |
+| 2 | Tabla `configuracion` | Integrada (PR #57) | 4288 |
+| 3 | Pantallas de configuración e interruptores | Integrada (PR #58) | 4382 |
+| 4 | Configuración de notificaciones | Integrada (PR #59) | 4416 |
+| 5 | Base de conocimiento: modelo y búsqueda | Integrada (PR #60) | 4484 |
+| 6 | Base de conocimiento: pantallas | Integrada (PR #61) | 4543 |
+| 7 | Conocimiento en los tickets y posibles duplicados | Integrada (PR #62) | 4604 |
+| 8 | Adjuntos al crear y liberación de bloqueos | Integrada (PR #63) | 4642 |
+| 9 | Estructura y protecciones | Integrada (PR #64) | 4657 |
+| 10 | Cierre de la fase | Integrada (PR #65) | 4681 |
+
+Decisiones de la fase:
+
+- **Una fila es un valor elegido; sin fila rige el inicial.** Así la aplicación arranca sin cargar nada y «restablecer» es borrar la fila. Las definiciones (claves, rangos, valores por defecto) siguen en el código, en un único lugar (`settings.py`).
+- **La configuración se lee una vez por petición, sin caché entre peticiones,** porque el planificador es otro proceso y una caché en el servidor web no vería los cambios del Administrador. Cuesta una consulta sobre una tabla de pocas filas, y está medida.
+- **Los avisos se configuran apagando, no creando.** Un motor de reglas habría permitido mandar algo interno a un Solicitante por error; un catálogo cerrado lo impide por construcción.
+- **La búsqueda es la de PostgreSQL**, en español y además sin tildes, sin extensiones ni dependencias. Se mide en milisegundos con 20 000 artículos.
+- **Un artículo que no se puede leer responde 404 como uno que no existe,** igual que los tickets, y quién ve qué se decide en la consulta.
+- **Nada que no deba bloquear bloquea:** la advertencia de duplicados nunca impide crear, la ubicación obligatoria no es retroactiva y liberar un bloqueo no borra el trabajo de nadie.
+
+Errores reales que aparecieron por el camino:
+
+- Entrega 1: el login respondía más rápido a un usuario inexistente que a uno con la contraseña equivocada, lo que permitía adivinar quién existe.
+- Entrega 2: el tope de subida de Flask se fijaba al iniciar y no habría seguido al valor que elige el Administrador; y un ciclo de importación entre `settings` y `security`.
+- Entrega 3: un número desmesurado habría hecho fallar el cálculo de fechas de todas las pantallas, y la tecla Enter pulsaba «Restablecer».
+- Entrega 8: el latido de la pantalla de edición habría recuperado un bloqueo recién liberado (por eso hizo falta una migración).
+- Entrega 10: un requisito sin hacer (RF-019), el tamaño de archivo mostrado como «0 MB», `sla-status` equivocado con el SLA apagado, dos comandos que fallaban al redirigir su salida en Windows y dos selectores con el mismo `id`.
+
+Entrega por entrega:
+
+- **Entrega 1, revisión previa:** se auditó lo construido buscando lo arrastrado de las fases anteriores. El login ya no delata qué usuarios existen por el tiempo de respuesta (un usuario inexistente, inactivo o bloqueado no calculaba ningún hash y respondía mucho más rápido que uno que existe con la contraseña equivocada) y vacía la sesión anterior al autenticarse. Cada pantalla pasó de tres consultas previas a dos al traer el rol junto con el usuario. Los 14 parámetros numéricos tienen ahora una única definición (`settings.py`) en lugar de repartirse entre `config.py` y seis validaciones. El planificador limpia los restos de subidas cortadas. La suite pasó de 4175 a 4234 tests. Medido y dejado como está: los índices de las claves «quién lo hizo» (12 ms contra 1,3 ms con 250 000 eventos para «resueltos por mí», que no justifica encarecer cada escritura del historial) y el tamaño de los módulos (ninguna función supera la complejidad 12).
+
+- **Entrega 2, tabla `configuracion`:** los 14 parámetros numéricos pueden tener ahora un valor elegido por el Administrador, guardado en la base de datos (sin fila rige la variable de entorno o el valor por defecto). Todo el código lee por `value_of`, con una sola consulta por petición y sin caché entre peticiones porque el planificador es otro proceso; cada cambio se valida (también las relaciones entre dos parámetros), se audita y se serializa con un bloqueo de PostgreSQL. Por el camino aparecieron dos interacciones que ningún test de la entrega 1 podía ver: el tope de subida de Flask se fijaba al iniciar y no habría seguido al valor vigente (ahora lo fija una comprobación previa, registrada antes de la protección CSRF, que es quien lee el cuerpo), y un ciclo de importación entre `settings` y `security`. La suite pasó de 4234 a 4288 tests; cada petición autenticada pasó de dos a tres consultas.
+
+- **Entrega 3, pantallas de configuración:** el Administrador edita desde la web los parámetros (cinco pantallas por tema, con restablecer, auditoría y aviso de conflicto) y apaga o enciende el SLA y el cierre automático. Con el SLA apagado nada lo muestra ni avisa, pero los períodos se siguen calculando para que encenderlo no obligue a reconstruir nada; ese es el motivo de la decisión. Aparecieron dos riesgos que solo existen cuando una persona escribe los valores: un número desmesurado habría hecho fallar el cálculo de fechas de cada pantalla (ahora todos tienen máximo) y la tecla Enter habría pulsado un «Restablecer». La suite pasó de 4288 a 4382 tests.
+
+- **Entrega 4, configuración de notificaciones:** el Administrador apaga y enciende avisos concretos (evento y destinatarios) desde una tabla. Se evitó un motor de reglas: los avisos posibles son un catálogo cerrado y solo se pueden apagar, así que ningún ajuste puede enviar algo interno a un Solicitante; dos avisos que exigen las reglas de negocio quedan fijos. Para que fuera verificable, todo envío pasa por una única función y un test impide saltársela. La suite pasó de 4382 a 4416 tests.
+
+- **Entrega 5, base de conocimiento (modelo):** artículos con borrador y publicación, público y privado, destacados, permisos por rol resueltos en la consulta y búsqueda en español. El hallazgo que decidió el diseño: el diccionario español de PostgreSQL no encuentra «configuración» cuando se escribe sin tilde, así que se indexa además el texto sin tildes, sin extensiones. Se reutiliza el catálogo de categorías de los tickets. La suite pasó de 4416 a 4484 tests.
+
+- **Entrega 6, base de conocimiento (pantallas):** portada con búsqueda, categorías, destacados y recientes; detalle de lectura; gestión y editor para el personal, y cada acción editorial con su confirmación. Decisión que se aparta del patrón de los tickets: ante un conflicto al editar se conserva el texto escrito (un artículo puede ser largo) sin permitir pisar el cambio ajeno. La suite pasó de 4484 a 4543 tests.
+
+- **Entrega 7, conocimiento en los tickets y duplicados:** artículos vinculados a tickets, artículo creado desde la resolución y aviso de posibles duplicados al crear un ticket, que nunca impide crearlo ni enseña tickets ajenos. La medición a escala destapó que la comparación calculaba el vector de cada título una vez por palabra; calculándolo una sola vez pasó de 1,3 s a 0,5 s con 20 000 candidatos. La suite pasó de 4543 a 4604 tests.
+
+- **Entrega 8, adjuntos al crear y liberación de bloqueos:** se pueden adjuntar archivos al crear un ticket (todo o nada) y el Supervisor o el Administrador pueden liberar el bloqueo de edición de otra persona, con auditoría. Lo que obligó a una migración: el latido de la pantalla volvía a adquirir el bloqueo, así que la liberación no habría durado. La suite pasó de 4604 a 4642 tests.
+- **Entrega 9, estructura y protecciones:** sin cambios de comportamiento, para llegar al cierre con el código ordenado. El detalle del ticket (924 líneas) y el listado (647) pasaron a parciales; se comprobó que 484 pantallas generadas antes y después son idénticas. `sla/periods.py` se partió en escritura (`periods.py`), lectura (`evaluation.py`) y reconstrucción (`rebuild.py`), y lo que un cambio de estado deja escrito salió de `lifecycle.py` a `lifecycle_history.py`. Se reunió lo que estaba copiado: la limpieza de motivos (seis copias de su largo máximo), la lectura de un id de la URL, el filtro Activos / Inactivos, la lista de estados y `mark_modified`. Cuatro protecciones nuevas, probadas con diez mutaciones: las migraciones y los modelos crean el mismo esquema (también los `CHECK`, que `db check` no mira), el Solicitante solo lee la base de conocimiento, el frontend no escribe colores ni JavaScript en línea ni carga nada de Internet, y los interruptores deben estar documentados. Medido y dejado como está: con 20 000 tickets todas las pantallas responden en menos de medio segundo; se probó resolver el estado del SLA con una sola subconsulta y no mejoró.
+
+- **Entrega 10, cierre de la fase:** se midió a escala (unos 20 000 tickets, 5000 artículos y 24 000 avisos: ninguna pantalla pasa del medio segundo), se recorrieron 162 pantallas con los cuatro roles buscando errores del servidor y de accesibilidad, y se comparó cada requisito con el código. La matriz encontró la ubicación obligatoria (RF-019), que se hizo; el recorrido, dos selectores de Grupos con el mismo `id`; y la revisión, tres formas distintas de escribir un tamaño de archivo (una mostraba «0 MB»), `sla-status` equivocado con el SLA apagado y dos comandos que fallaban en Windows al redirigir su salida. Todo con su prueba, y la documentación cerrada con la matriz de trazabilidad (`docs/12`, fase 7). La suite pasó de 4657 a 4681 tests.
 
 ---
 

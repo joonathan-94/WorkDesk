@@ -31,8 +31,8 @@ class Config:
 
     # Parámetros numéricos: su nombre, valor por defecto y rango viven en `settings.py`
     # (la única definición); aquí solo se leen del entorno. Se validan al iniciar la
-    # aplicación (`settings.validate_settings`). Pasarán a la tabla `configuracion`
-    # (`v0.7.0`), con estas variables como valor inicial.
+    # aplicación (`settings.validate_settings`) y son el valor inicial: rigen mientras el
+    # Administrador no guarde otro en la tabla `configuracion` (`configuration.py`).
     #
     # - Sesión y autenticación: intentos fallidos, minutos de bloqueo, longitud mínima de
     #   contraseña, inactividad y duración máxima de la sesión.
@@ -58,9 +58,11 @@ class Config:
     UPLOAD_MAX_FILES_PER_TICKET = settings.UPLOAD_MAX_FILES_PER_TICKET.from_environment()
     DUPLICATE_WINDOW_DAYS = settings.DUPLICATE_WINDOW_DAYS.from_environment()
     DUPLICATE_MIN_WORDS = settings.DUPLICATE_MIN_WORDS.from_environment()
-    # Interruptores generales (también en `settings.py`): el SLA y el cierre automático.
+    # Interruptores (también en `settings.py`): el SLA, el cierre automático y la ubicación
+    # obligatoria al crear un ticket.
     SLA_ENABLED = settings.SLA_ENABLED.from_environment()
     AUTO_CLOSE_ENABLED = settings.AUTO_CLOSE_ENABLED.from_environment()
+    LOCATION_REQUIRED = settings.LOCATION_REQUIRED.from_environment()
 
     # Raíz del almacenamiento de adjuntos. Si no se define, `instance/uploads`.
     UPLOADS_DIR = os.getenv("UPLOADS_DIR")

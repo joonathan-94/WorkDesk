@@ -20,6 +20,7 @@ from ..service import (
     categories_for_selection,
     create_ticket,
     list_requester_candidates,
+    location_required,
 )
 from ..similar import find_similar_tickets
 from ..storage import MAX_FILES_PER_REQUEST, allowed_extensions
@@ -54,6 +55,7 @@ def new_ticket():
             (location.id, location.nombre)
             for location in list_locations("activo")
         ],
+        location_required=location_required(),
         requester_choices=(
             requester_choices(list_requester_candidates())
             if choose_requesters
@@ -79,7 +81,8 @@ def new_ticket():
                 category_id=form.categoria.data,
             )
 
-    if form.is_submitted() and not form.errors and not similar and signature:
+    # `signature` solo existe si el formulario es válido: se crea si no hay nada que advertir.
+    if signature and not similar:
         # El Solicitante siempre es su propio solicitante; el personal
         # elige a quién (puede ser nadie).
         requester_ids = (
@@ -134,7 +137,7 @@ def new_ticket():
         # Un navegador no conserva los archivos elegidos al volver a mostrar la página.
         files_to_choose_again=_chose_files(),
         max_files=min(MAX_FILES_PER_REQUEST, value_of(settings.UPLOAD_MAX_FILES_PER_TICKET)),
-        max_upload_mb=value_of(settings.UPLOAD_MAX_BYTES) // (1024 * 1024),
+        max_upload=value_of(settings.UPLOAD_MAX_BYTES),
         allowed_extensions=allowed_extensions(),
         confirmation=signature if similar else None,
         confirmation_field=CONFIRMATION_FIELD,

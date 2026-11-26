@@ -59,10 +59,12 @@ def test_the_listed_settings_are_all_the_ones_defined_in_the_module():
 
 
 def test_every_switch_of_config_is_defined_in_settings():
+    # Todo interruptor de `Config` es administrable salvo los de la cookie de sesión, que
+    # son de despliegue (no se eligen desde la web).
     switches = {
         name
         for name, value in vars(Config).items()
-        if isinstance(value, bool) and name.endswith("_ENABLED")
+        if isinstance(value, bool) and not name.startswith("SESSION_COOKIE_")
     }
 
     assert switches == {setting.key for setting in BOOL_SETTINGS}

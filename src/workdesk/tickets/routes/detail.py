@@ -100,7 +100,7 @@ def render_detail(ticket, comment_form):
         ticket_files=files_by_comment.get(None, []),
         show_uploader=can_attach_files(current_user, ticket) and not is_closed,
         max_files=MAX_FILES_PER_REQUEST,
-        max_upload_mb=value_of(settings.UPLOAD_MAX_BYTES) // (1024 * 1024),
+        max_upload=value_of(settings.UPLOAD_MAX_BYTES),
         allowed_extensions=allowed_extensions(),
         # Relaciones: solo el personal las ve (el Solicitante no recibe ni la
         # consulta).

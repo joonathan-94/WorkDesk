@@ -80,6 +80,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_ticket_edit_lock",
         "test_ticket_create_uploads",
         "test_ticket_lock_revoke",
+        "test_phase7_closing",
         "test_ticket_history",
         "test_ticket_history_visibility",
         "test_ticket_model",

@@ -29,6 +29,7 @@ from ...tickets.requesters import add_requester, remove_requester
 from ...tickets.service import (
     TicketRuleError,
     create_ticket,
+    location_required,
 )
 from ...worktime import (
     DEMO_CALENDAR,
@@ -198,6 +199,13 @@ def create_demo_ticket(demo: DemoTicket, catalogs: Catalogs, times: list[datetim
         requesters = [catalogs.users[username] for username in demo.solicitantes]
 
     location = catalogs.location(demo.ubicacion)
+
+    if location is None and location_required():
+        raise DemoTicketsError(
+            "La ubicación es obligatoria al crear un ticket y la demostración tiene "
+            "tickets sin ubicación. Desactívala en Administración, «Creación de "
+            "tickets», y vuelve a ejecutar el comando."
+        )
 
     ticket = create_ticket(
         actor=creator,

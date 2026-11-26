@@ -1,6 +1,7 @@
 {% extends "layouts/app.html" %}
 {% from "_ui_macros.html" import page_header, breadcrumb %}
 {% from "_form_macros.html" import text_field, textarea_field, select_field %}
+{% from "knowledge/_cards.html" import article_badges %}
 
 {% set heading = 'Editar artículo' if article else 'Nuevo artículo' %}
 
@@ -43,6 +44,16 @@
                     quedará vinculado a él. Revisa que no incluya datos personales antes de guardar.
                 </div>
             {% endif %}
+
+            <p class="mb-3">
+                <span class="small text-secondary me-1">Estado editorial:</span>
+                {% if article %}
+                    {{ article_badges(article) }}
+                {% else %}
+                    <span class="badge badge-soft badge-soft-warning">Borrador</span>
+                    <span class="small text-secondary">hasta que se publique</span>
+                {% endif %}
+            </p>
 
             {# Al pulsar Enter en el título, el navegador usa el primer botón: guardar. #}
             <button class="visually-hidden" type="submit" tabindex="-1" aria-hidden="true">Guardar</button>

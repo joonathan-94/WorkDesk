@@ -1,11 +1,10 @@
 """Definición única de los parámetros configurables de WorkDesk (números e
 interruptores).
 
-Cada parámetro tiene aquí su nombre, su valor por defecto y el rango en que tiene sentido.
-Hasta `v0.7.0` el valor sale de una variable de entorno; con la tabla `configuracion` esas
-variables pasan a ser solo el valor inicial, y esta lista sigue siendo la única fuente de
-los nombres, los valores por defecto y los rangos (la pantalla de configuración y la
-validación al iniciar leerán de aquí, sin repetir los números).
+Cada parámetro tiene aquí su nombre, su clave en la tabla `configuracion`, su valor por
+defecto y el rango en que tiene sentido. La variable de entorno es solo el valor inicial:
+rige mientras el Administrador no guarde otro (`configuration.py`). Las pantallas de
+configuración y la validación al iniciar leen de aquí, sin repetir los números.
 
 No usa Flask ni la base de datos: se importa desde `config.py` antes de que exista la
 aplicación.
@@ -190,8 +189,11 @@ DUPLICATE_MIN_WORDS = IntSetting(
 # ticket se sigue calculando para que al encenderlo los datos estén al día.
 SLA_ENABLED = BoolSetting("SLA_ENABLED", "sla.habilitado", True)
 AUTO_CLOSE_ENABLED = BoolSetting("AUTO_CLOSE_ENABLED", "cierre.auto_cierre_habilitado", True)
+# Si la ubicación es obligatoria al crear un ticket (RF-019). Solo se exige mientras haya
+# alguna ubicación activa: sin ninguna, nadie podría crear tickets.
+LOCATION_REQUIRED = BoolSetting("LOCATION_REQUIRED", "ubicaciones.obligatoria", False)
 
-BOOL_SETTINGS: tuple[BoolSetting, ...] = (SLA_ENABLED, AUTO_CLOSE_ENABLED)
+BOOL_SETTINGS: tuple[BoolSetting, ...] = (SLA_ENABLED, AUTO_CLOSE_ENABLED, LOCATION_REQUIRED)
 
 INT_SETTINGS: tuple[IntSetting, ...] = (
     LOGIN_MAX_FAILED_ATTEMPTS,

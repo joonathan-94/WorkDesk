@@ -740,7 +740,7 @@ def test_the_command_asks_to_enable_the_transitions_it_needs(app):
         message = str(error.value)
 
         assert "transiciones deshabilitadas" in message
-        assert "Nuevo → Resuelto (Resolver)" in message
+        assert "de Nuevo a Resuelto (Resolver)" in message
         assert "Estados y transiciones" in message
         assert db.session.scalar(db.select(db.func.count(Ticket.id))) == 0
 

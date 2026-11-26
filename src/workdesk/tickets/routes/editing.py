@@ -43,7 +43,7 @@ from ..locking import (
     renew_edit_lock,
     revoke_edit_lock,
 )
-from ..service import TicketRuleError, categories_for_selection
+from ..service import TicketRuleError, categories_for_selection, location_required
 from ..versioning import TicketClosedError, TicketConflictError
 from .common import (
     catalog_label,
@@ -100,6 +100,9 @@ def edit_ticket(public_id: str):
                 ticket.ubicacion,
             )
         ],
+        # Un ticket que ya tiene ubicación no puede quedarse sin ella si es obligatoria;
+        # uno antiguo sin ubicación se sigue pudiendo editar tal cual.
+        location_required=ticket.ubicacion_id is not None and location_required(),
         **initial,
     )
 

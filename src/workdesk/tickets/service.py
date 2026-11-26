@@ -3,7 +3,9 @@ from collections.abc import Iterable
 from sqlalchemy import false, true
 from sqlalchemy.orm import joinedload, selectinload
 
+from .. import settings
 from ..catalogs.service import list_categories
+from ..configuration import value_of
 from ..extensions import db
 from ..models import (
     Categoria,
@@ -87,7 +89,8 @@ def create_ticket(
     """Crea un ticket en estado Nuevo y registra su evento de creación.
 
     - La categoría, la prioridad y la ubicación deben estar activas
-      (un valor desactivado ya no puede elegirse en tickets nuevos).
+      (un valor desactivado ya no puede elegirse en tickets nuevos). La
+      ubicación es obligatoria si así se configuró (`location_required`).
     - Los solicitantes son opcionales (0..N): deben ser usuarios activos con
       rol Solicitante. El creador no se convierte en solicitante por sí
       mismo; quien llama decide quiénes lo son.
@@ -107,6 +110,10 @@ def create_ticket(
 
     category = _get_active(Categoria, category_id, "La categoría")
     priority = _get_active(Prioridad, priority_id, "La prioridad")
+
+    if location_id is None and location_required():
+        raise TicketRuleError("Indica la ubicación.")
+
     location = (
         None
         if location_id is None
@@ -267,6 +274,22 @@ def categories_for_selection() -> list[Categoria]:
         for category in categories
         if category.codigo == FALLBACK_CATEGORY_CODE
     ]
+
+
+def location_required() -> bool:
+    """Si un ticket nuevo debe llevar ubicación (RF-019).
+
+    Lo decide el Administrador (`LOCATION_REQUIRED`), pero solo rige mientras haya alguna
+    ubicación activa: sin ninguna, exigirla impediría crear tickets.
+    """
+    if not value_of(settings.LOCATION_REQUIRED):
+        return False
+
+    return bool(
+        db.session.scalar(
+            db.select(db.exists().where(Ubicacion.activo.is_(True)))
+        )
+    )
 
 
 def record_ticket_event(

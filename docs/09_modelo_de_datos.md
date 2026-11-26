@@ -1846,8 +1846,9 @@ La definición de cada parámetro numérico (su clave, su variable de entorno, s
 | `duplicados.palabras_en_comun` | `DUPLICATE_MIN_WORDS` | 2 | 1 a 5 |
 | `sla.habilitado` | `SLA_ENABLED` | `true` | `true` o `false` |
 | `cierre.auto_cierre_habilitado` | `AUTO_CLOSE_ENABLED` | `true` | `true` o `false` |
+| `ubicaciones.obligatoria` | `LOCATION_REQUIRED` | `false` | `true` o `false` (solo rige con alguna ubicación activa) |
 
-Las unidades son las del código (el período de reapertura es en días y el cierre automático en horas corridas), no las que sugería el diseño inicial (`reapertura.periodo_horas`, `cierre.validacion_horas`). Quedan por definir la obligatoriedad de la ubicación (`ubicaciones.obligatoria`).
+Las unidades son las del código (el período de reapertura es en días y el cierre automático en horas corridas), no las que sugería el diseño inicial (`reapertura.periodo_horas`, `cierre.validacion_horas`).
 
 **Avisos apagados (`v0.7.0`, entrega 4).** La clave `notificaciones.desactivadas` guarda, como JSON (`tipo_dato = JSON`), la lista de parejas `EVENTO:DESTINATARIOS` que el Administrador apagó. Sin fila se envía todo. El catálogo de parejas válidas vive en `notifications/preferences.py`; lo desconocido o lo obligatorio se ignora.
 

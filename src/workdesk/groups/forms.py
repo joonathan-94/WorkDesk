@@ -46,11 +46,16 @@ class UserPickForm(FlaskForm):
 
     usuario = OptionalIntegerField("Persona")
 
-    def __init__(self, *args, choices, message, **kwargs):
+    def __init__(self, *args, choices, message, field_id=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.choices = list(choices)
         self.message = message
+
+        # El detalle del grupo muestra dos de estos formularios: cada selector necesita su
+        # propio id para que su etiqueta lo nombre (el nombre del campo no cambia).
+        if field_id:
+            self.usuario.id = field_id
 
     def validate_usuario(self, field):
         if field.process_errors or field.data not in {

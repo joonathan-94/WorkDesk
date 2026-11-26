@@ -73,6 +73,7 @@ def detail(group_id: int):
             UserPickForm(
                 choices=_choices(list_member_candidates(group)),
                 message="Elige un técnico de la lista.",
+                field_id="tecnico-a-agregar",
             )
             if can_members
             else None
@@ -81,6 +82,7 @@ def detail(group_id: int):
             UserPickForm(
                 choices=_choices(list_supervisor_candidates(group)),
                 message="Elige un supervisor de la lista.",
+                field_id="supervisor-a-designar",
             )
             if is_admin and group.activo
             else None

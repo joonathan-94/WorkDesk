@@ -75,7 +75,8 @@
                     {{ select_field(
                         form.ubicacion,
                         form.location_choices,
-                        placeholder="Sin ubicación",
+                        placeholder="Selecciona una ubicación" if form.location_required else "Sin ubicación",
+                        required=form.location_required,
                     ) }}
                 </div>
             </div>

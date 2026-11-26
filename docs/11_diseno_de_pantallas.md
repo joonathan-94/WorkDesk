@@ -1747,7 +1747,7 @@ Toast:
 - Ruta `/tickets/new`, con la opción "Crear ticket" en el menú lateral para los cuatro roles (activa solo en el formulario). Reglas en `docs/06` (RN-153).
 - Tarjeta única con **secciones numeradas** (círculo con el número, título y una línea de ayuda), como en el mockup: 1. "Cuéntanos qué necesitas" (título y descripción), 2. "Clasificación" (categoría, prioridad y ubicación) y, solo para el personal, 3. "Solicitantes". La sección "Adjuntos" del mockup no se muestra hasta que existan los archivos adjuntos (`v0.4.0`), para no presentar como disponible algo que todavía no funciona.
 - **Título** (hasta 200 caracteres) y **descripción** (hasta 2000), con las ayudas del mockup ("Resume el problema o solicitud en una frase." y "No incluyas contraseñas ni información sensible.") y un contador `n/2000` bajo la descripción.
-- **Categoría** obligatoria: el desplegable empieza en "Selecciona una categoría" y `Sin clasificar` va siempre al final. **Prioridad** obligatoria, con `Media` preseleccionada. **Ubicación** opcional ("Sin ubicación"). Solo se ofrecen valores activos.
+- **Categoría** obligatoria: el desplegable empieza en "Selecciona una categoría" y `Sin clasificar` va siempre al final. **Prioridad** obligatoria, con `Media` preseleccionada. **Ubicación** opcional ("Sin ubicación") u obligatoria si así se configuró (RN-177). Solo se ofrecen valores activos.
 - **Solicitantes** (solo Técnico, Supervisor y Administrador; opcional): lista de casillas con desplazamiento propio, ordenada por apellido, y un campo para filtrarla por nombre o usuario. El buscador es una mejora progresiva con JavaScript: sin JavaScript se ve la lista completa y el formulario funciona igual. El Solicitante no ve esta sección.
 - Botones "Cancelar" (vuelve al dashboard hasta que exista el listado) y "Crear ticket". Los errores se muestran junto a cada campo y el formulario conserva lo escrito.
 - Al crear, se muestra el aviso "Ticket #N creado correctamente." en el detalle del nuevo ticket.
@@ -2171,7 +2171,7 @@ Debe incluir:
 - contenido;
 - categoría;
 - visibilidad;
-- estado editorial;
+- estado editorial (Borrador o Publicado, Público o Privado y Destacado; un artículo nuevo es un borrador);
 - acciones Guardar / Publicar según permiso.
 
 ---
@@ -2448,7 +2448,7 @@ La obligatoriedad del campo depende de configuración.
 - Ruta `/admin/locations`, con la misma estructura que las categorías: tabla (nombre, tipo, descripción y estado), filtro por estado y acciones por fila.
 - El formulario pide nombre (obligatorio), tipo y descripción (opcionales). El tipo es un selector con las opciones Sucursal, Oficina, Edificio, Piso, Área, Instalación y Otra, además de "Sin especificar".
 - El nombre no puede repetirse (sin distinguir mayúsculas); si dos edificios tienen un "Piso 2", se nombran, por ejemplo, "Edificio A - Piso 2".
-- La obligatoriedad de la ubicación al crear un ticket (RF-019) depende de la tabla de configuración y se implementa más adelante: hoy la ubicación es opcional.
+- La obligatoriedad de la ubicación al crear un ticket (RF-019) se configura en Administración, «Creación de tickets» (`v0.7.0`, RN-177): con ella activa, el formulario pide «Selecciona una ubicación» en lugar de ofrecer «Sin ubicación».
 
 **Motivos de espera (`v0.4.0`):** pantalla complementaria sin código UI propio en este documento. Ruta `/admin/wait-reasons`, con la misma estructura que las categorías: tabla (nombre, descripción, texto libre, orden y estado), filtro por estado y acciones por fila. El formulario pide nombre (obligatorio), descripción y orden (opcionales) y la casilla "Permite añadir un texto libre" para la opción genérica "Otro motivo". Ningún motivo está protegido: el motivo de espera es opcional (RN-49). Estos motivos se ofrecen al poner un ticket en espera (`v0.4.0`, entrega 3).
 

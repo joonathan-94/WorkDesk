@@ -7,7 +7,7 @@ from ..extensions import db
 from ..formatting import format_duration, local_datetime
 from ..models import Prioridad, Ticket
 from ..sla.evaluation import SlaStatus, evaluate_ticket_sla
-from ..sla.periods import list_periods
+from ..sla.periods import list_periods, sla_enabled
 from ..sla.rebuild import fill_missing_warning_dates, rebuild_periods
 
 _SLA_STATUS_LABELS = {
@@ -29,7 +29,11 @@ def _describe_ticket_sla(ticket: Ticket) -> list[str]:
     snapshot = evaluate_ticket_sla(ticket.id)
 
     if snapshot is None:
-        lines.append("SLA: ninguno (la prioridad no tiene una política activa).")
+        lines.append(
+            "SLA: apagado (Administración, «SLA»)."
+            if not sla_enabled()
+            else "SLA: ninguno (la prioridad no tiene una política activa)."
+        )
 
         return lines
 
@@ -65,7 +69,7 @@ def _describe_ticket_sla(ticket: Ticket) -> list[str]:
         end = "vigente" if period.fecha_fin is None else local_datetime(period.fecha_fin)
         consumed = format_duration(period.segundos_consumidos // 60)
         lines.append(
-            f"  {number}. {local_datetime(period.fecha_inicio)} → {end} · "
+            f"  {number}. {local_datetime(period.fecha_inicio)} – {end} · "
             f"{priority.nombre} · {mode} · consumió {consumed}"
         )
 

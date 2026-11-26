@@ -1373,7 +1373,7 @@ Aplica y precisa RN-09 a RN-13 y RN-16 en la implementación inicial de la creac
 * **Descripción:** obligatoria, hasta 2000 caracteres. Los saltos de línea cuentan como un solo carácter, igual que en el contador que ve la persona.
 * **Categoría:** obligatoria. Solo pueden elegirse categorías activas. Quien no sabe cuál elegir usa `Sin clasificar`, que se ofrece siempre al final de la lista y nunca viene preseleccionada.
 * **Prioridad:** obligatoria. Solo pueden elegirse prioridades activas. El formulario ofrece `Media` preseleccionada, pero la prioridad debe llegar en el envío: no se asume una por omisión.
-* **Ubicación:** opcional. Solo pueden elegirse ubicaciones activas.
+* **Ubicación:** opcional, salvo que el Administrador la haga obligatoria (RN-177). Solo pueden elegirse ubicaciones activas.
 * El ticket nace siempre en estado `Nuevo`, con un identificador público correlativo que no se reutiliza (RN-07), y se registra su creación en el historial.
 
 **Creador y solicitantes** (RN-10, RN-12 y RN-13).
@@ -1923,6 +1923,17 @@ Amplía RN-163 (`v0.7.0`).
 * Si ya no hay un bloqueo de otra persona (lo soltó, expiró o es propio), no se hace nada.
 
 Los adjuntos del formulario de creación (RN-160) se guardan en la misma operación que el ticket: si alguno no es válido, no se crea el ticket.
+
+---
+
+## RN-177 — Ubicación obligatoria
+
+Aplica RF-019 y RF-116 (`v0.7.0`, cierre de la fase).
+
+* El Administrador decide si la ubicación es obligatoria al crear un ticket (Administración, «Creación de tickets»). Por defecto es opcional.
+* Solo se exige mientras exista alguna ubicación activa: sin ninguna, nadie podría crear tickets.
+* No es retroactiva: un ticket que ya existía sin ubicación se sigue pudiendo editar sin ella. Lo que no se puede es quitarle la ubicación a uno que la tiene.
+* La comprueba el servicio de creación y de edición, no solo el formulario.
 
 ---
 
