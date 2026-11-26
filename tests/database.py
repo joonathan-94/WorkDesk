@@ -31,12 +31,23 @@ deja en disco (como los adjuntos) lo copia quien la usa.
 **Ejecución en paralelo.** Con `pytest-xdist` cada proceso trabaja en su propio esquema de
 PostgreSQL (`wd_test_gw0`, `wd_test_gw1`...) dentro de la misma base `workdesk_test`: no
 hace falta crear bases ni permisos nuevos, y la protección anterior sigue valiendo.
+
+**Conexiones reutilizadas entre tests.** Cada test crea su aplicación y su motor de
+SQLAlchemy, y antes cada uno abría conexiones nuevas: en Windows PostgreSQL crea un proceso
+por conexión y cada una costaba unos 54 ms, en miles de tests. Ahora los motores reciben
+sus conexiones de una reserva del proceso (`reusable_engine_options`): al cerrar el motor,
+la conexión vuelve a la reserva limpia (sin transacción, con la configuración de sesión
+restablecida y sin bloqueos consultivos) y el test siguiente la reutiliza. Cada test sigue
+teniendo su aplicación y su motor propios; solo se ahorra abrir la conexión.
 """
 
 import os
+import threading
 from dataclasses import dataclass
 from functools import cache
 
+import psycopg
+from psycopg.pq import TransactionStatus
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
@@ -82,6 +93,78 @@ def engine_options() -> dict:
     return {"connect_args": {"options": f"-csearch_path={schema}"}}
 
 
+# --- Conexiones reutilizadas -------------------------------------------------------
+
+# Las conexiones que esperan al próximo test. Los tests con hilos devuelven conexiones
+# desde otros hilos, de ahí el candado.
+_IDLE: list["_ReusableConnection"] = []
+_IDLE_LOCK = threading.Lock()
+
+# Lo que deja una conexión como recién abierta: la configuración de sesión vuelve a la de
+# su arranque (el `search_path` del esquema del proceso) y se sueltan los bloqueos
+# consultivos de sesión. Los de transacción ya se soltaron con el `ROLLBACK`.
+_RESET_SESSION = "RESET ALL; SELECT pg_advisory_unlock_all()"
+
+
+class _ReusableConnection(psycopg.Connection):
+    """Una conexión de psycopg que, al cerrarla, vuelve a la reserva en vez de cerrarse."""
+
+    def close(self) -> None:
+        if self.closed:
+            return
+
+        try:
+            if self.info.transaction_status != TransactionStatus.IDLE:
+                self.rollback()
+
+            self.execute(_RESET_SESSION)
+            self.commit()
+        except psycopg.Error:
+            # Rota o a medio usar: no se reutiliza.
+            self.close_for_real()
+            return
+
+        with _IDLE_LOCK:
+            _IDLE.append(self)
+
+    def close_for_real(self) -> None:
+        super().close()
+
+
+def reusable_engine_options(database_url: str) -> dict:
+    """Opciones del motor para que tome sus conexiones de la reserva del proceso.
+
+    `database_url` debe venir de `checked_database_url`: la reserva nunca abre una
+    conexión a otra base que `workdesk_test`.
+    """
+    url = make_url(database_url)
+
+    if url.database != TEST_DATABASE_NAME:
+        raise RuntimeError("Las conexiones reutilizadas solo pueden apuntar a workdesk_test.")
+
+    conninfo = url.set(drivername="postgresql").render_as_string(hide_password=False)
+    connect_kwargs = engine_options().get("connect_args", {})
+
+    def creator():
+        with _IDLE_LOCK:
+            while _IDLE:
+                connection = _IDLE.pop()
+
+                if not connection.closed:
+                    return connection
+
+        return _ReusableConnection.connect(conninfo, **connect_kwargs)
+
+    return {"creator": creator}
+
+
+def close_idle_connections() -> None:
+    """Cierra de verdad las conexiones en espera (al terminar la sesión)."""
+    with _IDLE_LOCK:
+        while _IDLE:
+            _IDLE.pop().close_for_real()
+
+
 def create_schema() -> None:
     """Deja un esquema nuevo y vacío. Necesita el contexto de una aplicación de pruebas
     (cuya URL ya pasó por `checked_database_url`)."""
@@ -98,7 +181,8 @@ def create_schema() -> None:
 
 
 def drop_schema() -> None:
-    """Elimina el esquema de pruebas (y sus instantáneas) al terminar la sesión."""
+    """Elimina el esquema de pruebas (y sus instantáneas) al terminar la sesión, y cierra
+    las conexiones que esperaban al próximo test."""
     drop_snapshots()
     schema = worker_schema()
 
@@ -107,6 +191,9 @@ def drop_schema() -> None:
     else:
         with db.engine.begin() as connection:
             connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+
+    db.engine.dispose()
+    close_idle_connections()
 
 
 @cache

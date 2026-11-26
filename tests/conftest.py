@@ -3,11 +3,12 @@ import shutil
 from pathlib import Path
 
 import pytest
+from argon2 import PasswordHasher
 
 from src.workdesk import create_app
 from src.workdesk.extensions import db
 from src.workdesk.models import Categoria, Prioridad, Role, Ubicacion, User
-from src.workdesk.security import hash_password
+from src.workdesk.security import hash_password, passwords
 from src.workdesk.seeds import seed_catalogs, seed_demo_tickets, seed_roles
 from src.workdesk.sla import periods
 from tests.areas import AREA_BY_MODULE
@@ -16,15 +17,23 @@ from tests.database import (
     create_schema,
     drop_schema,
     empty_tables,
-    engine_options,
     has_snapshot,
     restore_snapshot,
+    reusable_engine_options,
     take_snapshot,
 )
 from tests.demo_data import NOW, prepare
 from tests.sla_helpers import FakeClock
 
 TEST_PASSWORD = "WorkDeskTest123!"
+
+# Argon2id barato, solo en la suite. El de producción (64 MiB, 3 pasadas y 4 hilos) tarda
+# unos 55 ms por verificación y, con seis procesos a la vez, sus hilos compiten por los
+# núcleos: medido, los logins de los tests eran una cuarta parte del tiempo de algunas
+# áreas. Sigue siendo Argon2id de verdad (el login recorre el mismo código) y no toca la
+# producción: `tests/test_passwords.py` comprueba los parámetros de `build_password_hasher`,
+# y los comandos que las pruebas de migraciones lanzan en otro proceso usan los reales.
+passwords.password_hasher = PasswordHasher(time_cost=1, memory_cost=1024, parallelism=1)
 
 
 @functools.cache
@@ -41,23 +50,22 @@ def _test_password_hash() -> str:
 def _app_config(uploads_dir) -> dict:
     # `checked_database_url` es la protección crítica: se llama siempre antes de
     # construir una aplicación que pueda borrar o crear tablas.
-    config = {
+    database_url = checked_database_url()
+
+    return {
         "TESTING": True,
         "APP_ENV": "testing",
         "SECRET_KEY": "test-secret-key",
-        "SQLALCHEMY_DATABASE_URI": checked_database_url(),
+        "SQLALCHEMY_DATABASE_URI": database_url,
+        # Cada app tiene su motor, pero las conexiones se reutilizan entre tests (abrir
+        # una cuesta unos 54 ms en Windows; ver `tests/database.py`).
+        "SQLALCHEMY_ENGINE_OPTIONS": reusable_engine_options(database_url),
         "WTF_CSRF_ENABLED": False,
         "SESSION_COOKIE_SECURE": False,
         # Los adjuntos de los tests van a un directorio temporal: nunca
         # tocan `instance/uploads`.
         "UPLOADS_DIR": str(uploads_dir),
     }
-    options = engine_options()
-
-    if options:
-        config["SQLALCHEMY_ENGINE_OPTIONS"] = options
-
-    return config
 
 
 def pytest_collection_modifyitems(items):
@@ -108,9 +116,9 @@ def app(tmp_path, _schema):
         # Cada test empieza con la base vacía (ver `tests/database.py`).
         empty_tables()
 
-        # Cada test crea su propia app y su propio engine. Sin cerrar su
-        # pool, las conexiones se acumulan hasta agotar max_connections de
-        # PostgreSQL a medida que crece la suite.
+        # Cada test crea su propia app y su propio engine. Cerrar su pool devuelve sus
+        # conexiones a la reserva del proceso (`tests/database.py`), limpias, para el
+        # test siguiente; sin esto se acumularían hasta agotar max_connections.
         db.engine.dispose()
 
 

@@ -257,25 +257,27 @@ def test_a_requester_opens_exactly_their_own_tickets(seeded, client, make_user):
 # --- Pantallas de acción -------------------------------------------------------------------------
 
 
-def test_every_action_screen_opens_for_every_ticket(seeded, client, make_user):
+# Una pantalla por caso: los 108 tickets con todas las pantallas en un solo test tardaban
+# más de 30 s y dejaban a un proceso de `pytest-xdist` ocupado al final de la suite.
+@pytest.mark.parametrize("screen", TICKET_SCREENS)
+def test_every_action_screen_opens_for_every_ticket(seeded, client, make_user, screen):
     sign_in(client, "SUPERVISOR", make_user)
 
     for number in all_ticket_numbers(client):
-        for screen in TICKET_SCREENS:
-            url = f"/tickets/{number}/{screen}"
-            response, queries = get(client, url)
+        url = f"/tickets/{number}/{screen}"
+        response, queries = get(client, url)
 
-            # Abre la pantalla, o vuelve al detalle (o a «Relaciones», en el caso de
-            # cerrar como duplicado) con un aviso si la acción ya no corresponde: ticket
-            # cerrado, otro estado... Nunca un error ni el login.
-            assert response.status_code in (200, 302), url
+        # Abre la pantalla, o vuelve al detalle (o a «Relaciones», en el caso de
+        # cerrar como duplicado) con un aviso si la acción ya no corresponde: ticket
+        # cerrado, otro estado... Nunca un error ni el login.
+        assert response.status_code in (200, 302), url
 
-            if response.status_code == 302:
-                back_to = (f"/tickets/{number}", f"/tickets/{number}/relations")
+        if response.status_code == 302:
+            back_to = (f"/tickets/{number}", f"/tickets/{number}/relations")
 
-                assert response.headers["Location"].endswith(back_to), url
+            assert response.headers["Location"].endswith(back_to), url
 
-            assert queries <= BUDGET_SCREEN, f"{url} hizo {queries} consultas"
+        assert queries <= BUDGET_SCREEN, f"{url} hizo {queries} consultas"
 
 
 def test_every_attachment_downloads_as_a_file(seeded, client, make_user):

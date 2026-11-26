@@ -571,6 +571,23 @@ def sql_selection(option, now, ids):
     )
 
 
+def sql_selections(options, now, ids):
+    """Lo mismo que `sql_selection` para varias opciones a la vez: cada condición es una
+    columna de una sola consulta (evaluada por PostgreSQL igual que en el listado), en
+    vez de una consulta por opción. Comprueba lo mismo con muchas menos idas y vueltas."""
+    columns = [sla_condition(option, now).label(f"c{i}") for i, option in enumerate(options)]
+    selections = {option: set() for option in options}
+
+    for ticket_id, *matches in db.session.execute(
+        db.select(Ticket.id, *columns).where(Ticket.id.in_(ids))
+    ):
+        for option, matched in zip(options, matches, strict=True):
+            if matched:
+                selections[option].add(ticket_id)
+
+    return selections
+
+
 def test_the_sql_conditions_select_exactly_what_the_evaluation_says(app, scenarios):
     with app.app_context():
         ids = list(scenarios.values())
@@ -582,8 +599,10 @@ def test_the_sql_conditions_select_exactly_what_the_evaluation_says(app, scenari
             for ticket_id, snapshot in evaluate_tickets_sla(ids, now).items():
                 expected[filter_of(snapshot)].add(ticket_id)
 
+            selected = sql_selections(SLA_PARTITION, now, ids)
+
             for option in SLA_PARTITION:
-                assert sql_selection(option, now, ids) == expected[option], (option, now)
+                assert selected[option] == expected[option], (option, now)
 
             checked += 1
 
@@ -605,12 +624,14 @@ def test_at_risk_is_the_union_of_close_to_due_and_overdue(app, scenarios):
     with app.app_context():
         ids = list(scenarios.values())
 
-        for now in moments_to_check(ids):
-            at_risk = sql_selection(SlaFilter.RIESGO, now, ids)
+        options = (SlaFilter.RIESGO, SlaFilter.PROXIMO, SlaFilter.VENCIDO)
 
-            assert at_risk == sql_selection(SlaFilter.PROXIMO, now, ids) | sql_selection(
-                SlaFilter.VENCIDO, now, ids
-            )
+        for now in moments_to_check(ids):
+            selected = sql_selections(options, now, ids)
+
+            assert selected[SlaFilter.RIESGO] == (
+                selected[SlaFilter.PROXIMO] | selected[SlaFilter.VENCIDO]
+            ), now
 
 
 def test_a_ticket_that_changes_option_over_time_does_it_at_its_dates(

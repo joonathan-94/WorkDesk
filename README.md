@@ -69,7 +69,7 @@ WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
 - **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
 - **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
 - **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
-- **4728 pruebas automáticas.** Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **4746 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
 - **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso: su primera entrega, la revisión previa con el refuerzo de seguridad, está hecha. Hoy la suite cuenta con **4728 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso: están hechas sus dos primeras entregas: la revisión previa con el refuerzo de seguridad y una suite de tests un 39 % más rápida. Hoy la suite cuenta con **4746 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -1469,7 +1469,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4728 tests
+4746 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1530,7 +1530,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **7 min 20 s en paralelo** (`-n 6`) con los 4728 tests del inicio de `v0.8.0`; varía con lo que esté haciendo el equipo a la vez. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **4 min 12 s en paralelo** (`-n 6`) con los 4746 tests de `v0.8.0`; varía con lo que esté haciendo el equipo a la vez. Ha tenido dos optimizaciones medidas. La primera, con unos 3000 tests, la bajó de unos 34 minutos a unos 4 en paralelo. Después creció con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia, hasta 6 min 54 s con 4728 tests. La segunda (`v0.8.0`, entrega 2) la devolvió a 4 min 12 s reutilizando las conexiones entre tests y abaratando Argon2id solo en la suite (ver [Cómo se aísla cada test](#cómo-se-aísla-cada-test)). La prueba más larga es la de instalación limpia (unos 30 s), porque lanza los comandos reales. El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 
@@ -1550,7 +1550,9 @@ Preparar una base limpia para cada uno de los miles de tests era lo que más tie
 - **Entre un test y el siguiente solo se vacían las tablas que quedaron con filas** y se reinician las secuencias: cada test sigue empezando con la base vacía y los identificadores en 1. No se envuelve cada test en una transacción que se deshace, porque la aplicación y los tests dependen de confirmaciones reales (`now()` cambia entre transacciones y los tests con hilos usan conexiones distintas).
 - **Los estados caros de construir se guardan en una instantánea.** Los 108 tickets de demostración se cargan una vez por proceso (unos 6 s) y cada test restaura una copia exacta en milisegundos.
 - **En paralelo, cada proceso trabaja en su propio esquema de PostgreSQL** (`wd_test_gw0`, `wd_test_gw1`...) dentro de la misma base `workdesk_test`: no hay que crear bases nuevas y la protección sigue valiendo.
-- **El hash de la contraseña de prueba se calcula una sola vez** por proceso (es un hash real de Argon2id con los parámetros de producción; el login de los tests lo verifica con el código real).
+- **Las conexiones a PostgreSQL se reutilizan entre tests.** Cada test tiene su aplicación y su motor de SQLAlchemy, pero toma las conexiones de una reserva del proceso: en Windows, abrir una cuesta unos 54 ms (PostgreSQL crea un proceso por conexión). Al terminar el test, cada conexión vuelve a la reserva limpia: sin transacción abierta, con la configuración de sesión restablecida y sin bloqueos. Una prueba comprueba que el test siguiente la encuentra así.
+- **Argon2id barato, solo en la suite.** Los tests inician sesión miles de veces, y con los parámetros de producción (64 MiB, 3 pasadas y 4 hilos) en seis procesos a la vez los hilos competían por los núcleos. La suite usa Argon2id con parámetros mínimos: sigue siendo el mismo algoritmo y el mismo código de login, pero cuesta milisegundos. La producción no cambia: una prueba comprueba los parámetros reales (`build_password_hasher`) contra el mínimo de OWASP, y los comandos que las pruebas de migraciones lanzan en otro proceso usan los reales.
+- **El hash de la contraseña de prueba se calcula una sola vez** por proceso.
 
 Ejecuta **una sola suite a la vez**: todas comparten `workdesk_test` (y, en paralelo, los mismos nombres de esquema), de modo que dos ejecuciones simultáneas se estorban y fallan de forma aleatoria.
 

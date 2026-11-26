@@ -22,6 +22,7 @@ from tests.database import (
     engine_options,
     has_snapshot,
     restore_snapshot,
+    reusable_engine_options,
     take_snapshot,
     worker_schema,
 )
@@ -105,6 +106,47 @@ def test_each_xdist_worker_gets_its_own_schema(monkeypatch):
     assert engine_options() == {
         "connect_args": {"options": "-csearch_path=wd_test_gw3"}
     }
+
+
+# --- Conexiones reutilizadas entre tests ---------------------------------------------
+
+
+def test_the_reused_connections_only_reach_workdesk_test():
+    with pytest.raises(RuntimeError, match="workdesk_test"):
+        reusable_engine_options("postgresql+psycopg://u:p@localhost:5432/workdesk_dev")
+
+
+def _backend_pid():
+    return db.session.scalar(text("SELECT pg_backend_pid()"))
+
+
+def test_the_next_test_reuses_the_connection_and_finds_it_clean(app):
+    """Lo que un test deja en su conexión (una transacción a medias, un parámetro de
+    sesión, un bloqueo consultivo) no llega al siguiente, aunque la conexión sea la misma."""
+    with app.app_context():
+        pid = _backend_pid()
+        # Confirmado: un SET dentro de una transacción que se deshace ya se deshace solo.
+        db.session.execute(text("SET statement_timeout = '7s'"))
+        db.session.execute(text("SELECT pg_advisory_lock(424242)"))
+        db.session.commit()
+        db.session.execute(text("SELECT 1"))  # transacción abierta, sin confirmar
+        # Igual que al terminar un test (fixture `app`): se suelta la sesión y se cierra
+        # el pool.
+        db.session.remove()
+        db.engine.dispose()
+
+    with app.app_context():
+        db.session.remove()
+        assert _backend_pid() == pid, "la conexión no se reutilizó"
+        assert db.session.scalar(text("SHOW statement_timeout")) == "0"
+        assert db.session.scalar(text("SHOW search_path")) == (worker_schema() or '"$user", public')
+        locks = db.session.scalar(
+            text(
+                "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' "
+                "AND pid = pg_backend_pid()"
+            )
+        )
+        assert locks == 0
 
 
 # --- Cada test empieza con la base vacía ---------------------------------------------

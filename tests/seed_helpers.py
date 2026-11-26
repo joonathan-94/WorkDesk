@@ -32,6 +32,20 @@ def run_command(app):
     return app.test_cli_runner().invoke(args=["seed-demo-tickets"])
 
 
+def demo_tickets(*keys):
+    """Solo esos tickets de la lista, para los tests que miran uno o dos concretos.
+
+    Cargar los 108 cuesta varios segundos; un test que solo comprueba lo que le pasó a un
+    ticket no lo necesita. Lo que vale para **todos** (fechas, calendario, refresco) lo
+    siguen comprobando, con la lista entera, los tests que lo afirman.
+    """
+    chosen = tuple(demo for demo in DEMO_TICKETS if demo.clave in keys)
+
+    assert len(chosen) == len(keys), f"claves desconocidas: {set(keys) - {d.clave for d in chosen}}"
+
+    return chosen
+
+
 def by_clave(key):
     """El ticket demo con esa clave, aunque después le hayan cambiado el título."""
     return db.session.scalar(

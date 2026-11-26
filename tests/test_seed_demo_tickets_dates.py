@@ -34,6 +34,7 @@ from tests.seed_helpers import (
     by_clave,
     count,
     date_snapshot,
+    demo_tickets,
     history_of,
     local,
     requesters_of,
@@ -199,7 +200,9 @@ def test_the_calendar_is_configurable(app, prepared):
     saturdays_too = WorkCalendar(dias=(0, 1, 2, 3, 4, 5), inicio="08:00", fin="20:00")
 
     with app.app_context():
-        seed_demo_tickets(now=NOW, calendar=saturdays_too)
+        # Solo se mira este ticket (que todo cae dentro del calendario lo comprueban, con
+        # los 108, las pruebas de calendario de arriba).
+        seed_demo_tickets(now=NOW, calendar=saturdays_too, tickets=demo_tickets("excel-bloqueado"))
 
         # Con el sábado laboral, tres días laborales antes del miércoles 18 es
         # el sábado 14.
