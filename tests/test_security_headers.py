@@ -4,7 +4,7 @@ y la forma común de los errores JSON (`responses.py`)."""
 import pytest
 
 from src.workdesk.responses import json_error
-from src.workdesk.security.headers import CONTENT_SECURITY_POLICY
+from src.workdesk.security.headers import CONTENT_SECURITY_POLICY, PERMISSIONS_POLICY
 from tests.ticket_helpers import login
 
 SECURITY_HEADERS = {
@@ -12,6 +12,10 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "same-origin",
     "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Permissions-Policy": PERMISSIONS_POLICY,
+    "X-Permitted-Cross-Domain-Policies": "none",
 }
 
 

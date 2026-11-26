@@ -22,9 +22,55 @@
 
 > Plataforma web para la gestión y seguimiento de tickets de soporte TI, diseñada para evolucionar progresivamente hacia una solución más amplia de gestión del trabajo.
 
-WorkDesk es un proyecto personal de desarrollo de software orientado inicialmente a la gestión integral de solicitudes de soporte TI.
+WorkDesk es un proyecto personal de desarrollo de software: una aplicación completa, construida por entregas pequeñas y documentadas, que se instala y funciona en la red de una organización sin depender de Internet.
 
-El sistema busca centralizar el ciclo de vida de los tickets, facilitar la colaboración entre solicitantes y equipos técnicos, controlar prioridades y SLA, mantener trazabilidad de las acciones y proporcionar herramientas de seguimiento, conocimiento y análisis operacional.
+---
+
+## ¿Qué es WorkDesk? En dos minutos
+
+En cualquier organización hay cosas que dejan de funcionar: la impresora no imprime, el correo no llega, la VPN no conecta, un programa pide una licencia. Alguien necesita ayuda y alguien del equipo de soporte tiene que dársela. Sin una herramienta, eso se pierde entre correos, llamadas y mensajes: nadie sabe quién lo está viendo, cuánto lleva esperando ni cómo se resolvió la vez anterior.
+
+WorkDesk ordena ese ida y vuelta. Cada pedido de ayuda es un **ticket**: tiene un número, una prioridad, un responsable, una conversación y un historial que no se puede borrar. Cada persona ve lo que le corresponde según su rol:
+
+| Rol | Qué hace en WorkDesk |
+| --- | --- |
+| **Solicitante** (quien pide ayuda) | Crea sus tickets, adjunta capturas, conversa con soporte, confirma si la solución funcionó y consulta la base de conocimiento para resolverlo por su cuenta. Nunca ve las notas internas del equipo. |
+| **Técnico** (quien resuelve) | Toma tickets o los recibe asignados, los trabaja, deja notas internas para el equipo, ve cuánto plazo le queda a cada uno y documenta la solución. |
+| **Supervisor** (quien coordina) | Ve la carga de todo el equipo, reparte y reasigna el trabajo, escala lo urgente y vigila los plazos. |
+| **Administrador** (quien configura) | Gestiona personas, grupos, categorías, plazos, horarios laborales, avisos y todo lo configurable, siempre con registro de quién cambió qué. |
+
+### Un ticket, de principio a fin
+
+1. **Javiera no puede imprimir.** Entra a WorkDesk y busca «impresora» en la base de conocimiento. No encuentra nada que le sirva, así que crea un ticket. Si ella ya tuviera otro abierto parecido, WorkDesk se lo mostraría antes de crearlo, por si es el mismo problema.
+2. **El ticket entra con prioridad Media.** Su plazo de resolución (el SLA) empieza a correr, pero solo en horario laboral: las noches, los fines de semana y los feriados no cuentan.
+3. **Diego, técnico, se lo asigna.** Le pregunta a Javiera el modelo de la impresora y deja una nota interna para su equipo, que Javiera no ve. Mientras espera la respuesta pone el ticket «En espera», y el reloj del plazo se pausa.
+4. **Diego lo resuelve** y escribe la solución. A Javiera le llega un aviso para que confirme si funcionó.
+5. **Javiera confirma** y el ticket se cierra. Si no hubiera respondido, se habría cerrado solo pasado un día; si el problema vuelve, puede reabrirlo.
+6. **La solución se convierte en conocimiento.** Diego crea desde el ticket un borrador de artículo con la solución, y Camila, su supervisora, lo publica. La próxima persona con el mismo problema lo encontrará antes de crear un ticket.
+
+Cada paso queda en el historial del ticket con su fecha y su autor. Si el plazo hubiera estado por vencer, Diego habría recibido un aviso, y el dashboard de Camila lo habría mostrado entre los urgentes.
+
+### ¿Por dónde empiezo a leer?
+
+| Si eres... | Empieza por |
+| --- | --- |
+| Alguien que quiere entender qué hace, sin ser técnico | Esta sección, el [alcance](#alcance-del-mvp) y el [ciclo de vida de un ticket](#el-ciclo-de-vida-de-un-ticket) |
+| Product manager o evaluador funcional | El [estado del proyecto](#estado-del-proyecto), el [alcance](#alcance-del-mvp), el [roadmap](#roadmap) y los [requisitos](docs/04_requisitos_funcionales.md) |
+| Técnico de soporte que lo va a usar | El [recorrido de prueba](#recorrido-de-prueba), que muestra cada pantalla con los usuarios de demostración |
+| Desarrollador que lo quiere ejecutar | La [guía rápida](#guía-rápida), la [arquitectura](#arquitectura) y los [tests](#tests) |
+| Revisor técnico | [Lo que hay detrás](#lo-que-hay-detrás), la [seguridad](#autenticación-y-seguridad-actual) y el [historial de implementación](docs/14_historial_de_implementacion.md), con las decisiones y los errores encontrados en cada entrega |
+
+### Lo que hay detrás
+
+WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
+
+- **Un monolito modular con Flask y PostgreSQL**, renderizado en el servidor con Jinja2 y JavaScript solo donde mejora la experiencia. Funciona entero en la red local: sin nube, sin correo, sin servicios de terceros y sin nada cargado de Internet.
+- **Quién ve qué se decide en la base de datos, no en la pantalla.** Cada regla de visibilidad es una condición SQL con su equivalente en Python, y una prueba comprueba que coinciden para cada rol y cada caso.
+- **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
+- **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
+- **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
+- **4728 pruebas automáticas.** Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
 
@@ -51,6 +97,8 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 **Usar WorkDesk:** [Ejecutar WorkDesk](#ejecutar-workdesk) · [Ejecutar el planificador](#ejecutar-el-planificador) · [Crear un ticket](#crear-un-ticket) · [El ciclo de vida de un ticket](#el-ciclo-de-vida-de-un-ticket) · [Recorrido de prueba](#recorrido-de-prueba) · [Solución de problemas](#solución-de-problemas)
 
+**Entender WorkDesk:** [Qué es, en dos minutos](#qué-es-workdesk-en-dos-minutos) · [Un ticket de principio a fin](#un-ticket-de-principio-a-fin) · [Por dónde empezar a leer](#por-dónde-empiezo-a-leer) · [Lo que hay detrás](#lo-que-hay-detrás)
+
 **Conocer el proyecto:** [Estado del proyecto](#estado-del-proyecto) · [Alcance del MVP](#alcance-del-mvp) · [Stack](#stack-tecnológico) · [Arquitectura](#arquitectura) · [Estructura](#estructura-actual) · [Rutas](#rutas-actuales) · [Autenticación y seguridad](#autenticación-y-seguridad-actual)
 
 **Desarrollar:** [Tests](#tests) · [Calidad de código](#calidad-de-código) · [Comandos principales](#comandos-principales) · [Documentación](#documentación) · [Roadmap](#roadmap)
@@ -71,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-Hoy la suite cuenta con **4681 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso: su primera entrega, la revisión previa con el refuerzo de seguridad, está hecha. Hoy la suite cuenta con **4728 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -81,27 +129,31 @@ Hoy la suite cuenta con **4681 tests automatizados**. El relato completo de cada
 
 ## Alcance del MVP
 
-WorkDesk se desarrollará de forma incremental hasta completar un MVP orientado a soporte TI.
+WorkDesk se construye por fases hasta completar un MVP (la primera versión completa, `v1.0.0`) orientado a soporte TI. Este es su estado real, comprobado en el código y en los tests:
 
-Entre las capacidades planificadas se encuentran:
+| Capacidad | Estado | Desde |
+| --- | --- | --- |
+| Inicio de sesión seguro, roles y permisos | ✅ Hecho | `v0.1.0` y `v0.2.0` |
+| Administración de usuarios, con auditoría | ✅ Hecho | `v0.2.0` |
+| Tickets: crear, listar, buscar, filtrar y editar | ✅ Hecho | `v0.3.0` |
+| Categorías, prioridades, ubicaciones, estados y transiciones | ✅ Hecho | `v0.3.0` y `v0.4.0` |
+| Grupos y asignación a uno o varios técnicos, escalamiento | ✅ Hecho | `v0.4.0` |
+| Comentarios públicos, notas internas y archivos adjuntos | ✅ Hecho | `v0.4.0` |
+| Resolución, validación del solicitante, cierre y reapertura | ✅ Hecho | `v0.4.0` |
+| Relaciones entre tickets y duplicados | ✅ Hecho | `v0.4.0` |
+| SLA en tiempo laboral, con calendario y feriados | ✅ Hecho | `v0.5.0` |
+| Notificaciones internas y planificador (avisos y cierre automático) | ✅ Hecho | `v0.5.0` |
+| Dashboards por rol, carga de trabajo y reasignación masiva | ✅ Hecho | `v0.6.0` |
+| Configuración desde la web y avisos configurables | ✅ Hecho | `v0.7.0` |
+| Base de conocimiento y advertencia de duplicados | ✅ Hecho | `v0.7.0` |
+| Reportes, con exportación a CSV y Excel | 🔨 En curso | `v0.8.0` |
+| Pantalla de auditoría y registro de accesos | 🔨 En curso | `v0.8.0` |
+| Respaldos locales y su restauración | 🔨 En curso | `v0.8.0` |
+| Retención de datos | 🔨 En curso | `v0.8.0` |
+| Revisión visual, responsive y accesibilidad | ⏳ Pendiente | `v0.9.0` |
+| Estabilización y versión 1.0 | ⏳ Pendiente | `v1.0.0` |
 
-- Gestión completa de tickets.
-- Roles y permisos.
-- Asignación de múltiples técnicos.
-- Comentarios públicos y notas internas.
-- Archivos adjuntos.
-- Estados y prioridades.
-- Categorías y ubicaciones.
-- Gestión de SLA.
-- Notificaciones internas.
-- Dashboards por rol.
-- Visualización de carga de trabajo.
-- Base de conocimiento.
-- Reportes.
-- Administración.
-- Auditoría.
-- Backups locales.
-- Diseño responsive.
+Lo que viene después del MVP (autoservicio, automatización, activos, gestión de proyectos) está evaluado en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 WorkDesk es una aplicación 100 % local o de intranet, por decisión del proyecto: no depende de Internet, correo, nube ni servicios de terceros, y sus notificaciones son internas. Se ejecuta en un equipo local o en un servidor propio de la organización.
 
@@ -626,13 +678,13 @@ El comando solicita:
 
 - nombre;
 - apellido;
-- username (es lo que escribirás para iniciar sesión; se guarda en minúsculas);
-- email;
+- username (es lo que escribirás para iniciar sesión): entre 3 y 50 caracteres, solo letras minúsculas, números, punto, guion y guion bajo, empezando por una letra o un número (las mayúsculas se pasan a minúsculas);
+- email, con forma de dirección (`algo@dominio.tld`);
 - contraseña (no se muestra al escribirla y se pide dos veces).
 
-La contraseña debe cumplir la longitud mínima configurada (`PASSWORD_MIN_LENGTH`, 12 caracteres por defecto) y se almacena utilizando Argon2id. Al terminar, el comando responde `Administrador '...' creado correctamente.`
+Son las mismas reglas que aplica la pantalla de alta de usuarios: el comando usa el mismo servicio. La contraseña debe cumplir la longitud mínima configurada (`PASSWORD_MIN_LENGTH`, 12 caracteres por defecto) y se almacena con Argon2id. Al terminar, el comando responde `Administrador '...' creado correctamente.` y la creación queda en la auditoría como acción del sistema. Si un dato no cumple una regla, el comando dice cuál (por ejemplo, `Username: Usa solo letras minúsculas...`) y no crea nada.
 
-El comando impide crear accidentalmente más de un Administrador inicial mediante este mecanismo de bootstrap: si ya existe uno responde `Ya existe un usuario con rol ADMINISTRADOR.` Los demás usuarios se crean desde la interfaz, en **Administración → Usuarios**.
+El comando impide crear más de un Administrador inicial: si ya existe uno, responde `Ya existe un usuario con rol ADMINISTRADOR.` Los demás usuarios se crean desde la interfaz, en **Administración → Usuarios**.
 
 ---
 
@@ -667,6 +719,12 @@ Si ya tenías WorkDesk funcionando con una versión anterior (por ejemplo, `v0.3
 Si vienes de una versión anterior a la que incluye el planificador, la migración marca como ya avisado lo que los SLA en marcha habían alcanzado, así que la primera ejecución de `run-scheduler` no te avisa de todo lo atrasado. Lo contrario ocurre con `sla-rebuild` (paso 4): los períodos que crea para tickets antiguos empiezan sin marcas, y el planificador avisará una sola vez de los que ya estén vencidos. Las variables nuevas (`AUTO_CLOSE_HOURS` y `SCHEDULER_INTERVAL_SECONDS`) tienen valor por defecto: no hace falta tocar tu `.env`.
 
 Para comprobarlo, `db current` debe terminar en `(head)` y `db check` no debe encontrar cambios pendientes.
+
+Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
+
+- **Todos tendrán que iniciar sesión una vez más.** La cookie de sesión cambió de nombre (antes se llamaba `session`, que delataba con qué está hecha la aplicación), así que las sesiones abiertas dejan de valer. No se pierde nada más.
+- **En producción, la `SECRET_KEY` debe tener al menos 32 caracteres** y no se puede arrancar con `--debug`. Si la tuya es más corta, genera una nueva como se explica en [Variables de entorno](#2-generar-la-secret_key); en desarrollo solo verás un aviso en el log.
+- **El planificador escribe su propio log**, `instance/logs/scheduler.log`, en lugar de `workdesk.log`.
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -713,7 +771,7 @@ Los avisos de SLA («próximo a vencer» y «vencido») y el cierre automático 
 python -m flask --app src.workdesk run-scheduler
 ```
 
-Cada 60 segundos (`SCHEDULER_INTERVAL_SECONDS`) revisa la base de datos y escribe una línea solo cuando hizo algo. Para detenerlo, `Ctrl+C`.
+Cada 60 segundos (`SCHEDULER_INTERVAL_SECONDS`) revisa la base de datos y escribe una línea solo cuando hizo algo. Para detenerlo, `Ctrl+C`. Su registro técnico va a `instance/logs/scheduler.log`, separado del de la aplicación web (ver [Logging](#logging)).
 
 - **Una sola pasada:** `python -m flask --app src.workdesk run-scheduler --once` revisa una vez y termina. Es lo que se programa en el Programador de tareas de Windows o en `cron` si prefieres no dejar una terminal abierta (por ejemplo, cada 5 minutos).
 - **Se puede repetir sin riesgo:** un aviso se envía una sola vez y un ticket se cierra una sola vez, aunque ejecutes el comando varias veces o tengas dos planificadores a la vez.
@@ -1114,6 +1172,9 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | Síntoma | Causa probable | Qué hacer |
 | --- | --- | --- |
 | `Falta configuración obligatoria: SECRET_KEY` (o `SQLALCHEMY_DATABASE_URI`) | `.env` no existe, no está en la raíz del proyecto o tiene la variable vacía. `SQLALCHEMY_DATABASE_URI` se toma de `DATABASE_URL`. | Comprueba que `.env` está junto a `README.md` y que `SECRET_KEY` y `DATABASE_URL` tienen valor. |
+| `SECRET_KEY tiene el valor de ejemplo` | Copiaste en `.env` el texto de ejemplo de este README en lugar de una clave. | Genera una con `python -c "import secrets; print(secrets.token_hex(32))"` y pégala en `SECRET_KEY`. |
+| `En producción SECRET_KEY debe tener al menos 32 caracteres` | Con `APP_ENV=production` la clave es demasiado corta para firmar sesiones con seguridad. | Genera una nueva con el mismo comando (da 64 caracteres). Todos tendrán que iniciar sesión otra vez. |
+| `El modo depuración no se puede usar en producción` | Arrancaste con `--debug` o `FLASK_DEBUG=1` y `APP_ENV=production`. | Quita `--debug` y `FLASK_DEBUG`. El depurador solo es para desarrollo. |
 | `Connection refused`, `connection failed` o "se rechazó la conexión" | PostgreSQL no está en ejecución, o escucha en otro puerto. | Inicia el servicio (en Windows: **Servicios** → `postgresql-x64-18`, donde el número es la versión → **Iniciar**) y revisa el puerto de `DATABASE_URL`. |
 | `password authentication failed for user "workdesk_app"` | La contraseña de `DATABASE_URL` no es la del rol, o tiene símbolos sin codificar. | Revísala (ver [Variables de entorno](#variables-de-entorno)) o cámbiala con `ALTER ROLE workdesk_app WITH PASSWORD 'nueva';` desde la consola de PostgreSQL. |
 | `database "workdesk_dev" does not exist` | La base no se creó, o el nombre al final de la dirección no coincide. | Créala como se explica en [Configuración de PostgreSQL](#configuración-de-postgresql). |
@@ -1133,6 +1194,8 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `seed-demo-tickets` termina con `Aviso: Categoría «...» no encontrada` (o `Ubicación`) | La categoría o ubicación no existe con ese nombre exacto. | Los tickets se cargaron igual, con `Sin clasificar` o sin ubicación. Para corregirlo, crea el valor con el nombre exacto ([Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)) y recrea la base de desarrollo, o edita esos tickets a mano. |
 | `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 108" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
+| `create-admin`: "Username: Usa solo letras minúsculas..." (o `Email: ...`) | El username o el correo no cumplen las reglas de la pantalla de alta. | Vuelve a ejecutarlo con un username de 3 a 50 caracteres (letras minúsculas, números, `.`, `-` y `_`) y un correo con forma `algo@dominio.tld`. No se creó nada. |
+| Tras actualizar a `v0.8.0` todos vuelven a ver el login | La cookie de sesión cambió de nombre, así que las sesiones anteriores dejan de valer. | Es esperado y ocurre una sola vez: inicia sesión de nuevo. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
 | Inicias sesión y vuelves a ver el login | Con `SESSION_COOKIE_SECURE=true` y HTTP, algunos navegadores no guardan la cookie de sesión. | En local usa `SESSION_COOKIE_SECURE=false` y reinicia WorkDesk. |
@@ -1316,58 +1379,69 @@ Los detalles técnicos del fallo no se exponen en la respuesta pública.
 
 ## Autenticación y seguridad actual
 
-La base técnica de autenticación utiliza:
+La seguridad no es una capa que se añadió al final: cada entrega la revisa, y las defensas importantes tienen una prueba automática que falla si alguien las debilita.
 
-- Login por `username`.
-- Contraseñas protegidas mediante Argon2id.
-- Flask-Login para gestión de sesión.
-- Protección de rutas autenticadas.
-- CSRF mediante Flask-WTF.
-- Cookie `HttpOnly`.
-- `SameSite=Lax`.
-- `Secure` configurable según entorno.
-- Bloqueo temporal después de intentos fallidos.
-- Usuario activo/inactivo.
-- Invalidación de sesiones mediante `token_version`.
-- Mensajes de autenticación genéricos para evitar revelar información innecesaria.
-- Cabeceras de seguridad en todas las respuestas (`security/headers.py`): `nosniff`, sin incrustación en otras páginas (`X-Frame-Options` y `frame-ancestors`), `Referrer-Policy`, una política de contenido (CSP) que solo permite lo que sirve WorkDesk y `Cache-Control: no-store` en las páginas con datos de la sesión.
+**Identidad y contraseñas**
 
-La autorización basada en roles se comprueba en backend (`security/authorization.py`) y se aplica a las rutas administrativas; la navegación se filtra por rol.
+- Inicio de sesión con `username` y contraseña. Sin registro público, sin recuperación por correo (WorkDesk es local) y sin «recordarme».
+- Contraseñas guardadas con **Argon2id** (64 MiB y 3 pasadas, por encima del mínimo que recomienda OWASP; una prueba impide bajarlos). Si los parámetros cambian, el hash se recalcula al iniciar sesión.
+- Política de contraseñas única (largo mínimo configurable, 12 por defecto) para el alta, el cambio propio, el restablecimiento y `create-admin`.
+- **Bloqueo temporal** tras 5 intentos fallidos (15 minutos, configurables). La fila del usuario se bloquea en la base de datos durante cada intento: ni siquiera muchos intentos enviados en paralelo consiguen más oportunidades de las permitidas.
+- **El mensaje de error no delata nada:** es el mismo para un usuario inexistente, inactivo, bloqueado o con la contraseña equivocada, y el **tiempo de respuesta** también (los caminos sin cuenta que verificar gastan una verificación de relleno).
+- Las contraseñas temporales se muestran una sola vez y obligan a cambiarlas al entrar.
 
-Una red de seguridad automática (`tests/test_route_protection.py`) recorre **todas** las rutas registradas y falla si alguna se puede abrir sin iniciar sesión (salvo las públicas: `/login`, `/health` y los archivos estáticos) o si alguna ruta POST acepta una petición sin token CSRF. Así, una ruta nueva no puede quedar desprotegida por olvido.
+**Sesión**
+
+- Cookie `HttpOnly`, `SameSite=Lax` y `Secure` por HTTPS, con un nombre que no delata el framework (`workdesk_session`; por HTTPS, `__Host-workdesk_session`, que el navegador solo acepta segura y sin dominio).
+- Límite de inactividad (30 minutos) y de duración (8 horas). La consulta automática de la campana no cuenta como actividad.
+- El inicio y el cierre de sesión vacían la sesión entera.
+- Cambiar el rol, desactivar una cuenta o cambiar la contraseña invalida al instante todas sus sesiones (`token_version`).
+
+**Cada petición**
+
+- **Autorización en el servidor**, nunca solo ocultando botones (`security/authorization.py`). Quién ve qué se decide en la consulta SQL, y cada condición SQL tiene su equivalente en Python con una prueba que compara los dos.
+- Un ticket que no puedes ver responde **404**, igual que uno que no existe: así no se puede descubrir qué números existen.
+- **CSRF** en todo lo que cambia algo.
+- **Cabeceras de seguridad en todas las respuestas** (`security/headers.py`):
+  - una política de contenido (CSP) que solo permite lo que sirve WorkDesk, sin JavaScript en línea;
+  - no se puede incrustar en otra página;
+  - aislamiento entre orígenes (`Cross-Origin-Opener-Policy` y `Cross-Origin-Resource-Policy`);
+  - sin acceso a cámara, micrófono, ubicación ni pagos (`Permissions-Policy`);
+  - `nosniff`, `Referrer-Policy`;
+  - nada en caché si tiene datos de la sesión.
+- Los archivos adjuntos se comprueban por su contenido (no por lo que dice el navegador), se guardan con un nombre interno aleatorio y se descargan siempre como archivo.
+
+**Al arrancar**
+
+- En producción, WorkDesk **no arranca** con una `SECRET_KEY` de menos de 32 caracteres (firma la cookie de sesión) ni con el modo depuración (el depurador permite ejecutar código desde el navegador). En cualquier entorno rechaza el texto de ejemplo de este README como clave.
+
+**Trazabilidad**
+
+- Toda acción administrativa queda en una **auditoría de solo añadir**: quién, cuándo, qué cambió (antes y después) y por qué, sin contraseñas ni secretos. También el Administrador inicial y los recálculos de SLA, como acciones del sistema.
+- El historial de cada ticket también es de solo añadir. Ninguna clave foránea borra en cascada, así que nada desaparece en silencio (hay una prueba para cada regla).
+
+**Redes de seguridad automáticas.** `tests/test_route_protection.py` recorre **todas** las rutas registradas y falla si alguna se puede abrir sin iniciar sesión (salvo `/login`, `/health` y los archivos estáticos) o si alguna ruta POST acepta una petición sin token CSRF. `tests/test_route_authorization.py` comprueba el rol y la propiedad del ticket en cada ruta. Una ruta nueva queda cubierta sin tocar los tests.
 
 ---
 
 ## Manejo de errores
 
-WorkDesk dispone actualmente de respuestas controladas para:
+Cualquier error recibe una página de WorkDesk con un mensaje comprensible, nunca la página técnica del framework: 400, 403, 404, 405 (una acción que la dirección no admite), 413 (archivo demasiado grande) y 500 tienen su texto, y cualquier otro uno genérico.
 
-```text
-400 Bad Request
-403 Forbidden
-404 Not Found
-500 Internal Server Error
-```
-
-Las páginas de error muestran mensajes comprensibles para el usuario sin exponer stack traces, consultas SQL, credenciales ni detalles internos de infraestructura.
+Ninguna página de error muestra la excepción, la pila, consultas SQL, rutas internas ni credenciales: eso queda solo en el log.
 
 ---
 
 ## Logging
 
-El logging técnico utiliza el módulo estándar `logging` de Python.
+El logging técnico utiliza el módulo estándar `logging` de Python. Los archivos se guardan en `instance/logs/`, **uno por proceso**:
 
-Los archivos se almacenan localmente en:
+| Archivo | Quién escribe |
+| --- | --- |
+| `workdesk.log` | La aplicación web y los comandos |
+| `scheduler.log` | El planificador (`run-scheduler`) |
 
-```text
-instance/logs/
-```
-
-El archivo principal es:
-
-```text
-workdesk.log
-```
+Están separados porque el servidor web y el planificador funcionan a la vez: si escribieran el mismo archivo, en Windows la rotación fallaría (no se puede renombrar un archivo que otro programa tiene abierto) y el log crecería sin control.
 
 La configuración predeterminada utiliza rotación por tamaño:
 
@@ -1395,18 +1469,19 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4681 tests
+4728 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
 
-Hay cinco redes de seguridad que no dependen de recordar nada al añadir código:
+Hay seis redes de seguridad que no dependen de recordar nada al añadir código:
 
 - **`tests/test_route_protection.py` y `tests/test_route_authorization.py`** recorren el mapa de rutas real: toda ruta exige sesión, toda ruta POST exige token CSRF, el ticket ajeno responde 404 y el rol sin permiso, 403. Una ruta nueva queda cubierta sin tocar el test.
 - **`tests/test_pages_smoke.py`** abre todas las pantallas con los 108 tickets de demostración para cada rol y vigila un **presupuesto de consultas** por petición: si una pantalla empieza a hacer una consulta por fila, falla aunque funcione bien con pocos datos.
 - **`tests/test_migrations.py`** comprueba que las migraciones suben, coinciden con los modelos (`db check`), bajan y vuelven a subir, y que una instalación construida **solo con ellas** sigue los pasos de este README y deja lo esperado en la base de datos (secuencias, valores por defecto y restricciones, que `db check` no ve).
 - **`tests/test_docs_coherence.py`** exige que cada variable de entorno, comando propio, migración y ruta figuren en el README, `.env.example` y `PROJECT_CONTEXT.md`.
 - **`tests/test_security_headers.py`** vigila las cabeceras de seguridad de todas las respuestas y la forma común de los errores JSON.
+- **`tests/test_data_integrity.py`** recorre el esquema: ninguna clave foránea borra en cascada y toda tabla de eventos (auditoría, historial y las que vengan) rechaza que se modifiquen o borren sus filas. Una tabla nueva queda cubierta sin tocar el test.
 
 El detalle de qué cubre cada módulo y cuántos tests aportó cada entrega está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md).
 
@@ -1455,7 +1530,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **7 minutos en paralelo** (`-n 6`) con los 4681 tests de `v0.7.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **7 min 20 s en paralelo** (`-n 6`) con los 4728 tests del inicio de `v0.8.0`; varía con lo que esté haciendo el equipo a la vez. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 
@@ -1473,7 +1548,7 @@ Preparar una base limpia para cada uno de los miles de tests era lo que más tie
 
 - **El esquema se crea una vez** por sesión (una vez por proceso al ejecutar en paralelo) y se elimina al terminar.
 - **Entre un test y el siguiente solo se vacían las tablas que quedaron con filas** y se reinician las secuencias: cada test sigue empezando con la base vacía y los identificadores en 1. No se envuelve cada test en una transacción que se deshace, porque la aplicación y los tests dependen de confirmaciones reales (`now()` cambia entre transacciones y los tests con hilos usan conexiones distintas).
-- **Los estados caros de construir se guardan en una instantánea.** Los 108 tickets de demostración se cargan una vez por proceso (unos 2,6 s) y cada test restaura una copia exacta en milisegundos.
+- **Los estados caros de construir se guardan en una instantánea.** Los 108 tickets de demostración se cargan una vez por proceso (unos 6 s) y cada test restaura una copia exacta en milisegundos.
 - **En paralelo, cada proceso trabaja en su propio esquema de PostgreSQL** (`wd_test_gw0`, `wd_test_gw1`...) dentro de la misma base `workdesk_test`: no hay que crear bases nuevas y la protección sigue valiendo.
 - **El hash de la contraseña de prueba se calcula una sola vez** por proceso (es un hash real de Argon2id con los parámetros de producción; el login de los tests lo verifica con el código real).
 

@@ -1,10 +1,11 @@
 """El comando del planificador (`src/workdesk/scheduler.py`)."""
 
 import click
-from flask import Flask
+from flask import Flask, current_app
 
 from .. import settings
 from ..configuration import value_of
+from ..logging_config import SCHEDULER_LOG_FILE, use_log_file
 from ..scheduler import SchedulerResult, run_loop, run_once
 
 
@@ -32,6 +33,10 @@ def register(app: Flask) -> None:
         repetir sin riesgo: no duplican avisos ni cierres.
         """
 
+        # Su propio archivo de log: el servidor web rota `workdesk.log` mientras el
+        # planificador está en marcha (ver `logging_config.py`).
+        use_log_file(current_app, SCHEDULER_LOG_FILE)
+
         def report(result: SchedulerResult) -> None:
             click.echo(
                 f"SLA próximo a vencer: {result.warnings}. "
@@ -46,7 +51,7 @@ def register(app: Flask) -> None:
 
             if result.failures:
                 raise click.ClickException(
-                    "Algunos elementos fallaron: revisa el log (instance/logs)."
+                    "Algunos elementos fallaron: revisa instance/logs/scheduler.log."
                 )
 
             return

@@ -12,9 +12,11 @@ from src.workdesk.users import service
 from src.workdesk.users.service import (
     PAGE_SIZE,
     DuplicateUserError,
+    InvalidUserDataError,
     UnknownRoleError,
     create_user,
     list_users,
+    update_profile,
 )
 from tests.ticket_helpers import audit_entries
 
@@ -411,3 +413,71 @@ def test_list_users_loads_roles_without_extra_queries(app, seeded_roles):
         assert len(names) == 10
         # Una consulta para la página y otra para el total.
         assert len(statements) <= 2
+
+
+# --- La forma de la identidad (RN-148) se aplica en el servicio -------------------------
+#
+# El formulario ya la valida, pero no es el único camino: `create-admin` y cualquier envío
+# fabricado llegan directamente al servicio.
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("username", "ana perez"),
+        ("username", "ab"),
+        ("username", "-ana"),
+        ("email", "ana.perez"),
+        ("nombre", "   "),
+        ("apellido", "x" * 101),
+    ],
+)
+def test_create_user_rejects_an_identity_without_the_required_shape(
+    app, seeded_roles, make_user, field, value
+):
+    admin_data = make_user("ADMINISTRADOR")
+
+    with app.app_context():
+        with pytest.raises(InvalidUserDataError) as error:
+            create_user(actor=get_admin(admin_data), **default_data(**{field: value}))
+
+        assert set(error.value.problems) == {field}
+        assert count_users() == 1
+
+
+def test_editing_another_field_does_not_judge_an_old_value_that_breaks_the_rule(
+    app, seeded_roles, make_user
+):
+    # Un correo de antes de la regla no debe impedir actualizar, por ejemplo, el teléfono.
+    admin_data = make_user("ADMINISTRADOR")
+    old_data = make_user("SOLICITANTE", username="legado", email="legado-sin-dominio")
+
+    with app.app_context():
+        user = db.session.get(User, old_data["id"])
+
+        changed = update_profile(
+            user,
+            actor=get_admin(admin_data),
+            nombre=user.nombre,
+            apellido=user.apellido,
+            email=user.email,
+            telefono="+56 2 2345 6789",
+            cargo=None,
+            departamento_area=None,
+        )
+
+        assert changed is True
+
+        with pytest.raises(InvalidUserDataError) as error:
+            update_profile(
+                user,
+                actor=get_admin(admin_data),
+                nombre=user.nombre,
+                apellido=user.apellido,
+                email="otro-sin-dominio",
+                telefono=user.telefono,
+                cargo=None,
+                departamento_area=None,
+            )
+
+        assert set(error.value.problems) == {"email"}

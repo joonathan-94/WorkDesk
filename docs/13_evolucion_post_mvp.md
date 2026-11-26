@@ -45,7 +45,7 @@ El modo oscuro y la evaluación de actualizaciones en tiempo real se documentan 
 | Ola | Tema | Ideas | Depende de (MVP) |
 | --- | --- | --- | --- |
 | 1 | Autoservicio y calidad de atención | EVO-01 a EVO-06 | Base de conocimiento (`v0.7.0`), cierre y validación del solicitante (`v0.4.0`), notificaciones (`v0.5.0`) |
-| 2 | Automatización operativa | EVO-07 a EVO-11 | Grupos y asignación (`v0.4.0`), scheduler y calendario laboral (`v0.5.0`), carga de trabajo (`v0.6.0`), configuración (`v0.7.0`) |
+| 2 | Automatización operativa | EVO-07 a EVO-11, EVO-33 y EVO-34 | Grupos y asignación (`v0.4.0`), scheduler y calendario laboral (`v0.5.0`), carga de trabajo (`v0.6.0`), configuración (`v0.7.0`) |
 | 3 | Flujos ITSM sobre el mismo flujo de tickets | EVO-12 a EVO-14 (a evaluar: EVO-15 y EVO-16) | Relaciones entre tickets (`v0.4.0`), notificaciones (`v0.5.0`), búsqueda de texto de la ola 1 |
 | 4 | Activos tecnológicos (CMDB local mínima) | EVO-17 a EVO-19 (a evaluar: EVO-20 y EVO-21) | Usuarios, ubicaciones, exportación (`v0.8.0`), notificaciones (`v0.5.0`) |
 | 5 | Gestión de proyectos y tareas (módulo secundario, solo para el personal) | EVO-22 a EVO-29 (a evaluar: EVO-30 a EVO-32) | Grupos, comentarios y adjuntos (`v0.4.0`), calendario laboral, notificaciones y scheduler (`v0.5.0`), carga de trabajo (`v0.6.0`), configuración (`v0.7.0`), exportación (`v0.8.0`) y, de la ola 2, EVO-08 y EVO-11 (entregas 5b y 5c) |
@@ -196,6 +196,24 @@ Las olas no llevan número de versión: la numeración se definirá cuando exist
 **Capas.** Es el calendario único de la aplicación: además de las guardias, las ausencias y las ventanas de mantenimiento, ofrece una capa de tareas e hitos de proyecto (EVO-26) que cada persona activa o desactiva y que respeta la visibilidad de cada proyecto. No habrá un segundo calendario para proyectos.
 
 **Dependencias.** EVO-08. **Esfuerzo:** medio.
+
+### EVO-33 — Excepciones manuales de SLA
+
+**Qué es.** Que el Supervisor y el Administrador pausen, reanuden o ajusten el SLA de un ticket concreto con un motivo obligatorio (RF-083, `sla_excepciones` en `09_modelo_de_datos.md`, sección 20.4). Se decidió al planificar `v0.8.0` dejarlo para después del MVP (`12_roadmap.md`, fase 8).
+
+**Por qué no antes.** Las acciones manuales sobre el SLA ya quedan registradas en el MVP: el cambio de prioridad con su motivo, el interruptor general, las políticas y `sla-rebuild`. Y el Supervisor puede pausar el reloj poniendo el ticket «En espera». Una pausa manual aparte toca el corazón del cálculo: los períodos se reconstruyen desde el historial y cada estado del SLA tiene su equivalente en SQL comprobado contra el de Python. Hacerla bien exige que la excepción sea un evento más de esa reconstrucción, no un parche.
+
+**Diseño.** La excepción es un evento del historial (interno) que `reconcile_sla` interpreta como una pausa o un ajuste, de modo que la reconstrucción y la evaluación por lotes la vean sin caminos aparte. El Técnico no puede aplicarla (RN-92).
+
+**Dependencias.** SLA (`v0.5.0`). **Esfuerzo:** medio a alto.
+
+### EVO-34 — Avisos internos de sobrecarga
+
+**Qué es.** Avisar al técnico y a sus Supervisores cuando su carga activa alcanza el umbral de «carga alta» (RN-28). En el MVP la sobrecarga ya se informa en los dashboards y en la carga de trabajo, con la marca «Carga alta», y la regla dice que el sistema «podrá» avisar también por notificaciones.
+
+**Diseño.** Una tarea del planificador que avisa una vez al cruzar el umbral (y no de nuevo hasta bajar de él), usando el catálogo de avisos configurable (`v0.7.0`), de modo que el Administrador pueda apagarla. Nunca bloquea asignaciones (RN-26).
+
+**Dependencias.** Carga de trabajo (`v0.6.0`), notificaciones y planificador (`v0.5.0`). **Esfuerzo:** bajo.
 
 ---
 

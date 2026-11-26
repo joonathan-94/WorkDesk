@@ -1382,6 +1382,37 @@ buscar solución
 **Segunda mitad de semana 9 y semana 10**  
 **Versión:** `v0.8.0`
 
+**Estado de ejecución:** en curso. Doce entregas planificadas.
+
+### Entregas de `v0.8.0`
+
+1. **Revisión previa** ✓: auditoría de lo construido y refuerzo de seguridad. El bloqueo por intentos fallidos ya no se puede saltar con intentos en paralelo (la fila del usuario se bloquea). La forma de la identidad tiene una sola definición, que también aplica `create-admin`, ahora auditado. `sla-rebuild` deja rastro. El logout vacía la sesión. Hay un log por proceso (la rotación fallaba en Windows), arranque seguro en producción (clave larga y sin modo depuración), una cookie de sesión que no delata el framework, páginas de error para cualquier código y cuatro cabeceras más. Guardianes nuevos: claves foráneas sin cascada y tablas de eventos de solo añadir. Sin migraciones.
+2. **Velocidad de la suite**, sin cambios de comportamiento: conexiones reutilizadas entre tests, Argon2id barato solo en los tests (con el guardián de los parámetros de producción), una instantánea de los catálogos, tests del seed que parten de la instantánea y las pruebas monolíticas partidas. Medido en un prototipo: de 7 min 23 s a 4 min 26 s.
+3. **Eventos de autenticación** (`eventos_autenticacion`, docs/09 9.3): inicio de sesión correcto y fallido (con su causa interna, nunca mostrada), bloqueo, cierre y expiración de la sesión. Migración.
+4. **Pantalla de auditoría** (UI-027, RF-108, RF-109): tres pestañas (administrativa, accesos y actividad de los tickets), con filtros, solo para el Administrador.
+5. **Reportes: consultas** (RF-098, UI-012): KPIs comparados con el período anterior, desgloses por estado, categoría y prioridad, tiempo de resolución por semana (media y mediana, tiempo corrido) y resumen por técnico. Cada cifra es el total de su listado.
+6. **Reportes: pantalla** (UI-012): gráficos dibujados en el servidor (CSS y SVG, sin librerías) con su tabla equivalente y sin rankings.
+7. **Exportación CSV y XLSX** (RF-099 a RF-101) del listado, los reportes y la auditoría, con los mismos filtros y permisos que la pantalla y las fórmulas neutralizadas.
+8. **Respaldos** (RF-127, RNF-038 a RNF-040): comandos `backup-create`, `backup-verify` y `backup-list`. Generan un `.zip` con `pg_dump`, los adjuntos y un manifiesto con hashes SHA-256.
+9. **Restauración y estado del sistema** (RF-128, RF-130, UI-028, UI-029): `backup-restore` con todas sus comprobaciones y las pantallas de respaldos (solo lectura) y de estado del sistema.
+10. **Retención** (RF-110 a RF-112, RF-123): políticas desactivadas por defecto y ejecutadas por el planificador.
+11. **Tickets «sin actividad reciente»** (RN-27).
+12. **Cierre de la fase:** revisión completa, escala con ~20 000 tickets, matriz de trazabilidad y etiqueta.
+
+### Decisiones de la fase
+
+Se tomaron al planificarla:
+
+- **XLSX con `openpyxl`,** como preveía `docs/10` (sección 95), en modo de solo escritura. El CSV va en UTF-8 con BOM, separado por comas. En los dos se neutralizan las celdas que empiezan como una fórmula (`=`, `+`, `-`, `@`), para que abrir una exportación no ejecute nada.
+- **Los reportes son del personal.** El Supervisor y el Administrador los ven completos. El Técnico ve la misma pantalla, pero en el resumen por técnico solo su propia fila: UI-012 pide no comparar personas. El Solicitante no tiene acceso.
+- **Tiempo de resolución:** tiempo corrido desde la creación hasta la resolución, con media y mediana calculadas en SQL. La mirada en tiempo laboral ya la da el cumplimiento del SLA.
+- **Eventos de autenticación:** se registran el inicio de sesión correcto y el fallido, el bloqueo, el cierre y la expiración de la sesión. El cambio de contraseña sigue en la auditoría, sin duplicarlo. El texto escrito como usuario solo se guarda si tiene forma de username (alguien pudo escribir ahí su contraseña). La retención sugerida es de 365 días, desactivada hasta que el Administrador la active (RN-106).
+- **Los respaldos se crean y se restauran solo por comandos.** La web los consulta pero no los ejecuta. No hay tabla `historial_backups`: la carpeta de respaldos con sus manifiestos es la fuente de verdad, y la auditoría registra cada creación y restauración. Con la tabla, el propio volcado contendría su fila «en progreso» y al restaurarlo quedaría así para siempre. Se aparta de `docs/09` (29.1).
+- **No hace falta un modo de mantenimiento para respaldar.** `pg_dump` saca una foto consistente de la base, y los adjuntos confirmados nunca se borran del disco: si se copian después del volcado, están todos los que la base referencia.
+- **La retención se guarda en `configuracion`,** como los demás parámetros, sin la tabla `politicas_retencion`. Se aplica a las notificaciones leídas, los eventos de autenticación, los archivos de adjuntos ya eliminados y el número de respaldos que se conservan. Los tickets, el historial y la auditoría quedan en «Mantener» fijo durante el MVP (RN-110 y RN-141), y «Archivar» pasa a después del MVP. Se aparta de `docs/09` (27.1).
+- **Las excepciones de SLA (RF-083) pasan a después del MVP.** Las acciones manuales sobre el SLA ya quedan registradas: el cambio de prioridad con su motivo, el interruptor, las políticas y `sla-rebuild`. Y el Supervisor puede pausar el reloj poniendo el ticket «En espera». Una pausa manual aparte tocaría el motor de períodos, la reconstrucción desde el historial y la equivalencia entre SQL y Python.
+- **Los avisos de sobrecarga (RN-28)** se dan por cubiertos con la marca «Carga alta» de los dashboards y de la carga de trabajo (la regla dice «podrá informar»). Las notificaciones de sobrecarga pasan a después del MVP.
+
 ## 21.1. Reportes
 
 Implementar:

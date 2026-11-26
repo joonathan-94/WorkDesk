@@ -3,16 +3,19 @@ from datetime import UTC, datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager
 
+from .. import settings
 from ..audit import AuditAction, record_admin_event
 from ..auth.credentials import reset_password, set_temporary_password
 from ..auth.security import invalidate_user_sessions, reset_login_failures
 from ..cleaning import blank_to_none
+from ..configuration import value_of
 from ..extensions import db
 from ..groups.service import close_user_group_links
 from ..models import Role, User
 from ..search import escape_like
-from ..security import RoleCode
+from ..security import RoleCode, hash_password, validate_password_policy
 from ..status_filter import STATUS_ACTIVE, STATUS_INACTIVE
+from .rules import identity_problems, normalize_email, normalize_username
 
 PAGE_SIZE = 20
 MAX_SEARCH_LENGTH = 100
@@ -53,12 +56,31 @@ class NothingToChangeError(UserRuleError):
     """El usuario ya está en el estado solicitado."""
 
 
-def normalize_username(username: str) -> str:
-    return username.strip().lower()
+class InvalidUserDataError(ValueError):
+    """Algún dato de identidad no tiene la forma que exige RN-148.
+
+    `problems` dice qué campo y por qué (los mismos mensajes del formulario). El
+    formulario web ya lo impide; este error cubre los demás caminos (el comando
+    `create-admin`, un envío fabricado a mano) para que ninguno se salte la regla.
+    """
+
+    def __init__(self, problems: dict[str, str]) -> None:
+        self.problems = problems
+
+        super().__init__(" ".join(problems.values()))
 
 
-def normalize_email(email: str) -> str:
-    return email.strip().lower()
+class AdministratorAlreadyExistsError(UserRuleError):
+    """Ya hay un Administrador: el inicial solo se crea una vez."""
+
+
+def _check_identity(*, nombre, apellido, username, email) -> None:
+    problems = identity_problems(
+        nombre=nombre, apellido=apellido, username=username, email=email
+    )
+
+    if problems:
+        raise InvalidUserDataError(problems)
 
 
 def list_roles() -> list[Role]:
@@ -138,11 +160,75 @@ def create_user(
     El usuario queda activo y con el cambio de contraseña pendiente. La
     creación se audita (`USUARIO_CREADO`) en la misma transacción.
 
-    Lanza `DuplicateUserError`, `UnknownRoleError` o `PasswordPolicyError`
-    sin dejar nada pendiente en la sesión. No hace commit.
+    Lanza `InvalidUserDataError`, `DuplicateUserError`, `UnknownRoleError` o
+    `PasswordPolicyError` sin dejar nada pendiente en la sesión. No hace commit.
     """
+    user, role = _new_user(
+        nombre=nombre,
+        apellido=apellido,
+        username=username,
+        email=email,
+        role_code=role_code,
+    )
+    user.telefono = blank_to_none(telefono)
+    user.cargo = blank_to_none(cargo)
+    user.departamento_area = blank_to_none(departamento_area)
+    user.usuario_creacion_id = actor.id
+
+    # Valida la política antes de tocar la base de datos.
+    set_temporary_password(user, temporary_password)
+
+    _insert_and_audit(user, role, actor=actor)
+
+    return user
+
+
+def create_initial_administrator(
+    *, nombre: str, apellido: str, username: str, email: str, password: str
+) -> User:
+    """Crea el Administrador inicial (`create-admin`, RF-124 y RN-125).
+
+    Aplica las mismas reglas que cualquier alta (forma, unicidad y política de
+    contraseñas) y se audita como acción del sistema: no hay ningún usuario que la
+    ejecute. La contraseña la elige quien instala, así que no queda pendiente de
+    cambio. Bloquea las filas de los Administradores para que dos ejecuciones a la
+    vez no creen dos. Lanza `AdministratorAlreadyExistsError`, `InvalidUserDataError`,
+    `DuplicateUserError` o `PasswordPolicyError`. No hace commit.
+    """
+    existing = db.session.scalar(
+        db.select(User.id)
+        .join(Role)
+        .where(Role.codigo == RoleCode.ADMINISTRADOR)
+        .limit(1)
+        .with_for_update(of=User)
+    )
+
+    if existing is not None:
+        raise AdministratorAlreadyExistsError("Ya existe un usuario con rol ADMINISTRADOR.")
+
+    user, role = _new_user(
+        nombre=nombre,
+        apellido=apellido,
+        username=username,
+        email=email,
+        role_code=RoleCode.ADMINISTRADOR,
+    )
+    validate_password_policy(password, min_length=value_of(settings.PASSWORD_MIN_LENGTH))
+    user.password_hash = hash_password(password)
+
+    _insert_and_audit(user, role, actor=None, detail="Administrador inicial (create-admin).")
+
+    return user
+
+
+def _new_user(*, nombre, apellido, username, email, role_code) -> tuple[User, Role]:
+    """Un usuario nuevo (sin guardar) con su identidad validada y su rol."""
+    nombre = nombre.strip()
+    apellido = apellido.strip()
     username = normalize_username(username)
     email = normalize_email(email)
+
+    _check_identity(nombre=nombre, apellido=apellido, username=username, email=email)
 
     role = db.session.scalar(db.select(Role).where(Role.codigo == role_code))
 
@@ -156,21 +242,18 @@ def create_user(
         raise DuplicateUserError("email")
 
     user = User(
-        nombre=nombre.strip(),
-        apellido=apellido.strip(),
+        nombre=nombre,
+        apellido=apellido,
         username=username,
         email=email,
-        telefono=blank_to_none(telefono),
-        cargo=blank_to_none(cargo),
-        departamento_area=blank_to_none(departamento_area),
         rol_id=role.id,
-        usuario_creacion_id=actor.id,
     )
 
-    # Valida la política antes de tocar la base de datos.
-    set_temporary_password(user, temporary_password)
+    return user, role
 
-    # Dos altas simultáneas pueden pasar la comprobación anterior y chocar
+
+def _insert_and_audit(user: User, role: Role, *, actor: User | None, detail=None) -> None:
+    # Dos altas simultáneas pueden pasar la comprobación de unicidad y chocar
     # en la restricción UNIQUE. El savepoint deshace solo este intento y
     # deja intacta el resto de la transacción.
     try:
@@ -185,16 +268,15 @@ def create_user(
         actor=actor,
         entity_type="usuario",
         entity_id=user.id,
+        detail=detail,
         new_value={
             "username": user.username,
             "email": user.email,
             "rol": role.codigo,
             "activo": True,
-            "cambio_obligatorio": True,
+            "cambio_obligatorio": user.debe_cambiar_password,
         },
     )
-
-    return user
 
 
 def get_user(user_id: int) -> User | None:
@@ -218,8 +300,8 @@ def update_profile(
     auditar, si los datos no cambiaron. Audita `USUARIO_MODIFICADO` con los
     valores anteriores y nuevos de los campos que sí cambiaron.
 
-    Lanza `DuplicateUserError` si el correo pertenece a otro usuario.
-    No hace commit.
+    Lanza `InvalidUserDataError` si algún dato no tiene la forma de RN-148 y
+    `DuplicateUserError` si el correo pertenece a otro usuario. No hace commit.
     """
     new_values = {
         "nombre": nombre.strip(),
@@ -238,6 +320,22 @@ def update_profile(
 
     if not changed:
         return False
+
+    # Solo se juzga lo que cambia: un dato antiguo que no cumpla la regla (de antes de
+    # que existiera) no debe impedir, por ejemplo, actualizar el teléfono.
+    problems = {
+        field: message
+        for field, message in identity_problems(
+            nombre=new_values["nombre"],
+            apellido=new_values["apellido"],
+            username=None,
+            email=new_values["email"],
+        ).items()
+        if field in changed
+    }
+
+    if problems:
+        raise InvalidUserDataError(problems)
 
     if "email" in changed and _is_in_use(
         User.email,

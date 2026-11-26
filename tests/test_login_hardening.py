@@ -1,6 +1,6 @@
-"""Endurecimiento del inicio de sesión (revisión previa a `v0.7.0`).
+"""Endurecimiento del inicio de sesión (revisiones previas a `v0.7.0` y `v0.8.0`).
 
-Dos defectos que arrastraba el login desde `v0.1.0`:
+Tres defectos que arrastraba el login desde `v0.1.0`:
 
 - **Fuga por tiempo.** Un usuario inexistente, inactivo o bloqueado recibía el error sin que
   se calculara ningún hash, y uno que existe con la contraseña equivocada pagaba Argon2id
@@ -8,8 +8,15 @@ Dos defectos que arrastraba el login desde `v0.1.0`:
   delataba qué usuarios existen. Medir tiempos en un test es frágil, así que se comprueba
   la causa: en cada camino sin cuenta que verificar se gasta una verificación de relleno.
 - **Sesión heredada.** `login_user` se llamaba sin vaciar la sesión anterior, de modo que
-  lo que hubiera en la cookie antes de autenticarse sobrevivía al inicio de sesión.
+  lo que hubiera en la cookie antes de autenticarse sobrevivía al inicio de sesión. El
+  logout tampoco la vaciaba entera.
+- **Contador que pierde intentos.** Varios intentos simultáneos leían el mismo contador de
+  fallos y cada uno escribía «uno más»: 20 intentos a la vez dejaban el contador en 2 y la
+  cuenta sin bloquear, así que con ráfagas en paralelo se probaban muchas más contraseñas
+  de las permitidas. Ahora se bloquea la fila del usuario (`auth/security.py`).
 """
+
+import threading
 
 import pytest
 
@@ -19,10 +26,35 @@ from src.workdesk.security import passwords
 
 WRONG = "ContraseñaIncorrecta123!"
 GENERIC_ERROR = "Usuario o contraseña incorrectos."
+MAX_ATTEMPTS = 5  # LOGIN_MAX_FAILED_ATTEMPTS por defecto
 
 
 def _login(client, username, password):
     return client.post("/login", data={"username": username, "password": password})
+
+
+def _at_once(count, action):
+    """Ejecuta `action(i)` en `count` hilos que arrancan a la vez."""
+    barrier = threading.Barrier(count)
+
+    def run(index):
+        barrier.wait(timeout=10)
+        action(index)
+
+    threads = [threading.Thread(target=run, args=(i,)) for i in range(count)]
+
+    for thread in threads:
+        thread.start()
+
+    for thread in threads:
+        thread.join(timeout=60)
+
+
+def _attempts_and_lock(app, user_id):
+    with app.app_context():
+        user = db.session.get(User, user_id)
+
+        return user.intentos_fallidos, user.bloqueado_hasta is not None
 
 
 @pytest.fixture()
@@ -107,3 +139,57 @@ def test_login_discards_what_the_previous_session_held(client, admin_user):
 
     # El reloj de la sesión sigue funcionando: sin él la sesión se consideraría expirada.
     assert client.get("/dashboard").status_code == 200
+
+
+def test_logout_clears_everything_the_session_held(client, admin_user):
+    _login(client, admin_user["username"], admin_user["password"])
+
+    with client.session_transaction() as session:
+        session["dato_de_la_sesion"] = "no debe quedar en el navegador"
+
+    client.post("/logout")
+
+    with client.session_transaction() as session:
+        assert dict(session) == {}
+
+
+# --- Intentos simultáneos ---------------------------------------------------------------
+
+
+def test_simultaneous_failed_logins_never_lose_an_attempt(app, admin_user, monkeypatch):
+    """Doce intentos a la vez con la contraseña equivocada: el contador llega exactamente
+    al límite, la cuenta queda bloqueada y solo se verifican tantas contraseñas como
+    permite el límite (el resto encuentra la cuenta ya bloqueada)."""
+    verified = []
+    real_verify = passwords.verify_password
+
+    def counting(stored, given):
+        verified.append(given)
+        return real_verify(stored, given)
+
+    monkeypatch.setattr("src.workdesk.auth.routes.verify_password", counting)
+
+    _at_once(12, lambda _: _login(app.test_client(), admin_user["username"], WRONG))
+
+    assert _attempts_and_lock(app, admin_user["id"]) == (MAX_ATTEMPTS, True)
+    assert len(verified) == MAX_ATTEMPTS
+
+
+def test_simultaneous_wrong_current_passwords_never_lose_an_attempt(app, admin_user):
+    """El formulario de cambio de contraseña comparte el contador del login: con una sesión
+    robada no se puede adivinar la contraseña actual enviando el formulario en paralelo."""
+    clients = [app.test_client() for _ in range(8)]
+
+    # Cada inicio de sesión correcto reinicia el contador, así que todos van antes.
+    for client in clients:
+        assert _login(client, admin_user["username"], admin_user["password"]).status_code == 302
+
+    form = {
+        "current_password": WRONG,
+        "new_password": "OtraContraseñaSegura123!",
+        "confirm_password": "OtraContraseñaSegura123!",
+    }
+
+    _at_once(len(clients), lambda i: clients[i].post("/account/password", data=form))
+
+    assert _attempts_and_lock(app, admin_user["id"]) == (MAX_ATTEMPTS, True)

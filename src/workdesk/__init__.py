@@ -22,6 +22,7 @@ from .notifications import bp as notifications_bp
 from .reassignment import bp as reassignment_bp
 from .security import can_manage_users
 from .security.headers import register_security_headers
+from .security.startup import session_cookie_name, startup_problems, startup_warnings
 from .settings import validate_settings
 from .sla import bp as sla_bp
 from .sla.periods import sla_enabled
@@ -43,9 +44,11 @@ def create_app(
         app.config.update(config_overrides)
 
     _validate_required_config(app)
+    _check_startup_safety(app, config_overrides or {})
     validate_settings(app.config)
     _configure_uploads(app)
     configure_logging(app)
+    _warn_about_risky_config(app)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -120,6 +123,27 @@ def _validate_required_config(app: Flask) -> None:
         raise RuntimeError(
             f"Falta configuración obligatoria: {missing_names}"
         )
+
+
+def _check_startup_safety(app: Flask, overrides: dict) -> None:
+    """No arranca con una configuración insegura (ver `security/startup.py`)."""
+    problems = startup_problems(app.config, debug=app.debug)
+
+    if problems:
+        raise RuntimeError(" ".join(problems))
+
+    if "SESSION_COOKIE_NAME" not in overrides:
+        app.config["SESSION_COOKIE_NAME"] = session_cookie_name(
+            bool(app.config.get("SESSION_COOKIE_SECURE"))
+        )
+
+
+def _warn_about_risky_config(app: Flask) -> None:
+    if app.config.get("TESTING"):
+        return
+
+    for warning in startup_warnings(app.config):
+        app.logger.warning(warning)
 
 
 def _configure_uploads(app: Flask) -> None:

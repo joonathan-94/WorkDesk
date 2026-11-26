@@ -17,6 +17,14 @@ suya (la descarga de un adjunto, por ejemplo), esa manda.
   Los archivos estáticos conservan su caché normal.
 - `Strict-Transport-Security`: solo con cookies seguras, es decir, cuando WorkDesk
   se sirve por HTTPS (`SESSION_COOKIE_SECURE=true`).
+- `Cross-Origin-Opener-Policy` y `Cross-Origin-Resource-Policy: same-origin`: otra
+  página no puede quedarse con una referencia a la ventana de WorkDesk ni incrustar
+  sus respuestas (imágenes, descargas) desde otro sitio.
+- `Permissions-Policy`: WorkDesk no usa cámara, micrófono, ubicación ni pagos, así que
+  se le niegan al navegador desde el principio (si algún día se inyectara código,
+  tampoco podría pedirlos).
+- `X-Permitted-Cross-Domain-Policies: none`: ningún cliente antiguo (Flash, PDF) puede
+  leer datos de WorkDesk desde otro dominio.
 """
 
 from flask import Flask, request
@@ -37,6 +45,8 @@ CONTENT_SECURITY_POLICY = (
 # Un año, el valor habitual cuando ya se sirve por HTTPS.
 HSTS = "max-age=31536000"
 
+PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
 
 def register_security_headers(app: Flask) -> None:
     @app.after_request
@@ -47,6 +57,10 @@ def register_security_headers(app: Flask) -> None:
         headers.setdefault("X-Frame-Options", "DENY")
         headers.setdefault("Referrer-Policy", "same-origin")
         headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+        headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        headers.setdefault("Permissions-Policy", PERMISSIONS_POLICY)
+        headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
 
         if request.endpoint != "static":
             headers.setdefault("Cache-Control", "no-store")

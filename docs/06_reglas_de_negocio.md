@@ -375,6 +375,8 @@ Cuando la carga alcance los parámetros definidos como elevados, el sistema podr
 
 La advertencia no deberá bloquear nuevas asignaciones.
 
+En el MVP se informa en los dashboards y en la carga de trabajo, con la marca «Carga alta» (`WORKLOAD_HIGH_ACTIVE_TICKETS`). Los avisos por notificación interna quedan para después del MVP (`13_evolucion_post_mvp.md`, EVO-34).
+
 ---
 
 ## RN-29 — Redistribución de carga
@@ -1292,7 +1294,9 @@ El **username** identifica al usuario en el inicio de sesión y en los registros
 
 El **correo electrónico** es único, se normaliza a minúsculas y se valida solo en su forma (`algo@dominio.tld`); no se comprueba que la dirección exista. Tiene un máximo de 254 caracteres.
 
-Las comparaciones de unicidad ignoran mayúsculas y minúsculas. El nombre y el apellido son obligatorios; teléfono, cargo y departamento o área son opcionales.
+Las comparaciones de unicidad ignoran mayúsculas y minúsculas. El nombre y el apellido son obligatorios, con un máximo de 100 caracteres; teléfono, cargo y departamento o área son opcionales.
+
+Estas reglas de forma se aplican en todos los caminos que crean o editan una cuenta, no solo en el formulario: el servicio de usuarios las comprueba de nuevo y el comando `create-admin` usa el mismo servicio (`users/rules.py`, desde `v0.8.0`). Al editar solo se juzgan los datos que cambian, para que un dato antiguo que no las cumpla no impida corregir otro.
 
 Cuando el Administrador crea una cuenta, el usuario queda activo y con el cambio de contraseña pendiente (RN-147). Si la contraseña temporal fue generada por el sistema, se muestra una sola vez, en la respuesta de la creación: no se guarda ni se puede consultar después, y la respuesta no se almacena en caché del navegador.
 

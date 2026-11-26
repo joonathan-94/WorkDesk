@@ -10,6 +10,19 @@ from wtforms.validators import (
 
 from ..cleaning import MAX_REASON_LENGTH, strip_text
 
+# Las reglas de forma viven en `rules.py` (las comparte el servicio y `create-admin`).
+from .rules import (
+    EMAIL_FORMAT_MESSAGE,
+    EMAIL_MAX_LENGTH,
+    EMAIL_PATTERN,
+    NAME_MAX_LENGTH,
+    USERNAME_FORMAT_MESSAGE,
+    USERNAME_LENGTH_MESSAGE,
+    USERNAME_MAX_LENGTH,
+    USERNAME_MIN_LENGTH,
+    USERNAME_PATTERN,
+)
+
 PASSWORD_MODE_GENERATE = "generate"
 PASSWORD_MODE_MANUAL = "manual"
 
@@ -17,14 +30,6 @@ PASSWORD_MODE_CHOICES = (
     (PASSWORD_MODE_GENERATE, "Generar automáticamente"),
     (PASSWORD_MODE_MANUAL, "Escribirla yo"),
 )
-
-
-# Minúsculas, números, punto, guion y guion bajo; empieza por letra o número.
-USERNAME_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
-
-# Comprobación de forma deliberadamente simple (algo@dominio.tld). La
-# validez real de una dirección solo se confirma enviándole un correo.
-EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
 
 def _normalize(value):
@@ -78,7 +83,7 @@ class ProfileForm(ContactForm):
         filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa el nombre."),
-            Length(max=100, message="Máximo 100 caracteres."),
+            Length(max=NAME_MAX_LENGTH, message=f"Máximo {NAME_MAX_LENGTH} caracteres."),
         ],
     )
 
@@ -87,7 +92,7 @@ class ProfileForm(ContactForm):
         filters=[strip_text],
         validators=[
             DataRequired(message="Ingresa el apellido."),
-            Length(max=100, message="Máximo 100 caracteres."),
+            Length(max=NAME_MAX_LENGTH, message=f"Máximo {NAME_MAX_LENGTH} caracteres."),
         ],
     )
 
@@ -96,11 +101,8 @@ class ProfileForm(ContactForm):
         filters=[_normalize],
         validators=[
             DataRequired(message="Ingresa el correo electrónico."),
-            Length(max=254, message="Máximo 254 caracteres."),
-            Regexp(
-                EMAIL_PATTERN,
-                message="Ingresa un correo electrónico válido.",
-            ),
+            Length(max=EMAIL_MAX_LENGTH, message=f"Máximo {EMAIL_MAX_LENGTH} caracteres."),
+            Regexp(EMAIL_PATTERN, message=EMAIL_FORMAT_MESSAGE),
         ],
     )
 
@@ -161,17 +163,11 @@ class CreateUserForm(_RoleChoicesMixin, ProfileForm, TemporaryPasswordForm):
         validators=[
             DataRequired(message="Ingresa el nombre de usuario."),
             Length(
-                min=3,
-                max=50,
-                message="Debe tener entre 3 y 50 caracteres.",
+                min=USERNAME_MIN_LENGTH,
+                max=USERNAME_MAX_LENGTH,
+                message=USERNAME_LENGTH_MESSAGE,
             ),
-            Regexp(
-                USERNAME_PATTERN,
-                message=(
-                    "Usa solo letras minúsculas, números, punto, guion "
-                    "y guion bajo, empezando por una letra o un número."
-                ),
-            ),
+            Regexp(USERNAME_PATTERN, message=USERNAME_FORMAT_MESSAGE),
         ],
     )
 

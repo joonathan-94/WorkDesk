@@ -199,3 +199,10 @@ def test_a_failure_while_saving_leaves_no_files_behind(
 
     monkeypatch.undo()
     assert _files_on_disk(app) == []
+
+
+def test_a_limit_below_one_megabyte_is_not_shown_as_zero(app, client, people):
+    app.config["UPLOAD_MAX_BYTES"] = 512 * 1024
+    login(client, people["req"])
+
+    assert "Hasta 5 archivos de 512 KB" in plain_text(client.get("/tickets/new"))

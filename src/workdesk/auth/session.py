@@ -65,11 +65,6 @@ def start_session_clock(now: datetime) -> None:
     session[SESSION_ACTIVITY_KEY] = timestamp
 
 
-def clear_session_clock() -> None:
-    session.pop(SESSION_STARTED_KEY, None)
-    session.pop(SESSION_ACTIVITY_KEY, None)
-
-
 def touch_session(now: datetime) -> None:
     session[SESSION_ACTIVITY_KEY] = now.timestamp()
 

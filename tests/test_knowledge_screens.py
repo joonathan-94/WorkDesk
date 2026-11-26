@@ -747,3 +747,9 @@ def test_related_articles_respect_what_the_person_can_read(client, sign_in, make
 
     for hidden in ("interno", "borrador", "retirado"):
         assert f"Vecino {hidden}" not in related
+
+
+def test_the_article_editor_shows_the_editorial_state(client, people):
+    login(client, people["ADMINISTRADOR"])
+
+    assert "Estado editorial" in plain_text(client.get("/knowledge/new"))

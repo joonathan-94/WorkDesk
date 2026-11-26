@@ -1551,3 +1551,19 @@ def test_the_hub_card_for_groups_is_a_link(client, app, people):
 
     assert 'href="/groups"' in html
     assert "Grupos" in html
+
+
+def test_the_two_pickers_of_a_group_have_their_own_ids(app, client, people):
+    # Hay candidatos para los dos selectores (técnicos y supervisores sin grupo), así que
+    # el detalle muestra ambos; cada etiqueta debe nombrar a su propio selector.
+    with app.app_context():
+        group = service.create_group(actor=user(people, "admin"), nombre="Soporte", descripcion="")
+        db.session.commit()
+        group_id = group.id
+
+    login(client, people["admin"])
+    html = client.get(f"/groups/{group_id}").get_data(as_text=True)
+
+    assert html.count('id="tecnico-a-agregar"') == 1
+    assert html.count('id="supervisor-a-designar"') == 1
+    assert 'for="tecnico-a-agregar"' in html and 'for="supervisor-a-designar"' in html
