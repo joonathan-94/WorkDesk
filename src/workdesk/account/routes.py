@@ -12,6 +12,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from .. import settings
 from ..auth.credentials import CurrentPasswordError, change_own_password
+from ..auth.events import recent_access, record_auth_event
 from ..auth.security import (
     lock_user_row,
     refresh_login_lock,
@@ -20,6 +21,7 @@ from ..auth.security import (
 )
 from ..configuration import value_of
 from ..extensions import db
+from ..models import AuthEventType, AuthFailure
 from ..security import PasswordPolicyError, current_actor
 from ..users.forms import ContactForm
 from . import bp
@@ -53,7 +55,9 @@ def index():
 
         return redirect(url_for("account.index"))
 
-    return render_template("account/index.html", form=form, user=user)
+    return render_template(
+        "account/index.html", form=form, user=user, access_events=recent_access(user)
+    )
 
 
 @bp.route("/password", methods=["GET", "POST"])
@@ -92,6 +96,10 @@ def _handle_password_change(form: ChangePasswordForm):
     now = datetime.now(UTC)
 
     if refresh_login_lock(user, now):
+        record_auth_event(
+            AuthEventType.VERIFICACION_FALLIDA, user=user, failure=AuthFailure.CUENTA_BLOQUEADA
+        )
+        db.session.commit()
         form.current_password.errors.append(
             "La cuenta está bloqueada temporalmente. "
             "Inténtalo de nuevo más tarde."
@@ -131,6 +139,13 @@ def _register_wrong_current_password(user, form, error, now):
         lock_minutes=value_of(settings.LOGIN_LOCK_MINUTES),
         now=now,
     )
+    record_auth_event(
+        AuthEventType.VERIFICACION_FALLIDA, user=user, failure=AuthFailure.CONTRASENA_INCORRECTA
+    )
+
+    if user.bloqueado_hasta is not None:
+        record_auth_event(AuthEventType.BLOQUEO_TEMPORAL, user=user)
+
     db.session.commit()
 
     current_app.logger.warning(

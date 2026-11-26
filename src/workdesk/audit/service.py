@@ -145,8 +145,8 @@ def record_admin_event(
         detalle=detail,
         valor_anterior=old_value,
         valor_nuevo=new_value,
-        ip_origen=_request_ip(),
-        user_agent=_request_user_agent(),
+        ip_origen=request_ip(),
+        user_agent=request_user_agent(),
         resultado=result.value,
         motivo=reason,
     )
@@ -179,14 +179,17 @@ def _ensure_no_sensitive_data(value) -> None:
             _ensure_no_sensitive_data(item)
 
 
-def _request_ip() -> str | None:
+def request_ip() -> str | None:
+    """La IP de la petición actual, recortada al largo de la columna (o None fuera de una
+    petición). La comparten la auditoría y los eventos de autenticación."""
     if not has_request_context() or not request.remote_addr:
         return None
 
     return request.remote_addr[:MAX_IP_LENGTH]
 
 
-def _request_user_agent() -> str | None:
+def request_user_agent() -> str | None:
+    """El navegador de la petición actual, recortado al largo de la columna."""
     if not has_request_context():
         return None
 

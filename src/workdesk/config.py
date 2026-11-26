@@ -43,6 +43,7 @@ class Config:
     #   que se marca «carga alta» (solo informativo; 0 la desactiva).
     # - Adjuntos: bytes por archivo y archivos activos por ticket.
     LOGIN_MAX_FAILED_ATTEMPTS = settings.LOGIN_MAX_FAILED_ATTEMPTS.from_environment()
+    LOGIN_MAX_FAILED_PER_IP = settings.LOGIN_MAX_FAILED_PER_IP.from_environment()
     LOGIN_LOCK_MINUTES = settings.LOGIN_LOCK_MINUTES.from_environment()
     PASSWORD_MIN_LENGTH = settings.PASSWORD_MIN_LENGTH.from_environment()
     SESSION_IDLE_MINUTES = settings.SESSION_IDLE_MINUTES.from_environment()

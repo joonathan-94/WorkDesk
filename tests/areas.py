@@ -45,6 +45,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_authorization",
         "test_session_limits",
         "test_login_hardening",
+        "test_auth_events",
         "test_passwords",
         "test_password_policy",
         "test_credentials",

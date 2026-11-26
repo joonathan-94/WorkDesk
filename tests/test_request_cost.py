@@ -38,11 +38,17 @@ def _statements(client, url):
     return response, seen
 
 
+# Una pantalla que no consulta nada propio: lo que cuesta es solo lo que paga cualquier
+# petición autenticada. («Mi cuenta» lo fue hasta `v0.8.0`, cuando empezó a mostrar la
+# actividad de acceso de la cuenta.)
+MINIMAL_PAGE = "/account/password"
+
+
 @pytest.mark.parametrize("role", ROLES)
 def test_a_minimal_page_costs_three_queries(client, make_user, role):
     login(client, make_user(role))
 
-    response, statements = _statements(client, "/account")
+    response, statements = _statements(client, MINIMAL_PAGE)
 
     assert response.status_code == 200
     # El usuario con su rol, la configuración y el contador de la campana.
@@ -54,7 +60,7 @@ def test_a_minimal_page_costs_three_queries(client, make_user, role):
 def test_the_role_comes_with_the_user_not_in_a_query_of_its_own(client, make_user, role):
     login(client, make_user(role))
 
-    _response, statements = _statements(client, "/account")
+    _response, statements = _statements(client, MINIMAL_PAGE)
 
     assert not any(s.startswith("SELECT roles.") for s in statements), statements
     assert "JOIN roles" in statements[0], statements[0]

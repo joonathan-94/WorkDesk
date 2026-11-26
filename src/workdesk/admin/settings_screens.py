@@ -73,6 +73,15 @@ GROUPS = (
                 unit="minutos",
             ),
             SettingField(
+                settings.LOGIN_MAX_FAILED_PER_IP,
+                "Intentos fallidos desde un mismo equipo",
+                "Al alcanzarlos dentro del tiempo de bloqueo, en cualquier cuenta, ese equipo "
+                "no puede intentarlo de nuevo hasta que pase ese tiempo. Frena a quien prueba "
+                "pocas contraseñas en muchas cuentas. 0 lo desactiva: hazlo si todas las "
+                "personas llegan a WorkDesk a través de un mismo proxy.",
+                unit="intentos",
+            ),
+            SettingField(
                 settings.PASSWORD_MIN_LENGTH,
                 "Longitud mínima de contraseña",
                 "Se aplica a las contraseñas nuevas; las actuales no cambian.",

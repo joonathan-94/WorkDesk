@@ -1941,6 +1941,19 @@ Aplica RF-019 y RF-116 (`v0.7.0`, cierre de la fase).
 
 ---
 
+## RN-178 — Eventos de autenticación y límite de intentos por equipo
+
+Aplica RNF-015 y RNF-022 (`v0.8.0`, entrega 3). Precisa RN-118: los accesos no van a la auditoría administrativa sino a su propio registro (`eventos_autenticacion`, docs/09 9.3).
+
+* **Se registra cada intento de entrar y cada salida:** el inicio de sesión correcto y el fallido, el bloqueo temporal de una cuenta, el cierre de sesión, la sesión expirada y la contraseña actual equivocada al cambiarla. Cada evento guarda la cuenta (si se identificó), la fecha, la IP y el navegador. Un rechazo guarda además su causa: usuario desconocido, cuenta desactivada, cuenta bloqueada, contraseña incorrecta o límite del equipo.
+* **La causa es un dato interno.** Quien intenta entrar lee siempre «Usuario o contraseña incorrectos.», salvo con el límite del equipo, cuyo mensaje no dice nada de ninguna cuenta.
+* **Nunca se registran contraseñas.** Lo que se escribió como usuario solo se guarda si el evento no está ligado a una cuenta y además tiene forma de username (RN-148): alguien pudo escribir ahí su contraseña.
+* **El registro es de solo añadir**, como la auditoría y el historial.
+* **Límite por equipo.** Si desde una misma IP ya hubo `LOGIN_MAX_FAILED_PER_IP` intentos fallidos (20 por defecto) dentro del tiempo de bloqueo, en cualquier cuenta, los siguientes desde esa IP se rechazan sin mirar la cuenta ni la contraseña, y tampoco suman al contador de ninguna cuenta. Frena a quien prueba pocas contraseñas en muchas cuentas, algo que el bloqueo por cuenta (RNF-015) no ve. Con 0 se desactiva, que es lo que conviene si todas las personas llegan a WorkDesk a través de un mismo proxy.
+* **Cada persona ve su propia actividad de acceso** en «Mi cuenta» (los últimos diez eventos de su cuenta). Así puede detectar intentos que no reconoce. Nadie más la ve ahí: la consulta general es de la pantalla de auditoría (RF-109).
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

@@ -103,8 +103,13 @@ def test_the_password_length_is_bounded_on_both_sides():
 
 
 def test_zero_turns_a_feature_off_only_where_that_makes_sense():
-    # 0 apaga la marca de carga alta y la advertencia de duplicados.
-    off_switches = {"WORKLOAD_HIGH_ACTIVE_TICKETS", "DUPLICATE_WINDOW_DAYS"}
+    # 0 apaga la marca de carga alta, la advertencia de duplicados y el límite de intentos
+    # fallidos por equipo.
+    off_switches = {
+        "WORKLOAD_HIGH_ACTIVE_TICKETS",
+        "DUPLICATE_WINDOW_DAYS",
+        "LOGIN_MAX_FAILED_PER_IP",
+    }
 
     for key in off_switches:
         config = _valid_config()

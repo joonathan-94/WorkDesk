@@ -104,4 +104,53 @@
             </a>
         </div>
     </section>
+
+    <section
+        class="card form-card mt-4"
+        aria-labelledby="access-title"
+    >
+        <div class="card-body">
+            <h2
+                class="h6 mb-1"
+                id="access-title"
+            >
+                Actividad reciente de tu cuenta
+            </h2>
+
+            <p class="text-secondary small">
+                Los últimos accesos y los intentos fallidos con tu usuario. Si ves uno que no
+                reconoces, cambia tu contraseña y avisa al Administrador.
+            </p>
+
+            {% if access_events %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Fecha</th>
+                                <th scope="col">Qué pasó</th>
+                                <th scope="col">Desde</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for access in access_events %}
+                                <tr>
+                                    <td class="text-nowrap">{{ access.fecha_hora | local_datetime }}</td>
+                                    <td>
+                                        {% if access.fallido %}
+                                            <span class="badge badge-soft badge-soft-danger">Fallido</span>
+                                        {% endif %}
+                                        {{ access.etiqueta }}
+                                    </td>
+                                    <td class="text-secondary">{{ access.ip_origen or "—" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-secondary small mb-0">Todavía no hay actividad registrada.</p>
+            {% endif %}
+        </div>
+    </section>
 {% endblock %}

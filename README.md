@@ -69,7 +69,7 @@ WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
 - **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
 - **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
 - **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
-- **4746 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **4775 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
 - **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso: están hechas sus dos primeras entregas: la revisión previa con el refuerzo de seguridad y una suite de tests un 39 % más rápida. Hoy la suite cuenta con **4746 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso: están hechas sus dos primeras entregas: la revisión previa con el refuerzo de seguridad y una suite de tests un 39 % más rápida. Hoy la suite cuenta con **4775 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -542,6 +542,7 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `TEST_DATABASE_URL` | — | Conexión a la base de los tests (`workdesk_test`). |
 | `LOGIN_MAX_FAILED_ATTEMPTS` | `5` | Intentos fallidos de inicio de sesión antes de bloquear la cuenta. |
 | `LOGIN_LOCK_MINUTES` | `15` | Minutos que dura ese bloqueo. |
+| `LOGIN_MAX_FAILED_PER_IP` | `20` | Intentos fallidos desde un mismo equipo (IP), en cualquier cuenta y dentro de `LOGIN_LOCK_MINUTES`, antes de rechazar los siguientes desde ese equipo. Frena a quien prueba pocas contraseñas en muchas cuentas. `0` lo desactiva: hazlo si todas las peticiones llegan a través de un mismo proxy. |
 | `PASSWORD_MIN_LENGTH` | `12` | Longitud mínima de las contraseñas (entre 8 y 128). |
 | `SESSION_IDLE_MINUTES` | `30` | Minutos de inactividad tras los cuales se cierra la sesión. Solo cuenta lo que hace la persona: la consulta automática de la campana de notificaciones no renueva la sesión. |
 | `SESSION_MAX_HOURS` | `8` | Duración máxima de una sesión, aunque se use todo el tiempo. |
@@ -725,6 +726,7 @@ Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
 - **Todos tendrán que iniciar sesión una vez más.** La cookie de sesión cambió de nombre (antes se llamaba `session`, que delataba con qué está hecha la aplicación), así que las sesiones abiertas dejan de valer. No se pierde nada más.
 - **En producción, la `SECRET_KEY` debe tener al menos 32 caracteres** y no se puede arrancar con `--debug`. Si la tuya es más corta, genera una nueva como se explica en [Variables de entorno](#2-generar-la-secret_key); en desarrollo solo verás un aviso en el log.
 - **El planificador escribe su propio log**, `instance/logs/scheduler.log`, en lugar de `workdesk.log`.
+- **Una migración nueva** (`create_auth_events_table`, el registro de accesos): el paso 2 la aplica y no toca datos. La variable nueva `LOGIN_MAX_FAILED_PER_IP` tiene valor por defecto (20).
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -1195,6 +1197,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 108" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | `create-admin`: "Username: Usa solo letras minúsculas..." (o `Email: ...`) | El username o el correo no cumplen las reglas de la pantalla de alta. | Vuelve a ejecutarlo con un username de 3 a 50 caracteres (letras minúsculas, números, `.`, `-` y `_`) y un correo con forma `algo@dominio.tld`. No se creó nada. |
+| "Hubo demasiados intentos fallidos desde este equipo" | Desde esa IP se alcanzó el límite de intentos fallidos (`LOGIN_MAX_FAILED_PER_IP`, 20 por defecto) dentro del tiempo de bloqueo. | Espera ese tiempo (`LOGIN_LOCK_MINUTES`). Si todas las personas llegan a WorkDesk a través de un mismo proxy, desactiva el límite con 0 en **Administración → Seguridad y sesión**. |
 | Tras actualizar a `v0.8.0` todos vuelven a ver el login | La cookie de sesión cambió de nombre, así que las sesiones anteriores dejan de valer. | Es esperado y ocurre una sola vez: inicia sesión de nuevo. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -1387,6 +1390,8 @@ La seguridad no es una capa que se añadió al final: cada entrega la revisa, y 
 - Contraseñas guardadas con **Argon2id** (64 MiB y 3 pasadas, por encima del mínimo que recomienda OWASP; una prueba impide bajarlos). Si los parámetros cambian, el hash se recalcula al iniciar sesión.
 - Política de contraseñas única (largo mínimo configurable, 12 por defecto) para el alta, el cambio propio, el restablecimiento y `create-admin`.
 - **Bloqueo temporal** tras 5 intentos fallidos (15 minutos, configurables). La fila del usuario se bloquea en la base de datos durante cada intento: ni siquiera muchos intentos enviados en paralelo consiguen más oportunidades de las permitidas.
+- **Límite por equipo:** tras 20 intentos fallidos desde una misma IP, en cualquier cuenta (configurable, 0 lo apaga), ese equipo no puede seguir probando durante el tiempo de bloqueo. Frena a quien prueba pocas contraseñas en muchas cuentas.
+- **Registro de accesos:** cada intento de entrar y cada salida queda en `eventos_autenticacion`, con su causa interna, la IP y el navegador, nunca con la contraseña. Cada persona ve en «Mi cuenta» los últimos accesos de su cuenta.
 - **El mensaje de error no delata nada:** es el mismo para un usuario inexistente, inactivo, bloqueado o con la contraseña equivocada, y el **tiempo de respuesta** también (los caminos sin cuenta que verificar gastan una verificación de relleno).
 - Las contraseñas temporales se muestran una sola vez y obligan a cambiarlas al entrar.
 
@@ -1469,7 +1474,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4746 tests
+4775 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.

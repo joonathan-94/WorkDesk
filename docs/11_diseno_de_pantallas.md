@@ -2254,6 +2254,7 @@ No debe exponer permisos administrativos innecesarios.
 - Tarjeta **Mis datos**: nombre, usuario, correo y rol, con el aviso de que los gestiona un Administrador.
 - Tarjeta **Información de contacto**: teléfono, cargo y departamento o área, editables. Muestra un aviso de éxito al guardar y otro informativo si no hubo cambios.
 - Tarjeta **Seguridad**: enlace al cambio de contraseña.
+- Tarjeta **Actividad reciente de tu cuenta** (`v0.8.0`): los últimos diez eventos de acceso de la propia cuenta (fecha, qué pasó y desde qué IP), con los intentos fallidos marcados con una insignia «Fallido» y el consejo de cambiar la contraseña y avisar al Administrador si alguno no se reconoce. Cada persona ve solo los suyos (RN-178).
 - El cambio de contraseña en modo normal (`/account/password`) usa el layout principal con el botón "Volver a Mi cuenta". En modo obligatorio sigue siendo una pantalla aislada, sin navegación y con la opción de cerrar sesión.
 - La fotografía de perfil queda como preparación futura.
 
