@@ -27,6 +27,7 @@ from .service import (
     CLOSED_STATE_CODE,
     TicketRuleError,
     clean_title_and_description,
+    location_required,
     record_ticket_event,
 )
 from .versioning import TicketClosedError, apply_ticket_changes
@@ -65,6 +66,11 @@ def update_ticket(
         current_id=ticket.categoria_id,
         label="La categoría",
     )
+    if location_id is None and ticket.ubicacion_id is not None and location_required():
+        # Un ticket antiguo sin ubicación se sigue pudiendo editar; lo que no se puede
+        # es quitársela a uno que la tiene.
+        raise TicketRuleError("La ubicación es obligatoria: elige una en lugar de quitarla.")
+
     location = (
         None
         if location_id is None

@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ..formatting import format_size
+
 # Máximo de archivos que se aceptan en un mismo envío.
 MAX_FILES_PER_REQUEST = 5
 
@@ -138,7 +140,7 @@ def store_upload(upload, root: str | Path, max_bytes: int) -> StoredFile:
                 if size > max_bytes:
                     raise UploadError(
                         f"«{original}» supera el tamaño máximo de "
-                        f"{_human_size(max_bytes)}."
+                        f"{format_size(max_bytes)}."
                     )
 
                 if kind == "text" and b"\x00" in chunk:
@@ -203,13 +205,6 @@ def _check_signature(name: str, kind: str, first_chunk: bytes) -> None:
         raise UploadError(
             f"«{name}»: el contenido no coincide con su extensión."
         )
-
-
-def _human_size(size: int) -> str:
-    if size >= 1024 * 1024:
-        return f"{size / (1024 * 1024):.0f} MB"
-
-    return f"{size / 1024:.0f} KB"
 
 
 # Un archivo temporal más viejo que esto es el resto de una subida que se cortó.

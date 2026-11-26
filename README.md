@@ -59,7 +59,7 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 ## Estado del proyecto
 
-La última versión estable es **`v0.6.0 — Dashboards y carga de trabajo`** y la fase siguiente es **`v0.7.0 — Administración y base de conocimiento`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
+La última versión estable es **`v0.7.0 — Administración y base de conocimiento`** y la fase siguiente es **`v0.8.0 — Reportes, auditoría y backups`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
 
 | Versión | Qué hace WorkDesk con ella | Tests al cerrar |
 | --- | --- | --- |
@@ -69,12 +69,13 @@ La última versión estable es **`v0.6.0 — Dashboards y carga de trabajo`** y 
 | `v0.4.0` | Se trabaja en equipo: grupos, asignación, comentarios y notas internas, adjuntos, resolución y cierre, relaciones y bloqueo de edición | 2201 |
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
+| `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-Hoy la suite cuenta con **4642 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **4681 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
-`v0.7.0 — Administración y base de conocimiento`: la configuración administrable (que reemplaza a las variables de entorno de plazos y límites), la base de conocimiento y la advertencia de posibles tickets duplicados al crear uno. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 7).
+`v0.8.0 — Reportes, auditoría y backups`: reportes con filtros, la pantalla de auditoría con los eventos de autenticación y los backups locales de la base de datos y los archivos, con su restauración probada. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 8).
 
 ---
 
@@ -502,6 +503,7 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `DUPLICATE_MIN_WORDS` | `2` | Palabras del título que deben coincidir para considerarlos parecidos (1 a 5). |
 | `SLA_ENABLED` | `true` | Si el SLA se muestra y avisa. Se puede cambiar desde Administración → SLA (el valor guardado reemplaza a esta variable). |
 | `AUTO_CLOSE_ENABLED` | `true` | Si el planificador cierra solo los tickets resueltos que nadie valida. Se puede cambiar desde Administración → Cierre y reapertura. |
+| `LOCATION_REQUIRED` | `false` | Si la ubicación es obligatoria al crear un ticket. Solo se exige mientras haya alguna ubicación activa. Se puede cambiar desde Administración → Creación de tickets. |
 | `SCHEDULER_INTERVAL_SECONDS` | `60` | Cada cuántos segundos revisa el planificador (`run-scheduler`) los avisos de SLA y los cierres automáticos cuando se deja en marcha. Debe ser mayor que cero. |
 | `WORKLOAD_HIGH_ACTIVE_TICKETS` | `10` | A partir de cuántos tickets activos (ni Resueltos ni Cerrados) se marca a un técnico con «carga alta» en la carga de trabajo. Solo informa: nunca bloquea una asignación. `0` desactiva la marca. Debe ser un entero mayor o igual que cero. |
 | `EDIT_LOCK_TTL_SECONDS` | `120` | Segundos que dura el bloqueo de edición de un ticket sin renovarse. Debe ser mayor que cero. |
@@ -529,6 +531,7 @@ Con las bases de datos creadas y el archivo `.env` configurado (secciones anteri
 | 6 | `run` | Arranca WorkDesk. |
 | 7 | Desde la interfaz | Crea las categorías y ubicaciones de tu organización. |
 | 8 | `seed-demo-tickets` (opcional) | Carga 108 tickets de ejemplo, escritos como los escribiría gente real. Necesita los pasos 3, 5 y 7 (ver [Tickets de demostración](#tener-tickets-con-los-que-probar)). |
+| 8 bis | `seed-demo-articles` (opcional) | Carga 11 artículos de ejemplo en la base de conocimiento y vincula cinco con sus tickets (ver [Artículos de demostración](#artículos-de-demostración)). |
 | 9 | Desde la interfaz | Crea tu primer ticket. |
 
 Todos los comandos llevan el prefijo `python -m flask --app src.workdesk` (por ejemplo, `python -m flask --app src.workdesk seed-roles`). Cada paso se explica a continuación. Si alguno falla, consulta la [solución de problemas](#solución-de-problemas).
@@ -664,6 +667,12 @@ Si ya tenías WorkDesk funcionando con una versión anterior (por ejemplo, `v0.3
 Si vienes de una versión anterior a la que incluye el planificador, la migración marca como ya avisado lo que los SLA en marcha habían alcanzado, así que la primera ejecución de `run-scheduler` no te avisa de todo lo atrasado. Lo contrario ocurre con `sla-rebuild` (paso 4): los períodos que crea para tickets antiguos empiezan sin marcas, y el planificador avisará una sola vez de los que ya estén vencidos. Las variables nuevas (`AUTO_CLOSE_HOURS` y `SCHEDULER_INTERVAL_SECONDS`) tienen valor por defecto: no hace falta tocar tu `.env`.
 
 Para comprobarlo, `db current` debe terminar en `(head)` y `db check` no debe encontrar cambios pendientes.
+
+Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
+
+- Hay tres migraciones nuevas (la configuración, la base de conocimiento y la liberación de bloqueos): el paso 2 las aplica. No cambian datos que ya tengas.
+- Las variables de entorno nuevas (`SLA_ENABLED`, `AUTO_CLOSE_ENABLED`, `LOCATION_REQUIRED`, `DUPLICATE_WINDOW_DAYS` y `DUPLICATE_MIN_WORDS`) tienen valor por defecto. Desde esta versión **todas las de plazos y límites son solo el valor inicial**: el Administrador las cambia desde **Administración**, y lo que guarda manda sobre el `.env`.
+- Para ver la base de conocimiento con contenido, carga los [artículos de demostración](#artículos-de-demostración) (`seed-demo-articles`).
 
 Al pasar de `v0.3.0` a `v0.4.0` conviene saber que:
 
@@ -806,6 +815,41 @@ Con varios destinos, los tickets se reparten por turnos. La asignación anterior
 
 ---
 
+## La configuración
+
+Desde **Administración**, el Administrador cambia sin tocar el `.env` los plazos, límites e interruptores de WorkDesk. Cada pantalla agrupa un tema:
+
+| Pantalla | Qué se cambia |
+| --- | --- |
+| Seguridad y sesión | Intentos fallidos antes de bloquear, tiempo de bloqueo, longitud mínima de contraseña, inactividad y duración de la sesión |
+| Cierre y reapertura | Si se cierran solos los tickets resueltos sin validar, su plazo y el plazo para reabrir |
+| Archivos | Tamaño máximo por archivo (en KB) y archivos por ticket |
+| Comentarios y edición | Tiempo para corregir un comentario propio y la reserva de un ticket mientras se edita |
+| Creación de tickets | Si la ubicación es obligatoria y la sensibilidad de la advertencia de duplicados |
+| Carga y planificador | La marca de «carga alta» y la frecuencia del planificador |
+| SLA | Los objetivos por prioridad, el calendario laboral y el interruptor general del SLA |
+| Notificaciones | Qué aviso interno recibe cada destinatario |
+
+- **El `.env` es solo el valor inicial:** mientras nadie guarde otro, rige el de la variable de entorno (o el de fábrica). Cada valor guardado se marca «Valor propio» y se puede **Restablecer**.
+- Los valores se validan juntos (por ejemplo, la renovación del bloqueo debe ser menor que su duración), con el error junto a su campo, y cada cambio queda en la auditoría con un motivo opcional.
+- Si otra persona cambió la misma pantalla mientras la editabas, no se guarda nada y se avisa.
+- **Con el SLA apagado** no se muestra ni se avisa nada del SLA, pero se sigue calculando: al encenderlo, todo está al día.
+- **Los avisos se apagan, no se inventan:** la pantalla de notificaciones solo permite apagar o encender los avisos que WorkDesk ya sabe enviar, así que ningún ajuste puede mandar algo interno a un Solicitante. Dos avisos son obligatorios.
+
+---
+
+## La base de conocimiento
+
+**Base de conocimiento**, en el menú lateral, la ven los cuatro roles:
+
+- **Portada:** búsqueda, categorías, destacados y recientes. La búsqueda entiende el español («impresoras» encuentra «impresora») y no distingue tildes.
+- **Quién ve qué:** el Solicitante, los artículos publicados y públicos; el Técnico, además sus propios borradores y los privados; el Supervisor y el Administrador, todo. Un artículo que no puedes leer responde como si no existiera.
+- **Quién escribe:** el personal crea borradores; el Técnico edita los suyos mientras sean borradores; el Supervisor y el Administrador publican, retiran de publicación y destacan; solo el Administrador desactiva (no se borra nada). Cada acción tiene su confirmación y queda auditada.
+- **En los tickets:** el personal vincula artículos a un ticket (también a uno cerrado) y crea un borrador a partir de la resolución, con el enlace **Crear artículo desde la resolución**. El Solicitante ve en su ticket los artículos públicos vinculados.
+- **Posibles duplicados:** al crear un ticket, si hay tickets abiertos y recientes que parecen tratar de lo mismo, se muestran antes de crearlo. Nunca impide crear ni enseña tickets que no puedes ver.
+
+---
+
 ## Consultar y buscar tickets
 
 La opción **Tickets** (para el personal) o **Mis tickets** (para el Solicitante), en el menú lateral, lista los tickets que cada persona puede ver:
@@ -864,7 +908,7 @@ Si dos personas actúan sobre el mismo ticket a la vez, la segunda recibe un avi
 
 ## Recorrido de prueba
 
-Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos lo que hace WorkDesk hasta `v0.6.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
+Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos lo que hace WorkDesk hasta `v0.7.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
 
 ### Tener tickets con los que probar
 
@@ -911,6 +955,14 @@ CREATE DATABASE workdesk_dev OWNER workdesk_app;
 ```
 
 Después repite la [preparación inicial](#preparación-inicial) desde el paso 1. `DROP DATABASE` falla si queda alguna conexión abierta: cierra WorkDesk y cualquier herramienta (pgAdmin, `psql`) conectada a esa base.
+
+### Artículos de demostración
+
+```bash
+python -m flask --app src.workdesk seed-demo-articles
+```
+
+Carga 11 artículos de ejemplo con los servicios reales: publicados y borradores, públicos y privados, destacados y de distintas categorías. Si ya cargaste los tickets de demostración, vincula cinco artículos con su ticket. Necesita `seed-catalogs` y `seed-demo`, usa las categorías `Redes`, `Hardware`, `Correo` e `Impresoras` si existen (si no, la de respaldo, y te avisa), no repite un artículo ya cargado y no se ejecuta con `APP_ENV=production`.
 
 ### Usuarios de demostración
 
@@ -998,7 +1050,7 @@ Cierra la sesión y entra, por ejemplo, como `paula.contreras`.
 
 Entra, por ejemplo, como `diego.soto`.
 
-1. **Tickets** muestra todos los tickets (con los datos de demostración, los 87), incluidos los que crearon otras personas.
+1. **Tickets** muestra todos los tickets (con los datos de demostración, los 108), incluidos los que crearon otras personas.
 2. Puede abrir y editar cualquier ticket y cambiar su prioridad con motivo.
 3. **Cambiar el estado:** abre un ticket `Nuevo` y pulsa **Iniciar trabajo**: una pantalla de confirmación muestra `Nuevo → En progreso`; al confirmar, el ticket queda **En progreso** y el historial registra `Estado: «Nuevo» → «En progreso»`. Ahora el botón es **Poner en espera**: elige un motivo (por ejemplo `Otro motivo`, que permite escribir una explicación) y confirma. En el historial, tú ves `Motivo de espera: ...`; el Solicitante ve solo el cambio de estado. Pulsa **Reactivar** para volver a En progreso.
 4. Prueba el aviso de conflicto: abre un ticket en dos pestañas (A y B) y pulsa **Iniciar trabajo** en ambas. Confirma en A; al confirmar en B aparece `Otra persona modificó este ticket mientras decidías...`.
@@ -1034,16 +1086,26 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 3. **Carga de trabajo.** Abre **Carga de trabajo** (técnicos, supervisores y administradores): por técnico y por grupo, con una barra de distribución por prioridad y la insignia **Carga alta** (Valentina Pizarro con los datos de demostración). Filtra por grupo o prioridad: las cifras y los enlaces siguen coincidiendo con el listado. Un solicitante que abre `/workload` recibe **Acceso denegado**.
 4. **Reasignación masiva.** Como `camila.rojas`, abre **Reasignación**, elige a Valentina Pizarro, marca como destino a Diego Soto y a Felipe Araya, escribe un motivo y pulsa **Revisar la reasignación**: ves quién recibe cuántos tickets y todavía no cambió nada. **Confirmar** ejecuta (esto sí modifica tus datos de demostración) y muestra lo reasignado y lo omitido. Un técnico que abre `/reassign` recibe **Acceso denegado**.
 
+### 6. Configuración y base de conocimiento
+
+1. **Configuración.** Como Administrador abre **Administración → Archivos**, baja el tamaño máximo a `512` KB y guarda: el campo queda como «Valor propio» y, en **Crear ticket**, la ayuda dice «archivos de 512 KB». Pulsa **Restablecer** para volver al inicial.
+2. **Ubicación obligatoria.** En **Creación de tickets** activa «Exigir la ubicación». Como `javiera.torres`, **Crear ticket** ya no ofrece «Sin ubicación» y no deja crearlo sin elegir una. Desactívala al terminar (los tickets de demostración tienen tickets sin ubicación).
+3. **SLA apagado.** En **SLA** pulsa **Desactivar SLA** (con un motivo): el listado, el detalle y los dashboards dejan de mostrar el SLA. Actívalo de nuevo y todo vuelve, al día.
+4. **Avisos.** En **Notificaciones** desmarca la casilla «Comentario nuevo» de la columna Solicitantes y guarda. Como `diego.soto` comenta un ticket de `javiera.torres`: ella ya no recibe el aviso. Enciéndelo de nuevo.
+5. **Base de conocimiento.** Con los [artículos de demostración](#artículos-de-demostración) cargados, busca `impresora` como `javiera.torres`: solo ve los publicados y públicos. Como `diego.soto` abre **Gestionar artículos**, crea un borrador y comprueba que la solicitante no lo encuentra; como `camila.rojas`, publícalo.
+6. **Conocimiento en un ticket.** Como `diego.soto`, abre un ticket resuelto y pulsa **Crear artículo desde la resolución**: el borrador se propone con su título, categoría y solución, y queda vinculado al ticket.
+7. **Posibles duplicados.** Como `javiera.torres`, crea un ticket titulado `la impresora no imprime`: antes de crearlo ves los tickets parecidos y **Crear de todos modos**.
+8. **Liberar un bloqueo.** Con `diego.soto` editando un ticket, entra como `camila.rojas` en ese ticket y pulsa **Liberar bloqueo**: la pantalla de Diego avisa que perdió la reserva.
+
 ### Lo que todavía no verás
 
 - Los avisos de SLA y el cierre automático solo ocurren mientras `run-scheduler` está en marcha (ver [Ejecutar el planificador](#ejecutar-el-planificador)). Crear un ticket no avisa a nadie.
-- Todavía no hay la advertencia de posibles duplicados al crear un ticket.
 - El aviso de quién edita no se actualiza solo: aparece al abrir o recargar la pantalla (la actualización en tiempo real es posterior al MVP).
 - La pantalla de Estados y transiciones cambia el nombre, la descripción y las transiciones; el color y el orden de los estados no se editan todavía (llegan con el pulido visual, `v0.9.0`).
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
-- Los límites (plazo para editar comentarios, plazo de reapertura, tamaño y cantidad de archivos, tiempos del bloqueo de edición) se cambian en el `.env`, no desde la interfaz: pasan a la configuración administrable en `v0.7.0`.
 - Los dashboards muestran solo cifras exactas: no hay gráficos ni comparaciones con ayer (los gráficos se deciden con los reportes).
-- Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga llegan con la configuración administrable.
+- Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
+- Los reportes, la pantalla de auditoría y los backups llegan con `v0.8.0`.
 
 ---
 
@@ -1333,7 +1395,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4642 tests
+4681 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1393,7 +1455,7 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 
 Esto acorta el ciclo de desarrollo, pero **antes de un commit o de un Pull Request se ejecuta siempre la suite completa**.
 
-**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **5 minutos en paralelo** (`-n 6`) con los 4175 tests de `v0.6.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
+**Cuánto tarda la suite completa** (medido en el equipo de desarrollo del proyecto, con 6 núcleos físicos): unos **7 minutos en paralelo** (`-n 6`) con los 4681 tests de `v0.7.0`. Cuando se optimizó, con unos 3000 tests, bajó de unos 34 minutos a unos 4 en paralelo y 13 en serie; desde entonces ha crecido sobre todo con las pruebas de pantallas con datos reales, de migraciones y de instalación limpia (estas últimas tardan unos 30 segundos entre las dos, porque lanzan los comandos reales). El número de procesos de `-n` conviene que sea el de núcleos físicos de tu equipo: con más no se gana tiempo (medido al optimizar: 4 procesos: 5 min; 6: 4,3 min; 8: 4,2 min; 12: 4,5 min). Con `pytest-xdist` el reparto por defecto es el mejor (`--dist worksteal` no mejoró nada).
 
 Un módulo de tests nuevo debe añadirse a `tests/areas.py`: si no pertenece a ningún área, la recolección de pytest falla diciéndolo (así ninguno queda fuera de las ejecuciones por área).
 
@@ -1566,7 +1628,7 @@ v1.0.0  MVP
 
 El desarrollo prioriza mantener cada incremento ejecutable, probado y documentado antes de avanzar al siguiente.
 
-El calendario laboral administrable (días, horarios y feriados, configurable por el Administrador) los objetivos de SLA por prioridad y el cálculo del SLA de cada ticket (sus períodos, con la pausa en espera) ya existen (`v0.5.0`, entregas 2 a 4), igual que verlo en la interfaz, las notificaciones y el planificador (entregas 5 a 8); solo queda la revisión de cierre de la fase. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
+`v0.1.0` a `v0.7.0` están terminadas; la siguiente es `v0.8.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 ---
 

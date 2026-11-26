@@ -164,15 +164,21 @@ GROUPS = (
         ),
     ),
     SettingsGroup(
-        slug="duplicados",
-        title="Posibles duplicados",
-        description="La advertencia de tickets parecidos al crear uno. Nunca impide crearlo.",
+        slug="creacion",
+        title="Creación de tickets",
+        description="Qué se exige al crear un ticket y la advertencia de tickets parecidos.",
         fields=(
+            SettingField(
+                settings.LOCATION_REQUIRED,
+                "Exigir la ubicación al crear un ticket",
+                "Solo se exige mientras haya alguna ubicación activa. Los tickets que ya "
+                "existen sin ubicación se pueden seguir editando sin ella.",
+            ),
             SettingField(
                 settings.DUPLICATE_WINDOW_DAYS,
                 "Días hacia atrás que se revisan",
-                "Se comparan los tickets abiertos creados en ese plazo; 0 desactiva la "
-                "advertencia.",
+                "Posibles duplicados: se comparan los tickets abiertos creados en ese "
+                "plazo; 0 desactiva la advertencia, que nunca impide crear.",
                 unit="días",
             ),
             SettingField(

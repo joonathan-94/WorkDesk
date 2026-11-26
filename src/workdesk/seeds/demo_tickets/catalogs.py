@@ -153,7 +153,7 @@ class Catalogs:
             raise DemoTicketsError(
                 "Hay transiciones deshabilitadas que la demostración necesita: "
                 + "; ".join(disabled)
-                + ". Habilítalas en Administración → Estados y transiciones y "
+                + ". Habilítalas en Administración, «Estados y transiciones», y "
                 "vuelve a ejecutar el comando."
             )
 
@@ -255,7 +255,7 @@ class Catalogs:
 
 def disabled_transitions() -> list[str]:
     """Las transiciones que el Administrador deshabilitó, escritas como
-    «Origen → Destino (Acción)» con los nombres visibles actuales."""
+    «de Origen a Destino (Acción)» con los nombres visibles actuales."""
     disabled = db.session.scalars(
         db.select(TransicionEstado)
         .where(TransicionEstado.activa.is_(False))
@@ -263,7 +263,7 @@ def disabled_transitions() -> list[str]:
     )
 
     return [
-        f"{t.estado_origen.nombre_visible} → {t.estado_destino.nombre_visible} "
+        f"de {t.estado_origen.nombre_visible} a {t.estado_destino.nombre_visible} "
         f"({t.accion_nombre})"
         for t in disabled
     ]

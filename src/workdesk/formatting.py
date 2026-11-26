@@ -46,6 +46,25 @@ def format_duration(minutes: int | None) -> str:
     return f"{hours} h {rest} min"
 
 
+def format_size(size: int) -> str:
+    """Un tamaño en bytes como lo lee una persona: «500 KB», «1,5 MB» o «10 MB».
+
+    Desde 1 MB se muestran megabytes con un decimal **hacia abajo** (un límite nunca
+    aparenta ser mayor de lo que es); por debajo, kilobytes **hacia arriba** (un archivo de
+    pocos bytes es «1 KB», no «0 KB»).
+    """
+    if size < 0:
+        raise ValueError("Un tamaño no puede ser negativo.")
+
+    if size >= 1024 * 1024:
+        tenths = size * 10 // (1024 * 1024)
+        whole, decimal = divmod(tenths, 10)
+
+        return f"{whole} MB" if decimal == 0 else f"{whole},{decimal} MB"
+
+    return f"{max(1, -(-size // 1024))} KB"
+
+
 def local_datetime(value: datetime | None) -> str:
     """Muestra una fecha y hora en la zona horaria de la aplicación.
 

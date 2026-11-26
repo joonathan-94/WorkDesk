@@ -174,7 +174,7 @@
                         multiple
                     >
                     <div class="form-text">
-                        Hasta {{ max_files }} archivos de {{ max_upload_mb }} MB
+                        Hasta {{ max_files }} archivos de {{ max_upload|filesize }}
                         ({{ allowed_extensions|join(', ') }}).
                         Heredan la visibilidad del comentario.
                     </div>

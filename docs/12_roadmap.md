@@ -1273,7 +1273,7 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 **Semana:** 8 y primera mitad de 9  
 **Versión:** `v0.7.0`
 
-**Estado de ejecución:** en curso. Las entregas 1 a 9 están hechas; falta el cierre de la fase.
+**Estado de ejecución:** completada. Diez entregas (PR #56 a #65).
 
 ### Entregas de `v0.7.0`
 
@@ -1286,7 +1286,7 @@ Los dashboards reflejan datos reales de la base de datos y permiten navegar haci
 7. **Vínculo con tickets, promoción de una resolución (RF-104 y RF-105) y advertencia de posibles duplicados al crear un ticket (RF-061)** ✓, que comparten la búsqueda.
 8. **Adjuntos al crear un ticket y liberación manual de un bloqueo de edición** ✓.
 9. **Estructura y protecciones** ✓: sin cambios de comportamiento. Las dos pantallas más grandes y los dos módulos más largos divididos por responsabilidad, el código duplicado reunido y cuatro protecciones nuevas (esquema de las migraciones igual al de los modelos, rutas de la base de conocimiento, reglas del frontend e interruptores documentados). Sin migraciones.
-10. **Cierre de la fase**: correcciones de la auditoría, comprobación de escala (~20 000 tickets), matriz de trazabilidad, documentación y etiqueta.
+10. **Cierre de la fase** ✓: correcciones de la auditoría, ubicación obligatoria (RF-019), comprobación de escala (~20 000 tickets), matriz de trazabilidad, documentación y etiqueta.
 
 ### Decisiones de la fase
 
@@ -1295,6 +1295,41 @@ Se tomaron al planificarla:
 - **La configuración se lee de la base de datos una vez por petición** y no se guarda entre peticiones: el planificador es otro proceso y una caché dentro del servidor web no vería los cambios del Administrador (ni a la inversa).
 - **La búsqueda de la base de conocimiento usa el texto completo de PostgreSQL** (diccionario en español e índice GIN, sin dependencias nuevas). Es más de lo que pedía el plan (`ILIKE`) pero evita rehacerla cuando se reutilice en la deflexión de tickets (`docs/13`, EVO-01).
 - **Entran** los pendientes pequeños (adjuntos al crear un ticket, liberar un bloqueo de edición y el interruptor del SLA). **Se difieren** las excepciones de SLA (RF-083), los tickets «sin actividad reciente» y los avisos de sobrecarga, que necesitan reglas por decidir, y la retención (RF-110 y RF-123), que irá con los backups en `v0.8.0`.
+
+### Cierre de la fase (entrega 10)
+
+Se revisó toda la fase: se midió a escala, se recorrieron las pantallas en busca de errores, se compararon los requisitos con el código y se corrigió lo que apareció. La entrega 9 ya había dejado el código ordenado, sin cambios de comportamiento.
+
+- **La matriz de trazabilidad destapó un requisito sin hacer:** la ubicación obligatoria al crear un ticket (RF-019 y RF-116), que `docs/11` daba por «más adelante» y nadie había retomado. Ahora es un interruptor de la pantalla «Creación de tickets» (que reúne también la advertencia de duplicados), solo se exige mientras haya ubicaciones activas y no es retroactivo (RN-177).
+- **Cuatro errores que ningún test veía:** el tamaño máximo de un archivo se mostraba como «0 MB» por debajo de 1 MB (y 1,5 MB como «2 MB»), porque había tres formas distintas de escribirlo; `sla-status` decía «la prioridad no tiene una política activa» con el SLA apagado; `sla-status` y el aviso de transiciones de `seed-demo-tickets` fallaban al redirigir su salida en Windows por un carácter (`→`) que la consola no sabe escribir; y en el detalle de un grupo los dos selectores compartían el mismo `id`, así que la etiqueta del segundo nombraba al primero.
+- **Un hueco de diseño:** el editor de artículos no mostraba el estado editorial que pide UI-011.
+- **Escala (RNF-001).** Con unos 20 000 tickets, 67 000 eventos, 5000 artículos y 24 000 avisos en una base de pruebas: el aviso de duplicados al crear un ticket tarda unos 410 ms para el personal (90 ms para un Solicitante, que ve menos tickets), el dashboard del personal 350 ms, la reasignación 275 ms, la carga de trabajo 270 ms, el listado entre 30 y 205 ms según el filtro, y la base de conocimiento (portada, búsqueda, detalle y gestión) menos de 20 ms. El número de consultas no crece con los datos. Se probó calcular el estado del SLA con una sola subconsulta por ticket y no mejoró, así que se dejó como estaba.
+- **Recorrido automático de 162 pantallas** con los cuatro roles sobre esos datos: ningún error del servidor y un solo problema de accesibilidad (el de Grupos).
+- **Protecciones nuevas:** que todo texto que escriben los comandos pueda salir por la consola de Windows y las pruebas de cada corrección. Como en cada entrega, se comprobaron con mutaciones.
+
+#### Matriz de trazabilidad
+
+| Requisito | Estado | Dónde | Pruebas |
+| --- | --- | --- | --- |
+| RF-019 / RF-116 ubicación obligatoria · RN-177 | Hecho en el cierre | `LOCATION_REQUIRED`, «Creación de tickets», `tickets/service.py` (`location_required`) | `test_phase7_closing` |
+| RF-053 validación y cierre automático | Hecho: activación, plazo y avisos; la unidad es fija (horas corridas) y no hay «condiciones de aplicación» | «Cierre y reapertura», `scheduler.py` | `test_settings_screens`, `test_scheduler` |
+| RF-061 posibles duplicados · RN-175 | Hecho | `tickets/similar.py`, «Creación de tickets» | `test_duplicate_warning` |
+| RF-087 y RF-121 configuración de notificaciones · RN-97, RN-172 | Hecho como catálogo que se apaga y enciende | `notifications/preferences.py`, `/admin/notifications` | `test_notification_settings` |
+| RF-102 gestión de artículos · RN-173 | Hecho; se desactivan, no se borran | `knowledge/service.py`, `/knowledge/...` | `test_knowledge_model`, `test_knowledge_screens` |
+| RF-103 artículos públicos y privados | Hecho; la visibilidad se decide en la consulta | `knowledge/queries.py` | `test_knowledge_model` |
+| RF-104 vínculo con tickets · RN-174 | Hecho | `tickets/knowledge_links.py` | `test_ticket_knowledge` |
+| RF-105 solución convertida en conocimiento | Hecho (borrador desde la resolución) | `/knowledge/new?ticket=<n>` | `test_ticket_knowledge` |
+| RF-113 área de configuración | Hecho | hub de administración y `/admin/settings/<grupo>` | `test_layout`, `test_settings_screens` |
+| RF-114, RF-115 y RF-117 categorías, prioridades y grupos | Hecho en fases anteriores; nivel y color de las prioridades, fijos por diseño | `/admin/...`, `/groups` | `test_catalogs*`, `test_groups` |
+| RF-118 estados y transiciones | Hecho, salvo color y orden de los estados (`v0.9.0`) | `/admin/states` | `test_states_admin` |
+| RF-119 configuración de SLA · RN-165 | Hecho, con el interruptor general | `/admin/sla` | `test_sla_switch` |
+| RF-120 cierre y reapertura | Hecho | «Cierre y reapertura» | `test_settings_screens` |
+| RF-122 archivos | Hecho: tamaño y cantidad; los tipos permitidos son fijos por seguridad | «Archivos» | `test_settings_screens`, `test_ticket_create_uploads` |
+| RF-126 configuración inicial | Hecho | `seed-catalogs`, valores por defecto de `settings.py` | `test_migrations` |
+| RF-110 y RF-123 retención | **Fuera de la fase** (`v0.8.0`, con los backups) | — | — |
+| RF-083 excepciones de SLA | **Fuera de la fase** (sin fase asignada) | — | — |
+
+**Queda fuera de la fase,** con su destino: la retención (RF-110 y RF-123), con los backups de `v0.8.0`; las excepciones de SLA (RF-083), los tickets «sin actividad reciente» (RF-036, RN-27) y los avisos internos de sobrecarga (RN-28), que necesitan reglas que todavía no se han decidido y quedan sin fase asignada; y el color y el orden de los estados, con el pulido visual de `v0.9.0`.
 
 ## 20.1. Administración
 
@@ -1814,9 +1849,7 @@ Mientras tanto, la regla para el desarrollo de interfaz es usar siempre tokens (
 
 # 33. Próximo paso inmediato
 
-La documentación inicial, la preparación del repositorio, `v0.1.0 — Fundación técnica`, la identidad visual oficial, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets` y `v0.4.0 — Asignación, colaboración y ciclo de vida` ya fueron realizadas e integradas en `main`.
-
-El estado inmediato del proyecto es:
+`v0.1.0` a `v0.7.0` están integradas en `main` y etiquetadas:
 
 ```text
 main
@@ -1825,22 +1858,24 @@ main
 → v0.2.0 integrado (PR #4 a #13) y etiquetado
 → v0.3.0 integrado (PR #14 a #20) y etiquetado
 → v0.4.0 integrado (PR #23 a #35) y etiquetado
+→ v0.5.0 integrado (PR #36 a #45) y etiquetado
+→ v0.6.0 integrado (PR #46 a #55) y etiquetado
+→ v0.7.0 integrado (PR #56 a #65) y etiquetado
 ```
 
-Entre `v0.3.0` y `v0.4.0` se añadió el comando opcional `seed-demo-tickets` (PR #21), pensado para probar y mostrar el sistema. Creció con cada entrega de `v0.4.0` hasta los 76 tickets de demostración actuales, con textos realistas, fechas relativas, datos separados de la lógica y todos los caminos del ciclo de vida (estados, asignaciones, comentarios, adjuntos, cierres y relaciones). Seguirá ampliándose con cada fase: cuando existan el SLA y las notificaciones, se añaden campos opcionales a su lista de datos.
-
-El siguiente paso del proyecto es `v0.5.0 — SLA y notificaciones internas` (fase 5, sección 18). Antes de escribir código conviene:
+El siguiente paso es `v0.8.0 — Reportes, auditoría y backups` (fase 8, sección 21). Antes de escribir código conviene:
 
 ```text
-1. revisar lo que v0.4.0 dejó para esta fase (sección 17): el cierre
-   automático por inactividad y los avisos a los técnicos;
-2. revisar las decisiones de negocio pendientes del SLA (continuidad ante
-   cambios de prioridad, pausa en espera y calendario laboral);
+1. empezar, como en las dos fases anteriores, por una revisión de lo
+   construido (medir antes de cambiar);
+2. decidir lo que v0.7.0 dejó sin regla: la retención (RF-110 y RF-123),
+   que va con los backups, y si los reportes absorben los tickets «sin
+   actividad reciente» (RF-036, RN-27);
 3. dividir la fase en entregas pequeñas, cada una con su rama, tests y
-   Pull Request, como se hizo en las fases anteriores.
+   Pull Request.
 ```
 
-`v0.5.0` reutiliza la infraestructura validada en las fases anteriores: las políticas de autorización y su red de seguridad sobre todas las rutas, el historial con su visibilidad por evento, el motor de estados (`change_state` y `apply_derived_transition`, que son por donde pasa todo cambio de estado y, por tanto, donde el SLA tendrá que reaccionar al entrar y salir de `En espera`), el motor de tiempo laboral del seed de demostración (que la entrega 1 movió a `worktime.py`), y los patrones de servicio, de confirmación y de administración de catálogos. La navegación (`navigation.py`) y el hub de administración (`admin/hub.py`) incorporan las nuevas opciones a medida que existen sus pantallas.
+`v0.8.0` reutiliza lo que ya está validado: la auditoría administrativa (append-only, desde `v0.2.0`), las consultas con la visibilidad resuelta en SQL, la configuración administrable (`configuration.py`) y la prueba de pantallas con presupuesto de consultas.
 
 ---
 

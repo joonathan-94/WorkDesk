@@ -383,7 +383,7 @@ def test_hub_links_only_the_implemented_sections(
         "Motivos de espera",
         "Estados y transiciones",
         "Comentarios y edición",
-        "Posibles duplicados",
+        "Creación de tickets",
         "SLA",
         "Cierre y reapertura",
         "Notificaciones",
@@ -407,7 +407,7 @@ def test_hub_links_only_the_implemented_sections(
         "cierre",
         "archivos",
         "colaboracion",
-        "duplicados",
+        "creacion",
         "operacion",
     ):
         assert f'href="/admin/settings/{slug}"' in content

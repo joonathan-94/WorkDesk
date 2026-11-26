@@ -17,11 +17,7 @@
                         {{ file.nombre_original }}
                     </a>
                     <span class="text-secondary">
-                        {% if file.tamano_bytes >= 1048576 %}
-                            {{ '%.1f'|format(file.tamano_bytes / 1048576) }} MB
-                        {% else %}
-                            {{ ((file.tamano_bytes + 1023) // 1024) }} KB
-                        {% endif %}
+                        {{ file.tamano_bytes|filesize }}
                         ·
                         {{ file.subido_por.nombre }} {{ file.subido_por.apellido }}
                         ·

@@ -59,17 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.6.0 — Dashboards y carga de trabajo
+v0.7.0 — Administración y base de conocimiento
 ```
 
-La versión `v0.6.0` está:
+La versión `v0.7.0` está:
 
 - implementada;
-- testeada (4175 tests al cerrarla);
+- testeada (4681 tests al cerrarla);
 - documentada;
-- mergeada en `main` (PR #46 a #55).
+- mergeada en `main` (PR #56 a #65).
 
-Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas` y `v0.6.0` están etiquetadas.
+Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas`, `v0.6.0 — Dashboards y carga de trabajo` y `v0.7.0` están etiquetadas.
 
 ## Rama estable
 
@@ -82,14 +82,17 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/ticket-uploads-and-lock-release
+chore/close-v0-7-0
 ```
 
-Entrega 8 de `v0.7.0`: adjuntos al crear un ticket y liberación de un bloqueo de edición. **Con una migración.** Ver «Adjuntos al crear y liberación de bloqueos».
+Entrega 10 de `v0.7.0`: el cierre de la fase. **Sin migraciones.** Ver «Cierre de `v0.7.0`».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
 `v0.6.0` se construyó en 10 entregas (PR #46 a #55): la revisión de lo construido (dos entregas), los filtros del listado, el dashboard del Solicitante, la carga de trabajo (consultas y pantalla), el dashboard operacional, la reasignación masiva (servicio y pantallas) y el cierre de la fase. Su tabla de entregas está en `docs/12_roadmap.md` y su relato, en `docs/14_historial_de_implementacion.md`.
+
+`v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
+
 ## Identidad visual (integrada en `main`)
 
 La rama `feature/branding-login` (Pull Request #3) ya fue fusionada en `main`. Incorporó:
@@ -120,6 +123,7 @@ Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su P
 | `v0.4.0` | Asignación, colaboración y ciclo de vida: grupos, comentarios, adjuntos, resolución, relaciones y bloqueo de edición | 12 | #23 a #35 | 2201 |
 | `v0.5.0` | SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 9 | #36 a #45 | 3965 |
 | `v0.6.0` | Dashboards por rol, carga de trabajo del equipo y reasignación masiva | 10 | #46 a #55 | 4175 |
+| `v0.7.0` | Configuración administrable, base de conocimiento, avisos configurables y advertencia de duplicados | 10 | #56 a #65 | 4681 |
 
 Decisiones de las fases que siguen vigentes (cada una con su detalle en las secciones de este archivo):
 
@@ -130,7 +134,7 @@ Decisiones de las fases que siguen vigentes (cada una con su detalle en las secc
 - **El SLA es solo del personal** (RN-169) y **un cambio de prioridad nunca reinicia el reloj ni borra un incumplimiento** (RN-88).
 - **Un único motor de tiempo laboral** (`worktime.py`) y **un único lugar que decide el calendario vigente** (`resolve_work_calendar`).
 - **Siempre se bloquea el ticket primero** (cambios de estado, planificador, reasignación): evita bloqueos mutuos.
-- **Los parámetros que serán configuración** (plazos, límites, tiempos del bloqueo, cierre automático) son variables de entorno hasta `v0.7.0`.
+- **Los plazos, límites e interruptores se leen con `value_of`** (`configuration.py`): la variable de entorno es solo el valor inicial y el Administrador lo cambia desde la web. Un test impide leerlos directamente de `app.config`.
 
 ## Revisión de lo construido (entrega 1 de `v0.6.0`)
 
@@ -172,7 +176,7 @@ Primera entrega de la fase: auditar lo construido antes de construir encima. Se 
 
 ## Configuración administrable (entrega 2 de `v0.7.0`)
 
-La tabla `configuracion` (docs/09, 26.1) y el servicio que lee y cambia los 14 parámetros numéricos de `settings.py`. **Incluye una migración** (`create_configuration_table`). Todavía **no hay pantalla** (entrega 3): hasta entonces un valor propio solo se guarda desde el servicio.
+La tabla `configuracion` (docs/09, 26.1) y el servicio que lee y cambia los 14 parámetros numéricos de `settings.py`. **Incluye una migración** (`create_configuration_table`). Las pantallas llegaron en la entrega 3.
 
 - **Qué valor rige.** Una fila de `configuracion` es un valor elegido por el Administrador y **sin fila rige el valor inicial** (la variable de entorno o el valor por defecto de `settings.py`, que se llena en `app.config` al iniciar). Así la aplicación arranca sin cargar nada, no hay que ejecutar ningún seed y «volver al valor inicial» es borrar la fila. No hay campo `activo` (docs/09): lo vigente es el valor actual y el historial está en la auditoría. Las definiciones (claves, rangos y valores por defecto) siguen en `settings.py`: una fila con una clave que el código no conoce se ignora, y un valor guardado que ya no es válido (alguien tocó la tabla a mano) se descarta con un aviso en el log, para que un dato corrupto no tumbe cada pantalla.
 - **Lectura** (`src/workdesk/configuration.py`, `value_of(settings.X)`). La primera lectura de una petición trae toda la tabla en **una consulta** y la guarda en `g`; las demás no cuestan nada. **No hay caché entre peticiones**, a propósito: el planificador es otro proceso y una caché dentro del servidor web no vería un cambio del Administrador (ni al revés). El planificador descarta lo leído al empezar cada pasada. Un test (`test_no_module_reads_a_setting_from_app_config_directly`) impide que algún módulo vuelva a leer estos parámetros de `app.config`: así un valor guardado nunca se ignora en un rincón.
@@ -211,7 +215,7 @@ El Administrador elige qué avisos internos se envían y a quién (RF-087, RF-12
 
 ## Base de conocimiento: modelo y búsqueda (entrega 5 de `v0.7.0`)
 
-Reglas completas en `docs/06` (RN-173) y `docs/09` (23). **Incluye una migración** (`create_knowledge_base_tables`). Todavía **no hay pantallas** (entrega 6).
+Reglas completas en `docs/06` (RN-173) y `docs/09` (23). **Incluye una migración** (`create_knowledge_base_tables`). Las pantallas son de la entrega 6.
 
 - **Modelo** (`models/article.py`): `Article` (`articulos_conocimiento`) y `TicketArticle` (`tickets_articulos_conocimiento`, un mismo par ticket-artículo una sola vez; las pantallas del vínculo son de la entrega 7). Respecto de docs/09 se añaden `categoria_id` (se **reutiliza el catálogo de categorías de los tickets**, no hay un catálogo aparte), `destacado`, `version` y la columna generada `vector_busqueda`. La base de datos impide un publicado sin fecha, un destacado sin publicar o inactivo, una desactivación incoherente y textos vacíos.
 - **Quién ve qué** (`security/authorization.py` y `knowledge/queries.py`): el Solicitante, los publicados y públicos; el Técnico, los publicados y sus propios borradores; el Supervisor, todos los activos; el Administrador, todos. `visible_articles_condition` es el equivalente SQL de `can_view_article` y un test comprueba que coinciden para los cuatro roles, el autor ajeno, el usuario inactivo y el anónimo con 16 tipos de artículo. La búsqueda y los listados de lectura ofrecen solo lo publicado y activo.
@@ -241,7 +245,7 @@ RF-104, RF-105 y RF-061. Reglas completas en `docs/06` (RN-174 y RN-175). **Sin 
 - **Vínculos** (`tickets/knowledge_links.py`, sin commit). El personal vincula a un ticket cualquier artículo **activo que pueda leer**, una sola vez (índice único con savepoint), y lo desvincula con confirmación. **También en un ticket cerrado**: no cambia el ticket (ni versión ni «Actualizado») y es cuando una resolución suele convertirse en conocimiento. Cada cambio deja un evento **interno** (`ARTICULO_VINCULADO` y `ARTICULO_DESVINCULADO`). Pantalla `/tickets/<n>/knowledge` (buscar publicados y vincular); el detalle tiene la tarjeta «Base de conocimiento».
 - **Cada persona recibe solo lo que puede leer:** la lista sale de una consulta con la visibilidad de artículos, así que un Solicitante ve en su ticket los publicados y públicos y nada más (sin tarjeta si no hay ninguno).
 - **Artículo desde la resolución** (`/knowledge/new?ticket=<n>`, desde la resolución del detalle o la pantalla del ticket): propone el título, la categoría y la resolución, **no la descripción** (puede tener datos personales), avisa de revisarlo y al guardar crea el borrador y lo vincula como `ORIGEN_RESOLUCION` en la misma transacción. Sin resolución escrita o sin acceso al ticket responde 404.
-- **Posibles duplicados** (`tickets/similar.py`). Al enviar el formulario de creación, si hay tickets **abiertos y recientes** de la misma categoría (o sin clasificar) cuyo título comparte palabras, se muestran antes de crear, con «Crear de todos modos». **Nunca impide crear**, funciona sin JavaScript y **solo enseña tickets que la persona ya puede ver**. La confirmación vale para ese título y categoría: si cambian, se vuelve a comprobar. Configurable en «Posibles duplicados» (`DUPLICATE_WINDOW_DAYS`, 30, 0 la desactiva; `DUPLICATE_MIN_WORDS`, 2).
+- **Posibles duplicados** (`tickets/similar.py`). Al enviar el formulario de creación, si hay tickets **abiertos y recientes** de la misma categoría (o sin clasificar) cuyo título comparte palabras, se muestran antes de crear, con «Crear de todos modos». **Nunca impide crear**, funciona sin JavaScript y **solo enseña tickets que la persona ya puede ver**. La confirmación vale para ese título y categoría: si cambian, se vuelve a comprobar. Configurable en «Creación de tickets» (`DUPLICATE_WINDOW_DAYS`, 30, 0 la desactiva; `DUPLICATE_MIN_WORDS`, 2).
 - **Medido antes de decidir:** comparando contra 20 000 tickets abiertos recientes, calcular el vector de cada título una vez por palabra tardaba 1,3 s; calculándolo una sola vez (`MATERIALIZED`) baja a 0,5 s. Un índice no mejoró en esa prueba y habría pedido una migración, así que no se creó (con volúmenes realistas, cientos o pocos miles, son decenas de milisegundos).
 - **Un ciclo de importación** entre el editor de artículos y los vínculos se resolvió importando el servicio dentro de la función que lo usa.
 - **Tests:** 61 nuevos (4543 → 4604): `test_ticket_knowledge` y `test_duplicate_warning`, entre otros.
@@ -256,24 +260,38 @@ Los dos pendientes que arrastraba la planificación. **Con una migración** (`ad
 - **No destruye trabajo:** si la persona desalojada envía su formulario sin JavaScript y nadie cambió el ticket, se guarda; la barrera de integridad sigue siendo la versión.
 - **Tests:** 38 nuevos (4604 → 4642): `test_ticket_create_uploads` y `test_ticket_lock_revoke`.
 
+## Cierre de `v0.7.0`
+
+La entrega 10 revisó toda la fase. La 9 ya había ordenado el código sin cambiar el comportamiento (parciales del detalle y del listado, `sla/` partido en escritura, lectura y reconstrucción, el historial de los cambios de estado en `lifecycle_history.py`, lo copiado reunido en `cleaning.py`, `query_params.py` y `status_filter.py`, y cuatro protecciones nuevas). **Sin migraciones.**
+
+- **Ubicación obligatoria (RF-019, RN-177),** el único requisito de la fase que la matriz encontró sin hacer. `LOCATION_REQUIRED` (falso por defecto) es un interruptor de la pantalla **Creación de tickets** (`/admin/settings/creacion`, que reúne también los posibles duplicados). Solo rige mientras haya alguna ubicación activa (`tickets/service.py`, `location_required`) y no es retroactiva: un ticket sin ubicación se sigue editando sin ella, pero a uno que la tiene no se le puede quitar. Lo comprueban el servicio de creación, el de edición y el formulario. `seed-demo-tickets` se detiene antes de cargar nada si está activa, porque la demostración tiene tickets sin ubicación.
+- **Tamaño de los archivos:** había tres formas de escribirlo y una mostraba «0 MB» por debajo de 1 MB. Ahora es una sola, `format_size` (`formatting.py`, filtro `filesize`): megabytes con un decimal hacia abajo y kilobytes hacia arriba.
+- **`sla-status`** dice «SLA: apagado» con el interruptor apagado (antes, «sin política»).
+- **Salida de los comandos en Windows:** `sla-status` y el aviso de transiciones de `seed-demo-tickets` fallaban al redirigir su salida, por un `→` que la consola de Windows no sabe escribir. Un test exige que todo texto de `cli/`, `seeds/` y `scheduler.py` se pueda escribir en cp1252.
+- **El editor de artículos muestra el estado editorial** (UI-011) y **los dos selectores del detalle de un grupo tienen su propio `id`** (la etiqueta del segundo nombraba al primero).
+- **Escala:** con unos 20 000 tickets, 5000 artículos y 24 000 avisos, todas las pantallas responden en menos de medio segundo (la más lenta, el aviso de duplicados del personal, unos 410 ms) y con un número de consultas que no crece con los datos. Se recorrieron 162 pantallas con los cuatro roles sin un solo error del servidor.
+- **Tests:** 24 nuevos (4657 → 4681), en `tests/test_phase7_closing.py`, con sus mutaciones.
+
+Lo que la fase deja pendiente, con su destino, está en `docs/12_roadmap.md` (fase 7, «Cierre de la fase»).
+
 ## Próximo hito
 
 ```text
-v0.7.0 — Administración y base de conocimiento
+v0.8.0 — Reportes, auditoría y backups
 ```
 
-Su alcance está en `docs/12_roadmap.md` (fase 7): la tabla `configuracion` y la configuración administrable (los plazos y límites que hoy son variables de entorno, el interruptor general del SLA y la configuración de eventos y destinatarios de las notificaciones), la base de conocimiento y la advertencia de posibles duplicados al crear un ticket (RF-061), que comparte la búsqueda con ella. `v0.6.0` deja preparado:
+Su alcance está en `docs/12_roadmap.md` (fase 8): reportes con filtros, la pantalla de auditoría y los eventos de autenticación, y los backups locales (base de datos y archivos, con su restauración documentada y probada). `v0.7.0` deja preparado:
 
-- los contadores y las definiciones de carga de trabajo (`workload/queries.py`), cuya marca de carga alta (`WORKLOAD_HIGH_ACTIVE_TICKETS`) pasará a la configuración;
-- los 108 tickets de demostración compartidos por los tests (`tests/demo_data.py`), la prueba de pantallas con presupuesto de consultas (`tests/test_pages_smoke.py`) y el seed `seed-demo-tickets`, que se amplía en cada fase (ver "22. CLI").
+- la auditoría administrativa de todo lo configurable (parámetros, avisos, artículos y bloqueos liberados), que la pantalla de auditoría podrá consultar;
+- la configuración administrable (`configuration.py`), donde irán los parámetros nuevos de la fase (por ejemplo, la retención);
+- los 108 tickets y 11 artículos de demostración y la prueba de pantallas con presupuesto de consultas.
 
 Pendiente, sin fase asignada, para decidirlo al planificar:
 
-- los adjuntos desde el formulario de creación del ticket;
-- las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
-- la liberación manual de un bloqueo de edición por el Supervisor o el Administrador;
+- la retención de datos (RF-110 y RF-123), que irá con los backups;
 - las excepciones de SLA (RF-083);
-- los tickets «sin actividad reciente» (RF-036, RN-27) y los avisos internos de sobrecarga (RN-28): necesitan decidir qué es «reciente» y quién recibe el aviso, y se resuelven junto con la configuración de `v0.7.0`;
+- los tickets «sin actividad reciente» (RF-036, RN-27) y los avisos internos de sobrecarga (RN-28): necesitan decidir qué es «reciente» y quién recibe el aviso;
+- las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`).
 
 ---
@@ -494,7 +512,7 @@ No deben versionarse:
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
 
-Los 16 parámetros numéricos y los 2 interruptores (SLA y cierre automático) (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave futura de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
+Los 16 parámetros numéricos y los 3 interruptores (SLA, cierre automático y ubicación obligatoria) (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
 
 Variables principales:
 
@@ -515,6 +533,7 @@ REOPEN_WINDOW_DAYS
 AUTO_CLOSE_HOURS
 AUTO_CLOSE_ENABLED
 SLA_ENABLED
+LOCATION_REQUIRED
 DUPLICATE_WINDOW_DAYS
 DUPLICATE_MIN_WORDS
 SCHEDULER_INTERVAL_SECONDS
@@ -545,6 +564,7 @@ REOPEN_WINDOW_DAYS=30
 AUTO_CLOSE_HOURS=24
 AUTO_CLOSE_ENABLED=true
 SLA_ENABLED=true
+LOCATION_REQUIRED=false
 DUPLICATE_WINDOW_DAYS=30
 DUPLICATE_MIN_WORDS=2
 SCHEDULER_INTERVAL_SECONDS=60
@@ -950,7 +970,7 @@ Paquete `src/workdesk/workload/` (`queries.py`): `workload_overview(user, filter
 - **Filtros** (`WorkloadFilters`: grupo, prioridad y estado) restringen qué tickets se cuentan, igual que en el listado.
 - **Número fijo de consultas:** ocho en total, aunque el equipo crezca (hay un test con 34 técnicos).
 - **Solo el personal** (`can_view_workload`, en `security/authorization.py`): un Técnico ve la carga de todo el equipo, sin ranking; el Solicitante y los usuarios inactivos reciben `PermissionError`.
-- **Carga alta (RN-26):** `WORKLOAD_HIGH_ACTIVE_TICKETS` (variable de entorno, 10 por defecto, validada al iniciar; 0 desactiva la marca) marca con `high=True` a quien tiene ese número de tickets activos o más. **Solo informa:** no bloquea ni avisa. Pasará a la configuración administrable en `v0.7.0`.
+- **Carga alta (RN-26):** `WORKLOAD_HIGH_ACTIVE_TICKETS` (variable de entorno, 10 por defecto, validada al iniciar; 0 desactiva la marca) marca con `high=True` a quien tiene ese número de tickets activos o más. **Solo informa:** no bloquea ni avisa. Desde `v0.7.0` se cambia desde la administración.
 - **Seed de demostración:** 21 tickets nuevos al final de la lista (108 en total) repartidos entre los cuatro técnicos y los tres grupos: críticos, en espera, uno con dos técnicos, otros sin asignar y sin grupo. Con la configuración por defecto, Valentina Pizarro queda en 10 tickets activos y aparece con carga alta.
 - **Tests:** `tests/test_workload_queries.py` en el área `dashboards`.
 
@@ -1048,7 +1068,7 @@ Reglas completas en `docs/06` (RN-163), `docs/09` (28.2) y `docs/10` (secciones 
 
 **Pantalla.** `edit.html` y `priority.html` llevan en el formulario `data-edit-lock` y las URL, el token y el latido; el parcial `_edit_lock_notice.html` explica que el ticket queda reservado y trae el aviso rojo (oculto) del bloqueo perdido. `static/js/tickets/edit-lock.js` (mejora progresiva, sin dependencias externas) renueva cada `data-lock-heartbeat` segundos, libera al salir con `sendBeacon` salvo que se esté enviando el formulario y, si el servidor responde 409, avisa y desactiva el botón de guardar. El detalle muestra «X está editando este ticket» solo al personal que podría editar y nunca a quien tiene el bloqueo.
 
-**Configuración:** `EDIT_LOCK_TTL_SECONDS` (120) y `EDIT_LOCK_HEARTBEAT_SECONDS` (45), variables de entorno validadas al iniciar (enteros mayores que cero y el latido menor que la duración); pasarán a la configuración administrable en `v0.7.0`.
+**Configuración:** `EDIT_LOCK_TTL_SECONDS` (120) y `EDIT_LOCK_HEARTBEAT_SECONDS` (45), variables de entorno validadas al iniciar (enteros mayores que cero y el latido menor que la duración); desde `v0.7.0` se cambian desde la administración.
 
 **Seed demo:** no cambia: un bloqueo es un estado transitorio y no tiene sentido sembrarlo.
 
@@ -1103,7 +1123,7 @@ Reglas completas en `docs/06` (RN-161) y `docs/09` (16.1). Todas las acciones so
 
 **Pantallas** (`GET, POST /tickets/<n>/status/<slug>`; 404 si no se ve el ticket, 403 si la política de la acción no lo permite, aviso si la acción ya no corresponde al estado; un ticket cerrado solo abre `reopen`). La pantalla (`state_change.html`) muestra, según la acción, el selector de motivo de cierre y el campo de texto (etiqueta, obligatoriedad y límite de `StateActionInfo`); `StateChangeForm` recibe esos datos y valida el límite y la obligatoriedad. La cabecera del detalle ofrece los botones de estado (principales o secundarios según `StateActionInfo.primary`); confirmar y rechazar no son botones de cabecera: el solicitante los ve en el aviso de `Resuelto` (UI-005A). El detalle añade la tarjeta **Resolución** y, en el resumen, **Fecha de resolución** y **Fecha de cierre** (esta con su motivo). `_render_detail` separa `validation_actions` de `state_actions`.
 
-**Configuración:** `REOPEN_WINDOW_DAYS` (30, variable de entorno validada al iniciar como los límites de sesión; pasará a la configuración administrable en `v0.7.0`).
+**Configuración:** `REOPEN_WINDOW_DAYS` (30, variable de entorno validada al iniciar como los límites de sesión; desde `v0.7.0` se cambia desde la administración).
 
 **Seed demo:** `DemoAdjustment` admite `motivo_cierre` y las acciones `RESOLVER`, `CIERRE_DIRECTO`, `CIERRE_EXCEPCIONAL`, `CONFIRMAR`, `RECHAZAR` y `REABRIR` en `estado` (ver "22. CLI"), con siete tickets nuevos (72 en total).
 
@@ -1143,7 +1163,7 @@ Reglas completas en `docs/06` (RN-159) y `docs/09` (17.1). Las reglas están en 
 - `can_comment_publicly(user, ticket)`: quien puede ver el ticket (el personal en todos; el Solicitante en los suyos).
 - `can_write_internal_note(user)`: solo el personal.
 - `can_view_comment(user, comment)`: el personal ve todos; el Solicitante, solo los públicos. Es el equivalente en Python de `visible_comments_condition`, y un test comprueba que coinciden para todos los roles, usuarios inactivos y anónimos.
-- `can_edit_comment(user, comment, now=, window_minutes=)` y `can_delete_comment` (hoy la misma regla): el Supervisor y el Administrador, cualquier comentario visible y sin plazo; el resto, solo los suyos dentro de `COMMENT_EDIT_WINDOW_MINUTES` (30 por defecto, variable de entorno validada al iniciar como los límites de sesión; pasará a la configuración administrable en `v0.7.0`). `INTERNAL_COMMENT_TYPE` repite el código del tipo interno para que este módulo no dependa de los modelos; un test comprueba que coincide.
+- `can_edit_comment(user, comment, now=, window_minutes=)` y `can_delete_comment` (hoy la misma regla): el Supervisor y el Administrador, cualquier comentario visible y sin plazo; el resto, solo los suyos dentro de `COMMENT_EDIT_WINDOW_MINUTES` (30 por defecto, variable de entorno validada al iniciar como los límites de sesión; desde `v0.7.0` se cambia desde la administración). `INTERNAL_COMMENT_TYPE` repite el código del tipo interno para que este módulo no dependa de los modelos; un test comprueba que coincide.
 
 **Servicio** (`tickets/comments.py`, sin commit; cada operación empieza con `begin_ticket_operation`: usuario activo, fila del ticket bloqueada y ticket no cerrado):
 
@@ -1363,7 +1383,7 @@ Entrega 3 de `v0.5.0`, en el mismo paquete `src/workdesk/sla/` que el calendario
 
 **Datos iniciales.** `seed-catalogs` carga una política por prioridad con los valores de ejemplo de UI-022 (`INITIAL_SLA_POLICIES`; minutos laborales, pausa en espera): Baja 8 h / 24 h / 80 %, Media 4 h / 12 h / 80 %, Alta 2 h / 6 h / 75 % y Crítica 30 min / 4 h / 75 % (primera respuesta, resolución y umbral). Cada política se identifica por su prioridad: si ya hay una fila (activa o no) no se toca, así que no pisa lo editado ni reactiva lo desactivado. El seed `seed-demo-tickets` no cambia en esta entrega: sin períodos de SLA no hay nada que sembrar en los tickets.
 
-**Quedan fuera** (ver `docs/06`, RN-165): el interruptor general «Aplicar SLA a los tickets» y los avisos configurables de UI-022, que dependen de la tabla `configuracion` de `v0.7.0`; mientras tanto, desactivar las políticas desactiva el SLA.
+**Llegaron en `v0.7.0`:** el interruptor general del SLA (ver «Pantallas de configuración e interruptores») y la configuración de los avisos (ver «Configuración de notificaciones»).
 
 **Mejora de lo existente.** La red de seguridad de autorización (`tests/test_route_authorization.py`) no cubría las rutas `sla.*`, que ya eran del Administrador: ahora las recorre como a `users`, `catalogs` y `admin`.
 
@@ -1468,7 +1488,7 @@ Entrega 8 de `v0.5.0`, en `src/workdesk/scheduler.py`. Reglas completas en `docs
 
 **Cierre automático** (`run_auto_close`). Busca los tickets `Resuelto` cuya resolución es anterior a `AUTO_CLOSE_HOURS` horas (horas corridas, 24 por defecto) y llama a `close_automatically` (`tickets/lifecycle.py`). Esta función bloquea el ticket y **vuelve a comprobar** el estado, el plazo (la fecha de resolución sigue siendo anterior al límite, así que un ticket rechazado y resuelto de nuevo reinicia la espera) y que la transición `AUTO_CIERRE` siga activa; cierra con el motivo `INACTIVIDAD`, `cerrado_automaticamente` verdadero y sin usuario que cierra; registra `TICKET_CERRADO` con actor **Sistema** (`actor_tipo` `SISTEMA`) y `contexto["accion"]` `AUTO_CIERRE`; sube la versión, detiene el SLA y avisa a los solicitantes vigentes y a los técnicos asignados («Ticket cerrado automáticamente»). Reutiliza `_closing_changes`, así que «cerrado ⇒ fecha y motivo» sigue sin poder romperse. Para que el sistema pudiera actuar sin usuario, `apply_ticket_changes` y las funciones de avisos admiten `actor=None`. Un ticket cerrado así se puede reabrir como cualquier otro (la reapertura limpia `cerrado_automaticamente`).
 
-**Configuración.** `AUTO_CLOSE_HOURS` y `SCHEDULER_INTERVAL_SECONDS`, variables de entorno validadas al iniciar (enteros mayores que cero) hasta que la configuración administrable de `v0.7.0` las reemplace.
+**Configuración.** `AUTO_CLOSE_HOURS` y `SCHEDULER_INTERVAL_SECONDS`, variables de entorno validadas al iniciar (enteros mayores que cero); desde `v0.7.0` son el valor inicial y se cambian desde la administración.
 
 **Seed de demostración.** No cambia: un cierre automático depende del paso del tiempo, no se siembra. Una base **nueva** cargada con `seed-demo-tickets` deja sus períodos sin marcas, así que el primer `run-scheduler` avisa de todo lo que ya está vencido o próximo y cierra lo resuelto sin validar desde hace más de 24 horas. Una base de desarrollo **anterior** a la migración tiene esos avisos marcados como ya enviados (a propósito): para ver avisos hay que reiniciar las marcas de unos pocos períodos a mano y, para ver un cierre automático, resolver un ticket y envejecer su `fecha_resolucion` (SQL en el README, paso 19). Lo mismo vale tras `sla-rebuild`: los períodos que crea empiezan sin marcas y el planificador avisa una vez de los que ya estén vencidos.
 
@@ -1815,7 +1835,7 @@ Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATI
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones" y "SLA"; el resto se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador" y "Seguridad y sesión"; el resto (Retención, Auditoría, Respaldos y Estado del sistema) se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -2083,7 +2103,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4642 tests passing (unos 5 a 8 minutos con `-n 6`, según la carga del equipo)
+4681 tests passing (unos 6 a 8 minutos con `-n 6`, según la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
@@ -2450,15 +2470,15 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 # 30. Fases completadas y siguiente fase
 
-`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas` y `v0.6.0 — Dashboards y carga de trabajo` están completas. Lo que dejó cada una está en «Historial de versiones» y con detalle en `docs/14_historial_de_implementacion.md`; la siguiente fase es `v0.7.0 — Administración y base de conocimiento` (ver "Próximo hito").
+`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas`, `v0.6.0 — Dashboards y carga de trabajo` y `v0.7.0 — Administración y base de conocimiento` están completas. Lo que dejó cada una está en «Historial de versiones» y con detalle en `docs/14_historial_de_implementacion.md`; la siguiente fase es `v0.8.0 — Reportes, auditoría y backups` (ver "Próximo hito").
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0` a `v0.6.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.6.0` deja preparado o pendiente está en "Próximo hito"):
+Nada de `v0.2.0` a `v0.7.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.7.0` deja preparado o pendiente está en "Próximo hito"):
 
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.7.0`: la configuración administrable (que reemplaza a las variables de entorno de plazos y límites y trae el interruptor general del SLA y la configuración de eventos y destinatarios de las notificaciones), la advertencia de duplicados al crear un ticket y la base de conocimiento;
+- `v0.8.0`: reportes, la pantalla de auditoría con los eventos de autenticación, los backups locales y la retención;
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

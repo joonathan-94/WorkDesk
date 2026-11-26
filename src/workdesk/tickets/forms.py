@@ -79,11 +79,15 @@ class _TicketFieldsForm(FlaskForm):
     categoria = OptionalIntegerField("Categoría")
     ubicacion = OptionalIntegerField("Ubicación")
 
-    def __init__(self, *args, category_choices, location_choices, **kwargs):
+    def __init__(
+        self, *args, category_choices, location_choices, location_required=False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
 
         self.category_choices = list(category_choices)
         self.location_choices = list(location_choices)
+        # Si hay que elegir una ubicación (RF-019; lo decide quien construye el formulario).
+        self.location_required = location_required
 
     def validate_categoria(self, field):
         _require_choice(
@@ -93,8 +97,13 @@ class _TicketFieldsForm(FlaskForm):
         )
 
     def validate_ubicacion(self, field):
-        # Opcional: solo se comprueba si se eligió algo.
-        if field.process_errors or field.data is None:
+        if field.process_errors:
+            return
+
+        if field.data is None:
+            if self.location_required:
+                raise ValidationError("Selecciona una ubicación.")
+
             return
 
         _require_choice(

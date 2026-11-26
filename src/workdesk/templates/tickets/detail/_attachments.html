@@ -45,7 +45,7 @@
                     multiple
                 >
                 <div class="form-text mb-3">
-                    Hasta {{ max_files }} archivos de {{ max_upload_mb }} MB
+                    Hasta {{ max_files }} archivos de {{ max_upload|filesize }}
                     ({{ allowed_extensions|join(', ') }}).
                     Los ve quien ve el ticket; para un archivo solo
                     del equipo, adjúntalo a una nota interna.
