@@ -20,7 +20,7 @@ from src.workdesk.sla.queries import SlaFilter
 from src.workdesk.tickets.queries import TicketFilters, list_tickets
 from src.workdesk.workload.queries import workload_overview
 from tests.demo_data import DEMO_PASSWORD
-from tests.ticket_helpers import audit_entries, login, plain_text
+from tests.ticket_helpers import audit_entries, login, make_ticket, plain_text
 
 DEMO_SUPERVISOR = {"username": "camila.rojas", "password": DEMO_PASSWORD}
 
@@ -326,3 +326,13 @@ def test_the_workload_service_counts_no_sla_while_off(app, staff):
 
     assert (summary.overdue, summary.near_due, summary.at_risk) == (0, 0, 0)
     assert summary.active == before.active
+
+
+def test_sla_status_says_when_the_sla_is_switched_off(app, catalog, make_user):
+    number = make_ticket(app, catalog, make_user("TECNICO", username="tec_status")["id"])
+    app.config["SLA_ENABLED"] = False
+
+    output = app.test_cli_runner().invoke(args=["sla-status", number]).output
+
+    assert "SLA: apagado" in output
+    assert "política" not in output

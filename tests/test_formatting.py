@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.workdesk.formatting import format_duration, local_datetime
+from src.workdesk.formatting import format_duration, format_size, local_datetime
 
 
 def test_a_missing_date_is_shown_as_a_dash(app):
@@ -93,3 +93,26 @@ def test_the_duration_filter_is_available_in_templates(app):
 
         assert template.render(value=90) == "1 h 30 min"
         assert template.render(value=None) == "—"
+
+
+# --- Tamaño de un archivo (`filesize`) ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("size", "text"),
+    [
+        (0, "1 KB"),
+        (10, "1 KB"),
+        (1024, "1 KB"),
+        (1025, "2 KB"),
+        (500 * 1024, "500 KB"),
+        (1024 * 1024 - 1, "1024 KB"),
+        (1024 * 1024, "1 MB"),
+        (1536 * 1024, "1,5 MB"),
+        # Un límite nunca aparenta ser mayor: 1,99 MB es «1,9 MB».
+        (2 * 1024 * 1024 - 1, "1,9 MB"),
+        (10 * 1024 * 1024, "10 MB"),
+    ],
+)
+def test_a_size_is_shown_as_a_person_reads_it(size, text):
+    assert format_size(size) == text

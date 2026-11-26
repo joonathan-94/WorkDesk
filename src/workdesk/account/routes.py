@@ -13,6 +13,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from .. import settings
 from ..auth.credentials import CurrentPasswordError, change_own_password
 from ..auth.security import (
+    lock_user_row,
     refresh_login_lock,
     register_failed_login,
     reset_login_failures,
@@ -84,11 +85,12 @@ def _handle_password_change(form: ChangePasswordForm):
     Devuelve una respuesta (redirección) si el flujo termina, o `None`
     para volver a mostrar el formulario con los errores añadidos.
     """
-    user = current_actor()
+    # La contraseña actual se puede adivinar desde este formulario con una
+    # sesión robada, así que se aplica el mismo bloqueo que en el login, con
+    # la fila bloqueada para que los envíos simultáneos no se pisen el contador.
+    user = lock_user_row(current_actor())
     now = datetime.now(UTC)
 
-    # La contraseña actual se puede adivinar desde este formulario con una
-    # sesión robada, así que se aplica el mismo bloqueo que en el login.
     if refresh_login_lock(user, now):
         form.current_password.errors.append(
             "La cuenta está bloqueada temporalmente. "

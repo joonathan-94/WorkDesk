@@ -58,7 +58,7 @@ from tests.sla_helpers import (
     set_priority,
     work_on,
 )
-from tests.ticket_helpers import person
+from tests.ticket_helpers import audit_entries, person
 
 # --- Auxiliares -------------------------------------------------------------
 
@@ -1212,6 +1212,24 @@ def test_sla_rebuild_command_reports_what_it_did(app, staff, catalog):
     assert "Tickets recalculados: 0. Períodos de SLA: 0." in second.output
     assert "Tickets recalculados: 1. Períodos de SLA: 1." in forced.output
     assert "Tickets recalculados: 1. Períodos de SLA: 1." in single.output
+
+
+def test_sla_rebuild_leaves_a_trace_only_when_it_changes_something(app, staff, catalog):
+    # RN-92: las acciones manuales sobre el SLA quedan registradas.
+    with app.app_context():
+        new_ticket(catalog, staff["id"], "MEDIA")
+
+    runner = app.test_cli_runner()
+    runner.invoke(args=["sla-rebuild"])  # el ticket ya tiene períodos: no cambia nada
+    runner.invoke(args=["sla-rebuild", "--all"])
+
+    with app.app_context():
+        (entry,) = [e for e in audit_entries() if e.accion == "SLA_RECALCULADO"]
+
+        assert entry.actor_tipo == "SISTEMA"
+        assert entry.detalle == "sla-rebuild --all"
+        assert entry.valor_nuevo["todos"] is True
+        assert entry.valor_nuevo["tickets_recalculados"] == 1
 
 
 def test_sla_rebuild_all_is_refused_in_production(app):

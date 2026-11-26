@@ -1282,7 +1282,7 @@ El cambio de prioridad permitido a Técnico, Supervisor y Administrador (RF-025)
 
 Las acciones de gestión manual del SLA deberán quedar registradas en la trazabilidad correspondiente.
 
-**Alcance:** MVP.
+**Alcance:** MVP en lo que ya existe: el Administrador configura políticas, tiempos, horarios, feriados y el interruptor general; toda acción manual sobre el SLA queda registrada (cambio de prioridad con motivo, configuración y `sla-rebuild`), y el Supervisor pausa el reloj poniendo el ticket «En espera». **Post-MVP:** las excepciones sobre un ticket concreto (pausar, reanudar o ajustar su SLA fuera del flujo de estados), decidido al planificar `v0.8.0` (`13_evolucion_post_mvp.md`, EVO-33).
 
 ---
 

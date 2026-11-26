@@ -21,8 +21,8 @@ porque la aplicación y los tests dependen de confirmaciones reales: `now()` cam
 transacciones (el orden por fecha), y los tests con hilos usan conexiones distintas que
 solo ven lo ya confirmado.
 
-**Instantáneas.** Algunos tests parten de un estado caro de construir (por ejemplo, los 76
-tickets de demostración, 2,6 s). `take_snapshot` guarda una copia de los datos en un
+**Instantáneas.** Algunos tests parten de un estado caro de construir (por ejemplo, los 108
+tickets de demostración, unos 6 s). `take_snapshot` guarda una copia de los datos en un
 esquema auxiliar y `restore_snapshot` la restaura en unas decenas de milisegundos: el
 estado se construye una vez por proceso y cada test parte de una copia exacta (mismas
 filas y mismas secuencias). La instantánea solo cubre la base de datos: lo que un test

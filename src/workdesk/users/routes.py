@@ -31,6 +31,7 @@ from .forms import (
 )
 from .service import (
     DuplicateUserError,
+    InvalidUserDataError,
     UnknownRoleError,
     UserRuleError,
     activate_user,
@@ -129,6 +130,10 @@ def _create_from_form(form: CreateUserForm):
         db.session.rollback()
         _add_duplicate_error(form, error)
         return None
+    except InvalidUserDataError as error:
+        db.session.rollback()
+        _add_invalid_data_errors(form, error)
+        return None
     except PasswordPolicyError as error:
         db.session.rollback()
         form.temporary_password.errors.append(str(error))
@@ -156,6 +161,13 @@ def _add_duplicate_error(form, error: DuplicateUserError):
         form.username.errors.append(
             "El usuario o el correo ya están registrados."
         )
+
+
+def _add_invalid_data_errors(form, error: InvalidUserDataError):
+    # El formulario ya valida la misma forma, así que solo se llega aquí con un envío
+    # que se saltó el formulario: cada mensaje va junto a su campo igualmente.
+    for field, message in error.problems.items():
+        getattr(form, field).errors.append(message)
 
 
 # --- Detalle y edición ------------------------------------------------
@@ -198,6 +210,9 @@ def edit_user(user_id: int):
         except DuplicateUserError:
             db.session.rollback()
             form.email.errors.append("Ya existe un usuario con ese correo.")
+        except InvalidUserDataError as error:
+            db.session.rollback()
+            _add_invalid_data_errors(form, error)
         else:
             if changed:
                 flash("Los datos del usuario se actualizaron.", "success")

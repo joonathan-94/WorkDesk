@@ -134,6 +134,12 @@ La fase `v0.2.0` completó:
 
 ---
 
+## En curso: `v0.8.0`
+
+- la revisión previa (entrega 1): el bloqueo por intentos fallidos resistente a intentos en paralelo, una sola definición de la identidad de un usuario (también en `create-admin`, ahora auditado), un log por proceso, arranque seguro en producción, la cookie de sesión renombrada, páginas de error para cualquier código, cuatro cabeceras de seguridad más y dos guardianes del esquema; la suite pasa de 4681 a 4728 tests.
+
+---
+
 # 2. Hitos de v0.3.0 a v0.7.0
 
 ## Hito completado: v0.3.0
@@ -343,6 +349,38 @@ Entrega por entrega:
 - **Entrega 9, estructura y protecciones:** sin cambios de comportamiento, para llegar al cierre con el código ordenado. El detalle del ticket (924 líneas) y el listado (647) pasaron a parciales; se comprobó que 484 pantallas generadas antes y después son idénticas. `sla/periods.py` se partió en escritura (`periods.py`), lectura (`evaluation.py`) y reconstrucción (`rebuild.py`), y lo que un cambio de estado deja escrito salió de `lifecycle.py` a `lifecycle_history.py`. Se reunió lo que estaba copiado: la limpieza de motivos (seis copias de su largo máximo), la lectura de un id de la URL, el filtro Activos / Inactivos, la lista de estados y `mark_modified`. Cuatro protecciones nuevas, probadas con diez mutaciones: las migraciones y los modelos crean el mismo esquema (también los `CHECK`, que `db check` no mira), el Solicitante solo lee la base de conocimiento, el frontend no escribe colores ni JavaScript en línea ni carga nada de Internet, y los interruptores deben estar documentados. Medido y dejado como está: con 20 000 tickets todas las pantallas responden en menos de medio segundo; se probó resolver el estado del SLA con una sola subconsulta y no mejoró.
 
 - **Entrega 10, cierre de la fase:** se midió a escala (unos 20 000 tickets, 5000 artículos y 24 000 avisos: ninguna pantalla pasa del medio segundo), se recorrieron 162 pantallas con los cuatro roles buscando errores del servidor y de accesibilidad, y se comparó cada requisito con el código. La matriz encontró la ubicación obligatoria (RF-019), que se hizo; el recorrido, dos selectores de Grupos con el mismo `id`; y la revisión, tres formas distintas de escribir un tamaño de archivo (una mostraba «0 MB»), `sla-status` equivocado con el SLA apagado y dos comandos que fallaban en Windows al redirigir su salida. Todo con su prueba, y la documentación cerrada con la matriz de trazabilidad (`docs/12`, fase 7). La suite pasó de 4657 a 4681 tests.
+
+## Hito en curso: v0.8.0
+
+```text
+v0.8.0 — Reportes, auditoría y backups
+```
+
+Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteriores, la primera revisa lo construido antes de construir encima, y esta vez con un foco especial en la seguridad.
+
+| # | Entrega | Estado | Tests al cerrar |
+| --- | --- | --- | --- |
+| 1 | Revisión previa | En revisión (`fix/v0-8-0-review`) | 4728 |
+
+- **Entrega 1, revisión previa.** Primero se midió.
+  - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
+  - **Errores reales en el código.**
+    - Una sonda con 20 intentos de login simultáneos dejó el contador de fallos en 2 y la cuenta sin bloquear: con ráfagas en paralelo se probaban muchas más contraseñas de las permitidas. Ahora el login y el cambio de contraseña bloquean la fila del usuario.
+    - Dos procesos escribiendo el mismo log reprodujeron 16 rotaciones fallidas en Windows. Ahora el planificador escribe su propio archivo.
+    - `create-admin` aceptaba usernames que la pantalla rechaza y no se auditaba. Las reglas de identidad se juntaron en un módulo que usan el formulario, el servicio y el comando.
+  - **Refuerzo de seguridad.**
+    - En producción, la aplicación no arranca con una clave corta ni con el depurador.
+    - La cookie de sesión deja de delatar el framework.
+    - El logout vacía la sesión.
+    - Cualquier error tiene la página de WorkDesk.
+    - Hay cuatro cabeceras de aislamiento más.
+  - **Comprobado sin cambios:** no hay redirecciones abiertas, SQL armado con texto del usuario ni `|safe`.
+  - **Guardianes nuevos**, probados con 17 mutaciones que mueren todas:
+    - ninguna clave foránea borra en cascada (hoy son 93);
+    - toda tabla de eventos es de solo añadir, detectada sola, así que la de autenticación de la entrega 3 quedará cubierta sin tocar la prueba;
+    - los parámetros de Argon2id de producción no bajan del mínimo de OWASP.
+
+    El módulo de tests del cierre de `v0.7.0`, agrupado por fecha, se repartió por tema. La suite pasó de 4681 a 4728 tests.
 
 ---
 

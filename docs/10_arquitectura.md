@@ -1808,6 +1808,8 @@ eventos_autenticacion
 
 Un login exitoso podrá reiniciar los intentos fallidos de acuerdo con la política definida.
 
+**Concurrencia (`v0.8.0`).** El contador se lee, se compara y se escribe. Si dos intentos llegan a la vez y ninguno bloquea la fila, los dos leen el mismo valor y el contador pierde actualizaciones: medido, 20 intentos simultáneos lo dejaban en 2, sin bloquear la cuenta. Por eso el login y el cambio de contraseña leen al usuario con `SELECT ... FOR UPDATE` antes de mirar el bloqueo y verificar la contraseña (`auth/security.py`). Los intentos sobre una misma cuenta se atienden de uno en uno, y los de cuentas distintas no se esperan entre sí. Es el mismo principio que el resto del sistema: bloquear la fila antes de decidir.
+
 ---
 
 # 61. Archivos adjuntos
@@ -2512,13 +2514,14 @@ CRITICAL
 
 # 98. Archivo de logs
 
-La implementación inicial utiliza:
+Cada proceso escribe su propio archivo (desde `v0.8.0`):
 
 ```text
-instance/logs/workdesk.log
+instance/logs/workdesk.log     servidor web y comandos
+instance/logs/scheduler.log    planificador (run-scheduler)
 ```
 
-La rotación se realiza mediante `RotatingFileHandler` del módulo estándar `logging`.
+La rotación se realiza mediante `RotatingFileHandler` del módulo estándar `logging`. Ese manejador no está pensado para que dos procesos escriban el mismo archivo. En Windows, rotar un archivo que otro proceso tiene abierto falla con `PermissionError`: el log crecería sin límite y se perderían archivos de la rotación (se reprodujo con dos procesos). Como el servidor web y el planificador viven a la vez, cada uno tiene su archivo. El archivo se abre al escribir la primera línea y no al arrancar (`delay=True`), para que los comandos de un momento, que casi nunca escriben, no lo retengan.
 
 Como configuración predeterminada de `v0.1.0`:
 

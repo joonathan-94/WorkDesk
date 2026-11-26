@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-chore/close-v0-7-0
+fix/v0-8-0-review
 ```
 
-Entrega 10 de `v0.7.0`: el cierre de la fase. **Sin migraciones.** Ver «Cierre de `v0.7.0`».
+Entrega 1 de `v0.8.0`: la revisión previa de la fase, con el refuerzo de seguridad. **Sin migraciones.** Ver «Revisión previa a `v0.8.0`».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -270,9 +270,27 @@ La entrega 10 revisó toda la fase. La 9 ya había ordenado el código sin cambi
 - **Salida de los comandos en Windows:** `sla-status` y el aviso de transiciones de `seed-demo-tickets` fallaban al redirigir su salida, por un `→` que la consola de Windows no sabe escribir. Un test exige que todo texto de `cli/`, `seeds/` y `scheduler.py` se pueda escribir en cp1252.
 - **El editor de artículos muestra el estado editorial** (UI-011) y **los dos selectores del detalle de un grupo tienen su propio `id`** (la etiqueta del segundo nombraba al primero).
 - **Escala:** con unos 20 000 tickets, 5000 artículos y 24 000 avisos, todas las pantallas responden en menos de medio segundo (la más lenta, el aviso de duplicados del personal, unos 410 ms) y con un número de consultas que no crece con los datos. Se recorrieron 162 pantallas con los cuatro roles sin un solo error del servidor.
-- **Tests:** 24 nuevos (4657 → 4681), en `tests/test_phase7_closing.py`, con sus mutaciones.
+- **Tests:** 24 nuevos (4657 → 4681), con sus mutaciones. Se escribieron en un módulo del cierre que la entrega 1 de `v0.8.0` repartió por tema (`test_ticket_location_required` y los módulos de formato, adjuntos, SLA, conocimiento, grupos y comandos).
 
 Lo que la fase deja pendiente, con su destino, está en `docs/12_roadmap.md` (fase 7, «Cierre de la fase»).
+
+## Revisión previa a `v0.8.0` (entrega 1 de `v0.8.0`)
+
+Primera entrega de la fase: auditar lo construido, midiendo antes de cambiar, y reforzar la seguridad. **Sin migraciones.** Cambian el bloqueo por intentos fallidos, `create-admin`, el logout, las páginas de error, las cabeceras, el nombre de la cookie de sesión, el arranque en producción y el archivo de log del planificador; todo lo demás es interno.
+
+- **El bloqueo por intentos fallidos se podía saltar.** El contador se leía, se comparaba y se escribía sin bloquear la fila: medido, 20 intentos simultáneos con la contraseña equivocada lo dejaban en 2 y la cuenta sin bloquear (el límite es 5), así que con ráfagas en paralelo se probaban muchas más contraseñas de las permitidas. Ahora el login y el cambio de contraseña leen al usuario con `SELECT ... FOR UPDATE` (`auth/security.py`: `find_user_for_login` y `lock_user_row`, con `populate_existing`). Los intentos sobre una cuenta se atienden de uno en uno y, alcanzado el límite, los demás encuentran la cuenta bloqueada sin llegar a verificar la contraseña. Solo esperan entre sí los intentos sobre la misma cuenta.
+- **Una sola definición de la identidad** (`users/rules.py`: forma del username y del correo y largo de los nombres, RN-148). Antes vivía solo en el formulario y `create-admin` aceptaba, por ejemplo, un username con espacios. Ahora la aplican el formulario, el servicio (`InvalidUserDataError`, también ante un envío fabricado a mano) y `create-admin`, que pasó a usar el servicio (`create_initial_administrator`): la misma forma, unicidad y política de contraseñas, bloqueo de las filas de Administradores para no crear dos, y **auditoría** `USUARIO_CREADO` como acción del sistema. Al editar solo se juzga lo que cambia: un dato antiguo que no cumpla la regla no impide cambiar el teléfono.
+- **`sla-rebuild` deja rastro** (RN-92): `SLA_RECALCULADO` en la auditoría, como acción del sistema, solo cuando cambió algo.
+- **El logout vacía la sesión entera**, como ya hacía el login (`clear_session_clock` desapareció).
+- **Un archivo de log por proceso** (`logging_config.py`): el servidor web escribe `workdesk.log` y `run-scheduler`, `scheduler.log`. Con los dos en el mismo archivo, en Windows la rotación fallaba (reproducido: 16 rotaciones fallidas y un archivo de la rotación perdido; RNF-036). El archivo se abre al escribir y no al arrancar (`delay=True`), para que los comandos de un momento no lo retengan.
+- **Arranque seguro** (`security/startup.py`). En producción no arranca con una `SECRET_KEY` de menos de 32 caracteres ni con el modo depuración (el depurador de Werkzeug ejecuta código desde el navegador). En cualquier entorno rechaza el texto de ejemplo del README como clave. Avisa en el log de una clave corta en desarrollo y de cookies sin `Secure` en producción.
+- **La cookie de sesión ya no se llama `session`**, un nombre que delata a Flask: es `workdesk_session` y, por HTTPS, `__Host-workdesk_session` (el navegador exige `Secure`, `Path=/` y ningún dominio, así que ningún subdominio puede plantarla). Al actualizar, cada persona inicia sesión una vez más.
+- **Páginas de error para cualquier código** (`errors.py`, una tabla en lugar de cinco funciones): un 405, un 409 o un 503 reciben la página de WorkDesk y no la genérica de Werkzeug; se conservan `Allow` y `Retry-After`; nunca se muestra nada técnico.
+- **Cuatro cabeceras más** (`security/headers.py`): `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `Permissions-Policy` (sin cámara, micrófono, ubicación, pagos ni USB) y `X-Permitted-Cross-Domain-Policies`.
+- **Comprobado y sin cambios:** no hay redirecciones abiertas (todos los destinos salen de `url_for`), SQL construido con texto del usuario ni `|safe` en las plantillas; ninguna función supera la complejidad 12 y no hay funciones duplicadas (comparadas por estructura); las 93 claves foráneas son `RESTRICT`.
+- **Guardianes nuevos:** que ninguna clave foránea borre en cascada y que toda tabla de eventos (las que tienen `fecha_hora`) rechace cambios desde el ORM, detectada sola (`test_data_integrity`); los parámetros de Argon2id de producción por encima del mínimo de OWASP (`test_passwords`); los intentos simultáneos en el login y en el cambio de contraseña (`test_login_hardening`); el log por proceso (`test_logging`); las páginas de error (`test_error_pages`); el arranque seguro y la cookie (`test_startup_safety`). Las 17 mutaciones de la entrega se detectan.
+- **Tests reordenados:** el módulo del cierre de `v0.7.0` (agrupado por fecha) se repartió por tema; la ubicación obligatoria tiene el suyo (`test_ticket_location_required`).
+- **Tests:** 47 nuevos (4681 → 4728). La suite completa tarda unos 7 min 20 s con `-n 6`; la entrega 2 la acelera (un prototipo medido la deja en 4 min 26 s).
 
 ## Próximo hito
 
@@ -280,17 +298,18 @@ Lo que la fase deja pendiente, con su destino, está en `docs/12_roadmap.md` (fa
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-Su alcance está en `docs/12_roadmap.md` (fase 8): reportes con filtros, la pantalla de auditoría y los eventos de autenticación, y los backups locales (base de datos y archivos, con su restauración documentada y probada). `v0.7.0` deja preparado:
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite, eventos de autenticación, pantalla de auditoría, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
-- la auditoría administrativa de todo lo configurable (parámetros, avisos, artículos y bloqueos liberados), que la pantalla de auditoría podrá consultar;
-- la configuración administrable (`configuration.py`), donde irán los parámetros nuevos de la fase (por ejemplo, la retención);
-- los 108 tickets y 11 artículos de demostración y la prueba de pantallas con presupuesto de consultas.
+Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
-Pendiente, sin fase asignada, para decidirlo al planificar:
+- XLSX con `openpyxl`.
+- Reportes solo para el personal: el Técnico ve únicamente su fila en el resumen por técnico y el Solicitante nunca tiene acceso.
+- Respaldos solo por comandos, sin tabla `historial_backups`.
+- Retención guardada en `configuracion`, con tickets, historial y auditoría en «Mantener» fijo.
+- Las excepciones de SLA (RF-083) y los avisos de sobrecarga (RN-28) pasan a después del MVP.
 
-- la retención de datos (RF-110 y RF-123), que irá con los backups;
-- las excepciones de SLA (RF-083);
-- los tickets «sin actividad reciente» (RF-036, RN-27) y los avisos internos de sobrecarga (RN-28): necesitan decidir qué es «reciente» y quién recibe el aviso;
+Pendiente, sin fase asignada:
+
 - las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
 - las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`).
 
@@ -512,7 +531,7 @@ No deben versionarse:
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
 
-Los 16 parámetros numéricos y los 3 interruptores (SLA, cierre automático y ubicación obligatoria) (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo y adjuntos) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
+Los 16 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo, adjuntos y duplicados) y los 3 interruptores (SLA, cierre automático y ubicación obligatoria) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
 
 Variables principales:
 
@@ -1615,11 +1634,18 @@ La sesión utiliza Flask-Login.
 Configuración relevante:
 
 ```text
+SESSION_COOKIE_NAME     = workdesk_session (por HTTPS, __Host-workdesk_session)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = Lax
 SESSION_COOKIE_SECURE   = configurable
 session_protection      = strong
 ```
+
+El nombre de la cookie lo fija `create_app` (`security/startup.py`, `session_cookie_name`) desde `v0.8.0`: el de Flask, `session`, delataba con qué está hecha la aplicación. El prefijo `__Host-` hace que el navegador solo la acepte con `Secure`, `Path=/` y sin dominio. El login y el logout vacían la sesión entera.
+
+**Arranque seguro** (`security/startup.py`): con `APP_ENV=production` la aplicación no arranca si la `SECRET_KEY` tiene menos de 32 caracteres o si el modo depuración está activo; en cualquier entorno rechaza el texto de ejemplo del README como clave.
+
+**Bloqueo por intentos fallidos sin carreras:** el login y el cambio de contraseña bloquean la fila del usuario (`SELECT ... FOR UPDATE`) antes de mirar el bloqueo y verificar la contraseña (ver «Revisión previa a `v0.8.0`»).
 
 En desarrollo local HTTP:
 
@@ -1929,16 +1955,7 @@ No exponer detalles técnicos sensibles en la respuesta pública.
 
 # 20. Manejo de errores
 
-Existen handlers globales para:
-
-```text
-400
-403
-404
-500
-```
-
-Se utiliza un template común de error.
+Un único manejador (`errors.py`) atiende **cualquier** error HTTP con la plantilla común `errors/error.html`: 400, 403, 404, 405, 413 y 500 tienen su texto; cualquier otro error de la petición (409, 429...) recibe uno genérico y todo error del servidor dice lo mismo que un 500, conservando su código. Se conservan las cabeceras `Allow` y `Retry-After`.
 
 No mostrar al usuario:
 
@@ -1955,7 +1972,7 @@ No mostrar al usuario:
 WorkDesk no tiene API pública. Las cuatro rutas JSON (`GET /health`, `GET /notifications/unread-count`, `POST /tickets/<n>/lock/renew` y `POST /tickets/<n>/lock/release`) y el `401` de la sesión expirada son consultas que hace su propio JavaScript. `docs/10` (secciones 33 y 34) preveía un prefijo `/api/v1/` para cuando formen una interfaz reutilizable; hoy no lo usan y no se renombraron.
 
 - **Una forma de error** (`responses.py`, `json_error`): `{"ok": false, "error": "<código>", "message": "<texto>"}`, con códigos estables (`session_expired`, `lock_held`, `ticket_closed`) y sin caché. Las respuestas correctas conservan su forma (`{"ok": true}`, `{"ok": true, "released": bool}`, `{"unread": N}` y la de `/health`).
-- **Cabeceras en todas las respuestas** (`security/headers.py`, un único `after_request`; `setdefault`, así que una ruta que fija la suya, como la descarga de un adjunto, manda): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Content-Security-Policy` y `Cache-Control: no-store` en todo lo que no sea un archivo estático. `Strict-Transport-Security` solo con `SESSION_COOKIE_SECURE=true`.
+- **Cabeceras en todas las respuestas** (`security/headers.py`, un único `after_request`; `setdefault`, así que una ruta que fija la suya, como la descarga de un adjunto, manda): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `Content-Security-Policy`, `Cross-Origin-Opener-Policy` y `Cross-Origin-Resource-Policy` (`same-origin`), `Permissions-Policy` (sin cámara, micrófono, ubicación, pagos ni USB), `X-Permitted-Cross-Domain-Policies: none` y `Cache-Control: no-store` en todo lo que no sea un archivo estático. `Strict-Transport-Security` solo con `SESSION_COOKIE_SECURE=true`.
 - **La política de contenido** (`default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data:`, `frame-ancestors 'none'`...) se apoya en dos hechos medidos: las 24 etiquetas `<script>` de las plantillas llevan `src` (no hay JavaScript en línea ni manejadores `on...=`) y solo quedan 5 atributos `style=` en línea, de datos (el ancho de la barra de SLA y el color de una prioridad), por eso los estilos admiten `'unsafe-inline'` y los scripts no.
 
 # 21. Logging
@@ -1972,11 +1989,14 @@ con:
 RotatingFileHandler
 ```
 
-Ruta actual:
+Un archivo por proceso (`logging_config.py`):
 
 ```text
-instance/logs/workdesk.log
+instance/logs/workdesk.log     (servidor web y comandos)
+instance/logs/scheduler.log    (run-scheduler)
 ```
+
+Si el servidor web y el planificador escribieran el mismo archivo, en Windows la rotación fallaría (`PermissionError`: otro proceso lo tiene abierto) y el log crecería sin límite. El archivo se abre al escribir y no al arrancar (`delay=True`), para que un comando de un momento no lo retenga mientras el servidor web rota.
 
 Configuración predeterminada:
 
@@ -2042,9 +2062,12 @@ Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`set
 
 `create-admin`:
 
-- crea el Administrador inicial;
-- valida datos básicos;
-- exige la longitud mínima de contraseña configurada (`PASSWORD_MIN_LENGTH`, 12 por defecto).
+- crea el Administrador inicial con `users.service.create_initial_administrator`: las mismas reglas que cualquier alta (forma del username y del correo de `users/rules.py`, RN-148; unicidad; política de contraseñas con `PASSWORD_MIN_LENGTH`, 12 por defecto);
+- se niega si ya hay un Administrador (bloquea sus filas, así que dos ejecuciones a la vez no crean dos);
+- se audita como acción del sistema (`USUARIO_CREADO`, detalle «Administrador inicial (create-admin).»);
+- la contraseña la elige quien instala, así que no queda pendiente de cambio.
+
+`sla-rebuild` deja en la auditoría `SLA_RECALCULADO` (acción del sistema) cuando recalcula algo (RN-92).
 
 `seed-demo` (`src/workdesk/seeds/demo.py`, RN-151):
 
@@ -2103,12 +2126,12 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4681 tests passing (unos 6 a 8 minutos con `-n 6`, según la carga del equipo)
+4728 tests passing (unos 7 min 20 s con `-n 6`, medido al empezar v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
 
-Hay cinco redes de seguridad que no dependen de recordar nada al añadir código: `tests/test_route_protection.py` (toda ruta exige sesión y toda ruta POST exige CSRF), `tests/test_route_authorization.py` (propiedad del ticket y rol en cada ruta), `tests/test_pages_smoke.py` (todas las pantallas con los 108 tickets de demostración y un presupuesto de consultas por petición), `tests/test_migrations.py` (las migraciones suben, coinciden con los modelos, bajan y una instalación limpia funciona) y `tests/test_docs_coherence.py` (variables de entorno, comandos, migraciones y rutas documentadas).
+Hay seis redes de seguridad que no dependen de recordar nada al añadir código: `tests/test_route_protection.py` (toda ruta exige sesión y toda ruta POST exige CSRF), `tests/test_route_authorization.py` (propiedad del ticket y rol en cada ruta), `tests/test_pages_smoke.py` (todas las pantallas con los 108 tickets de demostración y un presupuesto de consultas por petición), `tests/test_migrations.py` (las migraciones suben, coinciden con los modelos, bajan y una instalación limpia funciona), `tests/test_docs_coherence.py` (variables de entorno, comandos, migraciones y rutas documentadas) y `tests/test_data_integrity.py` (ninguna clave foránea borra en cascada y toda tabla de eventos es de solo añadir; una tabla nueva queda cubierta sola).
 
 El relato por entrega —cuántos tests aportó cada una, qué cubre cada módulo y las pruebas de mutación que las defendieron— está en `docs/14_historial_de_implementacion.md`.
 

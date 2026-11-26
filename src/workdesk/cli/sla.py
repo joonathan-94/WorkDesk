@@ -3,6 +3,7 @@
 import click
 from flask import Flask, current_app
 
+from ..audit import AuditAction, record_admin_event
 from ..extensions import db
 from ..formatting import format_duration, local_datetime
 from ..models import Prioridad, Ticket
@@ -105,12 +106,27 @@ def register(app: Flask) -> None:
                 "cálculo en vivo. Ejecuta el comando sin --all."
             )
 
-        result = rebuild_periods(
-            only_missing=not rebuild_all,
-            public_id=None if public_id is None else public_id.lstrip("#"),
-        )
+        ticket_number = None if public_id is None else public_id.lstrip("#")
+        result = rebuild_periods(only_missing=not rebuild_all, public_id=ticket_number)
         # Los períodos abiertos antes de la fecha de aviso la reciben ahora (RN-169).
         completed = fill_missing_warning_dates()
+
+        # Una acción manual sobre el SLA queda registrada (RN-92), en la misma
+        # transacción que el recálculo. Si no cambió nada, no hay nada que registrar.
+        if result.tickets or completed:
+            record_admin_event(
+                AuditAction.SLA_RECALCULADO,
+                actor=None,
+                detail="sla-rebuild --all" if rebuild_all else "sla-rebuild",
+                new_value={
+                    "todos": rebuild_all,
+                    "ticket": ticket_number,
+                    "tickets_recalculados": result.tickets,
+                    "periodos": result.periods,
+                    "fechas_aviso_completadas": completed,
+                },
+            )
+
         db.session.commit()
 
         click.echo(

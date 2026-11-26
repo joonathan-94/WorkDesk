@@ -17,6 +17,7 @@ AREAS: dict[str, tuple[str, ...]] = {
     # Aplicación, rutas, layout, formato, comandos y auditoría.
     "platform": (
         "test_app",
+        "test_logging",
         "test_system",
         "test_layout",
         "test_formatting",
@@ -25,6 +26,9 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_route_protection",
         "test_route_authorization",
         "test_security_headers",
+        "test_error_pages",
+        "test_startup_safety",
+        "test_data_integrity",
         "test_pages_smoke",
         "test_request_cost",
         "test_settings",
@@ -80,7 +84,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_ticket_edit_lock",
         "test_ticket_create_uploads",
         "test_ticket_lock_revoke",
-        "test_phase7_closing",
+        "test_ticket_location_required",
         "test_ticket_history",
         "test_ticket_history_visibility",
         "test_ticket_model",

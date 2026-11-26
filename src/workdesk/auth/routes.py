@@ -19,7 +19,6 @@ from flask_login import (
 from .. import settings
 from ..configuration import value_of
 from ..extensions import db
-from ..models import User
 from ..responses import json_error
 from ..security import (
     hash_password,
@@ -29,6 +28,7 @@ from ..security import (
 )
 from . import bp
 from .security import (
+    find_user_for_login,
     refresh_login_lock,
     register_failed_login,
     reset_login_failures,
@@ -38,7 +38,6 @@ from .session import (
     PASSIVE_ENDPOINTS,
     PASSWORD_CHANGE_ALLOWED_ENDPOINTS,
     PASSWORD_CHANGE_ENDPOINT,
-    clear_session_clock,
     session_has_expired,
     start_session_clock,
     touch_session,
@@ -115,9 +114,9 @@ def login():
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
 
-        user = db.session.scalar(
-            db.select(User).where(User.username == username)
-        )
+        # Con la fila bloqueada: los intentos simultáneos sobre una cuenta se atienden
+        # de uno en uno y el contador de fallos no pierde ninguno (ver `auth/security.py`).
+        user = find_user_for_login(username)
 
         if user is None or not user.activo:
             spend_verification_time(password)
@@ -167,6 +166,9 @@ def login():
 @login_required
 def logout():
     logout_user()
-    clear_session_clock()
+    # Toda la sesión, no solo la identidad: nada de lo que guardó (el token CSRF, avisos
+    # pendientes, el reloj de la sesión) debe quedar en ese navegador para quien llegue
+    # después. Es lo mismo que hace el inicio de sesión al empezar.
+    session.clear()
 
     return redirect(url_for("auth.login"))

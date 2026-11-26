@@ -99,6 +99,11 @@ class AuditAction(StrEnum):
     # con los tickets movidos y omitidos; el rastro de cada ticket va en su historial.
     REASIGNACION_MASIVA = "REASIGNACION_MASIVA"
 
+    # Recálculo manual de los períodos de SLA (`sla-rebuild`, RN-92: las acciones
+    # manuales sobre el SLA quedan registradas). Lo ejecuta el sistema desde la consola:
+    # sin `entidad_tipo`; los valores dicen qué se pidió y cuánto cambió.
+    SLA_RECALCULADO = "SLA_RECALCULADO"
+
 
 def record_admin_event(
     action: AuditAction,
