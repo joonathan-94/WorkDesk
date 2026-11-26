@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- los eventos de autenticación (entrega 3): cada intento de entrar y cada salida con su causa, el límite de intentos fallidos por equipo y la actividad de acceso en «Mi cuenta»; una migración (28);
 - la velocidad de la suite (entrega 2): de 6 min 54 s a 4 min 12 s, sin cambios de comportamiento;
 - la revisión previa (entrega 1): el bloqueo por intentos fallidos resistente a intentos en paralelo, una sola definición de la identidad de un usuario (también en `create-admin`, ahora auditado), un log por proceso, arranque seguro en producción, la cookie de sesión renombrada, páginas de error para cualquier código, cuatro cabeceras de seguridad más y dos guardianes del esquema; la suite pasa de 4681 a 4728 tests.
 
@@ -362,7 +363,8 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 | # | Entrega | Estado | Tests al cerrar |
 | --- | --- | --- | --- |
 | 1 | Revisión previa | Integrada (PR #66) | 4728 |
-| 2 | Velocidad de la suite | En revisión (`test/v0-8-0-suite-speed`) | 4746 |
+| 2 | Velocidad de la suite | Integrada (PR #67) | 4746 |
+| 3 | Eventos de autenticación | En revisión (`feature/auth-events`) | 4775 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -394,6 +396,17 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - tres tests del seed que solo miran un ticket cargan solo ese.
 
   Resultado: 4746 tests en 4 min 12 s (−39 %). Medido y descartado: una instantánea de los catálogos (unos 7 s reales a cambio de una restauración que depende del orden de los fixtures). Seis mutaciones, todas detectadas; una de ellas confirma que la equivalencia del SLA, ahora con una consulta por momento, sigue viendo un borde de un segundo.
+
+- **Entrega 3, eventos de autenticación.** La tabla `eventos_autenticacion` registra cada intento de entrar y cada salida: inicio de sesión correcto y fallido, bloqueo, cierre y expiración de la sesión, y la contraseña actual equivocada al cambiarla.
+  - **La causa de un rechazo queda como código interno** y nunca se muestra. Cada camino de rechazo del login pasa ahora por un único ayudante, así que ninguno puede olvidar registrar su intento ni romper la igualdad de tiempos.
+  - **Lo escrito como usuario solo se guarda si tiene forma de username:** alguien pudo escribir ahí su contraseña. Un test comprueba que ninguna contraseña llega a ninguna columna.
+  - **Límite de intentos por equipo.** Con el registro se pudo atacar algo que el bloqueo por cuenta no ve: quien prueba cuatro contraseñas en cada una de cien cuentas. Pasados `LOGIN_MAX_FAILED_PER_IP` fallos desde una IP (20 por defecto, configurable en «Seguridad y sesión», 0 lo apaga), los intentos siguientes se rechazan antes de mirar la cuenta. El recuento se serializa con un bloqueo consultivo por IP: doce intentos simultáneos con un límite de tres dejan exactamente tres que miran una cuenta.
+  - **«Mi cuenta» muestra los últimos diez accesos de la propia cuenta.** Es la forma más simple de que alguien detecte intentos que no reconoce.
+  - **Una decisión al probar.** El rechazo por el límite del equipo ocurre antes de buscar la cuenta, así que el evento guarda lo escrito como usuario (qué cuenta estaban atacando) en lugar de enlazarla. Se dejó así y se documentó.
+  - **Un guardián que hubo que ajustar con intención.** El coste mínimo por petición se medía en «Mi cuenta», que ahora hace una consulta más a propósito; pasó a medirse en «Cambiar contraseña», que sigue costando tres.
+  - **Integridad automática.** La tabla nueva quedó cubierta sola por las pruebas de integridad: tiene `fecha_hora`, así que se le exigió ser de solo añadir.
+
+  Doce mutaciones, todas detectadas. La suite pasó de 4746 a 4775 tests.
 
 ---
 

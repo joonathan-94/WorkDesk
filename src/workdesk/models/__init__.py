@@ -4,6 +4,9 @@ from .article import ArticleLinkType as ArticleLinkType
 from .article import ArticleVisibility as ArticleVisibility
 from .article import TicketArticle as TicketArticle
 from .attachment import Attachment as Attachment
+from .auth_event import AuthEvent as AuthEvent
+from .auth_event import AuthEventType as AuthEventType
+from .auth_event import AuthFailure as AuthFailure
 from .calendario_laboral import CalendarioLaboral as CalendarioLaboral
 from .calendario_laboral import Feriado as Feriado
 from .calendario_laboral import HorarioLaboral as HorarioLaboral

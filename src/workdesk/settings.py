@@ -113,6 +113,13 @@ LOGIN_MAX_FAILED_ATTEMPTS = IntSetting(
 LOGIN_LOCK_MINUTES = IntSetting(
     "LOGIN_LOCK_MINUTES", "autenticacion.bloqueo_minutos", 15, maximum=10_080
 )
+# Intentos fallidos desde un mismo equipo (IP) dentro del tiempo de bloqueo, en cualquier
+# cuenta, antes de rechazar los siguientes desde ese equipo. El bloqueo por cuenta no frena a
+# quien prueba unas pocas contraseñas en muchas cuentas. 0 lo desactiva (por ejemplo, si
+# todas las peticiones llegan a través de un proxy con la misma IP).
+LOGIN_MAX_FAILED_PER_IP = IntSetting(
+    "LOGIN_MAX_FAILED_PER_IP", "autenticacion.max_intentos_por_ip", 20, minimum=0, maximum=10_000
+)
 PASSWORD_MIN_LENGTH = IntSetting(
     "PASSWORD_MIN_LENGTH",
     "autenticacion.password_longitud_minima",
@@ -198,6 +205,7 @@ BOOL_SETTINGS: tuple[BoolSetting, ...] = (SLA_ENABLED, AUTO_CLOSE_ENABLED, LOCAT
 INT_SETTINGS: tuple[IntSetting, ...] = (
     LOGIN_MAX_FAILED_ATTEMPTS,
     LOGIN_LOCK_MINUTES,
+    LOGIN_MAX_FAILED_PER_IP,
     PASSWORD_MIN_LENGTH,
     SESSION_IDLE_MINUTES,
     SESSION_MAX_HOURS,

@@ -1810,6 +1810,8 @@ Un login exitoso podrá reiniciar los intentos fallidos de acuerdo con la polít
 
 **Concurrencia (`v0.8.0`).** El contador se lee, se compara y se escribe. Si dos intentos llegan a la vez y ninguno bloquea la fila, los dos leen el mismo valor y el contador pierde actualizaciones: medido, 20 intentos simultáneos lo dejaban en 2, sin bloquear la cuenta. Por eso el login y el cambio de contraseña leen al usuario con `SELECT ... FOR UPDATE` antes de mirar el bloqueo y verificar la contraseña (`auth/security.py`). Los intentos sobre una misma cuenta se atienden de uno en uno, y los de cuentas distintas no se esperan entre sí. Es el mismo principio que el resto del sistema: bloquear la fila antes de decidir.
 
+**Límite por equipo (`v0.8.0`, RN-178).** El bloqueo por cuenta no ve a quien prueba pocas contraseñas en muchas cuentas. Con `eventos_autenticacion` se puede contar: si desde una IP hubo `LOGIN_MAX_FAILED_PER_IP` fallos dentro del tiempo de bloqueo, los siguientes intentos desde ella se rechazan **antes** de buscar la cuenta. El recuento usa el índice `(ip_origen, fecha_hora)` y se serializa con un bloqueo consultivo por IP (`pg_advisory_xact_lock` sobre un hash de la IP), igual que la cuenta se serializa con su fila. Así, doce intentos simultáneos con un límite de tres dejan exactamente tres que llegan a mirar una cuenta. La IP es `request.remote_addr`. Detrás de un proxy inverso todas las peticiones traerían la del proxy: en ese caso el límite se desactiva con 0, o habría que configurar el proxy y la aplicación para confiar en `X-Forwarded-For`, cosa que WorkDesk no hace por defecto porque esa cabecera la puede inventar cualquiera.
+
 ---
 
 # 61. Archivos adjuntos

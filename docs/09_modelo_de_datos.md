@@ -466,6 +466,20 @@ Registro especializado y append-only de eventos de autenticación.
 - Los eventos puramente de autenticación **no deberán duplicarse sistemáticamente** en `auditoria_administrativa`.
 - Las acciones administrativas de seguridad continúan registrándose en auditoría cuando corresponda.
 
+**Implementación (`v0.8.0`, entrega 3).** Modelo `AuthEvent` (`models/auth_event.py`), migración `create_auth_events_table`.
+
+- **Vocabulario** (en la aplicación, sin `CHECK`, como `AuditAction`):
+  - `tipo_evento`: `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `BLOQUEO_TEMPORAL`, `CIERRE_SESION`, `SESION_EXPIRADA` y `VERIFICACION_FALLIDA` (la contraseña actual equivocada al cambiarla).
+  - `detalle`: la causa de un rechazo, que es un código controlado (`USUARIO_DESCONOCIDO`, `USUARIO_INACTIVO`, `CUENTA_BLOQUEADA`, `CONTRASENA_INCORRECTA` y `DEMASIADOS_INTENTOS_IP`) y no un texto libre. Es `VARCHAR(30)`.
+- **El «desbloqueo»** que preveía la lista no es un evento propio: un bloqueo vence solo y el siguiente intento correcto ya queda como `LOGIN_EXITOSO`. El restablecimiento por un Administrador está en la auditoría (`PASSWORD_RESTABLECIDA`).
+- **`CHECK`:**
+  - `resultado` es `EXITOSO` o `FALLIDO`;
+  - un `LOGIN_EXITOSO` siempre tiene `usuario_id`;
+  - un evento fallido tiene `detalle` y uno correcto no.
+- **Índices:** `(fecha_hora, id)`, `(usuario_id, fecha_hora)` (la actividad de una cuenta) e `(ip_origen, fecha_hora)` (el límite de intentos por equipo, RN-178).
+- **Clave foránea** `ON DELETE RESTRICT`. El ORM rechaza modificar o borrar filas (`AuthEventImmutableError`).
+- **`identificador_intentado`** se guarda solo si el evento no está ligado a una cuenta y tiene forma de username (RN-148).
+
 # 10. Organización operativa
 
 ## 10.1 `grupos`
@@ -1830,6 +1844,7 @@ La definición de cada parámetro numérico (su clave, su variable de entorno, s
 | --- | --- | --- | --- |
 | `autenticacion.max_intentos` | `LOGIN_MAX_FAILED_ATTEMPTS` | 5 | 1 a 100 |
 | `autenticacion.bloqueo_minutos` | `LOGIN_LOCK_MINUTES` | 15 | 1 a 10 080 |
+| `autenticacion.max_intentos_por_ip` | `LOGIN_MAX_FAILED_PER_IP` | 20 | 0 a 10 000 (0 desactiva el límite por equipo) |
 | `autenticacion.password_longitud_minima` | `PASSWORD_MIN_LENGTH` | 12 | 8 a 128 |
 | `sesion.inactividad_minutos` | `SESSION_IDLE_MINUTES` | 30 | 1 a 1440 |
 | `sesion.duracion_maxima_horas` | `SESSION_MAX_HOURS` | 8 | 1 a 720 |

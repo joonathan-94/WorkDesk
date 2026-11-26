@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-test/v0-8-0-suite-speed
+feature/auth-events
 ```
 
-Entrega 2 de `v0.8.0`: la suite de tests más rápida, sin cambios de comportamiento. **Sin migraciones.** Ver «Velocidad de la suite (entrega 2 de `v0.8.0`)».
+Entrega 3 de `v0.8.0`: los eventos de autenticación y el límite de intentos por equipo. **Con una migración** (`create_auth_events_table`). Ver «Eventos de autenticación (entrega 3 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -304,13 +304,24 @@ Infraestructura de los tests, **sin cambios de comportamiento** ni migraciones. 
 - **Guardianes nuevos:** la reserva solo abre conexiones a `workdesk_test`, y el test siguiente encuentra la conexión limpia (sin transacción, sin parámetros de sesión y sin bloqueos consultivos). Además, el hasher de la suite sigue siendo Argon2id y un hash con otros parámetros se recalcula en producción. Las 6 mutaciones de la entrega se detectan, entre ellas un borde de un segundo en la condición SQL del aviso de SLA.
 - **Tests:** 18 más (4728 → 4746): 14 son la prueba de pantallas de acción, que pasa a ser un caso por pantalla.
 
+## Eventos de autenticación (entrega 3 de `v0.8.0`)
+
+RNF-015, RNF-022 y RN-178; modelo en `docs/09` (9.3). **Con una migración** (`create_auth_events_table`).
+
+- **El registro** (`models/auth_event.py`, `AuthEvent`; servicio `auth/events.py`, `record_auth_event`, sin commit). Cada intento de entrar y cada salida, de solo añadir: `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `BLOQUEO_TEMPORAL`, `CIERRE_SESION`, `SESION_EXPIRADA` y `VERIFICACION_FALLIDA` (contraseña actual equivocada en «Cambiar contraseña»). Guarda la cuenta, la IP y el navegador (con `request_ip` y `request_user_agent`, ahora públicos en `audit/service.py` y compartidos con la auditoría). Un rechazo guarda su causa como código (`AuthFailure`): un dato interno que nunca se muestra. Tres `CHECK`: el resultado, un éxito con cuenta y la causa solo en los rechazos. Los accesos no se duplican en la auditoría administrativa: el cambio de contraseña sigue allí.
+- **Nunca guarda contraseñas.** Lo escrito como usuario se guarda solo si el evento no está ligado a una cuenta y tiene forma de username (RN-148). Un test busca la contraseña en cada columna de cada evento.
+- **El login** (`auth/routes.py`) rechaza siempre a través de `_reject_login`, que registra el evento, confirma y muestra el mensaje genérico. Ningún camino puede olvidar su evento, y la verificación de relleno (la igualdad de tiempos) se mantiene.
+- **Límite por equipo (`LOGIN_MAX_FAILED_PER_IP`,** 20 por defecto, 0 lo apaga, en «Seguridad y sesión»). Con tantos fallos desde una IP dentro del tiempo de bloqueo, en cualquier cuenta, los intentos siguientes se rechazan antes de buscar la cuenta, sin tocar su contador y con un mensaje que no dice nada de ninguna cuenta. El recuento usa el índice `(ip_origen, fecha_hora)` y se serializa con `pg_advisory_xact_lock` sobre un hash de la IP. Detrás de un proxy inverso todas las peticiones traen la misma IP: ahí se apaga con 0 (`X-Forwarded-For` no se usa porque cualquiera puede inventarla).
+- **«Mi cuenta» muestra la actividad reciente de la propia cuenta** (`recent_access`, los últimos diez eventos), con los fallidos marcados. Por eso el guardián del coste mínimo por petición (`test_request_cost`) se mide ahora en «Cambiar contraseña», que sigue costando tres consultas.
+- **Tests:** 29 nuevos (4746 → 4775), la mayoría en `tests/test_auth_events.py`; la tabla nueva entró sola en `test_data_integrity`. Doce mutaciones, todas detectadas.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación, pantalla de auditoría, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -543,7 +554,7 @@ No deben versionarse:
 
 La configuración utiliza variables de entorno cargadas mediante `python-dotenv`.
 
-Los 16 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo, adjuntos y duplicados) y los 3 interruptores (SLA, cierre automático y ubicación obligatoria) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
+Los 17 parámetros numéricos (sesión, autenticación, comentarios, reapertura, cierre automático, bloqueo de edición, planificador, carga de trabajo, adjuntos y duplicados) y los 3 interruptores (SLA, cierre automático y ubicación obligatoria) se definen una sola vez en `src/workdesk/settings.py` (nombre, clave de la tabla `configuracion`, valor por defecto y rango) y `create_app` los valida todos al iniciar. Las variables de entorno son su valor inicial: rigen mientras el Administrador no elija otro valor en la tabla `configuracion` (`v0.7.0`, entrega 2), y el código siempre lee con `value_of` (ver «Configuración administrable»).
 
 Variables principales:
 
@@ -555,6 +566,7 @@ DATABASE_URL
 TEST_DATABASE_URL
 LOGIN_MAX_FAILED_ATTEMPTS
 LOGIN_LOCK_MINUTES
+LOGIN_MAX_FAILED_PER_IP
 PASSWORD_MIN_LENGTH
 SESSION_COOKIE_SECURE
 SESSION_IDLE_MINUTES
@@ -586,6 +598,7 @@ APP_ENV=development
 APP_TIMEZONE=America/Santiago
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_LOCK_MINUTES=15
+LOGIN_MAX_FAILED_PER_IP=20
 PASSWORD_MIN_LENGTH=12
 SESSION_COOKIE_SECURE=false
 SESSION_IDLE_MINUTES=30
@@ -644,7 +657,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente veintisiete migraciones:
+Existen actualmente veintiocho migraciones:
 
 ```text
 create_roles_table
@@ -674,6 +687,7 @@ add_history_date_index
 create_configuration_table
 create_knowledge_base_tables
 add_lock_revoker_to_ticket_edit_locks
+create_auth_events_table
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -2138,7 +2152,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4746 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
+4775 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
