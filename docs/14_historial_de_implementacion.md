@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- la velocidad de la suite (entrega 2): de 6 min 54 s a 4 min 12 s, sin cambios de comportamiento;
 - la revisión previa (entrega 1): el bloqueo por intentos fallidos resistente a intentos en paralelo, una sola definición de la identidad de un usuario (también en `create-admin`, ahora auditado), un log por proceso, arranque seguro en producción, la cookie de sesión renombrada, páginas de error para cualquier código, cuatro cabeceras de seguridad más y dos guardianes del esquema; la suite pasa de 4681 a 4728 tests.
 
 ---
@@ -360,7 +361,8 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 
 | # | Entrega | Estado | Tests al cerrar |
 | --- | --- | --- | --- |
-| 1 | Revisión previa | En revisión (`fix/v0-8-0-review`) | 4728 |
+| 1 | Revisión previa | Integrada (PR #66) | 4728 |
+| 2 | Velocidad de la suite | En revisión (`test/v0-8-0-suite-speed`) | 4746 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -381,6 +383,17 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
     - los parámetros de Argon2id de producción no bajan del mínimo de OWASP.
 
     El módulo de tests del cierre de `v0.7.0`, agrupado por fecha, se repartió por tema. La suite pasó de 4681 a 4728 tests.
+
+- **Entrega 2, velocidad de la suite.** Se midió con un plugin que anota el tiempo de preparar, ejecutar y limpiar cada test y el proceso que lo corrió. Partida: 4728 tests en 6 min 54 s, con el 54,5 % del trabajo en preparar y limpiar. Primero se probaron prototipos fuera del repositorio sobre cinco áreas. Compartir la caché de SQL compilado no ganó nada. Reutilizar las conexiones bajó un 26 % y abaratar Argon2id en la suite, un 50 %: sus 4 hilos por verificación en seis procesos a la vez competían por los núcleos.
+
+  Lo que se hizo, sin cambiar el comportamiento:
+  - una reserva de conexiones en `tests/database.py` que las devuelve limpias (`ROLLBACK`, `RESET ALL` y suelta los bloqueos consultivos);
+  - Argon2id mínimo en la suite, con los parámetros de producción ahora explícitos y vigilados;
+  - el seed busca sus tickets en una consulta;
+  - las dos pruebas monolíticas, repartidas;
+  - tres tests del seed que solo miran un ticket cargan solo ese.
+
+  Resultado: 4746 tests en 4 min 12 s (−39 %). Medido y descartado: una instantánea de los catálogos (unos 7 s reales a cambio de una restauración que depende del orden de los fixtures). Seis mutaciones, todas detectadas; una de ellas confirma que la equivalencia del SLA, ahora con una consulta por momento, sigue viendo un borde de un segundo.
 
 ---
 

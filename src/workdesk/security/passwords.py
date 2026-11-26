@@ -3,7 +3,27 @@ from functools import cache
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-password_hasher = PasswordHasher()
+# Los parámetros de Argon2id, escritos aquí y no tomados de los valores por defecto de
+# argon2-cffi: una actualización de la librería no debe cambiar cuánto cuesta un hash sin
+# que nadie lo decida. Son los valores de RFC 9106 que la librería usa hoy (64 MiB, 3
+# pasadas, 4 hilos), muy por encima del mínimo de OWASP (19 MiB y 2 pasadas). Bajarlos
+# hace fallar `tests/test_passwords.py`. Un hash guardado con otros parámetros se recalcula
+# al iniciar sesión (`password_needs_rehash`).
+TIME_COST = 3
+MEMORY_COST_KIB = 64 * 1024
+PARALLELISM = 4
+
+
+def build_password_hasher() -> PasswordHasher:
+    """El hasher de producción."""
+    return PasswordHasher(
+        time_cost=TIME_COST,
+        memory_cost=MEMORY_COST_KIB,
+        parallelism=PARALLELISM,
+    )
+
+
+password_hasher = build_password_hasher()
 
 
 def hash_password(password: str) -> str:

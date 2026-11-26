@@ -31,6 +31,7 @@ from tests.seed_helpers import (
     content_snapshot,
     count,
     date_snapshot,
+    demo_tickets,
     events_of,
     history_of,
     log_in,
@@ -195,7 +196,7 @@ def test_a_missing_wait_reason_only_warns_and_the_wait_has_no_reason(
         )
         db.session.commit()
 
-        result = seed_demo_tickets(now=NOW)
+        result = seed_demo_tickets(now=NOW, tickets=demo_tickets("wifi-bodega"))
 
         assert any("Motivo de espera «OTRO»" in w for w in result.warnings)
 
@@ -392,7 +393,7 @@ def test_a_missing_group_only_warns_and_the_ticket_has_no_group(app, prepared):
         )
         db.session.commit()
 
-        result = seed_demo_tickets(now=NOW)
+        result = seed_demo_tickets(now=NOW, tickets=demo_tickets("disco-lleno-servidor"))
 
         assert any("Grupo «Soporte Redes»" in w for w in result.warnings)
 

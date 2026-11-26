@@ -93,14 +93,17 @@ def seed_demo_tickets(
     refreshed = 0
     new_ticket_ids: list[int] = []
 
+    # Los que ya están cargados, en una sola consulta (antes, dos por ticket).
+    loaded = find_demo_tickets([demo.clave for demo in tickets])
+
     try:
         for demo in tickets:
             times = planned_times(demo, clock, now, latest)
-            ticket = find_demo_ticket(demo.clave)
+            ticket = loaded.get(demo.clave)
 
             if ticket is None:
-                create_demo_ticket(demo, catalogs, times)
-                new_ticket_ids.append(find_demo_ticket(demo.clave).id)
+                loaded[demo.clave] = create_demo_ticket(demo, catalogs, times)
+                new_ticket_ids.append(loaded[demo.clave].id)
                 created += 1
             else:
                 refresh_dates(ticket, demo, times, limit)
@@ -111,7 +114,7 @@ def seed_demo_tickets(
         # esa línea de tiempo, con lo que los tickets quedan en tiempo, por vencer,
         # vencidos o pausados según su historia.
         for demo in tickets:
-            rebuild_ticket_periods(find_demo_ticket(demo.clave))
+            rebuild_ticket_periods(loaded[demo.clave])
 
         # Los servicios también avisaron a las personas de cada ticket, con la hora de
         # la carga y sin leer: la historia de un ticket demo es del pasado y no debe
@@ -143,15 +146,22 @@ def find_demo_ticket(key: str) -> Ticket | None:
     Se busca por la marca del evento de creación, que es inmutable: el ticket
     se reconoce aunque después cambie de título.
     """
-    return db.session.scalar(
-        db.select(Ticket)
+    return find_demo_tickets([key]).get(key)
+
+
+def find_demo_tickets(keys: list[str]) -> dict[str, Ticket]:
+    """Los tickets que el seed cargó con esas claves, por clave, en una consulta."""
+    marker = TicketHistory.contexto[MARKER_KEY].as_string()
+    rows = db.session.execute(
+        db.select(marker, Ticket)
         .join(TicketHistory, TicketHistory.ticket_id == Ticket.id)
         .where(
             TicketHistory.tipo_evento == TicketEvent.TICKET_CREADO.value,
-            TicketHistory.contexto[MARKER_KEY].as_string() == key,
+            marker.in_(keys),
         )
-        .limit(1)
-    )
+    ).all()
+
+    return {key: ticket for key, ticket in rows}
 
 
 # --- Fechas planificadas --------------------------------------------------
@@ -190,7 +200,9 @@ def planned_times(
 # --- Crear ----------------------------------------------------------------
 
 
-def create_demo_ticket(demo: DemoTicket, catalogs: Catalogs, times: list[datetime]) -> None:
+def create_demo_ticket(
+    demo: DemoTicket, catalogs: Catalogs, times: list[datetime]
+) -> Ticket:
     creator = catalogs.users[demo.creado_por]
 
     if creator.rol.codigo == SOLICITANTE:
@@ -240,6 +252,8 @@ def create_demo_ticket(demo: DemoTicket, catalogs: Catalogs, times: list[datetim
             modified_at = times[step]
 
     write_new_dates(ticket, demo.clave, steps, times, modified_at)
+
+    return ticket
 
 
 def apply_adjustment(ticket: Ticket, adjustment, catalogs: Catalogs) -> None:

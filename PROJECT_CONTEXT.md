@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-fix/v0-8-0-review
+test/v0-8-0-suite-speed
 ```
 
-Entrega 1 de `v0.8.0`: la revisión previa de la fase, con el refuerzo de seguridad. **Sin migraciones.** Ver «Revisión previa a `v0.8.0`».
+Entrega 2 de `v0.8.0`: la suite de tests más rápida, sin cambios de comportamiento. **Sin migraciones.** Ver «Velocidad de la suite (entrega 2 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -290,7 +290,19 @@ Primera entrega de la fase: auditar lo construido, midiendo antes de cambiar, y 
 - **Comprobado y sin cambios:** no hay redirecciones abiertas (todos los destinos salen de `url_for`), SQL construido con texto del usuario ni `|safe` en las plantillas; ninguna función supera la complejidad 12 y no hay funciones duplicadas (comparadas por estructura); las 93 claves foráneas son `RESTRICT`.
 - **Guardianes nuevos:** que ninguna clave foránea borre en cascada y que toda tabla de eventos (las que tienen `fecha_hora`) rechace cambios desde el ORM, detectada sola (`test_data_integrity`); los parámetros de Argon2id de producción por encima del mínimo de OWASP (`test_passwords`); los intentos simultáneos en el login y en el cambio de contraseña (`test_login_hardening`); el log por proceso (`test_logging`); las páginas de error (`test_error_pages`); el arranque seguro y la cookie (`test_startup_safety`). Las 17 mutaciones de la entrega se detectan.
 - **Tests reordenados:** el módulo del cierre de `v0.7.0` (agrupado por fecha) se repartió por tema; la ubicación obligatoria tiene el suyo (`test_ticket_location_required`).
-- **Tests:** 47 nuevos (4681 → 4728). La suite completa tarda unos 7 min 20 s con `-n 6`; la entrega 2 la acelera (un prototipo medido la deja en 4 min 26 s).
+- **Tests:** 47 nuevos (4681 → 4728). La suite completa tardaba unos 7 min 20 s con `-n 6`; la entrega 2 la acelera.
+
+## Velocidad de la suite (entrega 2 de `v0.8.0`)
+
+Infraestructura de los tests, **sin cambios de comportamiento** ni migraciones. Se midió con un plugin de tiempos por test y por proceso antes de cambiar nada: 4728 tests en 6 min 54 s con los 6 procesos equilibrados, y el 54,5 % del trabajo eran la preparación y la limpieza de los tests. Después: **4746 tests en 4 min 12 s (−39 %)**, con el trabajo total de 2400 s a 1433 s.
+
+- **Conexiones reutilizadas entre tests** (`tests/database.py`, `reusable_engine_options`). Cada test sigue creando su aplicación y su motor, pero las conexiones de psycopg salen de una reserva del proceso. Abrir una costaba 54 ms (PostgreSQL en Windows crea un proceso por conexión) y se abría en miles de tests. Al cerrarse, cada conexión vuelve limpia: `ROLLBACK`, `RESET ALL` y `pg_advisory_unlock_all()`. La reserva solo acepta `workdesk_test` y se vacía al terminar la sesión.
+- **Argon2id barato solo en la suite** (`tests/conftest.py`). Con los parámetros de producción, 4 hilos por verificación en 6 procesos a la vez competían por los núcleos. Para poder abaratarlo sin riesgo, la producción fija ahora sus parámetros de forma explícita (`security/passwords.py`: `TIME_COST`, `MEMORY_COST_KIB`, `PARALLELISM` y `build_password_hasher`; los mismos valores de antes, así que ningún hash cambia), y `tests/test_passwords.py` los compara con el mínimo de OWASP.
+- **El seed busca sus tickets en una consulta** (`find_demo_tickets`) en vez de dos o tres por ticket, y `create_demo_ticket` devuelve el ticket creado: un refresco hace 216 consultas menos.
+- **Las pruebas monolíticas, repartidas.** Las pantallas de acción se recorren con un caso por pantalla (eran 34 s en un solo test). La equivalencia SQL ↔ Python del SLA evalúa las cinco condiciones como columnas de una consulta por momento (de unos 16 s a 8 s), con la misma fuerza. Tres tests del seed que solo miran un ticket cargan solo ese ticket (`seed_helpers.demo_tickets`).
+- **Medido y descartado:** compartir solo la caché de SQL compilado no mejoró nada. Una instantánea de los roles y catálogos ahorraría unos 7 s reales (30 ms frente a 8 ms en 1951 tests), pero exigiría una restauración «aditiva» que depende del orden de los fixtures. Optimizar el motor del SLA para el seed ahorraría 0,1 s por carga a cambio de tocar su pieza más delicada. El área `seeds` sigue siendo la más cara por test (cada uno carga o refresca los 108 tickets reales): es lo que prueba.
+- **Guardianes nuevos:** la reserva solo abre conexiones a `workdesk_test`, y el test siguiente encuentra la conexión limpia (sin transacción, sin parámetros de sesión y sin bloqueos consultivos). Además, el hasher de la suite sigue siendo Argon2id y un hash con otros parámetros se recalcula en producción. Las 6 mutaciones de la entrega se detectan, entre ellas un borde de un segundo en la condición SQL del aviso de SLA.
+- **Tests:** 18 más (4728 → 4746): 14 son la prueba de pantallas de acción, que pasa a ser un caso por pantalla.
 
 ## Próximo hito
 
@@ -298,7 +310,7 @@ Primera entrega de la fase: auditar lo construido, midiendo antes de cambiar, y 
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite, eventos de autenticación, pantalla de auditoría, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación, pantalla de auditoría, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -2126,7 +2138,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4728 tests passing (unos 7 min 20 s con `-n 6`, medido al empezar v0.8.0; varía con la carga del equipo)
+4746 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
