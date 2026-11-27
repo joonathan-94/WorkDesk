@@ -46,6 +46,7 @@ AUDIT_ACTION_LABELS: dict[AuditAction, str] = {
     AuditAction.BLOQUEO_EDICION_LIBERADO: "Bloqueo de edición liberado",
     AuditAction.REASIGNACION_MASIVA: "Reasignación masiva",
     AuditAction.SLA_RECALCULADO: "SLA recalculado desde la consola",
+    AuditAction.DATOS_EXPORTADOS: "Datos exportados",
 }
 
 # Los tipos de entidad que aparecen en `entidad_tipo`. Uno desconocido se muestra tal cual.
@@ -64,6 +65,7 @@ ENTITY_LABELS: dict[str, str] = {
     "articulo_conocimiento": "Artículo",
     "ticket": "Ticket",
     "tecnico": "Técnico",
+    "exportacion": "Exportación",
 }
 
 

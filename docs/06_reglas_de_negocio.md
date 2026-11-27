@@ -1967,6 +1967,16 @@ Aplica RF-098 y UI-012 (`v0.8.0`, entrega 5). Precisa qué cuenta cada cifra de 
 * **Son del personal.** El Supervisor y el Administrador ven a todos los técnicos. Un Técnico ve las cifras del equipo, pero en la tabla por técnico solo la suya. El Solicitante no tiene acceso.
 * **No comparan personas.** Los técnicos se listan por apellido, sin rankings, medallas ni calificaciones (UI-012).
 
+## RN-180 — Exportaciones
+
+Aplica RF-099 a RF-101 (`v0.8.0`, entrega 7).
+
+* **Se exporta lo que se ve.** El listado de tickets, los reportes y la auditoría se exportan con los mismos filtros, la misma pestaña, el mismo orden y los mismos permisos que su pantalla, y con sus mismas columnas. El Solicitante no recibe datos internos (solicitantes, técnicos, grupo ni SLA), un Técnico recibe solo su fila de la tabla por técnico y solo el Administrador exporta la auditoría. La descripción de un ticket no se exporta.
+* **Formatos:** CSV (UTF-8 con BOM, separado por comas) y XLSX.
+* **Nada se ejecuta al abrir un archivo exportado.** Un texto que empieza como una fórmula (`=`, `+`, `-`, `@`, tabulador o retorno de carro) se escribe como texto: con un apóstrofo delante en CSV y con el tipo «texto» en XLSX.
+* **Cada exportación queda en la auditoría administrativa** (`DATOS_EXPORTADOS`): quién, qué, en qué formato, cuántas filas y con qué filtros. Exportar la auditoría también.
+* **Como mucho 50 000 filas por exportación.** Si son más, se pide acotar los filtros y no se exporta nada.
+
 ---
 
 # 24. Auditoría administrativa

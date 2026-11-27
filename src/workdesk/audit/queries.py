@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from ..extensions import db
 from ..formatting import start_of_local_day
@@ -58,15 +58,32 @@ class AuditFilters:
     ticket: str | None = None
 
 
-def audit_page(view: AuditView, filters: AuditFilters, page: int = 1):
-    """Una página de la pestaña `view` con `filters`, de lo más reciente a lo más antiguo."""
+def audit_statement(view: AuditView, filters: AuditFilters):
+    """La consulta de la pestaña `view` con `filters`, de lo más reciente a lo más antiguo
+    y sin paginar: la comparten la pantalla y la exportación."""
     model = _MODEL[view]
-    statement = select(model).where(*_conditions(view, filters)).order_by(
+
+    return select(model).where(*_conditions(view, filters)).order_by(
         model.fecha_hora.desc(), model.id.desc()
     )
 
+
+def count_audit_rows(view: AuditView, filters: AuditFilters) -> int:
+    model = _MODEL[view]
+
+    return db.session.scalar(
+        select(func.count(model.id)).where(*_conditions(view, filters))
+    )
+
+
+def audit_page(view: AuditView, filters: AuditFilters, page: int = 1):
+    """Una página de la pestaña `view` con `filters`, de lo más reciente a lo más antiguo."""
     return db.paginate(
-        statement, page=page, per_page=PAGE_SIZE, max_per_page=PAGE_SIZE, error_out=False
+        audit_statement(view, filters),
+        page=page,
+        per_page=PAGE_SIZE,
+        max_per_page=PAGE_SIZE,
+        error_out=False,
     )
 
 

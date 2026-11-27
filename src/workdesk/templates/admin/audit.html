@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% from "_ui_macros.html" import page_header, pagination_nav %}
+{% from "_ui_macros.html" import page_header, pagination_nav, export_buttons %}
 
 {% block title %}Auditoría{% endblock %}
 
@@ -32,6 +32,9 @@
 
 {% block content %}
     {% call page_header("Auditoría", "Qué se hizo, quién, cuándo y desde dónde. Los registros no se pueden modificar ni borrar.") %}
+        {% if pagination.total %}
+            {{ export_buttons('admin.export_audit', params) }}
+        {% endif %}
     {% endcall %}
 
     <nav aria-label="Registro de auditoría">

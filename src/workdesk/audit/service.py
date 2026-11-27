@@ -103,6 +103,8 @@ class AuditAction(StrEnum):
     # manuales sobre el SLA quedan registradas). Lo ejecuta el sistema desde la consola:
     # sin `entidad_tipo`; los valores dicen qué se pidió y cuánto cambió.
     SLA_RECALCULADO = "SLA_RECALCULADO"
+    # Una exportación del listado, los reportes o la auditoría (RN-180).
+    DATOS_EXPORTADOS = "DATOS_EXPORTADOS"
 
 
 def record_admin_event(

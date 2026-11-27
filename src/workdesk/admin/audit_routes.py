@@ -9,8 +9,9 @@ import ipaddress
 import json
 from datetime import date
 
-from flask import abort, render_template, request
+from flask import abort, flash, redirect, render_template, request, url_for
 
+from ..audit.export import audit_table
 from ..audit.labels import AUDIT_ACTION_LABELS, action_label, entity_label
 from ..audit.queries import (
     MAX_PERSON_LENGTH,
@@ -18,10 +19,20 @@ from ..audit.queries import (
     AuditFilters,
     AuditView,
     audit_page,
+    count_audit_rows,
     entity_types,
     page_context,
 )
 from ..audit.service import AuditAction
+from ..dashboard.requester import local_today
+from ..exports import (
+    MAX_EXPORT_ROWS,
+    export_response,
+    parse_format,
+    record_export,
+    too_many_rows_message,
+)
+from ..extensions import db
 from ..models import AuthEventType, TicketEvent
 from ..models.admin_audit_log import AuditResult
 from ..models.auth_event import AUTH_EVENT_LABELS
@@ -52,14 +63,7 @@ RESULT_OPTIONS = [
 @bp.get("/audit")
 @admin_only
 def audit():
-    # `admin_only` ya lo exige; la política es la que nombra el requisito (RNF-025) y
-    # mantiene la regla en un solo lugar si algún día otro rol puede consultar.
-    if not can_view_audit(current_actor()):
-        abort(403)
-
-    view = _view_arg()
-    known_entities = entity_types() if view is AuditView.ADMINISTRATIVA else []
-    filters = _filters(view, known_entities)
+    view, known_entities, filters = _read_audit()
     pagination = audit_page(view, filters, page=request.args.get("page", 1, type=int))
     context = page_context(view, pagination.items)
 
@@ -81,7 +85,56 @@ def audit():
     )
 
 
+@bp.get("/audit/export")
+@admin_only
+def export_audit():
+    """La pestaña que se ve, con sus filtros, en CSV o XLSX. Exportar la auditoría también
+    queda en la auditoría (RN-180)."""
+    fmt = parse_format(request.args.get("formato"))
+
+    if fmt is None:
+        abort(404)
+
+    view, _known, filters = _read_audit()
+    params = _params(view, filters)
+    rows = count_audit_rows(view, filters)
+
+    if rows > MAX_EXPORT_ROWS:
+        flash(too_many_rows_message(rows), "warning")
+
+        return redirect(url_for("admin.audit", **params))
+
+    record_export(
+        current_actor(),
+        what="auditoria",
+        label=f"Auditoría, pestaña {VIEW_LABELS[view]}",
+        fmt=fmt,
+        rows=rows,
+        filters=params,
+    )
+    db.session.commit()
+
+    return export_response(
+        fmt,
+        [audit_table(view, filters)],
+        f"workdesk-auditoria-{view.value}-{local_today().isoformat()}",
+    )
+
+
 # --- Lectura de la URL --------------------------------------------------------------------
+
+
+def _read_audit():
+    """La pestaña y sus filtros, ya validados (la pantalla y la exportación)."""
+    # `admin_only` ya lo exige; la política es la que nombra el requisito (RNF-025) y
+    # mantiene la regla en un solo lugar si algún día otro rol puede consultar.
+    if not can_view_audit(current_actor()):
+        abort(403)
+
+    view = _view_arg()
+    known_entities = entity_types() if view is AuditView.ADMINISTRATIVA else []
+
+    return view, known_entities, _filters(view, known_entities)
 
 
 def _view_arg() -> AuditView:
@@ -129,7 +182,7 @@ def _ip_arg() -> str | None:
 def _ticket_arg() -> str | None:
     value = request.args.get("ticket", "").strip().lstrip("#")
 
-    return value if value.isdigit() else None
+    return value if value.isascii() and value.isdigit() else None
 
 
 def _params(view: AuditView, filters: AuditFilters) -> dict:

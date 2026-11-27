@@ -2484,6 +2484,8 @@ Para XLSX podrá utilizarse:
 
 La exportación deberá respetar los mismos permisos y filtros que la consulta visible.
 
+**Implementación (`v0.8.0`, entrega 7).** `exports.py` escribe las tablas: CSV con el módulo estándar `csv` y XLSX con `openpyxl` 3.1.5 en modo de solo escritura. También concentra las dos reglas de seguridad: la neutralización de fórmulas y la limpieza de caracteres de control. Cada pantalla arma sus filas con la misma consulta que muestra: `listing_statement` y `audit_statement` se extrajeron de la paginación para eso, y los reportes exportan el mismo `Report`. Las filas se leen por tramos y, en el listado, el estado del SLA lo decide SQL de una vez (`sla_condition`) en lugar del cálculo en Python ticket a ticket.
+
 ---
 
 # 96. Logging

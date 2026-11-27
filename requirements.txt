@@ -20,6 +20,10 @@ argon2-cffi==25.1.0
 # Formularios y protección CSRF
 Flask-WTF==1.3.0
 
+# Exportación a Excel (XLSX) de listados, reportes y auditoría. Se usa en modo de
+# solo escritura; los textos se escriben siempre como texto (nunca como fórmula).
+openpyxl==3.1.5
+
 # Zona horaria: zoneinfo (docs/10) necesita esta base de datos en Windows,
 # que no trae la suya.
 tzdata==2026.5

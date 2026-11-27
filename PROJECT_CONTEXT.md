@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/reports-screen
+feature/exports
 ```
 
-Entrega 6 de `v0.8.0`: la pantalla de reportes. **Sin migraciones.** Ver «Reportes: pantalla (entrega 6 de `v0.8.0`)».
+Entrega 7 de `v0.8.0`: la exportación a CSV y XLSX. **Sin migraciones; una dependencia nueva (`openpyxl`).** Ver «Exportación CSV y XLSX (entrega 7 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -93,7 +93,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
 
-De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69) y las consultas de los reportes (PR #70).
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70) y su pantalla (PR #71).
 
 ## Identidad visual (integrada en `main`)
 
@@ -394,13 +394,59 @@ UI-012 y RF-098; las cifras son las de la entrega 5 (`build_report`). **Sin migr
 - **Medido a escala** (unos 20 000 tickets en un año): la pantalla de 30 días tarda 98 ms; la de 90, 162 ms, y la del año, 349 ms, con 16 consultas en cualquier caso. El listado filtrado por fecha de resolución, 29 ms.
 - **Tests:** 64 nuevos (4843 → 4907), sobre todo en `tests/test_report_screen.py` (área `reports`). **Cada cifra de la página se comprueba abriendo de verdad su enlace** y leyendo el total que muestra el listado. Se hace con seis combinaciones de período y filtros, también como Técnico. La pantalla entró en `test_pages_smoke`, en el menú de `test_layout` y en `test_route_authorization`. Las 15 mutaciones se detectan; quitar solo una de las dos capas de autorización es equivalente (la otra sigue bloqueando), así que la mutación quita las dos.
 
+## Exportación CSV y XLSX (entrega 7 de `v0.8.0`)
+
+RF-099 a RF-101 y RN-180. **Sin migraciones.** **Una dependencia nueva, aprobada al planificar la fase:** `openpyxl` 3.1.5, para escribir XLSX en modo de solo escritura.
+
+- **Tres exportaciones,** cada una con un par de botones (CSV y Excel) en su pantalla, que son enlaces normales (macro `export_buttons`):
+  - `GET /tickets/export`, para cualquier usuario;
+  - `GET /reports/export`, para el personal;
+  - `GET /admin/audit/export`, solo para el Administrador, con la doble autorización de su pantalla.
+
+  Un formato que no es `csv` ni `xlsx` responde 404.
+- **El archivo trae lo que se ve.** Cada exportación lee los filtros con la misma función que su pantalla y consulta con la misma sentencia:
+  - el listado: `read_listing_filters` y `listing_statement`, extraída de `list_tickets`, con la misma visibilidad, pestaña y orden;
+  - los reportes: el mismo `Report`;
+  - la auditoría: `audit_statement`, extraída de `audit_page`.
+
+  Las columnas son las que esa persona ve: el Solicitante no recibe solicitantes, técnicos, grupo ni SLA; un Técnico, solo su fila de la tabla por técnico. La descripción de los tickets no se exporta.
+- **Nada se ejecuta al abrir el archivo** (`exports.py`, «CSV injection» de OWASP):
+  - en CSV, un texto que empieza por `=`, `+`, `-`, `@`, tabulador o retorno de carro lleva un apóstrofo delante;
+  - en XLSX, todo texto se escribe con el tipo «texto». Se comprobó que `openpyxl` convierte por su cuenta en fórmula un texto que empieza por `=` (un título `=HYPERLINK(...)` habría sido un enlace activo) y en celda de error uno como `#N/A`.
+  - Los caracteres de control se quitan, porque el XML de un XLSX no los admite.
+- **Formato.**
+  - CSV: UTF-8 con BOM, separado por comas y con fin de línea `\r\n`.
+  - XLSX: encabezado en negrita y fijo, y fechas como fechas en la hora local.
+  - Los reportes van en una hoja por sección o, en CSV, en una tabla «larga» (sección, elemento, medida, valor y período anterior). Sus tiempos van en horas con decimales.
+- **Cada exportación queda en la auditoría** (`DATOS_EXPORTADOS`, «Exportación»): quién, qué, formato, filas y filtros. También la de la propia auditoría. Una exportación rechazada no se registra.
+- **Como mucho 50 000 filas** (`MAX_EXPORT_ROWS`). Si son más, se vuelve a la pantalla con un aviso para acotar los filtros.
+- **Medido a escala** (unos 20 000 tickets en un año y 49 000 filas de auditoría):
+
+  | Exportación | CSV | Excel |
+  | --- | --- | --- |
+  | Listado completo (20 000 tickets) | 4 s | 8 s |
+  | Reporte del año | — | 0,4 s |
+  | Auditoría (49 000 filas) | 2,4 s | 12 s |
+
+  Excel cuesta lo que cuesta escribir cada celda con `openpyxl`; envolver menos celdas solo ahorraba un 14 % y no compensaba perder la regla «todo texto es texto».
+- **Dos mejoras salieron de medir.** El listado calculaba el SLA en Python ticket a ticket (15 de 21 s). Ahora lo decide SQL con `sla_condition`, que tiene su equivalencia con Python probada, de una vez y no en tramos de 500 ids (de 3,1 s a 0,13 s). En total, de 62 a 4 s.
+- **Un detalle de paso:** el filtro de ticket de la auditoría ya no acepta dígitos que no son ASCII (como «²»).
+- **Tests:** 63 nuevos (4907 → 4970), en `tests/test_exports.py` (área `reports`). Comprueban:
+  - las fórmulas, mirando el XML del XLSX, y los seis inicios de OWASP escritos a mano;
+  - las mismas filas y en el mismo orden que el listado, también leyendo en tramos de 7;
+  - las columnas de cada rol;
+  - el SLA exportado comparado con Python ticket a ticket;
+  - la auditoría de cada exportación y el tope de filas.
+
+  Se detectan las 17 mutaciones; quitar una sola de las dos capas de autorización de la auditoría es equivalente.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -434,6 +480,7 @@ Pendiente, sin fase asignada:
 - argon2-cffi
 - python-dotenv
 - tzdata (base de zonas horarias para `zoneinfo`; Windows no trae la suya)
+- openpyxl (exportación a XLSX, en modo de solo escritura; desde `v0.8.0`)
 
 ## Frontend
 
@@ -1872,6 +1919,9 @@ POST       /admin/settings/<grupo>/reset/<variable>
 GET, POST  /admin/notifications
 GET        /admin/audit
 GET        /reports
+GET        /reports/export
+GET        /tickets/export
+GET        /admin/audit/export
 GET        /knowledge
 GET        /knowledge/<id>
 GET        /knowledge/manage
@@ -2236,7 +2286,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4907 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
+4970 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

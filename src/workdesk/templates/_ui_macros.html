@@ -22,6 +22,34 @@
     </header>
 {% endmacro %}
 
+{# Los dos botones de exportación (RF-099 y RF-100). `params` son los filtros de la
+   pantalla: el archivo trae exactamente lo que se ve, y el servidor vuelve a comprobar
+   los permisos. Son enlaces normales: funcionan sin JavaScript. #}
+{% macro export_buttons(endpoint, params) %}
+    <a
+        class="btn btn-outline-secondary"
+        href="{{ url_for(endpoint, formato='csv', **params) }}"
+        aria-label="Exportar a CSV"
+    >
+        <i
+            class="bi bi-filetype-csv me-1"
+            aria-hidden="true"
+        ></i>
+        CSV
+    </a>
+    <a
+        class="btn btn-outline-secondary"
+        href="{{ url_for(endpoint, formato='xlsx', **params) }}"
+        aria-label="Exportar a Excel"
+    >
+        <i
+            class="bi bi-file-earmark-spreadsheet me-1"
+            aria-hidden="true"
+        ></i>
+        Excel
+    </a>
+{% endmacro %}
+
 {# Ruta de navegación. `crumbs` es una lista de pares (texto, url); la
    última (la página actual) lleva url None y no es un enlace. #}
 {% macro breadcrumb(crumbs) %}

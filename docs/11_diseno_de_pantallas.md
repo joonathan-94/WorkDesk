@@ -2236,7 +2236,7 @@ Los gráficos son complementarios y deben disponer de equivalentes accesibles o 
 - **Gráficos.** Los estados son columnas, y las categorías y las prioridades, barras horizontales: son HTML, con el nombre y la cifra como texto. Usan los colores de las insignias de estado y prioridad. La evolución semanal es un SVG con la media y la mediana (en línea discontinua) y su tabla en «Ver como tabla».
 - **Tabla por técnico:** gestionados, en trabajo, resueltos, tiempo medio, mediana y fuera de SLA, por apellido, más «Sin asignar». Un Técnico ve solo su fila.
 - **Cada cifra con tickets enlaza con su listado** y lleva un `aria-label` que dice qué cuenta.
-- **Pendiente:** el botón «Exportar» del mockup llega con la exportación (entrega 7). Se omitieron los mini gráficos de las tarjetas: la evolución ya está en el gráfico semanal.
+- **Exportar** (entrega 7): en lugar del menú desplegable del mockup, dos botones, **CSV** y **Excel**. Son enlaces normales, sin JavaScript, y los tienen también el listado de tickets y la auditoría. Se omitieron los mini gráficos de las tarjetas: la evolución ya está en el gráfico semanal.
 
 ---
 
