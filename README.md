@@ -95,7 +95,7 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 **Para empezar:** [Guía rápida](#guía-rápida) · [Requisitos](#requisitos) · [Instalación](#instalación) · [PostgreSQL](#configuración-de-postgresql) · [Variables de entorno](#variables-de-entorno) · [Preparación inicial](#preparación-inicial) · [Actualizar una instalación](#actualizar-una-instalación-existente)
 
-**Usar WorkDesk:** [Ejecutar WorkDesk](#ejecutar-workdesk) · [Ejecutar el planificador](#ejecutar-el-planificador) · [Crear un ticket](#crear-un-ticket) · [El ciclo de vida de un ticket](#el-ciclo-de-vida-de-un-ticket) · [Recorrido de prueba](#recorrido-de-prueba) · [Solución de problemas](#solución-de-problemas)
+**Usar WorkDesk:** [Ejecutar WorkDesk](#ejecutar-workdesk) · [Ejecutar el planificador](#ejecutar-el-planificador) · [Respaldos](#respaldos) · [Crear un ticket](#crear-un-ticket) · [El ciclo de vida de un ticket](#el-ciclo-de-vida-de-un-ticket) · [Recorrido de prueba](#recorrido-de-prueba) · [Solución de problemas](#solución-de-problemas)
 
 **Entender WorkDesk:** [Qué es, en dos minutos](#qué-es-workdesk-en-dos-minutos) · [Un ticket de principio a fin](#un-ticket-de-principio-a-fin) · [Por dónde empezar a leer](#por-dónde-empiezo-a-leer) · [Lo que hay detrás](#lo-que-hay-detrás)
 
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso y tiene hechas sus siete primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos y la exportación a CSV y Excel. Hoy la suite cuenta con **4970 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus ocho primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel y los respaldos firmados de la base y los adjuntos. Hoy la suite cuenta con **5037 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -266,6 +266,7 @@ WorkDesk/
 │       ├── admin/
 │       ├── audit/
 │       ├── auth/
+│       ├── backups/
 │       ├── catalogs/
 │       ├── groups/
 │       ├── main/
@@ -550,6 +551,8 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `UPLOAD_MAX_BYTES` | `10485760` (10 MB) | Tamaño máximo de cada archivo adjunto, en bytes. Debe ser mayor que cero. |
 | `UPLOAD_MAX_FILES_PER_TICKET` | `20` | Cantidad máxima de archivos activos por ticket. Debe ser mayor que cero. |
 | `UPLOADS_DIR` | `instance/uploads` | Carpeta donde se guardan los adjuntos (fuera de `static/`, no se versiona). |
+| `BACKUPS_DIR` | `instance/backups` | Carpeta de los [respaldos](#respaldos). Conviene que esté en otro disco que la base y los adjuntos. No puede estar dentro de `static/` ni de `UPLOADS_DIR` (ni al revés): WorkDesk no arranca así. |
+| `PG_BIN_DIR` | — | Carpeta de `pg_dump` y `pg_restore` si no están en el `PATH` (en Windows, por ejemplo, `C:\Program Files\PostgreSQL\18\bin`). |
 | `COMMENT_EDIT_WINDOW_MINUTES` | `30` | Minutos durante los que el autor de un comentario puede editarlo o eliminarlo (el Supervisor y el Administrador pueden siempre). Debe ser mayor que cero. |
 | `REOPEN_WINDOW_DAYS` | `30` | Días, desde el cierre, durante los que un solicitante puede reabrir su ticket (el personal puede siempre). Debe ser mayor que cero. |
 | `AUTO_CLOSE_HOURS` | `24` | Horas que un ticket puede estar Resuelto sin que su solicitante lo valide antes de que el planificador lo cierre solo (también si no tiene solicitantes). Debe ser mayor que cero. |
@@ -729,6 +732,7 @@ Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
 - **El planificador escribe su propio log**, `instance/logs/scheduler.log`, en lugar de `workdesk.log`.
 - **Una migración nueva** (`create_auth_events_table`, el registro de accesos): el paso 2 la aplica y no toca datos. La variable nueva `LOGIN_MAX_FAILED_PER_IP` tiene valor por defecto (20).
 - **Una dependencia nueva,** `openpyxl` (la exportación a Excel): el paso 1 la instala.
+- **Los [respaldos](#respaldos) necesitan `pg_dump` y `pg_restore`,** que vienen con PostgreSQL. Si no están en el `PATH`, indica su carpeta en `PG_BIN_DIR`. Las variables nuevas, `BACKUPS_DIR` y `PG_BIN_DIR`, son opcionales.
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -781,6 +785,61 @@ Cada 60 segundos (`SCHEDULER_INTERVAL_SECONDS`) revisa la base de datos y escrib
 - **Se puede repetir sin riesgo:** un aviso se envía una sola vez y un ticket se cierra una sola vez, aunque ejecutes el comando varias veces o tengas dos planificadores a la vez.
 - **Qué avisa:** cuando un SLA alcanza su umbral, a los técnicos asignados (o a los Supervisores, si no hay técnicos); cuando vence, a los técnicos y a los Supervisores. Los solicitantes nunca reciben avisos de SLA.
 - **Qué cierra:** un ticket Resuelto que lleva más de `AUTO_CLOSE_HOURS` horas (24 por defecto) sin que el solicitante lo confirme ni lo rechace. Queda Cerrado con el motivo «Inactividad», el historial lo atribuye al Sistema y avisa al solicitante y a los técnicos. Se puede reabrir como cualquier otro.
+
+---
+
+## Respaldos
+
+Un respaldo guarda **en un solo archivo** todo lo necesario para recuperar WorkDesk: la base de datos y los archivos adjuntos. Se crea con un comando, con el entorno virtual activado y desde la raíz del proyecto:
+
+```bash
+python -m flask --app src.workdesk backup-create
+```
+
+Necesita `pg_dump`, que viene con PostgreSQL (si no está en el `PATH`, indica su carpeta en `PG_BIN_DIR`). Escribe algo como:
+
+```text
+Respaldo creado: ...\instance\backups\workdesk-respaldo-20261127-183522Z.zip
+Contenido: 108 tickets, 17 usuarios y 3 adjuntos (1 KB).
+Tamaño: 186 KB.
+SHA-256: ba627f3a...
+```
+
+- **WorkDesk puede seguir en uso mientras tanto.** La base y la lista de adjuntos se leen en un mismo instante, así que el respaldo trae exactamente los archivos que la base conoce, ni uno más ni uno menos.
+- **Dónde queda:** en `instance/backups` (o en `BACKUPS_DIR`), con un `.sha256` al lado. El nombre lleva la hora en UTC (la `Z`). Guárdalo también **fuera de este equipo** (otro disco, otro servidor): un respaldo en el mismo disco no sirve si el disco falla.
+- **Trata un respaldo como la base misma.** Contiene todo, también las contraseñas cifradas de los usuarios. Ponlo donde solo lo lea quien administra el servidor.
+- **Si algo no cuadra, te avisa** (`Aviso: ...`) y crea el respaldo igual: un adjunto cuyo archivo no está en el disco, o uno que cambió desde que se subió.
+- **Queda en la auditoría,** con la cuenta del equipo que lo ejecutó, también si falla.
+
+### Comprobar un respaldo
+
+```bash
+python -m flask --app src.workdesk backup-verify
+```
+
+Comprueba el más reciente (o el que indiques por su nombre) **sin restaurarlo y sin necesitar la base de datos**, así que también sirve cuando la base se cayó. Revisa:
+
+- la huella del paquete;
+- que cada archivo esté entero;
+- que no sobre ni falte nada;
+- que el volcado de la base se pueda leer;
+- y la **firma**: cada respaldo va firmado con una clave que sale de tu `SECRET_KEY`.
+
+Así distingue un respaldo creado por esta instalación de uno alterado o fabricado por otra persona. Termina con `Resultado: el respaldo está completo y es de esta instalación.`, o con la lista de problemas y un error.
+
+Si cambias la `SECRET_KEY`, los respaldos anteriores dirán que su firma «no corresponde». El contenido no cambió, pero WorkDesk ya no puede confirmar que sean suyos. Guarda tu `.env` en un lugar seguro y **aparte de los respaldos**: un respaldo nunca incluye el `.env` ni sus secretos.
+
+### Ver los respaldos
+
+```bash
+python -m flask --app src.workdesk backup-list
+```
+
+Lista los respaldos del más reciente al más antiguo, con su fecha, tamaño, contenido y firma. Si un `backup-create` se cortó a la mitad, señala lo que dejó para que lo borres.
+
+**Programarlos:** `backup-create` se puede programar en el Programador de tareas de Windows o en `cron` (por ejemplo, cada noche), igual que `run-scheduler --once`. Si dos coinciden, el segundo se rechaza sin hacer nada.
+
+**Restaurar** un respaldo es una operación aparte, con sus propias comprobaciones. Todavía no está disponible (ver [Lo que todavía no verás](#lo-que-todavía-no-verás)).
 
 ---
 
@@ -1199,7 +1258,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
 - Los dashboards muestran solo cifras exactas: los gráficos y las comparaciones con el período anterior están en **Reportes**.
 - Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
-- Los respaldos y la retención llegan en las próximas entregas de `v0.8.0` (la auditoría, los reportes y la exportación ya están).
+- Los respaldos ya se crean y se comprueban, pero restaurar uno (con sus propias comprobaciones) y la retención llegan en las próximas entregas de `v0.8.0`.
 
 ---
 
@@ -1243,6 +1302,11 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | Tests: "Los tests solo pueden ejecutarse sobre workdesk_test." | `TEST_DATABASE_URL` apunta a otra base. | Corrígela. La protección es intencional: protege `workdesk_dev`. |
 | Tests que fallan al azar con tablas que "no existen" | Hay dos ejecuciones de `pytest` a la vez sobre `workdesk_test`. | Ejecuta una sola cada vez: comparten la misma base y, al terminar, cada una elimina el esquema que usa. |
 | Tests: `unrecognized arguments: -n` | No está instalado `pytest-xdist` (entorno anterior a esta versión). | Ejecuta `python -m pip install -r requirements-dev.txt`, o corre la suite en serie sin `-n`. |
+| `backup-create`: «No se encontró pg_dump» | Las herramientas de cliente de PostgreSQL no están en el `PATH`. | Define `PG_BIN_DIR` con su carpeta (en Windows, `C:\Program Files\PostgreSQL\18\bin`, con tu versión). |
+| `backup-create`: «pg_dump falló: ... server version mismatch» (o «versión del servidor no coincide») | El `pg_dump` del `PATH` es más antiguo que el servidor. | Apunta `PG_BIN_DIR` a la carpeta `bin` de la misma versión que el servidor. |
+| `backup-create`: «Ya hay un respaldo en curso de esta base de datos.» | Otro `backup-create` está trabajando (quizá uno programado). | Espera a que termine. No se creó nada. |
+| `backup-verify`: «La firma no corresponde a esta instalación» | Se cambió la `SECRET_KEY` después de crear el respaldo, viene de otra instalación o alguien modificó su manifiesto. | Si sabes de dónde viene (por ejemplo, de antes de cambiar la clave), está bien guardarlo; si no, no lo restaures. |
+| `backup-list` señala «Restos de respaldos interrumpidos» | Un `backup-create` se cortó a la mitad (se apagó el equipo, se cerró la terminal). | Borra esas carpetas `.tmp-respaldo-*` y crea un respaldo nuevo. |
 | Tests: «El módulo de tests ... no pertenece a ningún área» | Se añadió un archivo `tests/test_*.py` sin registrarlo. | Añádelo a `AREAS` en `tests/areas.py`. |
 
 ---
@@ -1661,6 +1725,11 @@ python -m flask --app src.workdesk seed-demo-articles
 
 # Ejecutar el planificador: avisos de SLA y cierre automático (en otra terminal; --once = una pasada)
 python -m flask --app src.workdesk run-scheduler
+
+# Crear un respaldo de la base y los adjuntos, comprobarlo (el más reciente o uno por nombre) y listarlos
+python -m flask --app src.workdesk backup-create
+python -m flask --app src.workdesk backup-verify
+python -m flask --app src.workdesk backup-list
 
 # Ver rutas
 python -m flask --app src.workdesk routes

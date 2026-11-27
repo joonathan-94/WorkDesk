@@ -1382,7 +1382,7 @@ buscar solución
 **Segunda mitad de semana 9 y semana 10**  
 **Versión:** `v0.8.0`
 
-**Estado de ejecución:** en curso. Doce entregas planificadas.
+**Estado de ejecución:** en curso. Doce entregas planificadas; ocho terminadas.
 
 ### Entregas de `v0.8.0`
 
@@ -1393,7 +1393,7 @@ buscar solución
 5. **Reportes: consultas** ✓ (RF-098, UI-012, RN-179): cifras comparadas con el período anterior, desgloses por estado, categoría y prioridad, tiempo de resolución por semana (media y mediana, tiempo corrido) y resumen por técnico. Cada cifra se cuenta con las mismas condiciones del listado, y su enlace se lee de vuelta como los mismos filtros. El listado ganó el filtro por fecha de resolución. Medido con unos 20 000 tickets: un año en 310 ms, sin índices nuevos.
 6. **Reportes: pantalla** ✓ (UI-012): `/reports` para el personal, con el período, los filtros, cuatro cifras comparadas con el período anterior, gráficos dibujados en el servidor (barras HTML y una línea SVG con su tabla equivalente, sin librerías ni JavaScript) y la tabla por técnico sin rankings. Cada cifra se comprueba abriendo su enlace al listado. Un año con unos 20 000 tickets se muestra en 349 ms.
 7. **Exportación CSV y XLSX** ✓ (RF-099 a RF-101, RN-180) del listado, los reportes y la auditoría, con los mismos filtros, columnas y permisos que cada pantalla. Las fórmulas se neutralizan: se comprobó que `openpyxl` convierte por su cuenta en fórmula un texto que empieza por `=`. Cada exportación queda en la auditoría y el máximo es de 50 000 filas. Con unos 20 000 tickets, el listado se exporta en 4 s (eran 62 s antes de decidir el SLA en SQL).
-8. **Respaldos** (RF-127, RNF-038 a RNF-040): comandos `backup-create`, `backup-verify` y `backup-list`. Generan un `.zip` con `pg_dump`, los adjuntos y un manifiesto con hashes SHA-256.
+8. **Respaldos** ✓ (RF-127, RNF-038 a RNF-040, RNF-043, RN-181): comandos `backup-create`, `backup-verify` y `backup-list`. Un `.zip` con el volcado de `pg_dump` y los adjuntos, sacados de una misma foto de la base (`--snapshot`), un manifiesto con el SHA-256 de cada archivo firmado con una clave derivada de `SECRET_KEY` y la huella del paquete al lado. La verificación no necesita la base. La contraseña nunca llega a la línea de comandos ni al entorno de `pg_dump`. Sin migraciones.
 9. **Restauración y estado del sistema** (RF-128, RF-130, UI-028, UI-029): `backup-restore` con todas sus comprobaciones y las pantallas de respaldos (solo lectura) y de estado del sistema.
 10. **Retención** (RF-110 a RF-112, RF-123): políticas desactivadas por defecto y ejecutadas por el planificador.
 11. **Tickets «sin actividad reciente»** (RN-27).

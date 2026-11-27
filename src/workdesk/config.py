@@ -67,6 +67,12 @@ class Config:
 
     # Raíz del almacenamiento de adjuntos. Si no se define, `instance/uploads`.
     UPLOADS_DIR = os.getenv("UPLOADS_DIR")
+    # Carpeta de los respaldos (`backup-create`). Si no se define, `instance/backups`.
+    # Conviene que esté en otro disco que la base y los adjuntos (RNF-043).
+    BACKUPS_DIR = os.getenv("BACKUPS_DIR")
+    # Carpeta de `pg_dump` y `pg_restore` si no están en el PATH (por ejemplo,
+    # `C:\Program Files\PostgreSQL\18\bin`).
+    PG_BIN_DIR = os.getenv("PG_BIN_DIR")
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

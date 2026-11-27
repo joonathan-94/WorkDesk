@@ -2015,6 +2015,8 @@ Entidad histórica con ciclo de ejecución. Una fila puede evolucionar mientras 
 - Las restauraciones se registran en `auditoria_administrativa` y no se crea una tabla separada de restauraciones en el MVP.
 - `historial_backups` no necesita `activo`.
 
+**Implementación (`v0.8.0`, entrega 8, RN-181): la tabla no se crea.** Un respaldo es un volcado de la propia base: si su fila estuviera en la base, el volcado la contendría «en progreso» y, al restaurarlo, quedaría así para siempre. La fuente de verdad es la carpeta de respaldos (`BACKUPS_DIR`). Cada paquete lleva un manifiesto firmado con lo que esta tabla habría guardado y algo más: la fecha, la base y su revisión de migraciones, el tamaño y la huella de cada archivo, y los avisos de la creación. Junto al paquete queda su `.sha256`. Quién lo creó y con qué resultado (también los intentos fallidos) queda en `auditoria_administrativa` (`RESPALDO_CREADO`).
+
 # 30. Modelo SLA y calendario
 
 ```mermaid

@@ -2859,6 +2859,20 @@ El manifiesto podrá registrar:
 
 Finalmente podrá comprimirse como un único archivo.
 
+**Implementación (`v0.8.0`, entrega 8, RN-181).** El paquete es `workdesk-respaldo-AAAAMMDD-HHMMSSZ.zip` (la hora en UTC), en `BACKUPS_DIR`, y su contenido está en `backups/package.py`:
+
+```text
+workdesk-respaldo-20261127-183522Z.zip
+├── database.dump        pg_dump --format=custom (guardado sin volver a comprimir)
+├── uploads/AAAA/MM/...  los adjuntos que el volcado referencia (solo el texto se comprime)
+├── manifest.json        fecha, base, esquema, versiones, revisión de migraciones, contenido,
+│                        avisos y el tamaño y el SHA-256 de cada archivo
+└── manifest.sig         HMAC-SHA256 del manifiesto
+workdesk-respaldo-20261127-183522Z.zip.sha256   la huella del paquete (formato de sha256sum)
+```
+
+El manifiesto no guarda una «versión de WorkDesk», porque el código no la declara. Guarda la revisión de migraciones, que es lo que decide si un volcado encaja con el código. Los adjuntos de texto se comprimen. Los demás (imágenes, PDF y documentos de Office) ya vienen comprimidos: medido con 100 MB, comprimirlos tardaba 30 veces más y no ahorraba nada.
+
 ---
 
 # 113. Integridad del backup
@@ -2873,6 +2887,16 @@ historial_backups.hash
 
 Antes de restaurar se comprobará el hash.
 
+**Implementación (`v0.8.0`, entrega 8).** No hay `historial_backups`. La huella del paquete va junto a él (`.sha256`), así que se comprueba también sin WorkDesk. La huella sola, sin embargo, no basta: quien altera un respaldo puede recalcularla. Por eso el manifiesto lleva la huella de cada archivo y va firmado con HMAC-SHA256. La clave se deriva de `SECRET_KEY` con un contexto propio, así que nunca coincide con la de las cookies. `backup-verify` (`backups/verification.py`) exige, sin necesitar la base de datos:
+
+- la firma de esta instalación;
+- que no sobre ni falte ningún archivo;
+- el tamaño y la huella de cada uno, leídos con un tope;
+- nombres seguros dentro del `.zip` (ni absolutos, ni con `..`, ni repetidos, ni enlaces);
+- que `pg_restore --list` pueda leer el volcado y que este traiga la tabla de tickets.
+
+Si falta el `.sha256`, se avisa y el contenido se comprueba igual.
+
 ---
 
 # 114. Consistencia durante backup
@@ -2882,6 +2906,10 @@ Para evitar que la base de datos y los archivos correspondan a momentos incompat
 Podrá utilizarse un **modo de mantenimiento** breve mientras se produce la copia consistente.
 
 Durante este período podrán mantenerse consultas cuando técnicamente sea seguro.
+
+**Implementación (`v0.8.0`, entrega 8): sin modo de mantenimiento.** `backup-create` abre una transacción de solo lectura `REPEATABLE READ`, exporta su foto (`pg_export_snapshot`) y `pg_dump --snapshot` vuelca exactamente esa foto. En la misma transacción se leen las rutas de los adjuntos, así que el paquete trae justo los archivos que el volcado referencia: ni uno subido después ni restos de `_tmp`. Los adjuntos confirmados nunca se reescriben, y su copia se compara con la huella guardada al subirlos. Un bloqueo consultivo por esquema impide dos respaldos a la vez de la misma instalación, y `--lock-wait-timeout` hace que `pg_dump` falle en lugar de quedarse esperando durante una migración.
+
+La contraseña llega a `pg_dump` en un archivo temporal privado (`PGPASSFILE`), nunca en los argumentos ni en `PGPASSWORD`. El proceso hijo no hereda `DATABASE_URL` ni `SECRET_KEY`, que `python-dotenv` deja en el entorno.
 
 ---
 
@@ -2927,6 +2955,8 @@ FALLIDO
 ```
 
 Una vez finalizado el backup, su registro se tratará como histórico.
+
+**Implementación (`v0.8.0`, entrega 8): no se creó la tabla** (`docs/09`, 29.1). La carpeta con sus manifiestos es la fuente de verdad, y la auditoría administrativa registra cada creación, también la fallida (`RESPALDO_CREADO`, acción del sistema con la cuenta del sistema operativo que ejecutó el comando). Mientras se escribe, el paquete está en una carpeta `.tmp-respaldo-*` dentro de `BACKUPS_DIR` y solo toma su nombre final completo; `backup-list` señala los restos de uno interrumpido.
 
 ---
 
@@ -3461,6 +3491,8 @@ instance/logs
 no deberán formar parte de las rutas estáticas servidas directamente por Flask.
 
 Los backups deberán encontrarse separados de los adjuntos.
+
+Desde `v0.8.0` (entrega 8) WorkDesk no arranca si `UPLOADS_DIR` o `BACKUPS_DIR` quedan dentro de `static`, o si una está dentro de la otra (`security/startup.py`, `storage_problems`). En Linux, cada respaldo se crea legible solo por su dueño (`0600`).
 
 ---
 
