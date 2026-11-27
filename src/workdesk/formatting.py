@@ -46,6 +46,33 @@ def format_duration(minutes: int | None) -> str:
     return f"{hours} h {rest} min"
 
 
+def format_elapsed(seconds: float | None) -> str:
+    """Un tiempo corrido como lo lee una persona: «45 min», «3 h 42 min» o «2 d 19 h».
+
+    Es el tiempo de reloj (por ejemplo, de la creación a la resolución de un ticket), así
+    que desde un día se cuenta en días y horas; los objetivos de SLA, que son tiempo
+    laboral, usan `format_duration`. Se redondea al minuto más cercano y lo que no llega a
+    un minuto se dice así. Sin valor muestra «—».
+    """
+    if seconds is None:
+        return "—"
+
+    if seconds < 0:
+        raise ValueError("Un tiempo no puede ser negativo.")
+
+    minutes = round(seconds / 60)
+
+    if minutes == 0:
+        return "menos de 1 min"
+
+    if minutes < 24 * 60:
+        return format_duration(minutes)
+
+    days, rest = divmod(round(minutes / 60), 24)
+
+    return f"{days} d" if rest == 0 else f"{days} d {rest} h"
+
+
 def format_size(size: int) -> str:
     """Un tamaño en bytes como lo lee una persona: «500 KB», «1,5 MB» o «10 MB».
 

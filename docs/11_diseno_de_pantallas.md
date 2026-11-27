@@ -2229,6 +2229,15 @@ La pantalla:
 
 Los gráficos son complementarios y deben disponer de equivalentes accesibles o información textual.
 
+**Implementación (`v0.8.0`, entregas 5 y 6).** `/reports`, opción **Reportes** del menú del personal.
+
+- **Filtros:** período (últimos 7, 30, 90 días, último año o fechas a elección, como mucho un año), grupo, técnico, categoría y prioridad. Un Técnico solo puede elegirse a sí mismo.
+- **Cuatro tarjetas:** creados, resueltos, tiempo medio de resolución con su mediana y fuera de SLA (solo con el SLA encendido). Cada una dice en palabras cuánto cambió respecto del período anterior de la misma duración, sin flechas de color que juzguen si es bueno o malo.
+- **Gráficos.** Los estados son columnas, y las categorías y las prioridades, barras horizontales: son HTML, con el nombre y la cifra como texto. Usan los colores de las insignias de estado y prioridad. La evolución semanal es un SVG con la media y la mediana (en línea discontinua) y su tabla en «Ver como tabla».
+- **Tabla por técnico:** gestionados, en trabajo, resueltos, tiempo medio, mediana y fuera de SLA, por apellido, más «Sin asignar». Un Técnico ve solo su fila.
+- **Cada cifra con tickets enlaza con su listado** y lleva un `aria-label` que dice qué cuenta.
+- **Pendiente:** el botón «Exportar» del mockup llega con la exportación (entrega 7). Se omitieron los mini gráficos de las tarjetas: la evolución ya está en el gráfico semanal.
+
 ---
 
 ## UI-013 — Mi cuenta

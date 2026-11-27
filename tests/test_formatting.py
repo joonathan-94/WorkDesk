@@ -2,7 +2,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.workdesk.formatting import format_duration, format_size, local_datetime
+from src.workdesk.formatting import (
+    format_duration,
+    format_elapsed,
+    format_size,
+    local_datetime,
+)
 
 
 def test_a_missing_date_is_shown_as_a_dash(app):
@@ -76,6 +81,32 @@ def test_the_filter_is_available_in_templates(app):
 )
 def test_a_duration_is_shown_as_a_person_would_say_it(minutes, text):
     assert format_duration(minutes) == text
+
+
+@pytest.mark.parametrize(
+    ("seconds", "text"),
+    [
+        (0, "menos de 1 min"),
+        (29, "menos de 1 min"),
+        (31, "1 min"),
+        (45 * 60, "45 min"),
+        (3 * 3600 + 42 * 60, "3 h 42 min"),
+        (24 * 3600 - 1, "1 d"),
+        (24 * 3600, "1 d"),
+        (67 * 3600 + 10 * 60, "2 d 19 h"),
+        (15 * 86400 + 2 * 3600, "15 d 2 h"),
+        (12.6 * 60, "13 min"),
+    ],
+)
+def test_an_elapsed_time_counts_days_once_it_reaches_one(seconds, text):
+    assert format_elapsed(seconds) == text
+
+
+def test_a_missing_elapsed_time_is_a_dash_and_a_negative_one_a_bug():
+    assert format_elapsed(None) == "—"
+
+    with pytest.raises(ValueError):
+        format_elapsed(-1)
 
 
 def test_a_missing_duration_is_shown_as_a_dash():

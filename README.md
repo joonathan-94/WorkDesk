@@ -69,7 +69,7 @@ WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
 - **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
 - **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
 - **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
-- **4843 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **4907 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
 - **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso y tiene hechas sus cinco primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría y los cálculos de los reportes. Hoy la suite cuenta con **4843 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus seis primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría y los reportes con sus gráficos. Hoy la suite cuenta con **4907 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -875,6 +875,22 @@ Con varios destinos, los tickets se reparten por turnos. La asignación anterior
 
 ---
 
+## Los reportes
+
+El personal tiene la opción **Reportes** del menú (`/reports`). Responde qué pasó en un período: cuántos tickets entraron, cuántos se resolvieron y en cuánto tiempo.
+
+- **Período:** los últimos 7, 30 (por defecto) o 90 días, el último año o unas fechas a elección (como mucho un año). Cada cifra se compara con el período anterior de la misma duración.
+- **Filtros** por grupo, técnico, categoría y prioridad.
+- **Cuatro cifras:** tickets creados, tickets resueltos, tiempo medio de resolución (con su mediana, que no se deja arrastrar por un caso excepcional) y tickets fuera de SLA.
+- **Gráficos:** los creados por estado, por categoría y por prioridad, y el tiempo de resolución semana a semana. El gráfico semanal tiene su tabla equivalente.
+- **Resumen por técnico:** cuántos tickets gestionó cada uno, cuántos siguen en trabajo, cuántos resolvió y cuánto tardó, más una fila con los tickets sin asignar.
+- **Cada número abre el listado de esos tickets**, y el listado muestra exactamente esa cifra.
+- **No es un ranking:** los técnicos se ordenan por apellido y nada califica a una persona. Un Técnico ve las cifras del equipo, pero en la tabla solo su propia fila. Un Solicitante no tiene acceso (error 403).
+
+Los gráficos se dibujan en el servidor, sin librerías ni JavaScript. Las definiciones exactas (qué cuenta como resuelto, cómo se mide el tiempo) están en `docs/06_reglas_de_negocio.md` (RN-179).
+
+---
+
 ## La configuración
 
 Desde **Administración**, el Administrador cambia sin tocar el `.env` los plazos, límites e interruptores de WorkDesk. Cada pantalla agrupa un tema:
@@ -1146,7 +1162,8 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 1. **Dashboard del Solicitante.** Entra como `javiera.torres`: cuatro tarjetas (abiertos, en progreso, requieren tu revisión y cerrados recientes), un aviso con las soluciones por revisar, tus tickets y notificaciones recientes. Haz clic en cada tarjeta: el listado se abre filtrado y su total es la cifra de la tarjeta. No hay SLA, grupos ni carga.
 2. **Dashboard del personal.** Entra como `camila.rojas`: seis contadores (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer y en espera), los tickets prioritarios con su SLA, la carga compacta, los tickets por prioridad y la actividad reciente. Un aviso te dice si hay críticos sin asignar. Como `diego.soto` ves además **Mi trabajo**; como Administrador, un bloque de **Administración**.
 3. **Carga de trabajo.** Abre **Carga de trabajo** (técnicos, supervisores y administradores): por técnico y por grupo, con una barra de distribución por prioridad y la insignia **Carga alta** (Valentina Pizarro con los datos de demostración). Filtra por grupo o prioridad: las cifras y los enlaces siguen coincidiendo con el listado. Un solicitante que abre `/workload` recibe **Acceso denegado**.
-4. **Reasignación masiva.** Como `camila.rojas`, abre **Reasignación**, elige a Valentina Pizarro, marca como destino a Diego Soto y a Felipe Araya, escribe un motivo y pulsa **Revisar la reasignación**: ves quién recibe cuántos tickets y todavía no cambió nada. **Confirmar** ejecuta (esto sí modifica tus datos de demostración) y muestra lo reasignado y lo omitido. Un técnico que abre `/reassign` recibe **Acceso denegado**.
+4. **Reportes.** Como `camila.rojas`, abre **Reportes** y elige «Últimos 90 días»: las cuatro cifras, los gráficos y la tabla por técnico. Haz clic en cualquier número: el listado se abre filtrado y su pestaña «Todos» muestra esa cifra. Despliega «Ver como tabla» bajo el gráfico semanal. Como `diego.soto`, la tabla muestra solo su fila; un solicitante que abre `/reports` recibe **Acceso denegado**.
+5. **Reasignación masiva.** Como `camila.rojas`, abre **Reasignación**, elige a Valentina Pizarro, marca como destino a Diego Soto y a Felipe Araya, escribe un motivo y pulsa **Revisar la reasignación**: ves quién recibe cuántos tickets y todavía no cambió nada. **Confirmar** ejecuta (esto sí modifica tus datos de demostración) y muestra lo reasignado y lo omitido. Un técnico que abre `/reassign` recibe **Acceso denegado**.
 
 ### 6. Configuración y base de conocimiento
 
@@ -1166,9 +1183,9 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - El aviso de quién edita no se actualiza solo: aparece al abrir o recargar la pantalla (la actualización en tiempo real es posterior al MVP).
 - La pantalla de Estados y transiciones cambia el nombre, la descripción y las transiciones; el color y el orden de los estados no se editan todavía (llegan con el pulido visual, `v0.9.0`).
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
-- Los dashboards muestran solo cifras exactas: no hay gráficos ni comparaciones con ayer (los gráficos se deciden con los reportes).
+- Los dashboards muestran solo cifras exactas: los gráficos y las comparaciones con el período anterior están en **Reportes**.
 - Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
-- Los reportes y los backups llegan con `v0.8.0` (la pantalla de auditoría ya está).
+- La exportación a CSV y Excel, los respaldos y la retención llegan en las próximas entregas de `v0.8.0` (la auditoría y los reportes ya están).
 
 ---
 
@@ -1270,6 +1287,7 @@ GET POST  /admin/settings/<grupo>
 POST      /admin/settings/<grupo>/reset/<variable>
 GET POST  /admin/notifications
 GET       /admin/audit
+GET       /reports
 GET       /knowledge
 GET       /knowledge/<id>
 GET       /knowledge/manage
@@ -1478,7 +1496,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4843 tests
+4907 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.

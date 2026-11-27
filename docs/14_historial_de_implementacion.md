@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- la pantalla de reportes (entrega 6): período y filtros, cifras comparadas con el período anterior, gráficos dibujados en el servidor con su tabla equivalente y la tabla por técnico sin rankings;
 - las consultas de los reportes (entrega 5): cada cifra comparada con el período anterior, los desgloses, las semanas y la tabla por técnico, contadas con las mismas condiciones del listado; el listado filtra también por fecha de resolución;
 - la pantalla de auditoría (entrega 4): los tres registros en una pantalla con filtros, solo para el Administrador;
 - los eventos de autenticación (entrega 3): cada intento de entrar y cada salida con su causa, el límite de intentos fallidos por equipo y la actividad de acceso en «Mi cuenta»; una migración (28);
@@ -368,7 +369,8 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 | 2 | Velocidad de la suite | Integrada (PR #67) | 4746 |
 | 3 | Eventos de autenticación | Integrada (PR #68) | 4775 |
 | 4 | Pantalla de auditoría | Integrada (PR #69) | 4807 |
-| 5 | Reportes: consultas | En revisión (`feature/reports-queries`) | 4843 |
+| 5 | Reportes: consultas | Integrada (PR #70) | 4843 |
+| 6 | Reportes: pantalla | En revisión (`feature/reports-screen`) | 4907 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -434,6 +436,15 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Una mutación sobrevivió y destapó un hueco.** Cambiar la mediana por el percentil 25 no rompía nada, porque en la demostración 7 de los 13 tiempos son exactamente 4 h. Se añadió un test con tiempos construidos a propósito, y otro que pone dos resoluciones en una misma semana.
 
   18 mutaciones, todas detectadas. La suite pasó de 4807 a 4843 tests.
+
+- **Entrega 6, reportes: pantalla.** `/reports` para el personal, siguiendo el mockup de UI-012: el período y los filtros, cuatro tarjetas con la comparación en palabras, los gráficos por estado, categoría, prioridad y semana, y la tabla por técnico.
+  - **Gráficos sin librerías.** Las barras son HTML, con su nombre y su cifra como texto, así que ya son accesibles; la línea semanal es un SVG con su tabla equivalente. Toda la geometría se calcula en Python (`reports/charts.py`) y tiene sus tests sin base de datos. Una semana sin resueltos deja un hueco en lugar de inventar un cero.
+  - **La comprobación más directa posible.** El test lee cada cifra de la página, abre su enlace y compara con el total que muestra el listado en «Todos». Se hace con seis combinaciones de período y filtros, también como Técnico.
+  - **Mirar la pantalla antes de darla por buena.** Una captura con Chrome sin interfaz mostró dos cosas que ningún test habría visto: el formulario partía los filtros en filas descompensadas y recortaba sus textos, y «12 h 42 min» se partía en dos líneas. Se reordenaron los filtros en filas de cuatro y la cifra de las tarjetas ya no se parte.
+  - **Un formato nuevo para el tiempo corrido.** Un tiempo de resolución puede durar días, a diferencia de los objetivos de SLA: `format_elapsed` dice «2 d 19 h» en lugar de «67 h».
+  - **Medido a escala,** con unos 20 000 tickets: el año completo en 349 ms, con 16 consultas.
+
+  15 mutaciones, todas detectadas. La suite pasó de 4843 a 4907 tests.
 
 ---
 

@@ -44,9 +44,7 @@ class NavLink:
     active: bool
 
 
-# Solo las pantallas que existen hoy. El resto de opciones previstas en
-# docs/11 (carga de trabajo, reportes, base de conocimiento...) se añadirán con
-# su módulo.
+# Solo las pantallas que existen hoy: cada opción llega con su módulo.
 # Pantallas que cuentan como parte de "Tickets" / "Mis tickets": el listado,
 # el detalle y las acciones sobre un ticket. "Crear ticket" tiene su propia
 # opción y no está aquí.
@@ -125,6 +123,15 @@ MAIN_NAVIGATION = (
         endpoint="knowledge.index",
         icon="book",
         active_prefixes=("knowledge.",),
+    ),
+    # Los reportes son del personal (RF-098, RN-179); un Técnico ve las cifras del equipo
+    # pero en la tabla por técnico solo la suya.
+    NavItem(
+        label="Reportes",
+        endpoint="reports.reports_page",
+        icon="bar-chart",
+        roles=STAFF_ROLES,
+        active_prefixes=("reports.",),
     ),
     # Los avisos del propio usuario: los ven los cuatro roles (docs/11, 5.x).
     NavItem(

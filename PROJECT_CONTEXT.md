@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/reports-queries
+feature/reports-screen
 ```
 
-Entrega 5 de `v0.8.0`: las consultas de los reportes. **Sin migraciones.** Ver «Reportes: consultas (entrega 5 de `v0.8.0`)».
+Entrega 6 de `v0.8.0`: la pantalla de reportes. **Sin migraciones.** Ver «Reportes: pantalla (entrega 6 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -93,7 +93,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
 
-De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68) y la pantalla de auditoría (PR #69).
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69) y las consultas de los reportes (PR #70).
 
 ## Identidad visual (integrada en `main`)
 
@@ -370,13 +370,37 @@ RF-098 y UI-012; las definiciones están en `docs/06` (RN-179). **Sin migracione
   Un índice en `fecha_resolucion` no mejoró nada, porque un año abarca casi toda la tabla: no hubo migración.
 - **Tests:** 36 nuevos (4807 → 4843), en `tests/test_report_queries.py` (área nueva `reports`). Las 18 mutaciones se detectan. Una sobrevivió al principio y destapó un hueco: en la demostración, 7 de los 13 tiempos de resolución son exactamente 4 h, así que la mediana y el percentil 25 coincidían. Ahora hay un test con tiempos construidos a propósito.
 
+## Reportes: pantalla (entrega 6 de `v0.8.0`)
+
+UI-012 y RF-098; las cifras son las de la entrega 5 (`build_report`). **Sin migraciones.**
+
+- **`GET /reports`** (blueprint `reports`, `reports/routes.py`), opción **Reportes** del menú (icono `bar-chart`) para Técnico, Supervisor y Administrador. La autorización está dos veces: `roles_required` en la ruta y `can_view_reports` dentro; el Solicitante recibe 403. Solo lee.
+- **Filtros por la URL**, con los valores inválidos ignorados:
+  - `periodo` (`7`, `30` por defecto, `90`, `365` o `personalizado`); `desde` y `hasta` solo cuentan con «Personalizado» y `resolve_period` corrige lo que no tiene sentido;
+  - `grupo`, `tecnico`, `categoria` y `prioridad`.
+
+  Un Técnico solo puede elegirse a sí mismo como técnico.
+- **Lo que muestra:**
+  - cuatro tarjetas (creados, resueltos, tiempo medio con su mediana y fuera de SLA, esta solo con el SLA encendido), cada una con su comparación con el período anterior en palabras («+9 (+8 %) respecto del período anterior»);
+  - los creados por estado (columnas) y por categoría y prioridad (barras);
+  - el tiempo de resolución por semana (media y mediana);
+  - la tabla por técnico con la fila «Sin asignar».
+
+  Cada cifra con tickets enlaza con su listado, con un `aria-label` que dice qué cuenta.
+- **Gráficos dibujados en el servidor** (`reports/charts.py`), sin librerías ni JavaScript. Las barras son HTML: su nombre y su cifra son texto, así que ya son accesibles; la más larga ocupa todo el ancho y una con tickets nunca queda invisible. La línea semanal es un SVG (`role="img"`) con su tabla equivalente en «Ver como tabla». Una semana sin resueltos deja un hueco y no se inventa un valor. El eje vertical usa escalones redondos de 15 minutos a 4 semanas.
+- **El formato del tiempo corrido** es `format_elapsed` (filtro `elapsed`): «45 min», «3 h 42 min» y, desde un día, «2 d 19 h». Los objetivos de SLA, que son tiempo laboral, siguen con `format_duration`.
+- **Sin rankings** (UI-012): los técnicos van por apellido y no hay colores de «mejor» o «peor»; el rojo es solo el de «Fuera de SLA».
+- **Estilos:** `static/css/reports.css`, solo con tokens; los colores de estados y prioridades son los de sus insignias.
+- **Medido a escala** (unos 20 000 tickets en un año): la pantalla de 30 días tarda 98 ms; la de 90, 162 ms, y la del año, 349 ms, con 16 consultas en cualquier caso. El listado filtrado por fecha de resolución, 29 ms.
+- **Tests:** 64 nuevos (4843 → 4907), sobre todo en `tests/test_report_screen.py` (área `reports`). **Cada cifra de la página se comprueba abriendo de verdad su enlace** y leyendo el total que muestra el listado. Se hace con seis combinaciones de período y filtros, también como Técnico. La pantalla entró en `test_pages_smoke`, en el menú de `test_layout` y en `test_route_authorization`. Las 15 mutaciones se detectan; quitar solo una de las dos capas de autorización es equivalente (la otra sigue bloqueando), así que la mutación quita las dos.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla, exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -553,6 +577,7 @@ WorkDesk/
 │       │   ├── layouts/
 │       │   ├── main/
 │       │   ├── notifications/
+│       │   ├── reports/
 │       │   ├── sla/
 │       │   ├── tickets/
 │       │   └── users/
@@ -1846,6 +1871,7 @@ GET, POST  /admin/settings/<grupo>
 POST       /admin/settings/<grupo>/reset/<variable>
 GET, POST  /admin/notifications
 GET        /admin/audit
+GET        /reports
 GET        /knowledge
 GET        /knowledge/<id>
 GET        /knowledge/manage
@@ -1937,7 +1963,7 @@ El dashboard del Solicitante es el definitivo (ver «Dashboard del Solicitante»
 
 Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATION`) y se filtra **en backend** por rol antes de llegar a la plantilla: las opciones no autorizadas no se envían al navegador (`docs/11`, sección 5.5). Un `context_processor` (`layout_context`) entrega a la plantilla los enlaces del usuario con la opción activa marcada. Es solo presentación: cada ruta protegida sigue comprobando la autorización por sí misma.
 
-- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Reasignación (Supervisor y Administrador), Base de conocimiento (todos), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
+- Hoy incluye solo las pantallas que existen: Dashboard (todos), Tickets (personal) o Mis tickets (Solicitante), Crear ticket (todos), Carga de trabajo (personal), Reasignación (Supervisor y Administrador), Base de conocimiento (todos), Reportes (personal), Notificaciones (todos), Grupos (Supervisor), Administración (Administrador) y Mi cuenta (todos). "Tickets" y "Mis tickets" llevan al mismo listado y se marcan activas también en el detalle y en las pantallas de editar, cambiar prioridad, cambiar estado, asignación, escalamiento, solicitantes, y editar o eliminar un comentario o un archivo (`TICKET_SCREENS`); "Crear ticket" solo se marca activa en el formulario (`tickets.new_ticket`).
 - Administración se marca activa en el hub, en todas las pantallas de usuarios, de catálogos, de grupos y de SLA; Grupos (del Supervisor), en las de grupos; Notificaciones, en el centro de notificaciones; Mi cuenta, en `/account` y en el cambio de contraseña.
 - `layout_context` entrega además `unread_notifications` (el número de no leídas del usuario): una consulta por página autenticada, resuelta por el índice `(usuario_id, leida, fecha_creacion)`.
 - Para añadir una opción cuando exista su pantalla, basta con añadir un `NavItem` indicando los roles que la ven.
@@ -2210,7 +2236,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4843 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
+4907 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
