@@ -38,10 +38,14 @@ from .authorization import can_view_article as can_view_article
 from .authorization import can_view_attachment as can_view_attachment
 from .authorization import can_view_audit as can_view_audit
 from .authorization import can_view_comment as can_view_comment
+from .authorization import (
+    can_view_every_technician_report as can_view_every_technician_report,
+)
 from .authorization import can_view_group as can_view_group
 from .authorization import (
     can_view_internal_activity as can_view_internal_activity,
 )
+from .authorization import can_view_reports as can_view_reports
 from .authorization import can_view_ticket as can_view_ticket
 from .authorization import can_view_workload as can_view_workload
 from .authorization import can_write_internal_note as can_write_internal_note

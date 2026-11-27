@@ -26,16 +26,15 @@ from ..queries import (
     SORT_LABELS,
     SORT_SLA,
     SORT_SLA_LABEL,
+    UNASSIGNED_VALUE,
     VALID_TABS,
     TicketFilters,
     count_tickets_by_tab,
     list_group_options,
     list_technician_options,
     list_tickets,
+    listing_params,
 )
-
-# Valor de `tecnico` para «sin técnico asignado».
-UNASSIGNED_VALUE = "ninguno"
 
 
 @bp.get("")
@@ -54,29 +53,14 @@ def list_tickets_page():
     # Técnico y grupo son solo del personal (el grupo es un dato interno).
     technicians = list_technician_options() if is_staff else []
     groups = list_group_options() if is_staff else []
-    unassigned = is_staff and request.args.get("tecnico") == UNASSIGNED_VALUE
-
-    filters = TicketFilters(
-        query_text=request.args.get("q", "").strip()[:MAX_SEARCH_LENGTH],
-        state_id=choice_arg("estado", states),
-        priority_id=choice_arg("prioridad", priorities),
-        category_id=choice_arg("categoria", categories),
-        location_id=choice_arg("ubicacion", locations),
-        created_from=_date_arg("desde"),
-        created_to=_date_arg("hasta"),
-        # El SLA es solo del personal: para un Solicitante el parámetro no existe.
-        sla=(
-            parse_filter(request.args.get("sla"))
-            if is_staff and sla_periods.sla_enabled()
-            else None
-        ),
-        technician_id=None if unassigned else choice_arg("tecnico", technicians),
-        unassigned=unassigned,
-        group_id=choice_arg("grupo", groups),
-        active_only=request.args.get("activos") == "1",
-        # Solo un Solicitante tiene resoluciones que revisar.
-        pending_review=not is_staff and request.args.get("revision") == "1",
-        closed_from=_date_arg("cerrado_desde"),
+    filters = read_listing_filters(
+        is_staff=is_staff,
+        states=states,
+        priorities=priorities,
+        categories=categories,
+        locations=locations,
+        technicians=technicians,
+        groups=groups,
     )
 
     tab = request.args.get("vista", DEFAULT_TAB)
@@ -115,21 +99,8 @@ def list_tickets_page():
     )
 
     # Lo que deben conservar los enlaces (pestañas, páginas, limpiar...).
-    filter_params = {
-        "q": filters.query_text or None,
-        "estado": filters.state_id,
-        "prioridad": filters.priority_id,
-        "categoria": filters.category_id,
-        "ubicacion": filters.location_id,
-        "desde": _iso(filters.created_from),
-        "hasta": _iso(filters.created_to),
-        "sla": filters.sla.value if filters.sla else None,
-        "tecnico": UNASSIGNED_VALUE if filters.unassigned else filters.technician_id,
-        "grupo": filters.group_id,
-        "activos": "1" if filters.active_only else None,
-        "revision": "1" if filters.pending_review else None,
-        "cerrado_desde": _iso(filters.closed_from),
-        "orden": None if sort == DEFAULT_SORT else sort,
+    filter_params = listing_params(filters) | {
+        "orden": None if sort == DEFAULT_SORT else sort
     }
 
     return render_template(
@@ -158,6 +129,8 @@ def list_tickets_page():
                 filters.created_from,
                 filters.created_to,
                 filters.closed_from,
+                filters.resolved_from,
+                filters.resolved_to,
                 filters.technician_id,
                 filters.group_id,
                 filters.unassigned or None,
@@ -176,12 +149,44 @@ def list_tickets_page():
     )
 
 
+def read_listing_filters(
+    *, is_staff, states, priorities, categories, locations, technicians, groups
+) -> TicketFilters:
+    """Los filtros del listado tal como llegan en la URL de la petición actual. Un valor
+    que no corresponde a ninguna opción (o una fecha mal escrita) se ignora.
+
+    Es el camino inverso de `listing_params`: un test comprueba que cada enlace de los
+    reportes, leído por aquí, reproduce exactamente los filtros con que se contó."""
+    unassigned = is_staff and request.args.get("tecnico") == UNASSIGNED_VALUE
+
+    return TicketFilters(
+        query_text=request.args.get("q", "").strip()[:MAX_SEARCH_LENGTH],
+        state_id=choice_arg("estado", states),
+        priority_id=choice_arg("prioridad", priorities),
+        category_id=choice_arg("categoria", categories),
+        location_id=choice_arg("ubicacion", locations),
+        created_from=_date_arg("desde"),
+        created_to=_date_arg("hasta"),
+        # El SLA es solo del personal: para un Solicitante el parámetro no existe.
+        sla=(
+            parse_filter(request.args.get("sla"))
+            if is_staff and sla_periods.sla_enabled()
+            else None
+        ),
+        technician_id=None if unassigned else choice_arg("tecnico", technicians),
+        unassigned=unassigned,
+        group_id=choice_arg("grupo", groups),
+        active_only=request.args.get("activos") == "1",
+        # Solo un Solicitante tiene resoluciones que revisar.
+        pending_review=not is_staff and request.args.get("revision") == "1",
+        closed_from=_date_arg("cerrado_desde"),
+        resolved_from=_date_arg("resuelto_desde"),
+        resolved_to=_date_arg("resuelto_hasta"),
+    )
+
+
 def _date_arg(name: str) -> date | None:
     try:
         return date.fromisoformat(request.args.get(name, ""))
     except ValueError:
         return None
-
-
-def _iso(value: date | None) -> str | None:
-    return None if value is None else value.isoformat()

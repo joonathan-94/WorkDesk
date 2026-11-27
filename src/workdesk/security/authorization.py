@@ -278,6 +278,20 @@ def can_view_workload(user) -> bool:
     return has_any_role(user, *STAFF_ROLES)
 
 
+def can_view_reports(user) -> bool:
+    """Ver los reportes operativos (RF-098, UI-012). Son del personal: el Solicitante
+    nunca tiene acceso (docs/12, decisiones de la fase 8)."""
+    return has_any_role(user, *STAFF_ROLES)
+
+
+def can_view_every_technician_report(user) -> bool:
+    """Ver en los reportes las cifras de todos los técnicos. El Supervisor y el
+    Administrador las ven; un Técnico ve solo las suyas, porque la pantalla no compara
+    personas (UI-012). No es un secreto —la carga de trabajo es de todo el equipo—,
+    sino la forma de no ofrecer una tabla de comparación."""
+    return has_any_role(user, RoleCode.SUPERVISOR, RoleCode.ADMINISTRADOR)
+
+
 def can_assign_self(user) -> bool:
     """Asignarse (y dejar de estar asignado) a un ticket (docs/03, sección 5).
 

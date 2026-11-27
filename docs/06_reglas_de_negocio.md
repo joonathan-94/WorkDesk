@@ -1952,6 +1952,21 @@ Aplica RNF-015 y RNF-022 (`v0.8.0`, entrega 3). Precisa RN-118: los accesos no v
 * **Límite por equipo.** Si desde una misma IP ya hubo `LOGIN_MAX_FAILED_PER_IP` intentos fallidos (20 por defecto) dentro del tiempo de bloqueo, en cualquier cuenta, los siguientes desde esa IP se rechazan sin mirar la cuenta ni la contraseña, y tampoco suman al contador de ninguna cuenta. Frena a quien prueba pocas contraseñas en muchas cuentas, algo que el bloqueo por cuenta (RNF-015) no ve. Con 0 se desactiva, que es lo que conviene si todas las personas llegan a WorkDesk a través de un mismo proxy.
 * **Cada persona ve su propia actividad de acceso** en «Mi cuenta» (los últimos diez eventos de su cuenta). Así puede detectar intentos que no reconoce. Nadie más la ve ahí: la consulta general es de la pantalla de auditoría (RF-109).
 
+## RN-179 — Definiciones de los reportes
+
+Aplica RF-098 y UI-012 (`v0.8.0`, entrega 5). Precisa qué cuenta cada cifra de los reportes operativos.
+
+* **El período son días locales** (`APP_TIMEZONE`), ambos incluidos: por defecto, los últimos 30 días hasta hoy y, como mucho, un año. Cada cifra principal se compara con el **período anterior**, de la misma duración y que termina el día antes.
+* **Creados:** los tickets cuya fecha de creación cae en el período.
+* **Resueltos:** los tickets cuya **resolución vigente** cae en el período. Un ticket rechazado o reabierto pierde su resolución y deja de contar hasta que se resuelva de nuevo. Un ticket cerrado sin pasar por «Resuelto» (cierre directo, cancelación o duplicado) no es un resuelto.
+* **Tiempo de resolución:** el tiempo corrido desde la creación hasta esa resolución, de los resueltos del período, con su media y su mediana. La mediana dice el tiempo «típico» sin que la arrastre un caso excepcional. La mirada en tiempo laboral la da el cumplimiento del SLA.
+* **Fuera de SLA:** de los creados en el período, los que incumplieron su SLA, aunque después se haya bajado la prioridad (RN-88). Con el SLA apagado esta cifra no se muestra.
+* **Desgloses por estado, categoría y prioridad:** los creados en el período según su estado, su categoría y su prioridad **actuales**. Cada desglose suma los creados.
+* **Por técnico:** los tickets que cada técnico tiene asignados ahora, como el listado y la carga de trabajo, así que un ticket con dos técnicos cuenta para cada uno. *Gestionados* son sus creados del período y *en trabajo*, los de esos que siguen sin resolver ni cerrar. *Resueltos* y su tiempo son sus resueltos del período, y *fuera de SLA*, sus creados que incumplieron. Los tickets sin técnico forman su propia fila.
+* **Cada cifra es el total del listado que la explica,** con un enlace a ese listado.
+* **Son del personal.** El Supervisor y el Administrador ven a todos los técnicos. Un Técnico ve las cifras del equipo, pero en la tabla por técnico solo la suya. El Solicitante no tiene acceso.
+* **No comparan personas.** Los técnicos se listan por apellido, sin rankings, medallas ni calificaciones (UI-012).
+
 ---
 
 # 24. Auditoría administrativa
