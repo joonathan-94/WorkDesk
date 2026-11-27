@@ -390,6 +390,7 @@ def test_hub_links_only_the_implemented_sections(
         "Archivos",
         "Carga y planificador",
         "Seguridad y sesión",
+        "Auditoría",
     ]
     assert 'href="/users"' in content
     assert 'href="/groups"' in content
@@ -401,6 +402,7 @@ def test_hub_links_only_the_implemented_sections(
     assert 'href="/admin/sla"' in content
 
     assert 'href="/admin/notifications"' in content
+    assert 'href="/admin/audit"' in content
 
     for slug in (
         "seguridad",

@@ -1,0 +1,316 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, pagination_nav %}
+
+{% block title %}Auditoría{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/audit.css') }}"
+    >
+{% endblock %}
+
+{# Una persona por su id, ya cargada en `context.users`; sin id, el Sistema. #}
+{% macro person(user_id, fallback="Sistema") %}
+    {%- set user = context.users.get(user_id) if user_id is not none else none -%}
+    {%- if user -%}
+        {{ user.nombre }} {{ user.apellido }} <span class="text-secondary">({{ user.username }})</span>
+    {%- else -%}
+        {{ fallback }}
+    {%- endif -%}
+{% endmacro %}
+
+{% macro result_badge(result) %}
+    {% if result == "FALLIDO" %}
+        <span class="badge badge-soft badge-soft-danger">Fallido</span>
+    {% elif result == "EXITOSO" %}
+        <span class="badge badge-soft badge-soft-success">Correcto</span>
+    {% else %}
+        <span class="text-secondary">—</span>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+    {% call page_header("Auditoría", "Qué se hizo, quién, cuándo y desde dónde. Los registros no se pueden modificar ni borrar.") %}
+    {% endcall %}
+
+    <nav aria-label="Registro de auditoría">
+        <ul class="nav nav-pills mb-3">
+            {% for key, label in views.items() %}
+                <li class="nav-item">
+                    <a
+                        class="nav-link{% if view == key %} active{% endif %}"
+                        {% if view == key %}aria-current="page"{% endif %}
+                        href="{{ url_for('admin.audit', vista=key.value) }}"
+                    >
+                        {{ label }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </nav>
+
+    <form
+        class="card card-body mb-3"
+        method="get"
+        action="{{ url_for('admin.audit') }}"
+        role="search"
+    >
+        <input type="hidden" name="vista" value="{{ view.value }}">
+
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label" for="desde">Desde</label>
+                <input
+                    class="form-control"
+                    id="desde"
+                    name="desde"
+                    type="date"
+                    value="{{ filters.since.isoformat() if filters.since else '' }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label" for="hasta">Hasta</label>
+                <input
+                    class="form-control"
+                    id="hasta"
+                    name="hasta"
+                    type="date"
+                    value="{{ filters.until.isoformat() if filters.until else '' }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="persona">
+                    {{ "Cuenta o lo escrito" if view.value == "accesos" else "Quién" }}
+                </label>
+                <input
+                    class="form-control"
+                    id="persona"
+                    name="persona"
+                    type="search"
+                    maxlength="100"
+                    value="{{ filters.person }}"
+                    placeholder="Nombre o usuario"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="tipo">Qué pasó</label>
+                <select class="form-select" id="tipo" name="tipo">
+                    <option value="">Todo</option>
+                    {% for code, label in kind_options %}
+                        <option value="{{ code }}" {% if code == filters.kind %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if view.value == "administrativa" %}
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="entidad">Sobre</label>
+                    <select class="form-select" id="entidad" name="entidad">
+                        <option value="">Todo</option>
+                        {% for code, label in entity_options %}
+                            <option value="{{ code }}" {% if code == filters.entity_type %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="entidad_id">Número</label>
+                    <input
+                        class="form-control"
+                        id="entidad_id"
+                        name="entidad_id"
+                        type="number"
+                        min="1"
+                        value="{{ filters.entity_id or '' }}"
+                    >
+                </div>
+            {% endif %}
+
+            {% if view.value in ("administrativa", "accesos") %}
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="resultado">Resultado</label>
+                    <select class="form-select" id="resultado" name="resultado">
+                        <option value="">Todos</option>
+                        {% for code, label in result_options %}
+                            <option value="{{ code }}" {% if code == filters.result %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if view.value == "accesos" %}
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="ip">IP</label>
+                    <input
+                        class="form-control"
+                        id="ip"
+                        name="ip"
+                        maxlength="45"
+                        value="{{ filters.ip or '' }}"
+                    >
+                </div>
+            {% endif %}
+
+            {% if view.value == "tickets" %}
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="ticket">Ticket</label>
+                    <input
+                        class="form-control"
+                        id="ticket"
+                        name="ticket"
+                        placeholder="Número"
+                        maxlength="20"
+                        value="{{ filters.ticket or '' }}"
+                    >
+                </div>
+            {% endif %}
+
+            <div class="col-lg-2 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+                <a class="btn btn-link" href="{{ url_for('admin.audit', vista=view.value) }}">Limpiar</a>
+            </div>
+        </div>
+    </form>
+
+    <p class="small text-secondary mb-2" aria-live="polite">
+        {{ pagination.total }} {{ "registro" if pagination.total == 1 else "registros" }}
+    </p>
+
+    {% if pagination.items %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 audit-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Fecha</th>
+                            {% if view.value == "administrativa" %}
+                                <th scope="col">Quién</th>
+                                <th scope="col">Qué pasó</th>
+                                <th scope="col">Sobre</th>
+                                <th scope="col">Resultado</th>
+                            {% elif view.value == "accesos" %}
+                                <th scope="col">Cuenta</th>
+                                <th scope="col">Qué pasó</th>
+                                <th scope="col">Resultado</th>
+                                <th scope="col">IP</th>
+                            {% else %}
+                                <th scope="col">Ticket</th>
+                                <th scope="col">Quién</th>
+                                <th scope="col">Qué pasó</th>
+                            {% endif %}
+                            <th scope="col"><span class="visually-hidden">Detalle</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pagination.items %}
+                            <tr>
+                                <td class="text-nowrap">{{ row.fecha_hora | local_datetime }}</td>
+
+                                {% if view.value == "administrativa" %}
+                                    <td>{{ person(row.actor_usuario_id) }}</td>
+                                    <td>{{ action_label(row.accion) }}</td>
+                                    <td>
+                                        {{ entity_label(row.entidad_tipo) }}
+                                        {% if row.entidad_tipo == "usuario" and context.users.get(row.entidad_id) %}
+                                            · <a href="{{ url_for('users.detail', user_id=row.entidad_id) }}">{{ context.users[row.entidad_id].username }}</a>
+                                        {% elif row.entidad_tipo == "ticket" and context.tickets.get(row.entidad_id) %}
+                                            · <a href="{{ url_for('tickets.detail', public_id=context.tickets[row.entidad_id]) }}">#{{ context.tickets[row.entidad_id] }}</a>
+                                        {% elif row.entidad_id %}
+                                            · {{ row.entidad_id }}
+                                        {% endif %}
+                                        {% if row.detalle %}<div class="small text-secondary">{{ row.detalle }}</div>{% endif %}
+                                    </td>
+                                    <td>{{ result_badge(row.resultado) }}</td>
+                                    <td>
+                                        <details class="audit-detail">
+                                            <summary>Detalle</summary>
+                                            {% if row.motivo %}<p class="small mt-2 mb-0"><strong>Motivo:</strong> {{ row.motivo }}</p>{% endif %}
+                                            {% if row.valor_anterior is not none %}
+                                                <p class="small mt-2 mb-0"><strong>Antes</strong></p>
+                                                <pre class="audit-json">{{ pretty(row.valor_anterior) }}</pre>
+                                            {% endif %}
+                                            {% if row.valor_nuevo is not none %}
+                                                <p class="small mt-2 mb-0"><strong>Después</strong></p>
+                                                <pre class="audit-json">{{ pretty(row.valor_nuevo) }}</pre>
+                                            {% endif %}
+                                            <p class="small text-secondary mt-2 mb-0">
+                                                IP: {{ row.ip_origen or "—" }} · Navegador: {{ row.user_agent or "—" }}
+                                            </p>
+                                        </details>
+                                    </td>
+
+                                {% elif view.value == "accesos" %}
+                                    <td>
+                                        {% if row.usuario_id %}
+                                            {{ person(row.usuario_id) }}
+                                        {% elif row.identificador_intentado %}
+                                            <span class="text-secondary">Escrito:</span> {{ row.identificador_intentado }}
+                                        {% else %}
+                                            <span class="text-secondary">Sin cuenta</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ row.etiqueta }}
+                                        {% if row.causa %}<div class="small text-secondary">{{ row.causa }}</div>{% endif %}
+                                    </td>
+                                    <td>{{ result_badge(row.resultado) }}</td>
+                                    <td class="text-nowrap">{{ row.ip_origen or "—" }}</td>
+                                    <td>
+                                        <details class="audit-detail">
+                                            <summary>Detalle</summary>
+                                            <p class="small text-secondary mt-2 mb-0">Navegador: {{ row.user_agent or "—" }}</p>
+                                        </details>
+                                    </td>
+
+                                {% else %}
+                                    <td class="text-nowrap">
+                                        {% set number = context.tickets.get(row.ticket_id) %}
+                                        {% if number %}
+                                            <a href="{{ url_for('tickets.detail', public_id=number) }}">#{{ number }}</a>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ person(row.actor_usuario_id) }}</td>
+                                    <td>
+                                        {{ row.evento_nombre }}
+                                        {% if row.visibilidad == "INTERNO" %}
+                                            <span class="badge badge-soft badge-soft-neutral">Interno</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <details class="audit-detail">
+                                            <summary>Detalle</summary>
+                                            {% for line in changes_of(row) %}
+                                                <p class="small mt-2 mb-0">{{ line }}</p>
+                                            {% endfor %}
+                                            {% if row.contexto and row.contexto.get("motivo") %}
+                                                <p class="small mt-2 mb-0"><strong>Motivo:</strong> {{ row.contexto["motivo"] }}</p>
+                                            {% endif %}
+                                            {% if row.valor_anterior is not none %}
+                                                <p class="small mt-2 mb-0"><strong>Antes</strong></p>
+                                                <pre class="audit-json">{{ pretty(row.valor_anterior) }}</pre>
+                                            {% endif %}
+                                            {% if row.valor_nuevo is not none %}
+                                                <p class="small mt-2 mb-0"><strong>Después</strong></p>
+                                                <pre class="audit-json">{{ pretty(row.valor_nuevo) }}</pre>
+                                            {% endif %}
+                                        </details>
+                                    </td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{ pagination_nav(pagination, 'admin.audit', params) }}
+    {% else %}
+        <p class="text-center text-secondary border rounded p-4 mb-0">
+            No hay registros con esos criterios.
+        </p>
+    {% endif %}
+{% endblock %}

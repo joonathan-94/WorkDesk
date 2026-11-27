@@ -69,7 +69,7 @@ WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
 - **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
 - **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
 - **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
-- **4775 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **4807 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
 - **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso: están hechas sus dos primeras entregas: la revisión previa con el refuerzo de seguridad y una suite de tests un 39 % más rápida. Hoy la suite cuenta con **4775 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso: están hechas sus dos primeras entregas: la revisión previa con el refuerzo de seguridad y una suite de tests un 39 % más rápida. Hoy la suite cuenta con **4807 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -147,7 +147,7 @@ WorkDesk se construye por fases hasta completar un MVP (la primera versión comp
 | Configuración desde la web y avisos configurables | ✅ Hecho | `v0.7.0` |
 | Base de conocimiento y advertencia de duplicados | ✅ Hecho | `v0.7.0` |
 | Reportes, con exportación a CSV y Excel | 🔨 En curso | `v0.8.0` |
-| Pantalla de auditoría y registro de accesos | 🔨 En curso | `v0.8.0` |
+| Pantalla de auditoría y registro de accesos | ✅ Hecho | `v0.8.0` |
 | Respaldos locales y su restauración | 🔨 En curso | `v0.8.0` |
 | Retención de datos | 🔨 En curso | `v0.8.0` |
 | Revisión visual, responsive y accesibilidad | ⏳ Pendiente | `v0.9.0` |
@@ -889,11 +889,13 @@ Desde **Administración**, el Administrador cambia sin tocar el `.env` los plazo
 | Carga y planificador | La marca de «carga alta» y la frecuencia del planificador |
 | SLA | Los objetivos por prioridad, el calendario laboral y el interruptor general del SLA |
 | Notificaciones | Qué aviso interno recibe cada destinatario |
+| Auditoría | No cambia nada: consulta quién hizo qué, los accesos y la historia de cada ticket (ver más abajo) |
 
 - **El `.env` es solo el valor inicial:** mientras nadie guarde otro, rige el de la variable de entorno (o el de fábrica). Cada valor guardado se marca «Valor propio» y se puede **Restablecer**.
 - Los valores se validan juntos (por ejemplo, la renovación del bloqueo debe ser menor que su duración), con el error junto a su campo, y cada cambio queda en la auditoría con un motivo opcional.
 - Si otra persona cambió la misma pantalla mientras la editabas, no se guarda nada y se avisa.
 - **Con el SLA apagado** no se muestra ni se avisa nada del SLA, pero se sigue calculando: al encenderlo, todo está al día.
+- **La auditoría** (**Administración → Auditoría**, solo el Administrador) reúne tres registros que nadie puede modificar ni borrar. **Administrativa** muestra quién cambió qué, con el antes y el después y el motivo. **Accesos** muestra cada inicio de sesión, cada intento fallido con su causa y cada cierre de sesión, con la IP. **Tickets** muestra todo lo que pasó en cada ticket, también lo interno. Se filtra por fechas, persona, tipo de acción, entidad, resultado, IP o número de ticket.
 - **Los avisos se apagan, no se inventan:** la pantalla de notificaciones solo permite apagar o encender los avisos que WorkDesk ya sabe enviar, así que ningún ajuste puede mandar algo interno a un Solicitante. Dos avisos son obligatorios.
 
 ---
@@ -1156,6 +1158,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 6. **Conocimiento en un ticket.** Como `diego.soto`, abre un ticket resuelto y pulsa **Crear artículo desde la resolución**: el borrador se propone con su título, categoría y solución, y queda vinculado al ticket.
 7. **Posibles duplicados.** Como `javiera.torres`, crea un ticket titulado `la impresora no imprime`: antes de crearlo ves los tickets parecidos y **Crear de todos modos**.
 8. **Liberar un bloqueo.** Con `diego.soto` editando un ticket, entra como `camila.rojas` en ese ticket y pulsa **Liberar bloqueo**: la pantalla de Diego avisa que perdió la reserva.
+9. **Auditoría.** Como Administrador abre **Administración → Auditoría**. En **Administrativa** verás lo que hiciste en los pasos anteriores (el tamaño de archivo, el SLA, los avisos), con el antes y el después en «Detalle». En **Accesos**, tus inicios de sesión. Si antes te equivocaste de contraseña, también ese intento fallido con su causa. En **Tickets**, filtra por un número para ver toda su historia, notas internas incluidas.
 
 ### Lo que todavía no verás
 
@@ -1165,7 +1168,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
 - Los dashboards muestran solo cifras exactas: no hay gráficos ni comparaciones con ayer (los gráficos se deciden con los reportes).
 - Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
-- Los reportes, la pantalla de auditoría y los backups llegan con `v0.8.0`.
+- Los reportes y los backups llegan con `v0.8.0` (la pantalla de auditoría ya está).
 
 ---
 
@@ -1266,6 +1269,7 @@ GET POST  /admin/sla/deactivate
 GET POST  /admin/settings/<grupo>
 POST      /admin/settings/<grupo>/reset/<variable>
 GET POST  /admin/notifications
+GET       /admin/audit
 GET       /knowledge
 GET       /knowledge/<id>
 GET       /knowledge/manage
@@ -1474,7 +1478,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4775 tests
+4807 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.

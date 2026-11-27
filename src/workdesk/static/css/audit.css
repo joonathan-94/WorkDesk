@@ -1,0 +1,25 @@
+/*
+ * Auditoría (docs/11, UI-027). Solo tokens `--wd-*`: ningún color escrito a mano.
+ */
+
+.audit-table td {
+    vertical-align: top;
+}
+
+.audit-detail summary {
+    cursor: pointer;
+    color: var(--wd-primary);
+}
+
+.audit-json {
+    max-height: 20rem;
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    overflow: auto;
+    border: 1px solid var(--wd-border);
+    border-radius: var(--wd-radius);
+    background: var(--wd-background);
+    font-size: 0.8125rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

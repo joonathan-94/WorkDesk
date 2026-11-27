@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/auth-events
+feature/audit-screen
 ```
 
-Entrega 3 de `v0.8.0`: los eventos de autenticación y el límite de intentos por equipo. **Con una migración** (`create_auth_events_table`). Ver «Eventos de autenticación (entrega 3 de `v0.8.0`)».
+Entrega 4 de `v0.8.0`: la pantalla de auditoría. **Sin migraciones.** Ver «Pantalla de auditoría (entrega 4 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -315,13 +315,35 @@ RNF-015, RNF-022 y RN-178; modelo en `docs/09` (9.3). **Con una migración** (`c
 - **«Mi cuenta» muestra la actividad reciente de la propia cuenta** (`recent_access`, los últimos diez eventos), con los fallidos marcados. Por eso el guardián del coste mínimo por petición (`test_request_cost`) se mide ahora en «Cambiar contraseña», que sigue costando tres consultas.
 - **Tests:** 29 nuevos (4746 → 4775), la mayoría en `tests/test_auth_events.py`; la tabla nueva entró sola en `test_data_integrity`. Doce mutaciones, todas detectadas.
 
+## Pantalla de auditoría (entrega 4 de `v0.8.0`)
+
+UI-027, RF-108, RF-109 y RNF-025. **Sin migraciones:** se midió a escala y ningún filtro pidió un índice nuevo.
+
+- **Una pantalla, tres registros** (`GET /admin/audit`, tarjeta «Auditoría» del hub, solo el Administrador): la pestaña **Administrativa** (`auditoria_administrativa`), **Accesos** (`eventos_autenticacion`) y **Tickets** (`historial_ticket` de todos los tickets, incluidos los eventos internos, marcados «Interno»). Lo más reciente primero, 50 por página, y el detalle de cada fila (valores anterior y nuevo, motivo, IP, navegador o lo que cambió en el ticket) en un `<details>` que no necesita JavaScript.
+- **La autorización, dos veces:** `admin_only` en la ruta y `can_view_audit` dentro. Cada capa sola ya devuelve 403 al Supervisor, al Técnico y al Solicitante; la segunda nombra el requisito (RNF-025) y deja la regla en un solo lugar.
+- **Filtros validados** (`admin/audit_routes.py`):
+  - fechas como días locales completos;
+  - persona (nombre, apellido, nombre completo o usuario, con los comodines escapados; en Accesos también lo escrito al intentar entrar);
+  - qué pasó (del vocabulario de cada pestaña);
+  - entidad y número;
+  - resultado;
+  - IP, validada con `ipaddress`;
+  - número de ticket.
+
+  Un valor que no corresponde se ignora, como en el resto de filtros, y nunca llega crudo a la consulta.
+- **Consultas** (`audit/queries.py`): una por pestaña con sus condiciones, paginadas en PostgreSQL. Las personas y los tickets de la página se cargan en lote (`page_context`): la página cuesta lo mismo con una fila que con cincuenta, y un test lo comprueba con 60 personas distintas.
+- **Nombres legibles** (`audit/labels.py`): cada una de las 39 acciones y cada tipo de entidad tiene el suyo. Dos tests lo exigen; el de las entidades saca los tipos del propio código, así que uno nuevo sin nombre hace fallar la suite. La pestaña Tickets reutiliza `describe_history_changes`, el texto del detalle del ticket, y añade el motivo, que allí solo ve el personal.
+- **Todo se escapa**, también lo guardado en la auditoría (un detalle con `<script>` se muestra como texto; hay un test). La hoja `static/css/audit.css` usa solo tokens.
+- **Medido a escala** (unas 250 000 filas en cada registro, en una base de pruebas): todas las combinaciones probadas responden por debajo de 220 ms. Lo más caro es contar el total para la paginación (145 ms sin filtros) y un tipo de evento poco frecuente en el historial (215 ms); un filtro por IP, entidad, día o ticket baja a menos de 10 ms. No se creó ningún índice.
+- **Tests:** 32 nuevos (4775 → 4807), en `tests/test_audit_screen.py`; las tres pestañas entraron en `test_pages_smoke` y la tarjeta en `test_layout`. Diez mutaciones: nueve detectadas y una equivalente (quitar una de las dos capas de autorización; sin las dos, falla).
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -792,7 +814,7 @@ Existe el modelo `AdminAuditLog` sobre la tabla:
 auditoria_administrativa
 ```
 
-Registra acciones administrativas y de seguridad (quién, cuándo, sobre qué, qué cambió y por qué). Los eventos de autenticación quedan fuera de esta tabla (`eventos_autenticacion`, previsto para `v0.8.0`).
+Registra acciones administrativas y de seguridad (quién, cuándo, sobre qué, qué cambió y por qué). Los eventos de autenticación quedan fuera de esta tabla, en `eventos_autenticacion` (desde `v0.8.0`). Las dos se consultan en la pantalla de auditoría (`/admin/audit`).
 
 Campos: `id`, `fecha_hora`, `actor_usuario_id` (NULL si actúa el sistema), `actor_tipo` (`USUARIO` o `SISTEMA`), `accion`, `entidad_tipo` + `entidad_id` (referencia lógica, sin FK), `detalle`, `valor_anterior` y `valor_nuevo` (JSONB), `ip_origen`, `user_agent`, `resultado` (`EXITOSO` o `FALLIDO`) y `motivo`.
 
@@ -1788,6 +1810,7 @@ GET, POST  /admin/sla/deactivate
 GET, POST  /admin/settings/<grupo>
 POST       /admin/settings/<grupo>/reset/<variable>
 GET, POST  /admin/notifications
+GET        /admin/audit
 GET        /knowledge
 GET        /knowledge/<id>
 GET        /knowledge/manage
@@ -1887,7 +1910,7 @@ Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATI
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador" y "Seguridad y sesión"; el resto (Retención, Auditoría, Respaldos y Estado del sistema) se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador", "Seguridad y sesión" y "Auditoría"; el resto (Retención, Respaldos y Estado del sistema) se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -2152,7 +2175,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4775 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
+4807 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
