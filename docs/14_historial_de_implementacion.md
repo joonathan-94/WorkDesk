@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- las consultas de los reportes (entrega 5): cada cifra comparada con el período anterior, los desgloses, las semanas y la tabla por técnico, contadas con las mismas condiciones del listado; el listado filtra también por fecha de resolución;
 - la pantalla de auditoría (entrega 4): los tres registros en una pantalla con filtros, solo para el Administrador;
 - los eventos de autenticación (entrega 3): cada intento de entrar y cada salida con su causa, el límite de intentos fallidos por equipo y la actividad de acceso en «Mi cuenta»; una migración (28);
 - la velocidad de la suite (entrega 2): de 6 min 54 s a 4 min 12 s, sin cambios de comportamiento;
@@ -366,7 +367,8 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 | 1 | Revisión previa | Integrada (PR #66) | 4728 |
 | 2 | Velocidad de la suite | Integrada (PR #67) | 4746 |
 | 3 | Eventos de autenticación | Integrada (PR #68) | 4775 |
-| 4 | Pantalla de auditoría | En revisión (`feature/audit-screen`) | 4807 |
+| 4 | Pantalla de auditoría | Integrada (PR #69) | 4807 |
+| 5 | Reportes: consultas | En revisión (`feature/reports-queries`) | 4843 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -419,6 +421,19 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Una mutación sobrevive a propósito.** Quitar una de las dos capas de autorización (la ruta y la política) no cambia nada, porque la otra sigue bloqueando; sin las dos, el test falla.
 
   La suite pasó de 4775 a 4807 tests.
+
+- **Entrega 5, reportes: consultas.** Las cifras de los reportes, sin pantalla todavía: creados, resueltos, tiempo de resolución (media y mediana) y fuera de SLA, cada uno comparado con el período anterior; los desgloses por estado, categoría y prioridad; las semanas; y una fila por técnico.
+  - **«Cada cifra es el total de su listado», por construcción.** Los dashboards lo cumplían porque un test lo comprobaba. Aquí además no hay una segunda definición: cada cifra se cuenta con las mismas condiciones SQL del listado y lleva sus filtros. Un test comprueba el total y que el enlace, leído por la propia ruta del listado, dé exactamente los mismos filtros. Para eso la lectura y la escritura de los filtros de la URL pasaron a ser una función cada una, y el listado ganó el filtro por fecha de resolución.
+  - **El test encontró un error real.** Con el filtro «prioridad Alta», la barra de «Baja» mostraba 0, pero enlazaba con un listado que ya no filtraba por Alta (18 tickets). Con un filtro de prioridad, el desglose muestra solo esa prioridad.
+  - **SQL de una pasada.** Los totales de los dos períodos son una sola consulta con `COUNT ... FILTER` y `percentile_cont`; los tres desgloses, una con `GROUPING SETS`. En total son siete consultas, crezca o no el equipo.
+  - **Medido a escala,** con unos 20 000 tickets en un año. Dos cosas salieron de medir:
+    - las condiciones comunes iban repetidas en cada cifra; con el filtro de técnico eso eran unas 14 subconsultas por ticket, y moverlas una sola vez al `WHERE` lo bajó de 520 a 84 ms;
+    - dentro de un `FILTER`, PostgreSQL evalúa las condiciones en el orden escrito y el listado ponía el SLA antes que las fechas; invertirlo bajó el año de 400 a 310 ms.
+
+    Un índice en `fecha_resolucion` no mejoró nada: sin migración.
+  - **Una mutación sobrevivió y destapó un hueco.** Cambiar la mediana por el percentil 25 no rompía nada, porque en la demostración 7 de los 13 tiempos son exactamente 4 h. Se añadió un test con tiempos construidos a propósito, y otro que pone dos resoluciones en una misma semana.
+
+  18 mutaciones, todas detectadas. La suite pasó de 4807 a 4843 tests.
 
 ---
 

@@ -690,6 +690,8 @@ Responsabilidades:
 - exportación CSV;
 - exportación XLSX.
 
+Implementación (`v0.8.0`): los dashboards y la carga de trabajo quedaron en sus propios paquetes (`dashboard` y `workload`, `v0.6.0`). `reports/queries.py` calcula los reportes operativos (`build_report`) con un número fijo de consultas. Cada cifra se cuenta con las condiciones del listado de tickets (`listing_conditions`) y lleva los filtros del listado que la explica: los reportes no tienen una segunda definición de nada que pueda separarse de la del listado. La exportación llega en una entrega posterior de la fase.
+
 ---
 
 # 26. Módulo `audit`

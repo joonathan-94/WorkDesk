@@ -69,7 +69,7 @@ WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
 - **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
 - **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
 - **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
-- **4807 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **4843 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
 - **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso: están hechas sus dos primeras entregas: la revisión previa con el refuerzo de seguridad y una suite de tests un 39 % más rápida. Hoy la suite cuenta con **4807 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus cinco primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría y los cálculos de los reportes. Hoy la suite cuenta con **4843 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -918,7 +918,7 @@ La opción **Tickets** (para el personal) o **Mis tickets** (para el Solicitante
 
 - **Pestañas:** Todos, Abiertos y Cerrados, cada una con su contador. Se abre en **Abiertos**, que incluye todo lo que no está Cerrado (un ticket Resuelto sigue abierto porque espera la confirmación del solicitante).
 - **Buscador:** acepta el número (`12` o `#12`), parte del título o de la descripción. El personal también puede escribir el nombre de un solicitante. La barra superior busca igual, en todas las pestañas.
-- **Filtros:** estado y prioridad (y, para el personal, el SLA, incluida la opción «En riesgo»); y, en "Más filtros", categoría, ubicación, fechas de creación y de cierre, «Solo en trabajo» (ni resueltos ni cerrados) y, para el personal, técnico («Sin asignar» incluido) y grupo; el Solicitante tiene además «Solo los que esperan tu revisión». Se pueden combinar entre sí y con el buscador. La tabla del personal muestra también los técnicos y el grupo de cada ticket.
+- **Filtros:** estado y prioridad (y, para el personal, el SLA, incluida la opción «En riesgo»); y, en "Más filtros", categoría, ubicación, fechas de creación, de cierre y de resolución, «Solo en trabajo» (ni resueltos ni cerrados) y, para el personal, técnico («Sin asignar» incluido) y grupo; el Solicitante tiene además «Solo los que esperan tu revisión». Se pueden combinar entre sí y con el buscador. La tabla del personal muestra también los técnicos y el grupo de cada ticket.
 - **Orden:** más recientes (por defecto), más antiguos, mayor prioridad primero o recién actualizados.
 - **Paginación:** de 20 tickets por página; los enlaces conservan la búsqueda, los filtros y el orden.
 
@@ -1478,7 +1478,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4807 tests
+4843 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.
@@ -1519,6 +1519,9 @@ Cada test lleva el marcador de su **área** (la lista de módulos de cada una es
 | `groups` | Grupos, miembros y supervisores responsables |
 | `catalogs` | Catálogos de tickets, motivos de espera, estados y transiciones |
 | `tickets` | El núcleo de tickets y todo su ciclo de vida |
+| `knowledge` | La base de conocimiento: artículos, permisos y búsqueda |
+| `dashboards` | Los dashboards por rol y la carga de trabajo |
+| `reports` | Los reportes operativos y sus definiciones |
 | `sla` | Tiempo laboral, calendario, políticas y períodos de SLA |
 | `notifications` | Notificaciones internas y los avisos por eventos |
 | `seeds` | Los comandos que cargan datos de demostración |

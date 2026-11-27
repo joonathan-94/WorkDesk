@@ -64,6 +64,9 @@ SORT_LABELS = {
 
 SORT_SLA_LABEL = "SLA más urgente"
 
+# Valor del parámetro `tecnico` para «sin técnico asignado».
+UNASSIGNED_VALUE = "ninguno"
+
 _ORDERINGS = {
     SORT_RECENT: (Ticket.fecha_creacion.desc(), Ticket.id.desc()),
     SORT_OLDEST: (Ticket.fecha_creacion.asc(), Ticket.id.asc()),
@@ -105,6 +108,10 @@ class TicketFilters:
     pending_review: bool = False
     # Cerrados desde ese día (día local, incluido).
     closed_from: date | None = None
+    # Resueltos entre esos días (días locales, ambos incluidos), según la resolución
+    # vigente: un ticket rechazado o reabierto ya no la tiene (los reportes, v0.8.0).
+    resolved_from: date | None = None
+    resolved_to: date | None = None
 
 
 def visible_tickets_condition(user):
@@ -269,27 +276,21 @@ def list_group_options() -> list[Grupo]:
 
 
 def listing_conditions(user, filters: TicketFilters, now=None) -> list:
+    """Las condiciones SQL del listado: la visibilidad de `user` y los filtros.
+
+    Van de las baratas (comparar columnas) a las caras (subconsultas: técnico, búsqueda
+    por solicitante y SLA). En un `WHERE` el orden da igual, porque PostgreSQL lo decide
+    por coste, pero dentro de un `FILTER` (los reportes cuentan con estas mismas
+    condiciones) las evalúa en el orden escrito: así una fecha que no corresponde
+    descarta el ticket antes de calcular su SLA."""
     conditions = [visible_tickets_condition(user)]
 
-    query_text = filters.query_text.strip()[:MAX_SEARCH_LENGTH]
-
-    if query_text:
-        conditions.append(_search_condition(user, query_text))
-
-    if (
-        filters.sla is not None
-        and has_any_role(user, *STAFF_ROLES)
-        and sla_periods.sla_enabled()
-    ):
-        conditions.append(sla_condition(filters.sla, now or sla_periods.current_time()))
-
-    conditions += _assignment_conditions(user, filters)
-
-    if filters.active_only:
-        conditions.append(active_state_condition())
-
-    if filters.pending_review and has_any_role(user, RoleCode.SOLICITANTE):
-        conditions.append(pending_review_condition(user))
+    conditions += local_days_conditions(
+        Ticket.fecha_creacion, filters.created_from, filters.created_to
+    )
+    conditions += local_days_conditions(
+        Ticket.fecha_resolucion, filters.resolved_from, filters.resolved_to
+    )
 
     if filters.closed_from is not None:
         conditions.append(
@@ -308,26 +309,68 @@ def listing_conditions(user, filters: TicketFilters, now=None) -> list:
     if filters.location_id is not None:
         conditions.append(Ticket.ubicacion_id == filters.location_id)
 
-    return conditions + _created_conditions(filters)
+    if filters.active_only:
+        conditions.append(active_state_condition())
 
+    conditions += _assignment_conditions(user, filters)
 
-def _created_conditions(filters: TicketFilters) -> list:
-    """Las fechas de creación son días de la zona horaria de la aplicación: «hasta»
-    incluye el día completo."""
-    conditions = []
+    if filters.pending_review and has_any_role(user, RoleCode.SOLICITANTE):
+        conditions.append(pending_review_condition(user))
 
-    if filters.created_from is not None:
-        conditions.append(
-            Ticket.fecha_creacion >= start_of_local_day(filters.created_from)
-        )
+    query_text = filters.query_text.strip()[:MAX_SEARCH_LENGTH]
 
-    if filters.created_to is not None:
-        conditions.append(
-            Ticket.fecha_creacion
-            < start_of_local_day(filters.created_to + timedelta(days=1))
-        )
+    if query_text:
+        conditions.append(_search_condition(user, query_text))
+
+    if (
+        filters.sla is not None
+        and has_any_role(user, *STAFF_ROLES)
+        and sla_periods.sla_enabled()
+    ):
+        conditions.append(sla_condition(filters.sla, now or sla_periods.current_time()))
 
     return conditions
+
+
+def local_days_conditions(column, first: date | None, last: date | None) -> list:
+    """`column` dentro de esos días de la zona horaria de la aplicación, ambos
+    incluidos: «hasta el 5» llega hasta el último instante del 5."""
+    conditions = []
+
+    if first is not None:
+        conditions.append(column >= start_of_local_day(first))
+
+    if last is not None:
+        conditions.append(column < start_of_local_day(last + timedelta(days=1)))
+
+    return conditions
+
+
+def listing_params(filters: TicketFilters) -> dict:
+    """Los parámetros de la URL del listado que reproducen `filters` (sin pestaña ni
+    orden). Es el camino inverso de la lectura de la ruta: los enlaces del listado lo usan
+    para conservar los filtros y los reportes, para enlazar cada cifra con su listado."""
+    return {
+        "q": filters.query_text or None,
+        "estado": filters.state_id,
+        "prioridad": filters.priority_id,
+        "categoria": filters.category_id,
+        "ubicacion": filters.location_id,
+        "desde": _iso(filters.created_from),
+        "hasta": _iso(filters.created_to),
+        "sla": filters.sla.value if filters.sla else None,
+        "tecnico": UNASSIGNED_VALUE if filters.unassigned else filters.technician_id,
+        "grupo": filters.group_id,
+        "activos": "1" if filters.active_only else None,
+        "revision": "1" if filters.pending_review else None,
+        "cerrado_desde": _iso(filters.closed_from),
+        "resuelto_desde": _iso(filters.resolved_from),
+        "resuelto_hasta": _iso(filters.resolved_to),
+    }
+
+
+def _iso(value: date | None) -> str | None:
+    return None if value is None else value.isoformat()
 
 
 def _assignment_conditions(user, filters: TicketFilters) -> list:

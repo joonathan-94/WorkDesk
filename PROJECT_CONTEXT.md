@@ -82,16 +82,18 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/audit-screen
+feature/reports-queries
 ```
 
-Entrega 4 de `v0.8.0`: la pantalla de auditoría. **Sin migraciones.** Ver «Pantalla de auditoría (entrega 4 de `v0.8.0`)».
+Entrega 5 de `v0.8.0`: las consultas de los reportes. **Sin migraciones.** Ver «Reportes: consultas (entrega 5 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
 `v0.6.0` se construyó en 10 entregas (PR #46 a #55): la revisión de lo construido (dos entregas), los filtros del listado, el dashboard del Solicitante, la carga de trabajo (consultas y pantalla), el dashboard operacional, la reasignación masiva (servicio y pantallas) y el cierre de la fase. Su tabla de entregas está en `docs/12_roadmap.md` y su relato, en `docs/14_historial_de_implementacion.md`.
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
+
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68) y la pantalla de auditoría (PR #69).
 
 ## Identidad visual (integrada en `main`)
 
@@ -337,13 +339,44 @@ UI-027, RF-108, RF-109 y RNF-025. **Sin migraciones:** se midió a escala y ning
 - **Medido a escala** (unas 250 000 filas en cada registro, en una base de pruebas): todas las combinaciones probadas responden por debajo de 220 ms. Lo más caro es contar el total para la paginación (145 ms sin filtros) y un tipo de evento poco frecuente en el historial (215 ms); un filtro por IP, entidad, día o ticket baja a menos de 10 ms. No se creó ningún índice.
 - **Tests:** 32 nuevos (4775 → 4807), en `tests/test_audit_screen.py`; las tres pestañas entraron en `test_pages_smoke` y la tarjeta en `test_layout`. Diez mutaciones: nueve detectadas y una equivalente (quitar una de las dos capas de autorización; sin las dos, falla).
 
+## Reportes: consultas (entrega 5 de `v0.8.0`)
+
+RF-098 y UI-012; las definiciones están en `docs/06` (RN-179). **Sin migraciones.** Todavía no hay pantalla ni ruta (llegan en la entrega 6): `build_report(user, ReportFilters, now=None)` (`src/workdesk/reports/queries.py`) devuelve un `Report`.
+
+- **Qué calcula para un período** (días locales, por defecto los últimos 30, como mucho un año; `resolve_period` corrige lo que no tiene sentido en lugar de dar un error):
+  - tickets creados y resueltos, el tiempo de resolución (media y mediana) y los fuera de SLA, cada uno comparado con el período anterior de la misma duración;
+  - los creados por estado, categoría y prioridad;
+  - el tiempo de resolución por semana, de lunes a domingo en la hora local, con las semanas vacías incluidas;
+  - una fila por técnico (gestionados, en trabajo, resueltos con su tiempo y fuera de SLA) y otra de «sin asignar».
+
+  Se filtra por grupo, técnico, categoría y prioridad.
+- **Definiciones.**
+  - *Resuelto:* la fecha de resolución **vigente** cae en el período. Un ticket rechazado o reabierto la pierde, y un cierre directo, una cancelación o un duplicado no son resueltos.
+  - *Tiempo de resolución:* tiempo corrido.
+  - *Fuera de SLA:* de los creados, los que incumplieron. El incumplimiento no se borra al bajar la prioridad.
+  - *Por técnico:* sus asignaciones vigentes, como en el listado y la carga de trabajo.
+- **Cada cifra es el total de su listado, por construcción.** Se cuenta con `listing_conditions`, las mismas condiciones del listado, y lleva sus `TicketFilters`. `report_listing_params` los pasa a la URL con `listing_params`, el mismo código del listado. Un test recorre todas las cifras con ocho combinaciones de filtros sobre los tickets de demostración. Comprueba el total de cada una y que su enlace, leído por la ruta del listado (`read_listing_filters`), dé exactamente los mismos filtros.
+- **El listado filtra por fecha de resolución** (`resuelto_desde` y `resuelto_hasta`, en «Más filtros»). Hacía falta para enlazar los resueltos y las semanas. Leer los filtros de la URL (`read_listing_filters`) y escribirlos (`listing_params`) es ahora una función cada uno: antes la ruta repetía el diccionario a mano.
+- **Quién.** `can_view_reports`: el personal; el Solicitante recibe `PermissionError`. `can_view_every_technician_report`: el Supervisor y el Administrador. Un Técnico ve las cifras del equipo, pero en la tabla solo su fila y sin «sin asignar», y no puede filtrar por otro técnico (se ignora). Los técnicos se ordenan por apellido, nunca por cifras (UI-012). Con el SLA apagado no hay cifras de SLA.
+- **SQL.** Siete consultas en total, con 4 técnicos o con 19 (hay un test):
+  - los totales de los dos períodos y la fila «sin asignar»: una consulta con `COUNT ... FILTER`, `avg` y `percentile_cont(0.5) WITHIN GROUP`;
+  - los tres desgloses: una, con `GROUPING SETS`;
+  - las semanas: una, con `date_trunc('week', timezone(zona, ...))`;
+  - la tabla por técnico: una.
+- **Medido a escala** (unos 20 000 tickets y 23 000 períodos de SLA repartidos en un año, en `workdesk_test`): 30 días, 110 ms; 90 días, 150 ms; un año, 310 ms; con un filtro, de 77 a 148 ms. Dos mejoras salieron de medir:
+  - las condiciones comunes van una sola vez en el `WHERE` y no en cada `FILTER` (con el filtro de técnico, de 520 a 84 ms);
+  - `listing_conditions` pone ahora las condiciones caras (subconsultas y SLA) al final, porque dentro de un `FILTER` PostgreSQL las evalúa en el orden escrito (el año pasó de 400 a 310 ms).
+
+  Un índice en `fecha_resolucion` no mejoró nada, porque un año abarca casi toda la tabla: no hubo migración.
+- **Tests:** 36 nuevos (4807 → 4843), en `tests/test_report_queries.py` (área nueva `reports`). Las 18 mutaciones se detectan. Una sobrevivió al principio y destapó un hueco: en la demostración, 7 de los 13 tiempos de resolución son exactamente 4 h, así que la mediana y el percentil 25 coincidían. Ahora hay un test con tiempos construidos a propósito.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes (consultas y pantalla), exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla, exportación CSV y XLSX, respaldos, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -481,6 +514,7 @@ WorkDesk/
 │       ├── models/
 │       ├── notifications/
 │       ├── reassignment/
+│       ├── reports/
 │       ├── security/
 │       ├── seeds/
 │       ├── sla/
@@ -1003,6 +1037,7 @@ Los contadores de los dashboards y de la carga de trabajo enlazan con el listado
 | `activos=1` | `active_only` | todos | «en trabajo»: ni `Resuelto` ni `Cerrado` (`active_state_condition`) |
 | `revision=1` | `pending_review` | Solicitante | `Resuelto` con él como solicitante vigente (`pending_review_condition`): el creador que no figura como solicitante no puede validar y no entra |
 | `cerrado_desde=AAAA-MM-DD` | `closed_from` | todos | cerrados desde ese día local (`APP_TIMEZONE`) |
+| `resuelto_desde` y `resuelto_hasta` | `resolved_from` y `resolved_to` | todos | con la resolución vigente entre esos días locales, ambos incluidos (los reportes, `v0.8.0`) |
 | `sla=riesgo` | `sla` | personal | próximo a vencer **o** vencido (`SlaFilter.RIESGO`) |
 
 - **Técnico, grupo y «sin asignar» son solo del personal**, igual que el SLA: el grupo es un dato interno y un Solicitante que probara el filtro podría deducirlo. Se ignoran en la ruta y también en la consulta (`_assignment_conditions`). `revision` solo vale para un Solicitante.
@@ -2175,7 +2210,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-4807 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
+4843 tests passing (unos 4 min 12 s con `-n 6`, medido en la entrega 2 de v0.8.0; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
