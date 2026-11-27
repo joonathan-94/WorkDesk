@@ -93,6 +93,9 @@ ADMIN_PAGES = [
     "/admin/settings/operacion",
     "/admin/settings/creacion",
     "/admin/notifications",
+    "/admin/audit",
+    "/admin/audit?vista=accesos",
+    "/admin/audit?vista=tickets",
 ]
 
 # Quién entra en qué pantallas: 200 si puede, 403 si no.

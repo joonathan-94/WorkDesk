@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- la pantalla de auditoría (entrega 4): los tres registros en una pantalla con filtros, solo para el Administrador;
 - los eventos de autenticación (entrega 3): cada intento de entrar y cada salida con su causa, el límite de intentos fallidos por equipo y la actividad de acceso en «Mi cuenta»; una migración (28);
 - la velocidad de la suite (entrega 2): de 6 min 54 s a 4 min 12 s, sin cambios de comportamiento;
 - la revisión previa (entrega 1): el bloqueo por intentos fallidos resistente a intentos en paralelo, una sola definición de la identidad de un usuario (también en `create-admin`, ahora auditado), un log por proceso, arranque seguro en producción, la cookie de sesión renombrada, páginas de error para cualquier código, cuatro cabeceras de seguridad más y dos guardianes del esquema; la suite pasa de 4681 a 4728 tests.
@@ -364,7 +365,8 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 | --- | --- | --- | --- |
 | 1 | Revisión previa | Integrada (PR #66) | 4728 |
 | 2 | Velocidad de la suite | Integrada (PR #67) | 4746 |
-| 3 | Eventos de autenticación | En revisión (`feature/auth-events`) | 4775 |
+| 3 | Eventos de autenticación | Integrada (PR #68) | 4775 |
+| 4 | Pantalla de auditoría | En revisión (`feature/audit-screen`) | 4807 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -407,6 +409,16 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Integridad automática.** La tabla nueva quedó cubierta sola por las pruebas de integridad: tiene `fecha_hora`, así que se le exigió ser de solo añadir.
 
   Doce mutaciones, todas detectadas. La suite pasó de 4746 a 4775 tests.
+
+- **Entrega 4, pantalla de auditoría.** Una sola pantalla para el Administrador reúne los tres registros de solo añadir: la auditoría administrativa, los accesos y el historial de todos los tickets.
+  - **Filtros validados.** Cada filtro se comprueba contra su vocabulario (la acción, el tipo de evento, la IP con `ipaddress`, el número de ticket); un valor que no corresponde se ignora y nunca llega a la consulta.
+  - **Coste fijo.** Las personas y los tickets de la página se cargan en lote, así que cuesta lo mismo con una fila que con cincuenta.
+  - **Nombres legibles obligatorios.** Las 39 acciones y todos los tipos de entidad tienen su nombre, y dos tests lo exigen; el de las entidades lee los tipos del propio código.
+  - **Medido antes de decidir.** Con 250 000 filas por registro todo responde por debajo de 220 ms, así que no se creó ningún índice ni migración.
+  - **La prueba de mutación encontró un hueco en un test.** El de fechas comprobaba «desde ayer hasta mañana» pero nunca «hasta hoy», justo el caso en que «hasta» debe abarcar el día entero: se añadió.
+  - **Una mutación sobrevive a propósito.** Quitar una de las dos capas de autorización (la ruta y la política) no cambia nada, porque la otra sigue bloqueando; sin las dos, el test falla.
+
+  La suite pasó de 4775 a 4807 tests.
 
 ---
 

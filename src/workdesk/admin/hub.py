@@ -152,8 +152,9 @@ HUB_SECTIONS = (
             ),
             HubCard(
                 title="Auditoría",
-                description="Registro de acciones administrativas.",
+                description="Acciones administrativas, accesos e historial de los tickets.",
                 icon="shield-check",
+                endpoint="admin.audit",
             ),
             HubCard(
                 title="Respaldos",

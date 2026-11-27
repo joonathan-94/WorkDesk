@@ -702,7 +702,7 @@ Responsabilidades:
 
 La creación de eventos podrá ser invocada desde otros módulos.
 
-Implementación inicial (`v0.2.0`): el paquete `audit` expone `record_admin_event` y el vocabulario controlado `AuditAction`. La función añade el evento a la sesión de base de datos sin hacer commit, de modo que la operación auditada y su registro se confirmen o se reviertan juntos (sección 40). La pantalla de consulta se incorpora en `v0.8.0`.
+Implementación inicial (`v0.2.0`): el paquete `audit` expone `record_admin_event` y el vocabulario controlado `AuditAction`. La función añade el evento a la sesión de base de datos sin hacer commit, de modo que la operación auditada y su registro se confirmen o se reviertan juntos (sección 40). La pantalla de consulta llegó en `v0.8.0` (`/admin/audit`): las consultas están en `audit/queries.py` y los nombres legibles en `audit/labels.py`; reúne la auditoría administrativa, los eventos de autenticación y el historial de los tickets.
 
 ---
 

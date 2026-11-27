@@ -2677,6 +2677,14 @@ Patrón recomendado:
 - entidad;
 - acción.
 
+**Implementación (`v0.8.0`, entrega 4):**
+
+- `/admin/audit`, solo el Administrador, desde la tarjeta **Auditoría** del hub.
+- Tres pestañas: **Administrativa**, **Accesos** y **Tickets** (todos los eventos de todos los tickets, los internos marcados «Interno»).
+- Filtros en una tarjeta, según la pestaña: desde y hasta (días locales), quién, qué pasó, sobre qué y su número, resultado, IP o número de ticket. «Limpiar» los quita.
+- Tabla con la fecha, quién (o «Sistema»), qué pasó y sobre qué. El resultado va con insignia «Correcto» o «Fallido». El detalle (antes y después, motivo, IP y navegador) se despliega en la propia fila, sin JavaScript.
+- 50 por página con la paginación numerada, que conserva los filtros. Estado vacío: «No hay registros con esos criterios».
+
 ---
 
 ## UI-028 — Respaldos y restauración
