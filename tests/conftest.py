@@ -65,6 +65,8 @@ def _app_config(uploads_dir) -> dict:
         # Los adjuntos de los tests van a un directorio temporal: nunca
         # tocan `instance/uploads`.
         "UPLOADS_DIR": str(uploads_dir),
+        # Igual con los respaldos: nunca llegan a `instance/backups`.
+        "BACKUPS_DIR": str(Path(uploads_dir).parent / "backups"),
     }
 
 

@@ -1979,6 +1979,22 @@ Aplica RF-099 a RF-101 (`v0.8.0`, entrega 7).
 
 ---
 
+## RN-181 — Respaldos
+
+Aplica RF-127, RNF-038 a RNF-040 y RNF-043 (`v0.8.0`, entrega 8).
+
+* **Un respaldo es un único paquete** (`.zip`) con el volcado de PostgreSQL (`pg_dump`, formato custom), los adjuntos que ese volcado referencia y un manifiesto con el tamaño y el SHA-256 de cada archivo. Junto a él queda la huella del paquete entero (`.sha256`).
+* **Se crean y se comprueban solo por comandos** (`backup-create`, `backup-verify` y `backup-list`), que ejecuta quien administra el servidor. La web no crea respaldos.
+* **Una sola foto de la base.** El volcado y la lista de adjuntos salen del mismo instante, así que el paquete trae exactamente los archivos que el volcado referencia. La aplicación puede seguir en uso mientras se respalda. No se pueden crear dos respaldos a la vez de la misma instalación.
+* **Lo que la copia descubre se avisa y no detiene el respaldo:** un adjunto activo cuyo archivo no está, o uno cuyo contenido ya no coincide con la huella que se guardó al subirlo.
+* **El manifiesto va firmado** con una clave derivada de `SECRET_KEY`. Un respaldo solo se considera de confianza si su firma es de esta instalación, su contenido coincide archivo por archivo con el manifiesto y `pg_restore` puede leer su volcado. Uno alterado, sin firma o firmado con otra clave no supera la comprobación.
+* **La contraseña de la base nunca va en la línea de comandos** ni en el entorno de las herramientas de PostgreSQL. Tampoco viajan allí `DATABASE_URL` ni `SECRET_KEY`.
+* **Los respaldos no pueden quedar donde la web los serviría:** ni dentro de `static`, ni dentro de los adjuntos (ni al revés). WorkDesk no arranca con esa configuración.
+* **Cada creación queda en la auditoría administrativa** (`RESPALDO_CREADO`), también la fallida, como acción del sistema, con la cuenta del sistema operativo que ejecutó el comando. Comprobar y listar no cambian nada y no se auditan.
+* **No hay tabla de respaldos** (se aparta de `docs/09`, 29.1): la carpeta con sus manifiestos es la fuente de verdad.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

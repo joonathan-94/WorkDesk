@@ -12,7 +12,12 @@ WorkDesk prefiere no arrancar a arrancar inseguro. En producción (`APP_ENV=prod
 
 En cualquier entorno se rechaza el texto de ejemplo del README como clave, y una clave
 corta fuera de producción solo se avisa, para no impedir arrancar en desarrollo.
+
+Tampoco arranca si los adjuntos o los respaldos quedan donde la web los serviría
+(`storage_problems`).
 """
+
+from pathlib import Path
 
 MIN_SECRET_KEY_LENGTH = 32
 
@@ -76,6 +81,34 @@ def startup_warnings(config) -> list[str]:
         )
 
     return warnings
+
+
+def storage_problems(*, uploads_dir, backups_dir, static_dir) -> list[str]:
+    """Lo que impide arrancar por dónde están los adjuntos y los respaldos.
+
+    Nada de lo que se guarda puede quedar dentro de la carpeta que la web sirve sin
+    autenticación (`static`): un respaldo trae la base entera, contraseñas cifradas
+    incluidas, y un adjunto es privado de su ticket. Los respaldos tampoco pueden estar
+    dentro de los adjuntos ni al revés: cada respaldo copiaría los anteriores (docs/10,
+    sección 143).
+    """
+    uploads, backups, static = (Path(p).resolve() for p in (uploads_dir, backups_dir, static_dir))
+    problems = []
+
+    for name, path in (("UPLOADS_DIR", uploads), ("BACKUPS_DIR", backups)):
+        if path.is_relative_to(static) or static.is_relative_to(path):
+            problems.append(
+                f"{name} ({path}) no puede estar dentro de la carpeta static, que la web "
+                "sirve sin iniciar sesión, ni contenerla."
+            )
+
+    if uploads.is_relative_to(backups) or backups.is_relative_to(uploads):
+        problems.append(
+            "UPLOADS_DIR y BACKUPS_DIR deben ser carpetas separadas: ninguna puede estar "
+            "dentro de la otra."
+        )
+
+    return problems
 
 
 def session_cookie_name(secure: bool) -> str:

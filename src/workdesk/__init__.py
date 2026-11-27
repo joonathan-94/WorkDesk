@@ -23,7 +23,12 @@ from .reassignment import bp as reassignment_bp
 from .reports import bp as reports_bp
 from .security import can_manage_users
 from .security.headers import register_security_headers
-from .security.startup import session_cookie_name, startup_problems, startup_warnings
+from .security.startup import (
+    session_cookie_name,
+    startup_problems,
+    startup_warnings,
+    storage_problems,
+)
 from .settings import validate_settings
 from .sla import bp as sla_bp
 from .sla.periods import sla_enabled
@@ -47,7 +52,7 @@ def create_app(
     _validate_required_config(app)
     _check_startup_safety(app, config_overrides or {})
     validate_settings(app.config)
-    _configure_uploads(app)
+    _configure_storage(app)
     configure_logging(app)
     _warn_about_risky_config(app)
 
@@ -150,9 +155,21 @@ def _warn_about_risky_config(app: Flask) -> None:
         app.logger.warning(warning)
 
 
-def _configure_uploads(app: Flask) -> None:
+def _configure_storage(app: Flask) -> None:
     if not app.config.get("UPLOADS_DIR"):
         app.config["UPLOADS_DIR"] = os.path.join(app.instance_path, "uploads")
+
+    if not app.config.get("BACKUPS_DIR"):
+        app.config["BACKUPS_DIR"] = os.path.join(app.instance_path, "backups")
+
+    problems = storage_problems(
+        uploads_dir=app.config["UPLOADS_DIR"],
+        backups_dir=app.config["BACKUPS_DIR"],
+        static_dir=app.static_folder,
+    )
+
+    if problems:
+        raise RuntimeError(" ".join(problems))
 
     # Tope general de cualquier petición, calculado con el valor inicial. Las que suben
     # archivos usan el valor vigente de la configuración (`_limit_upload_requests`).

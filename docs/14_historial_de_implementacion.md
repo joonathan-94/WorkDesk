@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- los respaldos (entrega 8): la base y los adjuntos en un paquete sacado de una misma foto de la base, con el SHA-256 de cada archivo en un manifiesto firmado, y una verificación que no necesita la base;
 - la exportación a CSV y Excel (entrega 7): el listado, los reportes y la auditoría, con los filtros y permisos de cada pantalla, las fórmulas neutralizadas y cada exportación en la auditoría;
 - la pantalla de reportes (entrega 6): período y filtros, cifras comparadas con el período anterior, gráficos dibujados en el servidor con su tabla equivalente y la tabla por técnico sin rankings;
 - las consultas de los reportes (entrega 5): cada cifra comparada con el período anterior, los desgloses, las semanas y la tabla por técnico, contadas con las mismas condiciones del listado; el listado filtra también por fecha de resolución;
@@ -456,6 +457,18 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Las mutaciones mejoraron un test.** El que comprobaba los inicios de fórmula leía la lista del propio módulo, así que quitar la `@` de esa lista no lo hacía fallar. Ahora hay uno con los seis inicios de OWASP escritos a mano. La lectura por tramos se prueba con tramos de 7 filas, porque los 108 tickets de demostración nunca pasaban del primero.
 
   17 mutaciones detectadas. La suite pasó de 4907 a 4970 tests.
+
+- **Entrega 8, respaldos.** Tres comandos: `backup-create`, `backup-verify` y `backup-list`. Un respaldo es un `.zip` con el volcado de `pg_dump` y los adjuntos, un manifiesto con el tamaño y el SHA-256 de cada archivo, su firma y, al lado, la huella del paquete.
+  - **Sin modo de mantenimiento, con una sola foto.** El plan preveía detener las escrituras para que la base y los archivos no correspondieran a momentos distintos. No hizo falta: una transacción de solo lectura exporta su foto (`pg_export_snapshot`), `pg_dump --snapshot` vuelca esa misma foto, y en esa transacción se leen las rutas de los adjuntos. El paquete trae exactamente los archivos que el volcado referencia. Un test cambia la base y los archivos mientras `pg_dump` trabaja y lee las filas del propio volcado con `pg_restore` para comprobar que nada de eso entró.
+  - **Firmado, no solo con huellas.** Una huella detecta un archivo dañado, pero quien altera un respaldo también puede recalcularla. El manifiesto, que lleva la huella de cada archivo, va firmado con HMAC-SHA256 y una clave derivada de `SECRET_KEY`. Un respaldo alterado, sin firma o de otra instalación no pasa `backup-verify`, que además revisa los nombres del `.zip` (el «zip slip»), que no sobre ni falte nada y que `pg_restore` pueda leer el volcado. Todo sin la base de datos, para que sirva justo cuando se cayó.
+  - **El test de la contraseña encontró un fallo real.** La contraseña ya no iba en los argumentos ni en `PGPASSWORD`, sino en un archivo temporal privado. Pero el proceso hijo heredaba el entorno completo, y `python-dotenv` deja ahí el `.env`: `DATABASE_URL`, con la contraseña dentro, y `SECRET_KEY` llegaban a `pg_dump`. Ahora el hijo no recibe esas variables ni ninguna cuyo valor contenga la contraseña.
+  - **Los procesos paralelos de la suite se bloqueaban entre sí.** Para que no corran dos respaldos a la vez hay un bloqueo consultivo, y era de toda la base: cada proceso de la suite usa su propio esquema, pero comparten la base. La clave pasó a ser un hash del esquema, que además es lo correcto (dos instalaciones en esquemas distintos de una base no deben estorbarse).
+  - **Medir cambió una decisión.** Se comprimían todos los adjuntos. Con 100 MB, comprimir lo que ya viene comprimido (imágenes, PDF, Office) tardaba 2,5 s en lugar de 0,08 s y no ahorraba nada, mientras que un registro de texto bajaba al 0,3 %. Ahora solo se comprime el texto, según el `mime_type` guardado.
+  - **Lo que la copia descubre se avisa.** Cada adjunto se compara con la huella que la base guardó al subirlo. Uno alterado o uno activo sin archivo es un aviso, y el respaldo se crea igual.
+  - **Sin tabla de respaldos.** Con `historial_backups`, el volcado contendría su propia fila «en progreso». La carpeta con sus manifiestos es la fuente de verdad y la auditoría registra cada creación, también la fallida.
+  - **Una mutación sobrevivió.** Comparar solo el tamaño de los adjuntos, sin su huella, no rompía nada: el archivo «alterado» del test cambiaba también de tamaño. Ahora conserva el tamaño y difiere en un byte.
+
+  Medido: `workdesk_dev` se respalda en 0,36 s y se verifica en 0,04 s. 1 GB de adjuntos en 1000 archivos se copia en 8,5 s y se verifica en 2,3 s. 18 mutaciones detectadas. La suite pasó de 4970 a 5037 tests.
 
 ---
 

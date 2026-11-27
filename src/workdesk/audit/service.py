@@ -105,6 +105,8 @@ class AuditAction(StrEnum):
     SLA_RECALCULADO = "SLA_RECALCULADO"
     # Una exportación del listado, los reportes o la auditoría (RN-180).
     DATOS_EXPORTADOS = "DATOS_EXPORTADOS"
+    # Un respaldo creado con `backup-create`, o el intento fallido (RN-181).
+    RESPALDO_CREADO = "RESPALDO_CREADO"
 
 
 def record_admin_event(
