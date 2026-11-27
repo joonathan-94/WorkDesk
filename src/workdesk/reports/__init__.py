@@ -1,5 +1,11 @@
-"""Reportes operativos (RF-098, UI-012). Las consultas están en `queries.py`."""
+"""Reportes operativos (RF-098, UI-012): las consultas en `queries.py`, los gráficos en
+`charts.py` y la pantalla en `routes.py`. Solo para el personal."""
 
+from flask import Blueprint
+
+bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+from . import routes as routes
 from .queries import Period as Period
 from .queries import ReportFilters as ReportFilters
 from .queries import build_report as build_report

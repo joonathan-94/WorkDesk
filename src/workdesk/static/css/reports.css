@@ -1,0 +1,201 @@
+/*
+ * Reportes (docs/11, UI-012). Solo tokens `--wd-*`: ningún color escrito a mano.
+ * Las barras son HTML y la línea semanal es un SVG; ninguno necesita JavaScript.
+ */
+
+/* Una tarjeta puede mostrar un tiempo («12 h 42 min»): que no se parta en dos líneas. */
+.kpi-value {
+    font-size: 1.75rem;
+    white-space: nowrap;
+}
+
+/* --- Colores de las barras (como las insignias de estado y prioridad) --- */
+
+.report-bar {
+    display: block;
+    border-radius: 4px;
+    background: var(--wd-primary);
+}
+
+.report-bar--neutral {
+    background: var(--wd-text-secondary);
+}
+
+.report-bar--purple {
+    background: var(--wd-purple);
+}
+
+.report-bar--primary {
+    background: var(--wd-primary);
+}
+
+.report-bar--warning {
+    background: var(--wd-warning);
+}
+
+.report-bar--success {
+    background: var(--wd-success);
+}
+
+.report-bar--danger {
+    background: var(--wd-danger);
+}
+
+/* --- Barras horizontales (categoría y prioridad) --- */
+
+.report-hbars {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.report-hbar {
+    display: grid;
+    grid-template-columns: minmax(6rem, 30%) 1fr 3rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+}
+
+.report-hbar-label {
+    overflow: hidden;
+    color: var(--wd-text-secondary);
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.report-hbar-track {
+    display: block;
+    height: 0.9rem;
+}
+
+.report-hbar-track .report-bar {
+    height: 100%;
+}
+
+.report-hbar-value {
+    font-weight: 600;
+    text-align: end;
+}
+
+/* --- Columnas (estado) --- */
+
+.report-columns {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    height: 14rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.report-column {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+.report-column-value {
+    font-weight: 600;
+}
+
+.report-column-track {
+    display: flex;
+    flex: 1;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 4rem;
+    margin: 0.25rem 0;
+    border-bottom: 1px solid var(--wd-border);
+}
+
+.report-column-track .report-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+}
+
+.report-column-label {
+    overflow: hidden;
+    max-width: 100%;
+    color: var(--wd-text-secondary);
+    font-size: 0.8125rem;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- Línea semanal (SVG) --- */
+
+.report-line-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.report-grid {
+    stroke: var(--wd-border);
+    stroke-width: 1;
+}
+
+.report-axis {
+    fill: var(--wd-text-secondary);
+    font-size: 12px;
+}
+
+.report-line {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+
+.report-line--mean,
+.report-point--mean {
+    stroke: var(--wd-primary);
+}
+
+.report-line--median,
+.report-point--median {
+    stroke: var(--wd-purple);
+}
+
+.report-line--median {
+    stroke-dasharray: 6 4;
+}
+
+.report-point {
+    fill: var(--wd-surface);
+    stroke-width: 2;
+}
+
+.report-legend-line {
+    display: inline-block;
+    width: 1.5rem;
+    margin-right: 0.25rem;
+    vertical-align: middle;
+    border-top: 3px solid var(--wd-primary);
+}
+
+.report-legend-line--median {
+    border-top-style: dashed;
+    border-top-color: var(--wd-purple);
+}
+
+/* --- Tabla por técnico --- */
+
+.report-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+    background: var(--wd-primary-soft);
+    color: var(--wd-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+}

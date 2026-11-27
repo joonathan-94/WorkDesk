@@ -73,6 +73,9 @@ STAFF_PAGES = [
     "/workload",
     "/workload?grupo=1&prioridad=1&estado=1",
     "/workload?q=a&orden=nombre",
+    "/reports",
+    "/reports?periodo=365&grupo=1&prioridad=1&categoria=1&tecnico=1",
+    "/reports?periodo=personalizado&desde=2026-01-01&hasta=2026-11-18",
 ]
 GROUP_PAGES = ["/groups", "/reassign"]
 ADMIN_PAGES = [

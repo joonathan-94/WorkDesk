@@ -12,7 +12,7 @@ from .config import Config
 from .configuration import forget_cached_settings
 from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
-from .formatting import format_duration, format_size, local_datetime
+from .formatting import format_duration, format_elapsed, format_size, local_datetime
 from .groups import bp as groups_bp
 from .knowledge import bp as knowledge_bp
 from .logging_config import configure_logging
@@ -20,6 +20,7 @@ from .main import bp as main_bp
 from .navigation import layout_context, user_initials
 from .notifications import bp as notifications_bp
 from .reassignment import bp as reassignment_bp
+from .reports import bp as reports_bp
 from .security import can_manage_users
 from .security.headers import register_security_headers
 from .security.startup import session_cookie_name, startup_problems, startup_warnings
@@ -80,6 +81,7 @@ def create_app(
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(workload_bp)
     app.register_blueprint(reassignment_bp)
+    app.register_blueprint(reports_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(sla_bp)
@@ -90,6 +92,8 @@ def create_app(
     app.add_template_filter(local_datetime, "local_datetime")
     # Minutos como «1 h 30 min» (los objetivos de SLA).
     app.add_template_filter(format_duration, "duration")
+    # Segundos de reloj como «3 h 42 min» o «2 d 19 h» (los reportes).
+    app.add_template_filter(format_elapsed, "elapsed")
     app.add_template_filter(format_size, "filesize")
     # Iniciales de una persona para el avatar de un comentario.
     app.add_template_filter(user_initials, "initials")

@@ -1,0 +1,425 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, kpi_card %}
+
+{% block title %}Reportes{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/reports.css') }}"
+    >
+{% endblock %}
+
+{# El listado que explica una cifra. #}
+{% macro list_url(count) -%}
+    {{ url_for('tickets.list_tickets_page', **count.params) }}
+{%- endmacro %}
+
+{# Una cifra que, si no es cero, enlaza con su listado. `what` dice qué cuenta. #}
+{% macro count_link(count, what) %}
+    {% if count.value %}
+        <a
+            href="{{ list_url(count) }}"
+            aria-label="{{ count.value }} tickets: {{ what }}. Ver en el listado"
+        >{{ count.value }}</a>
+    {% else %}
+        <span class="text-secondary">0</span>
+    {% endif %}
+{% endmacro %}
+
+{# Barras horizontales de un desglose: el nombre, la barra y la cifra. #}
+{% macro horizontal_bars(items, what, empty) %}
+    {% if items %}
+        <ul class="report-hbars">
+            {% for bar in items %}
+                <li class="report-hbar">
+                    <span class="report-hbar-label">{{ bar.label }}</span>
+                    <span class="report-hbar-track">
+                        <span
+                            class="report-bar report-bar--{{ bar.tone }}"
+                            style="width: {{ bar.percent }}%"
+                        ></span>
+                    </span>
+                    <span class="report-hbar-value">
+                        {{ count_link(bar.count, what ~ ' ' ~ bar.label) }}
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-secondary mb-0">{{ empty }}</p>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+    {% set period = report.filters.period %}
+    {% set before = period.previous() %}
+
+    {% call page_header(
+        'Reportes',
+        'Qué pasó en un período: cuántos tickets entraron, cuántos se resolvieron y en cuánto tiempo.'
+    ) %}
+    {% endcall %}
+
+    <form
+        class="card card-body mb-3"
+        method="get"
+        action="{{ url_for('reports.reports_page') }}"
+        aria-label="Filtros del reporte"
+    >
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="periodo">Período</label>
+                <select class="form-select" id="periodo" name="periodo">
+                    {% for key, label in period_labels.items() %}
+                        <option value="{{ key }}" {% if key == period_key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="desde">Desde</label>
+                <input
+                    class="form-control"
+                    id="desde"
+                    name="desde"
+                    type="date"
+                    aria-describedby="fechas-ayuda"
+                    value="{{ period.first.isoformat() if period_key == custom_period else '' }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="hasta">Hasta</label>
+                <input
+                    class="form-control"
+                    id="hasta"
+                    name="hasta"
+                    type="date"
+                    aria-describedby="fechas-ayuda"
+                    value="{{ period.last.isoformat() if period_key == custom_period else '' }}"
+                >
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="grupo">Grupo</label>
+                <select class="form-select" id="grupo" name="grupo">
+                    <option value="">Todos los grupos</option>
+                    {% for group in groups %}
+                        <option value="{{ group.id }}" {% if group.id == report.filters.group_id %}selected{% endif %}>
+                            {{ group.nombre }}{% if not group.activo %} (inactivo){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="tecnico">Técnico</label>
+                <select class="form-select" id="tecnico" name="tecnico">
+                    <option value="">Todos los técnicos</option>
+                    {% for technician in technicians %}
+                        <option value="{{ technician.id }}" {% if technician.id == report.filters.technician_id %}selected{% endif %}>
+                            {{ technician.apellido }}, {{ technician.nombre }}{% if not technician.activo %} (inactivo){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="categoria">Categoría</label>
+                <select class="form-select" id="categoria" name="categoria">
+                    <option value="">Todas las categorías</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if category.id == report.filters.category_id %}selected{% endif %}>
+                            {{ category.nombre }}{% if not category.activo %} (inactiva){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label" for="prioridad">Prioridad</label>
+                <select class="form-select" id="prioridad" name="prioridad">
+                    <option value="">Todas las prioridades</option>
+                    {% for priority in priorities %}
+                        <option value="{{ priority.id }}" {% if priority.id == report.filters.priority_id %}selected{% endif %}>
+                            {{ priority.nombre }}{% if not priority.activo %} (inactiva){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-sm-6 col-lg-3 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+                <a class="btn btn-link" href="{{ url_for('reports.reports_page') }}">Limpiar</a>
+            </div>
+        </div>
+
+        <p class="small text-secondary mt-2 mb-0" id="fechas-ayuda">
+            Las fechas solo se usan con el período «Personalizado» (como mucho un año).
+        </p>
+    </form>
+
+    <p class="text-secondary mb-3" aria-live="polite">
+        Del {{ period.first.strftime('%d-%m-%Y') }} al {{ period.last.strftime('%d-%m-%Y') }}
+        ({{ period.days }} {{ 'día' if period.days == 1 else 'días' }}). Cada cifra se compara con
+        el período anterior de la misma duración, del {{ before.first.strftime('%d-%m-%Y') }} al {{ before.last.strftime('%d-%m-%Y') }}.
+    </p>
+
+    <section class="kpi-grid mb-3" aria-label="Cifras del período">
+        {{ kpi_card(
+            'Tickets creados',
+            report.created.current.value,
+            hint=created_change,
+            href=list_url(report.created.current),
+            icon='inbox',
+        ) }}
+        {{ kpi_card(
+            'Tickets resueltos',
+            report.resolved.current.value,
+            hint=resolved_change,
+            href=list_url(report.resolved.current),
+            icon='check-circle',
+            tone='success',
+        ) }}
+        {{ kpi_card(
+            'Tiempo medio de resolución',
+            report.resolution.current.mean_seconds | elapsed,
+            hint='Mediana: ' ~ (report.resolution.current.median_seconds | elapsed) ~ ('. ' ~ resolution_change if resolution_change else ''),
+            href=list_url(report.resolution.current.resolved),
+            icon='clock-history',
+            tone='warning',
+        ) }}
+        {% if report.breached %}
+            {{ kpi_card(
+                'Fuera de SLA',
+                report.breached.current.value,
+                hint=breached_change,
+                href=list_url(report.breached.current),
+                icon='exclamation-triangle',
+                tone='danger',
+                alert=report.breached.current.value > 0,
+            ) }}
+        {% endif %}
+    </section>
+
+    <div class="row g-3 mb-3">
+        <section class="col-lg-6" aria-labelledby="por-estado">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-1" id="por-estado">Tickets por estado</h2>
+                    <p class="small text-secondary">Los creados en el período, según su estado actual.</p>
+
+                    <ul class="report-columns">
+                        {% for bar in state_bars %}
+                            <li class="report-column">
+                                <span class="report-column-value">
+                                    {{ count_link(bar.count, 'creados en estado ' ~ bar.label) }}
+                                </span>
+                                <span class="report-column-track">
+                                    <span
+                                        class="report-bar report-bar--{{ bar.tone }}"
+                                        style="height: {{ bar.percent }}%"
+                                    ></span>
+                                </span>
+                                <span class="report-column-label">{{ bar.label }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="col-lg-6" aria-labelledby="por-categoria">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-1" id="por-categoria">Tickets por categoría</h2>
+                    <p class="small text-secondary">Los creados en el período, de la categoría con más tickets a la que tiene menos.</p>
+
+                    {{ horizontal_bars(category_bars, 'creados de la categoría', 'No se creó ningún ticket en el período.') }}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <section class="col-lg-7" aria-labelledby="por-semana">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-1" id="por-semana">Tiempo de resolución por semana</h2>
+                    <p class="small text-secondary">
+                        De la creación a la resolución, en tiempo corrido, de los resueltos de cada semana (de lunes a domingo).
+                    </p>
+
+                    {% if line.empty %}
+                        <p class="text-secondary mb-0">No se resolvió ningún ticket en el período.</p>
+                    {% else %}
+                        <ul class="report-legend list-inline small mb-2" aria-hidden="true">
+                            {% for series in line.series %}
+                                <li class="list-inline-item">
+                                    <span class="report-legend-line report-legend-line--{{ series.key }}"></span>
+                                    {{ series.name }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+
+                        <svg
+                            class="report-line-chart"
+                            viewBox="0 0 {{ line.width }} {{ line.height }}"
+                            role="img"
+                            aria-labelledby="por-semana"
+                            aria-describedby="por-semana-tabla"
+                        >
+                            {% for tick in line.y_ticks %}
+                                <line
+                                    class="report-grid"
+                                    x1="{{ line.left }}"
+                                    x2="{{ line.width - line.right }}"
+                                    y1="{{ tick.position }}"
+                                    y2="{{ tick.position }}"
+                                ></line>
+                                <text
+                                    class="report-axis"
+                                    x="{{ line.left - 8 }}"
+                                    y="{{ tick.position + 4 }}"
+                                    text-anchor="end"
+                                >{{ tick.label }}</text>
+                            {% endfor %}
+
+                            {% for tick in line.x_ticks %}
+                                <text
+                                    class="report-axis"
+                                    x="{{ tick.position }}"
+                                    y="{{ line.height - 8 }}"
+                                    text-anchor="middle"
+                                >{{ tick.label }}</text>
+                            {% endfor %}
+
+                            {% for series in line.series %}
+                                {% for path in series.paths %}
+                                    <path class="report-line report-line--{{ series.key }}" d="{{ path }}"></path>
+                                {% endfor %}
+                                {% for point in series.points %}
+                                    <circle
+                                        class="report-point report-point--{{ series.key }}"
+                                        cx="{{ point.x }}"
+                                        cy="{{ point.y }}"
+                                        r="4"
+                                    ><title>{{ series.name }}: {{ point.label }}</title></circle>
+                                {% endfor %}
+                            {% endfor %}
+                        </svg>
+                    {% endif %}
+
+                    <details class="mt-2" id="por-semana-tabla">
+                        <summary>Ver como tabla</summary>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0 mt-2">
+                                <caption class="visually-hidden">Tiempo de resolución por semana</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Semana</th>
+                                        <th scope="col" class="text-end">Resueltos</th>
+                                        <th scope="col" class="text-end">Media</th>
+                                        <th scope="col" class="text-end">Mediana</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for week in report.weeks %}
+                                        <tr>
+                                            <th scope="row" class="fw-normal">
+                                                {{ week.first.strftime('%d-%m') }} al {{ week.last.strftime('%d-%m-%Y') }}
+                                            </th>
+                                            <td class="text-end">
+                                                {{ count_link(week.resolution.resolved, 'resueltos en la semana del ' ~ week.first.strftime('%d-%m')) }}
+                                            </td>
+                                            <td class="text-end">{{ week.resolution.mean_seconds | elapsed }}</td>
+                                            <td class="text-end">{{ week.resolution.median_seconds | elapsed }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="col-lg-5" aria-labelledby="por-prioridad">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-1" id="por-prioridad">Tickets por prioridad</h2>
+                    <p class="small text-secondary">Los creados en el período, según su prioridad actual.</p>
+
+                    {{ horizontal_bars(priority_bars, 'creados con prioridad', 'No se creó ningún ticket en el período.') }}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="card" aria-labelledby="por-tecnico">
+        <div class="card-body">
+            <h2 class="h5 mb-1" id="por-tecnico">Resumen por técnico</h2>
+            <p class="small text-secondary">
+                Los tickets que cada técnico tiene asignados ahora: los creados en el período (gestionados), los que de esos siguen en trabajo, sus resueltos del período y cuánto tardaron.
+                Un ticket con dos técnicos cuenta en cada uno. Los técnicos se ordenan por apellido: esta pantalla no compara personas.
+                {% if not report.every_technician %}
+                    Ves solo tu propia fila.
+                {% endif %}
+            </p>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Técnico</th>
+                            <th scope="col" class="text-end">Gestionados</th>
+                            <th scope="col" class="text-end">En trabajo</th>
+                            <th scope="col" class="text-end">Resueltos</th>
+                            <th scope="col" class="text-end">Tiempo medio</th>
+                            <th scope="col" class="text-end">Mediana</th>
+                            {% if report.sla_enabled %}
+                                <th scope="col" class="text-end">Fuera de SLA</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set rows = report.technicians + ([report.unassigned] if report.unassigned else []) %}
+                        {% for row in rows %}
+                            {% set who = (row.user.nombre ~ ' ' ~ row.user.apellido) if row.user else 'sin técnico' %}
+                            <tr>
+                                <th scope="row" class="fw-normal">
+                                    {% if row.user %}
+                                        <span class="report-avatar" aria-hidden="true">{{ row.user | initials }}</span>
+                                        {{ row.user.nombre }} {{ row.user.apellido }}
+                                        {% if not row.user.activo %}
+                                            <span class="badge badge-soft badge-soft-neutral">Inactivo</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-secondary">Sin asignar</span>
+                                    {% endif %}
+                                </th>
+                                <td class="text-end">{{ count_link(row.handled, 'gestionados, ' ~ who) }}</td>
+                                <td class="text-end">{{ count_link(row.in_work, 'en trabajo, ' ~ who) }}</td>
+                                <td class="text-end">{{ count_link(row.resolution.resolved, 'resueltos, ' ~ who) }}</td>
+                                <td class="text-end">{{ row.resolution.mean_seconds | elapsed }}</td>
+                                <td class="text-end">{{ row.resolution.median_seconds | elapsed }}</td>
+                                {% if report.sla_enabled %}
+                                    <td class="text-end">{{ count_link(row.breached, 'fuera de SLA, ' ~ who) }}</td>
+                                {% endif %}
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-secondary">No hay técnicos que mostrar.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+{% endblock %}

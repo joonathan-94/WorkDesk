@@ -74,6 +74,7 @@ def test_a_technician_sees_tickets_and_create_ticket():
         "Crear ticket",
         "Carga de trabajo",
         "Base de conocimiento",
+        "Reportes",
         "Notificaciones",
     ]
 
@@ -86,6 +87,7 @@ def test_a_supervisor_also_sees_the_groups_they_manage():
         "Carga de trabajo",
         "Reasignación",
         "Base de conocimiento",
+        "Reportes",
         "Notificaciones",
         "Grupos",
     ]
@@ -109,6 +111,7 @@ def test_administrator_sees_the_administration_hub():
         "Carga de trabajo",
         "Reasignación",
         "Base de conocimiento",
+        "Reportes",
         "Notificaciones",
         "Administración",
     ]

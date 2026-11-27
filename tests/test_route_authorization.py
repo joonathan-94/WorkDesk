@@ -237,6 +237,13 @@ def test_the_workload_area_is_closed_to_requesters(client, app, make_user, catal
     assert area_violations(client, app, ("workload.",), "SOLICITANTE") == []
 
 
+def test_the_reports_area_is_closed_to_requesters(client, app, make_user, catalog):
+    """Los reportes son del personal (RN-179): el Solicitante nunca entra."""
+    login(client, make_user("SOLICITANTE", username="persona"))
+
+    assert area_violations(client, app, ("reports.",), "SOLICITANTE") == []
+
+
 def test_a_requester_can_only_read_the_knowledge_base(client, app, make_user, catalog):
     login(client, make_user("SOLICITANTE", username="persona"))
     endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
