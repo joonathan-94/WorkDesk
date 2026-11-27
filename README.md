@@ -69,7 +69,7 @@ WorkDesk es pequeño en tecnologías y exigente en cómo las usa:
 - **Concurrencia tomada en serio.** Dos personas que actúan a la vez sobre el mismo ticket no se pisan: control de versión optimista, bloqueo de filas en un orden fijo para evitar bloqueos mutuos y pruebas con varios hilos simultáneos.
 - **El SLA se mide en tiempo laboral**, con un motor propio que respeta horarios distintos por día, pausas y feriados. Cada estado del SLA calculado en SQL se compara con el de Python en más de 150 momentos, incluidos los bordes de un segundo.
 - **Medido a escala:** con unos 20 000 tickets, todas las pantallas responden en menos de medio segundo, y el número de consultas de cada una no crece con los datos (hay una prueba que lo vigila).
-- **4907 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
+- **4970 pruebas automáticas**, que corren en unos 4 minutos en paralelo. Las que protegen algo importante se comprueban con mutaciones: se rompe a propósito lo que protegen y deben fallar. Seis redes de seguridad cubren solas cualquier ruta, pantalla o tabla nueva.
 - **Documentado como un proyecto real:** catorce documentos de requisitos, reglas de negocio, casos de uso, modelo de datos, arquitectura y diseño, y una matriz de trazabilidad que compara cada requisito con el código al cerrar cada fase.
 
 ---
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso y tiene hechas sus seis primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría y los reportes con sus gráficos. Hoy la suite cuenta con **4907 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus siete primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos y la exportación a CSV y Excel. Hoy la suite cuenta con **4970 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -146,7 +146,7 @@ WorkDesk se construye por fases hasta completar un MVP (la primera versión comp
 | Dashboards por rol, carga de trabajo y reasignación masiva | ✅ Hecho | `v0.6.0` |
 | Configuración desde la web y avisos configurables | ✅ Hecho | `v0.7.0` |
 | Base de conocimiento y advertencia de duplicados | ✅ Hecho | `v0.7.0` |
-| Reportes, con exportación a CSV y Excel | 🔨 En curso | `v0.8.0` |
+| Reportes, con exportación a CSV y Excel | ✅ Hecho | `v0.8.0` |
 | Pantalla de auditoría y registro de accesos | ✅ Hecho | `v0.8.0` |
 | Respaldos locales y su restauración | 🔨 En curso | `v0.8.0` |
 | Retención de datos | 🔨 En curso | `v0.8.0` |
@@ -175,6 +175,7 @@ WorkDesk es una aplicación 100 % local o de intranet, por decisión del proyect
 - Flask-WTF `1.3.0`
 - python-dotenv `1.2.4`
 - tzdata `2026.5` (base de zonas horarias para mostrar las fechas en hora local; Windows no trae la suya)
+- openpyxl `3.1.5` (exportación a Excel)
 
 ### Frontend
 
@@ -727,6 +728,7 @@ Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
 - **En producción, la `SECRET_KEY` debe tener al menos 32 caracteres** y no se puede arrancar con `--debug`. Si la tuya es más corta, genera una nueva como se explica en [Variables de entorno](#2-generar-la-secret_key); en desarrollo solo verás un aviso en el log.
 - **El planificador escribe su propio log**, `instance/logs/scheduler.log`, en lugar de `workdesk.log`.
 - **Una migración nueva** (`create_auth_events_table`, el registro de accesos): el paso 2 la aplica y no toca datos. La variable nueva `LOGIN_MAX_FAILED_PER_IP` tiene valor por defecto (20).
+- **Una dependencia nueva,** `openpyxl` (la exportación a Excel): el paso 1 la instala.
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -888,6 +890,18 @@ El personal tiene la opción **Reportes** del menú (`/reports`). Responde qué 
 - **No es un ranking:** los técnicos se ordenan por apellido y nada califica a una persona. Un Técnico ve las cifras del equipo, pero en la tabla solo su propia fila. Un Solicitante no tiene acceso (error 403).
 
 Los gráficos se dibujan en el servidor, sin librerías ni JavaScript. Las definiciones exactas (qué cuenta como resuelto, cómo se mide el tiempo) están en `docs/06_reglas_de_negocio.md` (RN-179).
+
+---
+
+## Exportar a CSV y Excel
+
+El listado de tickets, los reportes y la auditoría tienen dos botones, **CSV** y **Excel**, que descargan **exactamente lo que se ve**: los mismos filtros, la misma pestaña, el mismo orden y solo lo que tu rol puede ver. Un Solicitante exporta sus tickets, sin datos internos; un Técnico exporta los reportes con solo su fila en la tabla por técnico; solo el Administrador exporta la auditoría.
+
+- **Excel (XLSX)** se abre directamente, con las fechas como fechas y una hoja por sección en los reportes.
+- **CSV** va en UTF-8 y separado por comas, para importarlo en otra herramienta. En una hoja de cálculo configurada en español, abrirlo con doble clic puede dejar todo en una columna: usa Excel o la opción «Importar» de tu hoja de cálculo.
+- **Nada se ejecuta al abrir el archivo:** un texto que parece una fórmula (por ejemplo, un título que empieza por `=`) llega como texto. Es una defensa contra la inyección de fórmulas, un ataque conocido con las exportaciones.
+- **Cada exportación queda en la auditoría,** con quién la hizo, qué, en qué formato, cuántas filas y con qué filtros.
+- **Como mucho 50 000 filas.** Si son más, WorkDesk te pide acotar los filtros.
 
 ---
 
@@ -1162,7 +1176,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 1. **Dashboard del Solicitante.** Entra como `javiera.torres`: cuatro tarjetas (abiertos, en progreso, requieren tu revisión y cerrados recientes), un aviso con las soluciones por revisar, tus tickets y notificaciones recientes. Haz clic en cada tarjeta: el listado se abre filtrado y su total es la cifra de la tarjeta. No hay SLA, grupos ni carga.
 2. **Dashboard del personal.** Entra como `camila.rojas`: seis contadores (abiertos, sin asignar, críticos, fuera de SLA, próximos a vencer y en espera), los tickets prioritarios con su SLA, la carga compacta, los tickets por prioridad y la actividad reciente. Un aviso te dice si hay críticos sin asignar. Como `diego.soto` ves además **Mi trabajo**; como Administrador, un bloque de **Administración**.
 3. **Carga de trabajo.** Abre **Carga de trabajo** (técnicos, supervisores y administradores): por técnico y por grupo, con una barra de distribución por prioridad y la insignia **Carga alta** (Valentina Pizarro con los datos de demostración). Filtra por grupo o prioridad: las cifras y los enlaces siguen coincidiendo con el listado. Un solicitante que abre `/workload` recibe **Acceso denegado**.
-4. **Reportes.** Como `camila.rojas`, abre **Reportes** y elige «Últimos 90 días»: las cuatro cifras, los gráficos y la tabla por técnico. Haz clic en cualquier número: el listado se abre filtrado y su pestaña «Todos» muestra esa cifra. Despliega «Ver como tabla» bajo el gráfico semanal. Como `diego.soto`, la tabla muestra solo su fila; un solicitante que abre `/reports` recibe **Acceso denegado**.
+4. **Reportes.** Como `camila.rojas`, abre **Reportes** y elige «Últimos 90 días»: las cuatro cifras, los gráficos y la tabla por técnico. Haz clic en cualquier número: el listado se abre filtrado y su pestaña «Todos» muestra esa cifra. Despliega «Ver como tabla» bajo el gráfico semanal. Pulsa **Excel**: el archivo trae las mismas cifras, una hoja por sección. En **Tickets**, filtra por una prioridad y pulsa **CSV**: el archivo trae exactamente esas filas, en ese orden. Como `diego.soto`, la tabla muestra solo su fila; un solicitante que abre `/reports` recibe **Acceso denegado**.
 5. **Reasignación masiva.** Como `camila.rojas`, abre **Reasignación**, elige a Valentina Pizarro, marca como destino a Diego Soto y a Felipe Araya, escribe un motivo y pulsa **Revisar la reasignación**: ves quién recibe cuántos tickets y todavía no cambió nada. **Confirmar** ejecuta (esto sí modifica tus datos de demostración) y muestra lo reasignado y lo omitido. Un técnico que abre `/reassign` recibe **Acceso denegado**.
 
 ### 6. Configuración y base de conocimiento
@@ -1185,7 +1199,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
 - Los dashboards muestran solo cifras exactas: los gráficos y las comparaciones con el período anterior están en **Reportes**.
 - Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
-- La exportación a CSV y Excel, los respaldos y la retención llegan en las próximas entregas de `v0.8.0` (la auditoría y los reportes ya están).
+- Los respaldos y la retención llegan en las próximas entregas de `v0.8.0` (la auditoría, los reportes y la exportación ya están).
 
 ---
 
@@ -1288,6 +1302,9 @@ POST      /admin/settings/<grupo>/reset/<variable>
 GET POST  /admin/notifications
 GET       /admin/audit
 GET       /reports
+GET       /reports/export
+GET       /tickets/export
+GET       /admin/audit/export
 GET       /knowledge
 GET       /knowledge/<id>
 GET       /knowledge/manage
@@ -1496,7 +1513,7 @@ WorkDesk utiliza `pytest`.
 La suite dispone actualmente de:
 
 ```text
-4907 tests
+4970 tests
 ```
 
 Los tests cubren, por área (la tabla de más abajo las lista): autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida (con las carreras entre dos personas probadas con dos hilos); SLA, calendario laboral y planificador; notificaciones internas; los comandos que cargan datos de demostración; y la plataforma.

@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- la exportación a CSV y Excel (entrega 7): el listado, los reportes y la auditoría, con los filtros y permisos de cada pantalla, las fórmulas neutralizadas y cada exportación en la auditoría;
 - la pantalla de reportes (entrega 6): período y filtros, cifras comparadas con el período anterior, gráficos dibujados en el servidor con su tabla equivalente y la tabla por técnico sin rankings;
 - las consultas de los reportes (entrega 5): cada cifra comparada con el período anterior, los desgloses, las semanas y la tabla por técnico, contadas con las mismas condiciones del listado; el listado filtra también por fecha de resolución;
 - la pantalla de auditoría (entrega 4): los tres registros en una pantalla con filtros, solo para el Administrador;
@@ -370,7 +371,8 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 | 3 | Eventos de autenticación | Integrada (PR #68) | 4775 |
 | 4 | Pantalla de auditoría | Integrada (PR #69) | 4807 |
 | 5 | Reportes: consultas | Integrada (PR #70) | 4843 |
-| 6 | Reportes: pantalla | En revisión (`feature/reports-screen`) | 4907 |
+| 6 | Reportes: pantalla | Integrada (PR #71) | 4907 |
+| 7 | Exportación CSV y XLSX | En revisión (`feature/exports`) | 4970 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -445,6 +447,15 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Medido a escala,** con unos 20 000 tickets: el año completo en 349 ms, con 16 consultas.
 
   15 mutaciones, todas detectadas. La suite pasó de 4843 a 4907 tests.
+
+- **Entrega 7, exportación CSV y XLSX.** El listado de tickets, los reportes y la auditoría se descargan con los mismos filtros, columnas y permisos que su pantalla, en CSV o en Excel.
+  - **El riesgo real se comprobó antes de diseñar.** Una prueba con `openpyxl` mostró que convierte por su cuenta en fórmula cualquier texto que empiece por `=`: un título `=HYPERLINK(...)` habría sido un enlace activo en el Excel exportado. Ahora todo texto se escribe con el tipo «texto» (en el XML ya no aparece ningún `<f>`), y en CSV lleva un apóstrofo delante (OWASP).
+  - **Lo que se ve es lo que se exporta, por construcción.** La consulta del listado (`listing_statement`) y la de la auditoría (`audit_statement`) se extrajeron de su paginación, y la lectura de los filtros de cada pantalla pasó a una función que usan la pantalla y la exportación.
+  - **Cada exportación queda en la auditoría,** con quién, qué, formato, filas y filtros. Hay un máximo de 50 000 filas.
+  - **Medir cambió el diseño dos veces.** La primera exportación de 20 000 tickets tardó 62 s: el SLA se calculaba en Python, ticket a ticket, como en la pantalla, donde solo son 20. Se decide ahora en SQL con `sla_condition`, cuya equivalencia con Python ya estaba probada, y hay un test que compara la columna exportada con Python ticket a ticket. Preguntarlo por tramos de 500 ids aún costaba 3,1 s; de una vez, 0,13 s. Resultado: 4 s. Se probaron también tramos de 2000 (no cambió nada) y escribir menos celdas en Excel (un 14 % menos, a cambio de perder una regla simple): las dos cosas se descartaron.
+  - **Las mutaciones mejoraron un test.** El que comprobaba los inicios de fórmula leía la lista del propio módulo, así que quitar la `@` de esa lista no lo hacía fallar. Ahora hay uno con los seis inicios de OWASP escritos a mano. La lectura por tramos se prueba con tramos de 7 filas, porque los 108 tickets de demostración nunca pasaban del primero.
+
+  17 mutaciones detectadas. La suite pasó de 4907 a 4970 tests.
 
 ---
 

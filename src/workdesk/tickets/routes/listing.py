@@ -2,9 +2,10 @@
 RN-154).
 """
 
+from dataclasses import dataclass
 from datetime import date
 
-from flask import render_template, request
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ...catalogs.service import (
@@ -13,12 +14,22 @@ from ...catalogs.service import (
     list_priorities,
     list_states,
 )
+from ...dashboard.requester import local_today
+from ...exports import (
+    MAX_EXPORT_ROWS,
+    export_response,
+    parse_format,
+    record_export,
+    too_many_rows_message,
+)
+from ...extensions import db
 from ...query_params import choice_arg
-from ...security import STAFF_ROLES, has_any_role
+from ...security import STAFF_ROLES, current_actor, has_any_role
 from ...sla import periods as sla_periods
 from ...sla.evaluation import evaluate_tickets_sla
 from ...sla.queries import SLA_FILTER_LABELS, parse_filter
 from .. import bp
+from ..export import count_ticket_rows, ticket_table
 from ..queries import (
     DEFAULT_SORT,
     DEFAULT_TAB,
@@ -45,38 +56,9 @@ def list_tickets_page():
     La visibilidad la aplica la propia consulta (`list_tickets`). Los valores
     inválidos de la URL se ignoran en lugar de producir un error.
     """
-    is_staff = has_any_role(current_user, *STAFF_ROLES)
-    states = list_states()
-    priorities = list_priorities("")
-    categories = list_categories("")
-    locations = list_locations("")
-    # Técnico y grupo son solo del personal (el grupo es un dato interno).
-    technicians = list_technician_options() if is_staff else []
-    groups = list_group_options() if is_staff else []
-    filters = read_listing_filters(
-        is_staff=is_staff,
-        states=states,
-        priorities=priorities,
-        categories=categories,
-        locations=locations,
-        technicians=technicians,
-        groups=groups,
-    )
-
-    tab = request.args.get("vista", DEFAULT_TAB)
-
-    if tab not in VALID_TABS:
-        tab = DEFAULT_TAB
-
-    sort_labels = dict(SORT_LABELS)
-
-    if is_staff and sla_periods.sla_enabled():
-        sort_labels[SORT_SLA] = SORT_SLA_LABEL
-
-    sort = request.args.get("orden", DEFAULT_SORT)
-
-    if sort not in sort_labels:
-        sort = DEFAULT_SORT
+    listing = _read_listing()
+    is_staff, filters, tab, sort = listing.is_staff, listing.filters, listing.tab, listing.sort
+    options = listing.options
 
     page = max(request.args.get("page", 1, type=int), 1)
 
@@ -109,11 +91,13 @@ def list_tickets_page():
         counts=count_tickets_by_tab(current_user, filters, now),
         tab=tab,
         sort=sort,
-        sort_labels=sort_labels,
+        sort_labels=listing.sort_labels,
         sla_labels=SLA_FILTER_LABELS,
         slas=slas,
         filters=filters,
         filter_params=filter_params,
+        # La exportación lleva también la pestaña: trae lo que se ve.
+        export_params=filter_params | {"vista": tab},
         # Hay búsqueda o filtros activos (la pestaña y el orden no cuentan).
         is_filtered=any(
             value is not None
@@ -138,15 +122,96 @@ def list_tickets_page():
                 filters.pending_review or None,
             )
         ),
-        states=states,
-        priorities=priorities,
-        categories=categories,
-        locations=locations,
-        technicians=technicians,
-        groups=groups,
+        states=options["states"],
+        priorities=options["priorities"],
+        categories=options["categories"],
+        locations=options["locations"],
+        technicians=options["technicians"],
+        groups=options["groups"],
         unassigned_value=UNASSIGNED_VALUE,
         is_staff=is_staff,
     )
+
+
+@dataclass(frozen=True)
+class _ListingRequest:
+    """Lo que la URL pide al listado, ya validado: lo comparten la pantalla y la
+    exportación, así que un archivo exportado trae las filas que se ven."""
+
+    is_staff: bool
+    options: dict
+    filters: TicketFilters
+    tab: str
+    sort: str
+    sort_labels: dict
+
+
+def _read_listing() -> _ListingRequest:
+    is_staff = has_any_role(current_user, *STAFF_ROLES)
+    options = {
+        "states": list_states(),
+        "priorities": list_priorities(""),
+        "categories": list_categories(""),
+        "locations": list_locations(""),
+        # Técnico y grupo son solo del personal (el grupo es un dato interno).
+        "technicians": list_technician_options() if is_staff else [],
+        "groups": list_group_options() if is_staff else [],
+    }
+    filters = read_listing_filters(is_staff=is_staff, **options)
+
+    tab = request.args.get("vista", DEFAULT_TAB)
+
+    if tab not in VALID_TABS:
+        tab = DEFAULT_TAB
+
+    sort_labels = dict(SORT_LABELS)
+
+    if is_staff and sla_periods.sla_enabled():
+        sort_labels[SORT_SLA] = SORT_SLA_LABEL
+
+    sort = request.args.get("orden", DEFAULT_SORT)
+
+    if sort not in sort_labels:
+        sort = DEFAULT_SORT
+
+    return _ListingRequest(is_staff, options, filters, tab, sort, sort_labels)
+
+
+@bp.get("/export")
+@login_required
+def export_tickets():
+    """El listado tal como se ve (visibilidad, filtros, pestaña y orden), en CSV o XLSX
+    (RF-099 a RF-101). Cada exportación queda en la auditoría (RN-180)."""
+    fmt = parse_format(request.args.get("formato"))
+
+    if fmt is None:
+        abort(404)
+
+    listing = _read_listing()
+    params = listing_params(listing.filters) | {"vista": listing.tab, "orden": listing.sort}
+    now = sla_periods.current_time() if listing.is_staff else None
+    rows = count_ticket_rows(current_user, listing.filters, listing.tab, now)
+
+    if rows > MAX_EXPORT_ROWS:
+        flash(too_many_rows_message(rows), "warning")
+
+        return redirect(url_for("tickets.list_tickets_page", **params))
+
+    record_export(
+        current_actor(),
+        what="tickets",
+        label="Listado de tickets",
+        fmt=fmt,
+        rows=rows,
+        filters=params,
+    )
+    db.session.commit()
+
+    table = ticket_table(
+        current_user, listing.filters, tab=listing.tab, sort=listing.sort, now=now
+    )
+
+    return export_response(fmt, [table], f"workdesk-tickets-{local_today(now).isoformat()}")
 
 
 def read_listing_filters(

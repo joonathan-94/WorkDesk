@@ -172,6 +172,31 @@ def list_tickets(
     ignoran) y usan `now` (por defecto, ahora) para decidir quién está vencido o
     próximo a vencer: la pantalla pasa el mismo que usa para mostrar las insignias.
     """
+    statement = listing_statement(
+        user, filters, tab=tab, sort=sort, now=now, load_technicians=load_technicians
+    )
+
+    return db.paginate(
+        statement,
+        page=page,
+        per_page=per_page,
+        max_per_page=per_page,
+        error_out=False,
+    )
+
+
+def listing_statement(
+    user,
+    filters: TicketFilters | None = None,
+    *,
+    tab: str = DEFAULT_TAB,
+    sort: str = DEFAULT_SORT,
+    now=None,
+    load_technicians: bool = False,
+):
+    """La consulta del listado, sin paginar: la visibilidad, los filtros, la pestaña y el
+    orden. La comparten la pantalla (`list_tickets`) y la exportación, así que un archivo
+    exportado trae exactamente las filas del listado, en el mismo orden."""
     filters = filters or TicketFilters()
     staff = has_any_role(user, *STAFF_ROLES)
 
@@ -204,18 +229,18 @@ def list_tickets(
             selectinload(Ticket.tecnicos).joinedload(TicketTechnician.tecnico)
         )
 
-    if tab == TAB_OPEN:
-        statement = statement.where(Estado.codigo != CLOSED_STATE_CODE)
-    elif tab == TAB_CLOSED:
-        statement = statement.where(Estado.codigo == CLOSED_STATE_CODE)
+    return statement.where(*tab_conditions(tab))
 
-    return db.paginate(
-        statement,
-        page=page,
-        per_page=per_page,
-        max_per_page=per_page,
-        error_out=False,
-    )
+
+def tab_conditions(tab: str) -> list:
+    """La condición de una pestaña del listado (necesita `Estado` en el `JOIN`)."""
+    if tab == TAB_OPEN:
+        return [Estado.codigo != CLOSED_STATE_CODE]
+
+    if tab == TAB_CLOSED:
+        return [Estado.codigo == CLOSED_STATE_CODE]
+
+    return []
 
 
 def _ordering(sort: str) -> tuple:

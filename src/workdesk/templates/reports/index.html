@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% from "_ui_macros.html" import page_header, kpi_card %}
+{% from "_ui_macros.html" import page_header, kpi_card, export_buttons %}
 
 {% block title %}Reportes{% endblock %}
 
@@ -63,6 +63,7 @@
         'Reportes',
         'Qué pasó en un período: cuántos tickets entraron, cuántos se resolvieron y en cuánto tiempo.'
     ) %}
+        {{ export_buttons('reports.export_report', export_params) }}
     {% endcall %}
 
     <form
