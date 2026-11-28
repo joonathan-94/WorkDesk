@@ -1382,7 +1382,7 @@ buscar solución
 **Segunda mitad de semana 9 y semana 10**  
 **Versión:** `v0.8.0`
 
-**Estado de ejecución:** en curso. Doce entregas planificadas; nueve terminadas.
+**Estado de ejecución:** en curso. Doce entregas planificadas; diez terminadas.
 
 ### Entregas de `v0.8.0`
 
@@ -1395,7 +1395,7 @@ buscar solución
 7. **Exportación CSV y XLSX** ✓ (RF-099 a RF-101, RN-180) del listado, los reportes y la auditoría, con los mismos filtros, columnas y permisos que cada pantalla. Las fórmulas se neutralizan: se comprobó que `openpyxl` convierte por su cuenta en fórmula un texto que empieza por `=`. Cada exportación queda en la auditoría y el máximo es de 50 000 filas. Con unos 20 000 tickets, el listado se exporta en 4 s (eran 62 s antes de decidir el SLA en SQL).
 8. **Respaldos** ✓ (RF-127, RNF-038 a RNF-040, RNF-043, RN-181): comandos `backup-create`, `backup-verify` y `backup-list`. Un `.zip` con el volcado de `pg_dump` y los adjuntos, sacados de una misma foto de la base (`--snapshot`), un manifiesto con el SHA-256 de cada archivo firmado con una clave derivada de `SECRET_KEY` y la huella del paquete al lado. La verificación no necesita la base. La contraseña nunca llega a la línea de comandos ni al entorno de `pg_dump`. Sin migraciones.
 9. **Restauración y estado del sistema** ✓ (RF-128, RF-130, RNF-037, RNF-041, RNF-042, UI-028, UI-029, RN-182): `backup-restore` comprueba el respaldo, la revisión de migraciones, el esquema y que no haya nadie conectado, pide escribir el nombre de la base y respalda lo actual. Restaura la base en una sola transacción de `psql` (si algo falla, queda como estaba), cambia los adjuntos y cierra todas las sesiones. Hay dos pantallas de solo lectura, Respaldos y Estado del sistema, y el planificador deja un latido en cada pasada. Sin migraciones.
-10. **Retención** (RF-110 a RF-112, RF-123): políticas desactivadas por defecto y ejecutadas por el planificador.
+10. **Retención** ✓ (RF-110 a RF-112, RF-123, RN-183): cuatro políticas en `configuracion`, apagadas por defecto y ejecutadas por el planificador en cada pasada: las notificaciones leídas, el registro de accesos, el archivo de los adjuntos eliminados (la fila se conserva) y los respaldos más antiguos. Los tickets, el historial y la auditoría se conservan siempre. La pantalla muestra lo que cada política borraría hoy. Una migración (`add_file_purge_date_to_attachments`).
 11. **Tickets «sin actividad reciente»** (RN-27).
 12. **Cierre de la fase:** revisión completa, escala con ~20 000 tickets, matriz de trazabilidad y etiqueta.
 

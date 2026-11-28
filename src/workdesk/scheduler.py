@@ -44,6 +44,7 @@ from .configuration import forget_cached_settings, initial_value, value_of
 from .extensions import db
 from .models import Estado, PeriodoSla, Ticket, TicketEvent
 from .notifications.events import notify_sla_breach, notify_sla_warning
+from .retention import run_retention
 from .security.authorization import RESOLVED_STATE
 from .sla.periods import current_time, sla_enabled
 from .system.heartbeat import record_heartbeat
@@ -71,6 +72,8 @@ class SchedulerResult:
     breaches: int = 0
     closed: int = 0
     failures: int = 0
+    # Lo que borró la retención (`retention.py`), sumando todas sus políticas.
+    retained: int = 0
 
 
 # --- Avisos de SLA ----------------------------------------------------------------
@@ -269,11 +272,13 @@ def run_once(now: datetime | None = None) -> SchedulerResult:
     notices, notice_failures = run_sla_notices(now)
     closed, close_failures = run_auto_close(now)
     _remove_stale_uploads()
+    retention = run_retention(now)
     result = SchedulerResult(
         warnings=notices.warnings,
         breaches=notices.breaches,
         closed=closed,
-        failures=notice_failures + close_failures,
+        failures=notice_failures + close_failures + retention.failures,
+        retained=retention.removed,
     )
     _beat(result)
 

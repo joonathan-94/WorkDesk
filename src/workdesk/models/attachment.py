@@ -24,7 +24,8 @@ class Attachment(db.Model):
     (`instance/uploads`, fuera de `static/`) con un nombre interno
     impredecible. Aquí solo se guardan los metadatos. La eliminación es lógica:
     el registro y el archivo se conservan, pero deja de mostrarse y de poder
-    descargarse.
+    descargarse. Pasado un plazo, la retención puede borrar el archivo físico
+    (`fecha_purga_archivo`); el registro se conserva siempre.
 
     `comentario_id` es opcional: un adjunto subido junto a un comentario o a
     una nota interna hereda su visibilidad (el Solicitante no ve los adjuntos
@@ -43,6 +44,13 @@ class Attachment(db.Model):
             "AND usuario_eliminacion_id IS NULL) "
             "OR (NOT activo AND fecha_eliminacion IS NOT NULL)",
             name="ck_archivos_eliminacion_coherente",
+        ),
+        # La retención borra el archivo físico de un adjunto ya eliminado y lo anota aquí: solo
+        # un adjunto eliminado puede tenerla, y nunca antes de su eliminación.
+        CheckConstraint(
+            "fecha_purga_archivo IS NULL "
+            "OR (NOT activo AND fecha_purga_archivo >= fecha_eliminacion)",
+            name="ck_archivos_purga_coherente",
         ),
         Index("ix_archivos_ticket_fecha", "ticket_id", "fecha_subida"),
         Index("ix_archivos_comentario_id", "comentario_id"),
@@ -130,6 +138,13 @@ class Attachment(db.Model):
     usuario_eliminacion_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("usuarios.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    # Cuándo la retención borró el archivo físico (RF-111). La fila se conserva: el historial
+    # del ticket la sigue nombrando (RN-110).
+    fecha_purga_archivo: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
         nullable=True,
     )
 

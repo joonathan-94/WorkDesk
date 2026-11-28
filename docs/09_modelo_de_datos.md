@@ -1173,6 +1173,7 @@ El archivo físico se mantiene en almacenamiento local protegido.
 | `activo` | BOOLEAN | No | Disponibilidad lógica. |
 | `fecha_eliminacion` | TIMESTAMPTZ | Sí | Eliminación lógica. |
 | `usuario_eliminacion_id` | BIGINT | Sí | Responsable. |
+| `fecha_purga_archivo` | TIMESTAMPTZ | Sí | Cuándo la retención borró el archivo físico (desde `v0.8.0`). Solo en un adjunto eliminado y nunca antes de su eliminación (`CHECK`). |
 
 ### Reglas
 
@@ -1862,6 +1863,14 @@ La definición de cada parámetro numérico (su clave, su variable de entorno, s
 | `sla.habilitado` | `SLA_ENABLED` | `true` | `true` o `false` |
 | `cierre.auto_cierre_habilitado` | `AUTO_CLOSE_ENABLED` | `true` | `true` o `false` |
 | `ubicaciones.obligatoria` | `LOCATION_REQUIRED` | `false` | `true` o `false` (solo rige con alguna ubicación activa) |
+| `retencion.notificaciones_habilitada` | `RETENTION_NOTIFICATIONS_ENABLED` | `false` | `true` o `false` |
+| `retencion.notificaciones_dias` | `RETENTION_NOTIFICATIONS_DAYS` | 90 | 1 a 3650 |
+| `retencion.accesos_habilitada` | `RETENTION_AUTH_EVENTS_ENABLED` | `false` | `true` o `false` |
+| `retencion.accesos_dias` | `RETENTION_AUTH_EVENTS_DAYS` | 365 | 30 a 3650 |
+| `retencion.archivos_eliminados_habilitada` | `RETENTION_DELETED_FILES_ENABLED` | `false` | `true` o `false` |
+| `retencion.archivos_eliminados_dias` | `RETENTION_DELETED_FILES_DAYS` | 90 | 1 a 3650 |
+| `retencion.respaldos_habilitada` | `RETENTION_BACKUPS_ENABLED` | `false` | `true` o `false` |
+| `retencion.respaldos_conservados` | `RETENTION_BACKUPS_KEEP` | 14 | 1 a 1000 |
 
 Las unidades son las del código (el período de reapertura es en días y el cierre automático en horas corridas), no las que sugería el diseño inicial (`reapertura.periodo_horas`, `cierre.validacion_horas`).
 
@@ -1885,6 +1894,8 @@ Las unidades son las del código (el período de reapertura es en días y el cie
 ## 27.1 `politicas_retencion`
 
 Una única entidad representa políticas simples de conservación para distintos recursos del MVP.
+
+**Implementación (`v0.8.0`, entrega 10, RN-183): la tabla no se crea.** Cada política es un interruptor y un plazo en `configuracion` (las claves `retencion.*` de la sección 26.1). Así hereda, sin código nuevo, la validación, la auditoría de cada cambio (RN-109), los conflictos entre dos Administradores y el valor inicial por variable de entorno. Las políticas son cuatro: las notificaciones leídas, los eventos de autenticación, los archivos de los adjuntos eliminados y los respaldos. `TICKETS_CERRADOS`, `HISTORIAL_TICKET` y `AUDITORIA` quedan en «Mantener» fijo (RN-141); `LOGS`, en la rotación por tamaño. «Archivar» pasa a después del MVP.
 
 ### Recursos iniciales
 

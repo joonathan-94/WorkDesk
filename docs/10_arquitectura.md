@@ -3003,6 +3003,16 @@ Antes de eliminar físicamente un elemento deberá verificarse:
 
 No se deshabilitarán claves foráneas para forzar eliminaciones.
 
+**Implementación (`v0.8.0`, entrega 10, RN-183).** `retention.py`, ejecutada por el planificador en cada pasada:
+
+- **Las cuatro políticas empiezan apagadas.** Con una apagada no se ejecuta nada, ni siquiera la consulta.
+- **Borra por tandas de 5000** (un atraso grande se pone al día en pocas pasadas), con cada política en su propia transacción.
+- **Las notificaciones y los accesos** se borran con sentencias de Core. Las tablas de eventos rechazan los borrados desde el ORM, y esta es su única excepción, explícita y auditada.
+- **Los archivos de los adjuntos eliminados.** Las filas se toman con `FOR UPDATE SKIP LOCKED` (dos planificadores se reparten el trabajo); primero se borra el archivo y después se anota `fecha_purga_archivo`. Si la transacción falla, la pasada siguiente encuentra la fila y la marca. La fila nunca se borra: el historial del ticket la nombra.
+- **Los respaldos** que sobran se borran junto con su `.sha256`.
+- **Lo que cada política borraría hoy** se cuenta con las mismas condiciones que el borrado, y un test comprueba que coinciden.
+- **Medido:** sin nada que borrar, la consulta más cara (las notificaciones, que no tienen un índice por fecha) tarda unos 30 ms con 300 000 avisos, así que no se creó un índice.
+
 ---
 
 # 119. Servidor web local

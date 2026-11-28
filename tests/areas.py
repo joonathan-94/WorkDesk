@@ -71,8 +71,8 @@ AREAS: dict[str, tuple[str, ...]] = {
     "dashboards": ("test_dashboard_requester", "test_workload_queries", "test_workload_screen", "test_dashboard_staff"),
     # Los reportes operativos y la exportación a CSV y XLSX (v0.8.0).
     "reports": ("test_report_queries", "test_report_screen", "test_exports"),
-    # Los respaldos de la base de datos y los adjuntos (v0.8.0).
-    "backups": ("test_backups", "test_restore", "test_system_status"),
+    # Los respaldos, la restauración, el estado del sistema y la retención (v0.8.0).
+    "backups": ("test_backups", "test_restore", "test_system_status", "test_retention"),
     # Catálogos de tickets, motivos de espera, estados y transiciones.
     "catalogs": (
         "test_catalogs",

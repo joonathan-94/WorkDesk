@@ -64,6 +64,16 @@ class Config:
     SLA_ENABLED = settings.SLA_ENABLED.from_environment()
     AUTO_CLOSE_ENABLED = settings.AUTO_CLOSE_ENABLED.from_environment()
     LOCATION_REQUIRED = settings.LOCATION_REQUIRED.from_environment()
+    # Retención (también en `settings.py`): cada política, apagada salvo que se encienda, y
+    # su plazo (días, o cuántos respaldos se conservan).
+    RETENTION_NOTIFICATIONS_ENABLED = settings.RETENTION_NOTIFICATIONS_ENABLED.from_environment()
+    RETENTION_NOTIFICATIONS_DAYS = settings.RETENTION_NOTIFICATIONS_DAYS.from_environment()
+    RETENTION_AUTH_EVENTS_ENABLED = settings.RETENTION_AUTH_EVENTS_ENABLED.from_environment()
+    RETENTION_AUTH_EVENTS_DAYS = settings.RETENTION_AUTH_EVENTS_DAYS.from_environment()
+    RETENTION_DELETED_FILES_ENABLED = settings.RETENTION_DELETED_FILES_ENABLED.from_environment()
+    RETENTION_DELETED_FILES_DAYS = settings.RETENTION_DELETED_FILES_DAYS.from_environment()
+    RETENTION_BACKUPS_ENABLED = settings.RETENTION_BACKUPS_ENABLED.from_environment()
+    RETENTION_BACKUPS_KEEP = settings.RETENTION_BACKUPS_KEEP.from_environment()
 
     # Raíz del almacenamiento de adjuntos. Si no se define, `instance/uploads`.
     UPLOADS_DIR = os.getenv("UPLOADS_DIR")

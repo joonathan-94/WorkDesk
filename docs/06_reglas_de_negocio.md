@@ -2011,6 +2011,23 @@ Aplica RF-128, RNF-041 y RNF-042 (`v0.8.0`, entrega 9).
 
 ---
 
+## RN-183 — Retención
+
+Aplica RF-110 a RF-112, RF-123, RNF-044, RNF-045 y RN-105 a RN-110 (`v0.8.0`, entrega 10).
+
+* **Cuatro políticas, todas apagadas de inicio** (RN-106):
+  * las notificaciones **leídas** de más de N días (90 sugeridos). Una sin leer no se borra nunca;
+  * el registro de accesos de más de N días (365 sugeridos, al menos 30: es la evidencia de un intento de intrusión reciente);
+  * el **archivo físico** de los adjuntos eliminados hace más de N días (90 sugeridos). El registro del adjunto se conserva y anota cuándo se borró el archivo;
+  * los respaldos más antiguos de la carpeta de respaldos, conservando los N más recientes (14 sugeridos, al menos uno).
+* **Se conservan siempre** (acción «Mantener», fija): los tickets, su historial y la auditoría (RN-141). Los logs tienen su propio límite, la rotación por tamaño. La acción «Archivar» queda para después del MVP.
+* **Sin referencias rotas** (RN-110): ninguna política borra una fila que otra tabla referencie. Del adjunto se borra el archivo, no la fila.
+* **Antes de encenderla, el Administrador ve qué borraría hoy,** contado con las mismas condiciones que usa el borrado.
+* **Encender, apagar o cambiar un plazo se audita** como cualquier parámetro (`CONFIGURACION_MODIFICADA`, RN-109). **Cada pasada que borra algo deja `RETENCION_APLICADA`**, como acción del sistema y con las cantidades de cada política.
+* **La aplica el planificador** en cada pasada, por tandas y con cada política en su propia transacción: una que falla se registra y no frena a las demás.
+
+---
+
 # 24. Auditoría administrativa
 
 ## RN-118 — Acciones administrativas

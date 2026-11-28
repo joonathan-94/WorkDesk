@@ -109,6 +109,8 @@ class AuditAction(StrEnum):
     RESPALDO_CREADO = "RESPALDO_CREADO"
     # Una restauración con `backup-restore`, o el intento fallido (RNF-042, RN-182).
     RESPALDO_RESTAURADO = "RESPALDO_RESTAURADO"
+    # Una pasada del planificador que borró algo por las políticas de retención (RN-183).
+    RETENCION_APLICADA = "RETENCION_APLICADA"
 
 
 def record_admin_event(

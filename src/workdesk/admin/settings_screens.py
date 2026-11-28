@@ -219,6 +219,64 @@ GROUPS = (
             ),
         ),
     ),
+
+    SettingsGroup(
+        slug="retencion",
+        title="Retención",
+        description=(
+            "Cuánto se conserva de lo que no forma parte de la historia de un ticket. Cada "
+            "política está apagada hasta que la enciendas, y el planificador la aplica en cada "
+            "pasada."
+        ),
+        fields=(
+            SettingField(
+                settings.RETENTION_NOTIFICATIONS_ENABLED,
+                "Eliminar las notificaciones leídas antiguas",
+                "Una notificación sin leer no se elimina nunca.",
+            ),
+            SettingField(
+                settings.RETENTION_NOTIFICATIONS_DAYS,
+                "Conservar las notificaciones leídas",
+                "Contados desde que se creó la notificación.",
+                unit="días",
+            ),
+            SettingField(
+                settings.RETENTION_AUTH_EVENTS_ENABLED,
+                "Eliminar el registro de accesos antiguo",
+                "Los inicios de sesión, los intentos fallidos y los cierres de sesión.",
+            ),
+            SettingField(
+                settings.RETENTION_AUTH_EVENTS_DAYS,
+                "Conservar el registro de accesos",
+                "Al menos 30 días: es la evidencia de un intento de intrusión reciente.",
+                unit="días",
+            ),
+            SettingField(
+                settings.RETENTION_DELETED_FILES_ENABLED,
+                "Borrar del disco los archivos de adjuntos eliminados",
+                "Solo el archivo: el ticket conserva el registro de que existió y quién lo "
+                "eliminó.",
+            ),
+            SettingField(
+                settings.RETENTION_DELETED_FILES_DAYS,
+                "Conservar el archivo de un adjunto eliminado",
+                "Contados desde que se eliminó. Mientras tanto sigue en los respaldos.",
+                unit="días",
+            ),
+            SettingField(
+                settings.RETENTION_BACKUPS_ENABLED,
+                "Eliminar los respaldos más antiguos",
+                "Los de la carpeta de respaldos del servidor; las copias que guardes en otro "
+                "lugar no se tocan.",
+            ),
+            SettingField(
+                settings.RETENTION_BACKUPS_KEEP,
+                "Respaldos que se conservan",
+                "Los más recientes. Siempre queda al menos uno.",
+                unit="respaldos",
+            ),
+        ),
+    ),
 )
 
 GROUPS_BY_SLUG = {group.slug: group for group in GROUPS}

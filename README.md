@@ -95,7 +95,7 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 **Para empezar:** [Guía rápida](#guía-rápida) · [Requisitos](#requisitos) · [Instalación](#instalación) · [PostgreSQL](#configuración-de-postgresql) · [Variables de entorno](#variables-de-entorno) · [Preparación inicial](#preparación-inicial) · [Actualizar una instalación](#actualizar-una-instalación-existente)
 
-**Usar WorkDesk:** [Ejecutar WorkDesk](#ejecutar-workdesk) · [Ejecutar el planificador](#ejecutar-el-planificador) · [Respaldos](#respaldos) · [Crear un ticket](#crear-un-ticket) · [El ciclo de vida de un ticket](#el-ciclo-de-vida-de-un-ticket) · [Recorrido de prueba](#recorrido-de-prueba) · [Solución de problemas](#solución-de-problemas)
+**Usar WorkDesk:** [Ejecutar WorkDesk](#ejecutar-workdesk) · [Ejecutar el planificador](#ejecutar-el-planificador) · [Respaldos](#respaldos) · [La retención](#la-retención) · [Crear un ticket](#crear-un-ticket) · [El ciclo de vida de un ticket](#el-ciclo-de-vida-de-un-ticket) · [Recorrido de prueba](#recorrido-de-prueba) · [Solución de problemas](#solución-de-problemas)
 
 **Entender WorkDesk:** [Qué es, en dos minutos](#qué-es-workdesk-en-dos-minutos) · [Un ticket de principio a fin](#un-ticket-de-principio-a-fin) · [Por dónde empezar a leer](#por-dónde-empiezo-a-leer) · [Lo que hay detrás](#lo-que-hay-detrás)
 
@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso y tiene hechas sus nueve primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel, los respaldos firmados de la base y los adjuntos, y su restauración con la pantalla de estado del sistema. Hoy la suite cuenta con **5099 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus diez primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel, los respaldos firmados de la base y los adjuntos, su restauración con la pantalla de estado del sistema y la retención. Hoy la suite cuenta con **5145 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -553,6 +553,10 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `UPLOADS_DIR` | `instance/uploads` | Carpeta donde se guardan los adjuntos (fuera de `static/`, no se versiona). |
 | `BACKUPS_DIR` | `instance/backups` | Carpeta de los [respaldos](#respaldos). Conviene que esté en otro disco que la base y los adjuntos. No puede estar dentro de `static/` ni de `UPLOADS_DIR` (ni al revés): WorkDesk no arranca así. |
 | `PG_BIN_DIR` | — | Carpeta de `pg_dump`, `pg_restore` y `psql` si no están en el `PATH` (en Windows, por ejemplo, `C:\Program Files\PostgreSQL\18\bin`). |
+| `RETENTION_NOTIFICATIONS_ENABLED` y `RETENTION_NOTIFICATIONS_DAYS` | `false` y `90` | Si se eliminan las notificaciones leídas y a partir de cuántos días. Ver [La retención](#la-retención). |
+| `RETENTION_AUTH_EVENTS_ENABLED` y `RETENTION_AUTH_EVENTS_DAYS` | `false` y `365` | Lo mismo con el registro de accesos (al menos 30 días). |
+| `RETENTION_DELETED_FILES_ENABLED` y `RETENTION_DELETED_FILES_DAYS` | `false` y `90` | Si se borra del disco el archivo de un adjunto eliminado, y cuántos días después. |
+| `RETENTION_BACKUPS_ENABLED` y `RETENTION_BACKUPS_KEEP` | `false` y `14` | Si se eliminan los respaldos más antiguos, y cuántos de los más recientes se conservan. |
 | `SCHEDULER_HEARTBEAT_FILE` | `instance/scheduler-heartbeat.json` | Dónde deja el planificador la hora de su última pasada, que muestra **Estado del sistema**. |
 | `LOG_DIR` | `instance/logs` | Carpeta de los archivos de log. |
 | `COMMENT_EDIT_WINDOW_MINUTES` | `30` | Minutos durante los que el autor de un comentario puede editarlo o eliminarlo (el Supervisor y el Administrador pueden siempre). Debe ser mayor que cero. |
@@ -736,6 +740,7 @@ Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
 - **Una dependencia nueva,** `openpyxl` (la exportación a Excel): el paso 1 la instala.
 - **Los [respaldos](#respaldos) necesitan `pg_dump`, `pg_restore` y `psql`,** que vienen con PostgreSQL. Si no están en el `PATH`, indica su carpeta en `PG_BIN_DIR`. Las variables nuevas (`BACKUPS_DIR`, `PG_BIN_DIR`, `SCHEDULER_HEARTBEAT_FILE` y `LOG_DIR`) son opcionales.
 - **Administración → Estado del sistema** dirá que el planificador «no hay constancia de que se haya ejecutado» hasta su primera pasada con esta versión.
+- **Una migración más** (`add_file_purge_date_to_attachments`, para la retención): el paso 2 la aplica; añade una columna vacía. Las políticas de retención empiezan apagadas, así que actualizar no borra nada.
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -988,6 +993,24 @@ El listado de tickets, los reportes y la auditoría tienen dos botones, **CSV** 
 - **Nada se ejecuta al abrir el archivo:** un texto que parece una fórmula (por ejemplo, un título que empieza por `=`) llega como texto. Es una defensa contra la inyección de fórmulas, un ataque conocido con las exportaciones.
 - **Cada exportación queda en la auditoría,** con quién la hizo, qué, en qué formato, cuántas filas y con qué filtros.
 - **Como mucho 50 000 filas.** Si son más, WorkDesk te pide acotar los filtros.
+
+---
+
+## La retención
+
+**Administración → Retención** decide cuánto se conserva de lo que no forma parte de la historia de un ticket. Las cuatro políticas **empiezan apagadas**: nada se borra hasta que las enciendes.
+
+| Política | Qué borra | Plazo sugerido |
+| --- | --- | --- |
+| Notificaciones leídas | Las ya leídas, contadas desde que se crearon. Una sin leer no se borra nunca. | 90 días |
+| Registro de accesos | Los inicios de sesión, intentos fallidos y cierres de sesión. | 365 días (al menos 30) |
+| Archivos de adjuntos eliminados | Solo el archivo en disco: el ticket conserva que existió y quién lo eliminó. | 90 días |
+| Respaldos | Los más antiguos de la carpeta de respaldos, conservando los más recientes. | 14 respaldos |
+
+- **Antes de encender una, la pantalla te dice cuánto borraría hoy** con el plazo que tiene.
+- **Se conservan siempre** los tickets, su historial y la auditoría: son la historia y la evidencia de WorkDesk. Los logs tienen su propio límite, la rotación por tamaño.
+- **La aplica el planificador** (`run-scheduler`) en cada pasada, por tandas. Cada pasada que borra algo queda en la auditoría como «Retención aplicada», con cuánto borró de cada política, y `run-scheduler --once` lo informa en una línea («Retención: 4 elementos eliminados.»).
+- **Encenderla, apagarla o cambiar un plazo** queda en la auditoría como cualquier otro cambio de configuración.
 
 ---
 
@@ -1285,7 +1308,6 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
 - Los dashboards muestran solo cifras exactas: los gráficos y las comparaciones con el período anterior están en **Reportes**.
 - Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
-- La retención (cuánto tiempo se conservan las notificaciones leídas, los accesos y los respaldos) llega en la próxima entrega de `v0.8.0`.
 
 ---
 
