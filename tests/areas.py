@@ -72,7 +72,7 @@ AREAS: dict[str, tuple[str, ...]] = {
     # Los reportes operativos y la exportación a CSV y XLSX (v0.8.0).
     "reports": ("test_report_queries", "test_report_screen", "test_exports"),
     # Los respaldos de la base de datos y los adjuntos (v0.8.0).
-    "backups": ("test_backups",),
+    "backups": ("test_backups", "test_restore", "test_system_status"),
     # Catálogos de tickets, motivos de espera, estados y transiciones.
     "catalogs": (
         "test_catalogs",

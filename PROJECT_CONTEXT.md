@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/backups
+feature/restore
 ```
 
-Entrega 8 de `v0.8.0`: los respaldos. **Sin migraciones ni dependencias nuevas.** Ver «Respaldos (entrega 8 de `v0.8.0`)».
+Entrega 9 de `v0.8.0`: la restauración y el estado del sistema. **Sin migraciones ni dependencias nuevas.** Ver «Restauración y estado del sistema (entrega 9 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -93,7 +93,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
 
-De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71) y la exportación a CSV y XLSX (PR #72).
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72) y los respaldos (PR #73).
 
 ## Identidad visual (integrada en `main`)
 
@@ -442,7 +442,7 @@ RF-099 a RF-101 y RN-180. **Sin migraciones.** **Una dependencia nueva, aprobada
 
 ## Respaldos (entrega 8 de `v0.8.0`)
 
-RF-127, RNF-038 a RNF-040 y RNF-043; reglas en `docs/06` (RN-181). **Sin migraciones ni dependencias nuevas:** usa `pg_dump` y `pg_restore`, que vienen con PostgreSQL. Paquete `src/workdesk/backups/` y comandos `backup-create`, `backup-verify` y `backup-list` (`cli/backups.py`). La restauración es la entrega 9.
+RF-127, RNF-038 a RNF-040 y RNF-043; reglas en `docs/06` (RN-181). **Sin migraciones ni dependencias nuevas:** usa `pg_dump` y `pg_restore`, que vienen con PostgreSQL. Paquete `src/workdesk/backups/` y comandos `backup-create`, `backup-verify` y `backup-list` (`cli/backups.py`). La restauración está en «Restauración y estado del sistema».
 
 - **El paquete** (`backups/package.py`). Es `workdesk-respaldo-AAAAMMDD-HHMMSSZ.zip` (hora UTC), en `BACKUPS_DIR` (por defecto `instance/backups`). Contiene:
   - `database.dump` (`pg_dump --format=custom`, guardado sin volver a comprimir);
@@ -485,13 +485,61 @@ RF-127, RNF-038 a RNF-040 y RNF-043; reglas en `docs/06` (RN-181). **Sin migraci
 
   Las 18 mutaciones se detectan. Una sobrevivió al principio: el archivo «alterado» del test cambiaba también de tamaño. Ahora conserva el tamaño y solo difiere en un byte.
 
+## Restauración y estado del sistema (entrega 9 de `v0.8.0`)
+
+RF-128, RF-130, RNF-037, RNF-041, RNF-042, CU-046, CU-048, UI-028 y UI-029; reglas en `docs/06` (RN-182). **Sin migraciones ni dependencias nuevas:** usa `psql`, que viene con PostgreSQL como `pg_dump`. Comando `backup-restore` (`backups/restore.py`, `cli/restore.py`) y dos pantallas de solo lectura, `/admin/backups` y `/admin/system` (`admin/system_routes.py`).
+
+- **Antes de tocar nada** (`plan_restore`):
+  - vuelve a verificar el respaldo entero. La firma de otra clave solo pasa con `--accept-other-key`, y sin firma no pasa nunca;
+  - comprueba que la revisión de migraciones sea la del código o una anterior (`system/migrations.py`: `compare_revision` con los scripts de Alembic). Una anterior se restaura y pide `db upgrade`; una que el código no conoce, o ninguna, se rechaza;
+  - comprueba que el esquema del volcado sea el que usa WorkDesk.
+
+  Después (`restore_backup`):
+  - rechaza la operación si hay otras conexiones a la base (`pg_stat_activity`; `--ignore-connections` la permite);
+  - el comando pide **escribir el nombre de la base**;
+  - crea un **respaldo previo** de lo actual (`--skip-safety-backup` lo omite, por si la base está dañada).
+- **Una sola transacción.** `pg_restore --list` lee el índice del volcado, se quitan las entradas que crean el esquema mismo (el esquema se conserva con sus permisos) y `pg_restore --use-list --no-owner --no-privileges` lo convierte en SQL. Ese SQL va en un único script, junto con:
+  - los `DROP` de todo lo que hay en el esquema (tablas, vistas, secuencias, tipos y funciones, generados con `format('%I')`);
+  - `SET lock_timeout`;
+  - al final, `token_version + 1` para todos los usuarios.
+
+  `psql --single-transaction --set=ON_ERROR_STOP=1` lo ejecuta: si cualquier sentencia falla, PostgreSQL deshace todo. Un test hace fallar la última sentencia y comprueba que la base y los archivos siguen exactamente como antes.
+- **Los adjuntos** se preparan en una carpeta junto a la de adjuntos, comprobando otra vez cada huella contra el manifiesto ya verificado: si el `.zip` cambió entre la comprobación y la restauración, se detiene sin haber tocado nada (hay un test). La carpeta preparada reemplaza a la actual con dos `rename`. La anterior se borra si hay respaldo previo; si no, se conserva al lado, salvo que esté vacía.
+- **Todas las sesiones se cierran** (`token_version`): las cuentas y los permisos son ahora los del respaldo. Un test comprueba que una sesión abierta antes vuelve al login.
+- **Auditoría:** `RESPALDO_RESTAURADO` como acción del sistema, con el archivo, su huella, la firma, la revisión, el respaldo previo y la cuenta del sistema operativo. El fallido queda en la base de antes; el correcto, en la restaurada.
+- **Estado del sistema** (`system/status.py`, `/admin/system`). Siete piezas, cada una comprobada por separado (que la base no responda no impide ver el resto) y sin escribir nada:
+  - la aplicación;
+  - la base: si responde, en cuánto, su versión y su tamaño;
+  - las migraciones, comparadas con el código;
+  - el planificador;
+  - el almacenamiento: el espacio libre de cada disco;
+  - el último respaldo: su antigüedad (más de 7 días es «atención») y su firma;
+  - los errores de `workdesk.log` y `scheduler.log` en las últimas 24 horas: cuántos y cuándo, nunca su texto.
+
+  `/health` sigue siendo la comprobación pública, sin detalles.
+- **El latido del planificador** (`system/heartbeat.py`). Cada pasada de `run-scheduler` escribe la hora y sus fallos en `SCHEDULER_HEARTBEAT_FILE` (por defecto `instance/scheduler-heartbeat.json`), con escritura atómica (un temporal y `os.replace`). Así la pantalla sabe si el planificador está detenido: sin una pasada en tres intervalos (o en 15 minutos, por si se programa con `--once`). Es un archivo y no una fila, para no escribir en la base cada minuto.
+- **Respaldos** (`/admin/backups`): los respaldos con su firma y si encajan con el código, los restos de operaciones interrumpidas, las últimas diez creaciones y restauraciones de la auditoría (también las fallidas) y los comandos, con la advertencia de alto impacto de la restauración. No crea ni restaura nada.
+- **Autorización:** `admin_only` en las rutas y `can_view_system` dentro.
+- **Encontrado al ensayar y al mirar las capturas:**
+  - `test_migrations` ejecuta `run-scheduler --once` en un subproceso, que escribía el latido (y podía escribir logs y limpiar temporales) en el `instance/` real. Ahora `SCHEDULER_HEARTBEAT_FILE` y `LOG_DIR` también se leen del entorno, y ese subproceso recibe una carpeta temporal para los adjuntos, los respaldos, los logs y el latido;
+  - el espacio en disco se leía «654595,1 MB»: `format_size` ganó los gigabytes;
+  - una restauración sobre una base vacía avisaba de unos adjuntos anteriores que no existían.
+- **Medido:** un respaldo real de `workdesk_dev` (108 tickets) restaurado en `workdesk_test` en 0,85 s, idéntico dato por dato (usuarios, tickets, adjuntos y archivos), con cada `token_version` uno más.
+- **Tests:** 62 nuevos (5037 → 5099):
+  - `tests/test_restore.py` (20) y `tests/test_system_status.py` (37), en el área `backups`;
+  - los ayudantes compartidos, en `tests/backup_helpers.py`;
+  - las pantallas, en `test_pages_smoke` y en el hub de `test_layout`;
+  - los gigabytes, en `test_formatting`.
+
+  Las 22 mutaciones se detectan.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema ✓, retención, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -762,6 +810,8 @@ UPLOAD_MAX_FILES_PER_TICKET
 UPLOADS_DIR
 BACKUPS_DIR
 PG_BIN_DIR
+SCHEDULER_HEARTBEAT_FILE
+LOG_DIR
 LOG_LEVEL
 LOG_MAX_BYTES
 LOG_BACKUP_COUNT
@@ -1970,6 +2020,8 @@ GET        /reports
 GET        /reports/export
 GET        /tickets/export
 GET        /admin/audit/export
+GET        /admin/backups
+GET        /admin/system
 GET        /knowledge
 GET        /knowledge/<id>
 GET        /knowledge/manage
@@ -2069,7 +2121,7 @@ Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATI
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador", "Seguridad y sesión" y "Auditoría"; el resto (Retención, Respaldos y Estado del sistema) se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador", "Seguridad y sesión", "Auditoría", "Respaldos" y "Estado del sistema"; el resto (Retención) se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -2197,7 +2249,7 @@ con:
 RotatingFileHandler
 ```
 
-Un archivo por proceso (`logging_config.py`):
+Un archivo por proceso (`logging_config.py`), en `instance/logs` o en `LOG_DIR`:
 
 ```text
 instance/logs/workdesk.log     (servidor web y comandos)
@@ -2251,15 +2303,16 @@ python -m flask --app src.workdesk seed-demo-articles
 python -m flask --app src.workdesk backup-create
 python -m flask --app src.workdesk backup-verify [<respaldo>]
 python -m flask --app src.workdesk backup-list
+python -m flask --app src.workdesk backup-restore <respaldo> [--accept-other-key] [--skip-safety-backup] [--ignore-connections]
 ```
 
-Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`setup`: `seed-roles`, `seed-catalogs` y `create-admin`; `demo`: los tres `seed-demo*` de usuarios, tickets y notificaciones; `knowledge`: `seed-demo-articles`; `sla`: `sla-rebuild` y `sla-status`; `scheduling`: `run-scheduler`; `backups`: `backup-create`, `backup-verify` y `backup-list`), y `register_commands` los registra todos desde la Application Factory. Solo orquestan: la lógica está en los servicios.
+Los comandos viven en el paquete `src/workdesk/cli/`, un módulo por área (`setup`: `seed-roles`, `seed-catalogs` y `create-admin`; `demo`: los tres `seed-demo*` de usuarios, tickets y notificaciones; `knowledge`: `seed-demo-articles`; `sla`: `sla-rebuild` y `sla-status`; `scheduling`: `run-scheduler`; `backups`: `backup-create`, `backup-verify` y `backup-list`; `restore`: `backup-restore`), y `register_commands` los registra todos desde la Application Factory. Solo orquestan: la lógica está en los servicios.
 
 `seed-demo-articles` (`seeds/demo_articles.py` y `demo_articles_data.py`, entrega 5 de `v0.7.0`) carga 11 artículos de ejemplo con los servicios reales y, si están los tickets de `seed-demo-tickets`, vincula cinco de ellos con su ticket (también en artículos ya cargados): publicados y borradores, públicos y privados, destacados y de distintas categorías, con fechas de publicación repartidas en el tiempo. Necesita `seed-demo` y `seed-catalogs`, usa las categorías Redes, Hardware, Correo e Impresoras si existen (si no, la de respaldo y lo avisa), no repite un artículo del mismo título y no se ejecuta en producción.
 
 `sla-rebuild` y `sla-status` calculan y muestran los períodos de SLA de los tickets (ver "Períodos de SLA").
 
-`backup-create`, `backup-verify` y `backup-list` crean, comprueban (sin la base de datos; por defecto el más reciente) y listan los respaldos de `BACKUPS_DIR` (ver «Respaldos (entrega 8 de `v0.8.0`)»). `backup-verify` termina con error si el respaldo no se debe restaurar.
+`backup-create`, `backup-verify` y `backup-list` crean, comprueban (sin la base de datos; por defecto el más reciente) y listan los respaldos de `BACKUPS_DIR` (ver «Respaldos (entrega 8 de `v0.8.0`)»). `backup-verify` termina con error si el respaldo no se debe restaurar. `backup-restore` los restaura, con todas las comprobaciones de «Restauración y estado del sistema».
 
 `run-scheduler` (`src/workdesk/scheduler.py`, entrega 8 de `v0.5.0`, ver "Planificador"): avisa de los SLA próximos a vencer y vencidos y cierra los tickets `Resuelto` que nadie validó. Sin opciones queda en marcha (bucle cada `SCHEDULER_INTERVAL_SECONDS`, `--interval` lo cambia, Ctrl+C lo detiene); con `--once` hace una pasada. En el bucle solo imprime cuando hubo algo que hacer; con `--once` informa `SLA próximo a vencer: N. SLA vencido: N. Tickets cerrados automáticamente: N. Errores: N.` y falla si algún elemento falló. Se puede repetir sin riesgo.
 
@@ -2339,7 +2392,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-5037 tests (unos 4 min 25 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
+5099 tests (unos 5 min 13 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

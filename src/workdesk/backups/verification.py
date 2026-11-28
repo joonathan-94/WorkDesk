@@ -72,7 +72,7 @@ class Verification:
         return not self.problems
 
 
-_SIGNATURE_PROBLEMS = {
+SIGNATURE_PROBLEMS = {
     Signature.AUSENTE: "No tiene firma: no se puede saber si lo creó WorkDesk.",
     Signature.OTRA_CLAVE: (
         "La firma no corresponde a esta instalación: el manifiesto se modificó después de "
@@ -243,7 +243,7 @@ def verify_backup(path: Path, *, secret_key: str, pg_restore: str) -> Verificati
         result.manifest = read.manifest
 
         if read.signature is not Signature.VALIDA:
-            result.problems.append(_SIGNATURE_PROBLEMS[read.signature])
+            result.problems.append(SIGNATURE_PROBLEMS[read.signature])
 
         listed, manifest_problems = _listed_files(read.manifest)
         result.problems += manifest_problems

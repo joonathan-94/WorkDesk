@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- la restauración y el estado del sistema (entrega 9): `backup-restore` en una sola transacción, con todas sus comprobaciones y un respaldo previo; las pantallas de respaldos y de estado, de solo lectura, y el latido del planificador;
 - los respaldos (entrega 8): la base y los adjuntos en un paquete sacado de una misma foto de la base, con el SHA-256 de cada archivo en un manifiesto firmado, y una verificación que no necesita la base;
 - la exportación a CSV y Excel (entrega 7): el listado, los reportes y la auditoría, con los filtros y permisos de cada pantalla, las fórmulas neutralizadas y cada exportación en la auditoría;
 - la pantalla de reportes (entrega 6): período y filtros, cifras comparadas con el período anterior, gráficos dibujados en el servidor con su tabla equivalente y la tabla por técnico sin rankings;
@@ -469,6 +470,17 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Una mutación sobrevivió.** Comparar solo el tamaño de los adjuntos, sin su huella, no rompía nada: el archivo «alterado» del test cambiaba también de tamaño. Ahora conserva el tamaño y difiere en un byte.
 
   Medido: `workdesk_dev` se respalda en 0,36 s y se verifica en 0,04 s. 1 GB de adjuntos en 1000 archivos se copia en 8,5 s y se verifica en 2,3 s. 18 mutaciones detectadas. La suite pasó de 4970 a 5037 tests.
+
+- **Entrega 9, restauración y estado del sistema.** `backup-restore` y dos pantallas de solo lectura: Respaldos y Estado del sistema.
+  - **Todo o nada.** Lo difícil de restaurar no es cargar el volcado, sino no dejar la base a medias si algo falla. Se descartó borrar las tablas y después ejecutar `pg_restore` por separado: un fallo entre los dos pasos dejaba la base vacía. Ahora los borrados, el volcado (convertido en SQL por `pg_restore`) y el cierre de las sesiones van en un único script que `psql` ejecuta con `--single-transaction` y `ON_ERROR_STOP`. Un test hace fallar la última sentencia y comprueba que la base y los archivos siguen exactamente como antes; quitar cualquiera de los dos parámetros hace fallar ese test.
+  - **Comprobar otra vez al usar, no solo antes.** Los adjuntos se extraen comparando cada huella con el manifiesto ya verificado. Un test cambia el `.zip` entre la comprobación y la restauración, y no se toca nada.
+  - **Las sesiones de antes dejan de valer.** Una restauración puede devolver una cuenta desactivada o un rol anterior; cada `token_version` sube en uno en la misma transacción, y un test comprueba que una sesión abierta vuelve al login.
+  - **Las conexiones de la propia suite.** La restauración rechaza la operación si hay otras conexiones a la base, y en los tests siempre las hay (los otros procesos y la reserva de conexiones). Esos tests usan `--ignore-connections`, como haría quien sabe que hay un pgAdmin abierto; otro test comprueba el rechazo.
+  - **Un ensayo real:** un respaldo de `workdesk_dev` restaurado en `workdesk_test`, idéntico dato por dato en 0,85 s. El ensayo destapó un aviso de más: con una base vacía, avisaba de unos adjuntos anteriores que no existían.
+  - **Un test escribía en `instance/`.** `test_migrations` ejecuta `run-scheduler --once` en un subproceso, sin la configuración de los tests, y el latido nuevo del planificador apareció en la carpeta real. Ese subproceso ya podía limpiar los temporales de `instance/uploads` y escribir en `instance/logs`. Ahora recibe una carpeta temporal para todo, y `SCHEDULER_HEARTBEAT_FILE` y `LOG_DIR` también se leen del entorno.
+  - **Mirar las pantallas otra vez sirvió.** El espacio libre de un disco se leía «654595,1 MB»: `format_size` ganó los gigabytes. En la captura móvil, el contenido parecía cortarse por la derecha, pero la pantalla de auditoría, que ya existía, se cortaba igual: era el ancho mínimo de Chrome sin interfaz.
+
+  22 mutaciones detectadas. La suite pasó de 5037 a 5099 tests.
 
 ---
 

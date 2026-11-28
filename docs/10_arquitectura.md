@@ -2936,6 +2936,22 @@ El procedimiento recomendado será:
 
 La restauración podrá implementarse mediante un comando administrativo/CLI para mantener el procedimiento controlado.
 
+**Implementación (`v0.8.0`, entrega 9, RN-182).** Es el comando `backup-restore` (`backups/restore.py`), que sigue este procedimiento:
+
+- **Antes de tocar nada.**
+  - Comprueba el respaldo entero (huellas, nombres, volcado y firma) y que su revisión de migraciones sea la del código o una anterior (`system/migrations.py`, con los scripts de Alembic).
+  - Rechaza la operación si hay otras conexiones a la base, en lugar de un modo de mantenimiento.
+  - Pide escribir el nombre de la base y crea un respaldo previo de lo actual.
+- **La base, en una sola transacción.**
+  - `pg_restore --list` lee el índice del volcado y se quitan las entradas que crean el esquema, que se conserva con sus permisos.
+  - `pg_restore --use-list --no-owner --no-privileges` convierte el resto en SQL.
+  - Un único script lleva `SET lock_timeout`, los `DROP` de todo lo que hay en el esquema, ese SQL y `token_version + 1` para cada usuario (todas las sesiones se cierran).
+  - `psql --single-transaction --set=ON_ERROR_STOP=1` ejecuta el script: si cualquier sentencia falla, PostgreSQL lo deshace todo.
+- **Los adjuntos.** Se preparan antes en una carpeta junto a la de adjuntos, comprobando otra vez cada huella contra el manifiesto ya verificado, y reemplazan a la carpeta actual con dos `rename` después de confirmar la base.
+- **Después, a cargo de quien restaura:** iniciar la aplicación y comprobar el estado. Un respaldo de una versión anterior termina pidiendo `db upgrade`.
+
+**Estado del sistema (`v0.8.0`, entrega 9, UI-029).** `system/status.py` comprueba por separado la aplicación, la base (si responde, en cuánto, su versión y su tamaño), las migraciones frente al código, el planificador, el espacio en disco, el último respaldo y los errores de los logs en las últimas 24 horas. Que una pieza falle no impide ver las demás, y ninguna comprobación escribe nada. El planificador deja un latido en cada pasada (`system/heartbeat.py`, `SCHEDULER_HEARTBEAT_FILE`): un archivo escrito de forma atómica, no una fila, para no escribir en la base cada minuto. `/health` sigue siendo la comprobación pública, sin detalles.
+
 ---
 
 # 116. Registro de backups

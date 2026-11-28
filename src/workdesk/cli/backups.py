@@ -20,17 +20,17 @@ def _folder() -> Path:
     return Path(current_app.config["BACKUPS_DIR"])
 
 
-def _plural(count: int, one: str, many: str) -> str:
+def plural(count: int, one: str, many: str) -> str:
     return f"{count} {one if count == 1 else many}"
 
 
-def _content_line(manifest: dict) -> str:
+def content_line(manifest: dict) -> str:
     content = manifest.get("contenido", {})
 
     return (
-        f"{_plural(content.get('tickets', 0), 'ticket', 'tickets')}, "
-        f"{_plural(content.get('usuarios', 0), 'usuario', 'usuarios')} y "
-        f"{_plural(content.get('adjuntos_copiados', 0), 'adjunto', 'adjuntos')} "
+        f"{plural(content.get('tickets', 0), 'ticket', 'tickets')}, "
+        f"{plural(content.get('usuarios', 0), 'usuario', 'usuarios')} y "
+        f"{plural(content.get('adjuntos_copiados', 0), 'adjunto', 'adjuntos')} "
         f"({format_size(content.get('bytes_adjuntos', 0))})"
     )
 
@@ -76,7 +76,7 @@ def _report_list() -> None:
 
         click.echo(
             f"  {_created_at(info)} · {info.name} · {format_size(info.size)} · "
-            f"{_content_line(info.manifest)} · firma: {SIGNATURE_LABELS[info.signature]}"
+            f"{content_line(info.manifest)} · firma: {SIGNATURE_LABELS[info.signature]}"
             + ("" if info.has_checksum else " · sin archivo .sha256")
         )
 
@@ -103,7 +103,7 @@ def register(app: Flask) -> None:
             raise click.ClickException(f"No se creó el respaldo. {error}") from error
 
         click.echo(f"Respaldo creado: {result.path}")
-        click.echo(f"Contenido: {_content_line(result.manifest)}.")
+        click.echo(f"Contenido: {content_line(result.manifest)}.")
         click.echo(f"Tamaño: {format_size(result.size)}.")
         click.echo(f"SHA-256: {result.sha256}")
 

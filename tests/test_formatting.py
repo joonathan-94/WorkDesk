@@ -143,6 +143,11 @@ def test_the_duration_filter_is_available_in_templates(app):
         # Un límite nunca aparenta ser mayor: 1,99 MB es «1,9 MB».
         (2 * 1024 * 1024 - 1, "1,9 MB"),
         (10 * 1024 * 1024, "10 MB"),
+        # Un disco o un respaldo grande, en gigabytes, con la misma regla.
+        (1024**3 - 1, "1023,9 MB"),
+        (1024**3, "1 GB"),
+        (1000 * 1024**3 - 1, "999,9 GB"),
+        (2 * 1024**4, "2048 GB"),
     ],
 )
 def test_a_size_is_shown_as_a_person_reads_it(size, text):

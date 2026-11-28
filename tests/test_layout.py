@@ -394,6 +394,8 @@ def test_hub_links_only_the_implemented_sections(
         "Carga y planificador",
         "Seguridad y sesión",
         "Auditoría",
+        "Respaldos",
+        "Estado del sistema",
     ]
     assert 'href="/users"' in content
     assert 'href="/groups"' in content

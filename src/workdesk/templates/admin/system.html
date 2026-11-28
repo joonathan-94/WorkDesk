@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}Estado del sistema{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/system.css') }}"
+    >
+{% endblock %}
+
+{% macro health_text(health) %}
+    <span class="status-dot status-dot-{{ health | lower }}" aria-hidden="true"></span>{{ health_labels[health] }}
+{% endmacro %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("Estado del sistema", None),
+    ]) }}
+
+    {{ page_header(
+        "Estado del sistema",
+        "Cómo están la aplicación, la base de datos, el planificador, el disco y los respaldos. Se comprueba al abrir la página: recárgala para ver el estado actual."
+    ) }}
+
+    <p class="lead mb-4" role="status">
+        {{ health_text(overall) }}
+    </p>
+
+    <div class="row g-3">
+        {% for component in components %}
+            <div class="col-md-6 col-xl-4">
+                <section
+                    class="card status-card status-card-{{ component.health | lower }}"
+                    aria-labelledby="component-{{ loop.index }}"
+                >
+                    <div class="card-body">
+                        <h2 class="h6 mb-1" id="component-{{ loop.index }}">{{ component.name }}</h2>
+                        <p class="small mb-2">{{ health_text(component.health) }}</p>
+                        <p class="mb-3">{{ component.summary }}</p>
+
+                        {% if component.details %}
+                            <dl class="status-details small mb-0">
+                                {% for label, value in component.details %}
+                                    <dt>{{ label }}</dt>
+                                    <dd>{{ value }}</dd>
+                                {% endfor %}
+                            </dl>
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+        {% endfor %}
+    </div>
+
+    <p class="small text-secondary mt-4 mb-0">
+        Los respaldos se consultan en <a href="{{ url_for('admin.backups') }}">Respaldos</a>.
+        Para un monitor externo, <code>/health</code> responde sin datos internos.
+    </p>
+{% endblock %}

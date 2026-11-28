@@ -67,7 +67,8 @@ def use_log_file(app: Flask, file_name: str) -> None:
 
 
 def log_directory(app: Flask) -> Path:
-    directory = Path(app.instance_path) / "logs"
+    """`instance/logs`, salvo que la configuración diga otra (`LOG_DIR`, la usan los tests)."""
+    directory = Path(app.config.get("LOG_DIR") or Path(app.instance_path) / "logs")
     directory.mkdir(parents=True, exist_ok=True)
 
     return directory

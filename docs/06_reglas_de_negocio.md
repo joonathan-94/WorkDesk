@@ -1984,7 +1984,7 @@ Aplica RF-099 a RF-101 (`v0.8.0`, entrega 7).
 Aplica RF-127, RNF-038 a RNF-040 y RNF-043 (`v0.8.0`, entrega 8).
 
 * **Un respaldo es un único paquete** (`.zip`) con el volcado de PostgreSQL (`pg_dump`, formato custom), los adjuntos que ese volcado referencia y un manifiesto con el tamaño y el SHA-256 de cada archivo. Junto a él queda la huella del paquete entero (`.sha256`).
-* **Se crean y se comprueban solo por comandos** (`backup-create`, `backup-verify` y `backup-list`), que ejecuta quien administra el servidor. La web no crea respaldos.
+* **Se crean, se comprueban y se restauran solo por comandos** (`backup-create`, `backup-verify`, `backup-list` y `backup-restore`, RN-182), que ejecuta quien administra el servidor. La web solo los muestra.
 * **Una sola foto de la base.** El volcado y la lista de adjuntos salen del mismo instante, así que el paquete trae exactamente los archivos que el volcado referencia. La aplicación puede seguir en uso mientras se respalda. No se pueden crear dos respaldos a la vez de la misma instalación.
 * **Lo que la copia descubre se avisa y no detiene el respaldo:** un adjunto activo cuyo archivo no está, o uno cuyo contenido ya no coincide con la huella que se guardó al subirlo.
 * **El manifiesto va firmado** con una clave derivada de `SECRET_KEY`. Un respaldo solo se considera de confianza si su firma es de esta instalación, su contenido coincide archivo por archivo con el manifiesto y `pg_restore` puede leer su volcado. Uno alterado, sin firma o firmado con otra clave no supera la comprobación.
@@ -1992,6 +1992,22 @@ Aplica RF-127, RNF-038 a RNF-040 y RNF-043 (`v0.8.0`, entrega 8).
 * **Los respaldos no pueden quedar donde la web los serviría:** ni dentro de `static`, ni dentro de los adjuntos (ni al revés). WorkDesk no arranca con esa configuración.
 * **Cada creación queda en la auditoría administrativa** (`RESPALDO_CREADO`), también la fallida, como acción del sistema, con la cuenta del sistema operativo que ejecutó el comando. Comprobar y listar no cambian nada y no se auditan.
 * **No hay tabla de respaldos** (se aparta de `docs/09`, 29.1): la carpeta con sus manifiestos es la fuente de verdad.
+
+---
+
+## RN-182 — Restauración de un respaldo
+
+Aplica RF-128, RNF-041 y RNF-042 (`v0.8.0`, entrega 9).
+
+* **Solo por comando** (`backup-restore`), en el servidor, con WorkDesk y el planificador detenidos: no se restaura nada mientras alguien más está conectado a la base, salvo que quien restaura lo acepte de forma expresa.
+* **Solo un respaldo de confianza:** íntegro archivo por archivo, con su volcado legible y firmado por esta instalación. Uno firmado con otra clave (por ejemplo, de antes de cambiar la `SECRET_KEY`) se restaura solo si se acepta de forma expresa; uno sin firma, nunca.
+* **Solo si encaja con el código:** su revisión de migraciones es la que espera el código o una anterior (después se ejecuta `db upgrade`), y su esquema es el que usa WorkDesk. Uno de una versión que el código no conoce no se restaura.
+* **Con confirmación explícita:** se muestra qué se reemplaza (la base, con cuántos tickets, usuarios y adjuntos tiene hoy, y la carpeta de adjuntos) y hay que escribir el nombre de la base.
+* **Con red:** antes se crea un respaldo de lo actual, salvo que se pida no hacerlo porque la base está dañada. Sin ese respaldo, los adjuntos anteriores se conservan aparte.
+* **Todo o nada en la base:** se restaura en una sola transacción. Si algo falla, la base y los adjuntos quedan como estaban.
+* **Se cierran todas las sesiones:** las cuentas y los permisos pasan a ser los del respaldo, así que cada persona vuelve a iniciar sesión.
+* **Queda en la auditoría** (`RESPALDO_RESTAURADO`), también si falla: quién la ejecutó (la cuenta del sistema operativo), cuándo, qué respaldo (nombre y huella), su firma, el respaldo previo y el resultado.
+* **La web muestra, no actúa:** las pantallas de respaldos y de estado del sistema son de solo lectura y solo para el Administrador.
 
 ---
 

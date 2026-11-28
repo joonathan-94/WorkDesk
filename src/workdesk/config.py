@@ -73,6 +73,9 @@ class Config:
     # Carpeta de `pg_dump` y `pg_restore` si no están en el PATH (por ejemplo,
     # `C:\Program Files\PostgreSQL\18\bin`).
     PG_BIN_DIR = os.getenv("PG_BIN_DIR")
+    # Dónde deja el planificador su última pasada (la lee «Estado del sistema»). Si no se
+    # define, `instance/scheduler-heartbeat.json`.
+    SCHEDULER_HEARTBEAT_FILE = os.getenv("SCHEDULER_HEARTBEAT_FILE")
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
@@ -80,6 +83,9 @@ class Config:
         "SESSION_COOKIE_SECURE",
         default=False,
     )
+
+    # Carpeta de los logs. Si no se define, `instance/logs`.
+    LOG_DIR = os.getenv("LOG_DIR")
 
     LOG_LEVEL = os.getenv(
         "LOG_LEVEL",

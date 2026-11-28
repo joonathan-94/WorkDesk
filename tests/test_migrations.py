@@ -30,8 +30,10 @@ apunta, con una variable de entorno, al esquema de cada test: nunca a `workdesk_
 
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -72,6 +74,9 @@ def _scratch_schema(suffix, **extra_env):
     subproceso de Flask apunte a él. Se elimina al terminar, pase lo que pase."""
     base_url = checked_database_url()
     schema = f"{worker_schema() or 'wd_test'}_{suffix}"
+    # Lo que el subproceso escribe en disco (adjuntos, respaldos, logs y el latido del
+    # planificador) va a una carpeta temporal, nunca a `instance/`.
+    scratch = Path(tempfile.mkdtemp(prefix="wd-migraciones-"))
     engine = create_engine(base_url)
     url = make_url(base_url).update_query_dict({"options": f"-csearch_path={schema}"})
     env = {
@@ -82,6 +87,10 @@ def _scratch_schema(suffix, **extra_env):
         # Por una tubería, Windows codifica la salida en cp1252: sin esto las tildes de lo
         # que imprimen los comandos no se leerían como UTF-8.
         "PYTHONUTF8": "1",
+        "UPLOADS_DIR": str(scratch / "uploads"),
+        "BACKUPS_DIR": str(scratch / "backups"),
+        "LOG_DIR": str(scratch / "logs"),
+        "SCHEDULER_HEARTBEAT_FILE": str(scratch / "scheduler-heartbeat.json"),
         **extra_env,
     }
 
@@ -96,6 +105,7 @@ def _scratch_schema(suffix, **extra_env):
             connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
 
         engine.dispose()
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def _flask(env, *args):

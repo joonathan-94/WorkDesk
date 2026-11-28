@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso y tiene hechas sus ocho primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel y los respaldos firmados de la base y los adjuntos. Hoy la suite cuenta con **5037 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus nueve primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel, los respaldos firmados de la base y los adjuntos, y su restauración con la pantalla de estado del sistema. Hoy la suite cuenta con **5099 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -552,7 +552,9 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `UPLOAD_MAX_FILES_PER_TICKET` | `20` | Cantidad máxima de archivos activos por ticket. Debe ser mayor que cero. |
 | `UPLOADS_DIR` | `instance/uploads` | Carpeta donde se guardan los adjuntos (fuera de `static/`, no se versiona). |
 | `BACKUPS_DIR` | `instance/backups` | Carpeta de los [respaldos](#respaldos). Conviene que esté en otro disco que la base y los adjuntos. No puede estar dentro de `static/` ni de `UPLOADS_DIR` (ni al revés): WorkDesk no arranca así. |
-| `PG_BIN_DIR` | — | Carpeta de `pg_dump` y `pg_restore` si no están en el `PATH` (en Windows, por ejemplo, `C:\Program Files\PostgreSQL\18\bin`). |
+| `PG_BIN_DIR` | — | Carpeta de `pg_dump`, `pg_restore` y `psql` si no están en el `PATH` (en Windows, por ejemplo, `C:\Program Files\PostgreSQL\18\bin`). |
+| `SCHEDULER_HEARTBEAT_FILE` | `instance/scheduler-heartbeat.json` | Dónde deja el planificador la hora de su última pasada, que muestra **Estado del sistema**. |
+| `LOG_DIR` | `instance/logs` | Carpeta de los archivos de log. |
 | `COMMENT_EDIT_WINDOW_MINUTES` | `30` | Minutos durante los que el autor de un comentario puede editarlo o eliminarlo (el Supervisor y el Administrador pueden siempre). Debe ser mayor que cero. |
 | `REOPEN_WINDOW_DAYS` | `30` | Días, desde el cierre, durante los que un solicitante puede reabrir su ticket (el personal puede siempre). Debe ser mayor que cero. |
 | `AUTO_CLOSE_HOURS` | `24` | Horas que un ticket puede estar Resuelto sin que su solicitante lo valide antes de que el planificador lo cierre solo (también si no tiene solicitantes). Debe ser mayor que cero. |
@@ -732,7 +734,8 @@ Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
 - **El planificador escribe su propio log**, `instance/logs/scheduler.log`, en lugar de `workdesk.log`.
 - **Una migración nueva** (`create_auth_events_table`, el registro de accesos): el paso 2 la aplica y no toca datos. La variable nueva `LOGIN_MAX_FAILED_PER_IP` tiene valor por defecto (20).
 - **Una dependencia nueva,** `openpyxl` (la exportación a Excel): el paso 1 la instala.
-- **Los [respaldos](#respaldos) necesitan `pg_dump` y `pg_restore`,** que vienen con PostgreSQL. Si no están en el `PATH`, indica su carpeta en `PG_BIN_DIR`. Las variables nuevas, `BACKUPS_DIR` y `PG_BIN_DIR`, son opcionales.
+- **Los [respaldos](#respaldos) necesitan `pg_dump`, `pg_restore` y `psql`,** que vienen con PostgreSQL. Si no están en el `PATH`, indica su carpeta en `PG_BIN_DIR`. Las variables nuevas (`BACKUPS_DIR`, `PG_BIN_DIR`, `SCHEDULER_HEARTBEAT_FILE` y `LOG_DIR`) son opcionales.
+- **Administración → Estado del sistema** dirá que el planificador «no hay constancia de que se haya ejecutado» hasta su primera pasada con esta versión.
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -839,7 +842,31 @@ Lista los respaldos del más reciente al más antiguo, con su fecha, tamaño, co
 
 **Programarlos:** `backup-create` se puede programar en el Programador de tareas de Windows o en `cron` (por ejemplo, cada noche), igual que `run-scheduler --once`. Si dos coinciden, el segundo se rechaza sin hacer nada.
 
-**Restaurar** un respaldo es una operación aparte, con sus propias comprobaciones. Todavía no está disponible (ver [Lo que todavía no verás](#lo-que-todavía-no-verás)).
+### Restaurar un respaldo
+
+Restaurar **reemplaza la base de datos y los adjuntos** por los del respaldo: se pierde todo lo que se hizo después. Primero **detén WorkDesk y el planificador**, y después:
+
+```bash
+python -m flask --app src.workdesk backup-restore workdesk-respaldo-20261127-183522Z.zip
+```
+
+Antes de tocar nada, el comando:
+
+1. **Comprueba el respaldo entero,** como `backup-verify`. No restaura uno alterado, sin firma o firmado con otra clave (salvo que añadas `--accept-other-key`; ver abajo).
+2. **Comprueba que encaja con el código.** Un respaldo de una versión anterior de WorkDesk se restaura y después te pide `db upgrade`. Uno de una versión más nueva, que este código no conoce, no se restaura.
+3. **Comprueba que no haya nadie más conectado** a la base: el servidor web, el planificador o un pgAdmin abierto. Si sabes de qué son esas conexiones, `--ignore-connections` sigue adelante.
+4. **Te muestra qué se va a reemplazar** y te pide escribir el nombre de la base para confirmar.
+5. **Guarda antes un respaldo de lo que hay ahora,** por si te equivocaste de respaldo.
+
+Después restaura la base **en una sola transacción**: si cualquier cosa falla a mitad, PostgreSQL deshace todo y la base queda exactamente como estaba. Luego cambia la carpeta de adjuntos por la del respaldo y **cierra todas las sesiones**: cada persona vuelve a iniciar sesión, con las cuentas y los permisos del respaldo. Queda en la auditoría, también si falla. Al terminar, vuelve a iniciar WorkDesk y el planificador.
+
+- **`--accept-other-key`:** para un respaldo cuya firma «no corresponde» porque cambiaste la `SECRET_KEY` o viene de otra instalación tuya. El contenido se comprueba igual, archivo por archivo; lo que no se puede confirmar es de dónde viene, así que úsalo solo si lo sabes.
+- **`--skip-safety-backup`:** no guarda antes lo actual. Úsalo solo si la base está tan dañada que no se puede respaldar; entonces los adjuntos que había quedan en una carpeta aparte, junto a la de adjuntos.
+- **En otro equipo** (por ejemplo, tras perder el servidor): instala WorkDesk, crea la base vacía, copia tu `.env` (con la misma `SECRET_KEY`) y ejecuta `db upgrade` antes de restaurar, para que el respaldo encaje con el esquema.
+
+### Verlos desde la web
+
+**Administración → Respaldos** muestra los respaldos guardados (fecha, tamaño, contenido, firma y si encajan con el código) y las últimas creaciones y restauraciones de la auditoría, también las fallidas. **Administración → Estado del sistema** muestra cómo están la aplicación, la base de datos, las migraciones, el planificador (cuándo pasó por última vez), el espacio en disco, el último respaldo y los errores del log en las últimas 24 horas. Las dos son solo para el Administrador y solo muestran: crear y restaurar respaldos se hace siempre con los comandos, en el servidor.
 
 ---
 
@@ -1258,7 +1285,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 - El detalle de un ticket muestra sus secciones (actividad, archivos, relaciones e historial) una debajo de otra; las pestañas llegan con el pulido visual.
 - Los dashboards muestran solo cifras exactas: los gráficos y las comparaciones con el período anterior están en **Reportes**.
 - Las excepciones de SLA, los tickets «sin actividad reciente» y los avisos internos de sobrecarga todavía no tienen fase: necesitan reglas que no se han decidido.
-- Los respaldos ya se crean y se comprueban, pero restaurar uno (con sus propias comprobaciones) y la retención llegan en las próximas entregas de `v0.8.0`.
+- La retención (cuánto tiempo se conservan las notificaciones leídas, los accesos y los respaldos) llega en la próxima entrega de `v0.8.0`.
 
 ---
 
@@ -1306,6 +1333,11 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `backup-create`: «pg_dump falló: ... server version mismatch» (o «versión del servidor no coincide») | El `pg_dump` del `PATH` es más antiguo que el servidor. | Apunta `PG_BIN_DIR` a la carpeta `bin` de la misma versión que el servidor. |
 | `backup-create`: «Ya hay un respaldo en curso de esta base de datos.» | Otro `backup-create` está trabajando (quizá uno programado). | Espera a que termine. No se creó nada. |
 | `backup-verify`: «La firma no corresponde a esta instalación» | Se cambió la `SECRET_KEY` después de crear el respaldo, viene de otra instalación o alguien modificó su manifiesto. | Si sabes de dónde viene (por ejemplo, de antes de cambiar la clave), está bien guardarlo; si no, no lo restaures. |
+| `backup-restore`: «Hay N conexiones más a la base de datos» | WorkDesk, el planificador u otro programa (pgAdmin) siguen conectados. | Detenlos y vuelve a intentarlo. Si sabes de qué son, `--ignore-connections`. No se restauró nada. |
+| `backup-restore`: «...que este código no conoce» | El respaldo es de una versión más nueva de WorkDesk. | Actualiza el código (`git pull`) a esa versión o una posterior y vuelve a intentarlo. |
+| `backup-restore`: «No se pudo crear el respaldo de lo actual» | `pg_dump` no puede leer la base actual (dañada, o le faltan tablas). | Si de verdad no hay nada que conservar, repite con `--skip-safety-backup`. |
+| `backup-restore` termina con «...El respaldo es de una versión anterior» | El respaldo es de una versión anterior del esquema. | Ejecuta `python -m flask --app src.workdesk db upgrade` antes de volver a iniciar WorkDesk. |
+| **Estado del sistema**: el planificador «parece detenido» | `run-scheduler` no está en marcha (o la tarea programada no corre). | Ábrelo como se explica en [Ejecutar el planificador](#ejecutar-el-planificador). |
 | `backup-list` señala «Restos de respaldos interrumpidos» | Un `backup-create` se cortó a la mitad (se apagó el equipo, se cerró la terminal). | Borra esas carpetas `.tmp-respaldo-*` y crea un respaldo nuevo. |
 | Tests: «El módulo de tests ... no pertenece a ningún área» | Se añadió un archivo `tests/test_*.py` sin registrarlo. | Añádelo a `AREAS` en `tests/areas.py`. |
 
@@ -1369,6 +1401,8 @@ GET       /reports
 GET       /reports/export
 GET       /tickets/export
 GET       /admin/audit/export
+GET       /admin/backups
+GET       /admin/system
 GET       /knowledge
 GET       /knowledge/<id>
 GET       /knowledge/manage
@@ -1542,7 +1576,7 @@ Ninguna página de error muestra la excepción, la pila, consultas SQL, rutas in
 
 ## Logging
 
-El logging técnico utiliza el módulo estándar `logging` de Python. Los archivos se guardan en `instance/logs/`, **uno por proceso**:
+El logging técnico utiliza el módulo estándar `logging` de Python. Los archivos se guardan en `instance/logs/` (o en `LOG_DIR`), **uno por proceso**:
 
 | Archivo | Quién escribe |
 | --- | --- |
@@ -1730,6 +1764,9 @@ python -m flask --app src.workdesk run-scheduler
 python -m flask --app src.workdesk backup-create
 python -m flask --app src.workdesk backup-verify
 python -m flask --app src.workdesk backup-list
+
+# Restaurar un respaldo (reemplaza la base y los adjuntos; detén antes WorkDesk y el planificador)
+python -m flask --app src.workdesk backup-restore NOMBRE
 
 # Ver rutas
 python -m flask --app src.workdesk routes

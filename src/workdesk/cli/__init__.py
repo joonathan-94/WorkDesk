@@ -9,16 +9,17 @@ Application Factory:
 - `knowledge`: `seed-demo-articles`;
 - `sla`: `sla-rebuild` y `sla-status`;
 - `scheduling`: `run-scheduler`;
-- `backups`: `backup-create`, `backup-verify` y `backup-list`.
+- `backups`: `backup-create`, `backup-verify` y `backup-list`;
+- `restore`: `backup-restore`.
 
 Los comandos solo orquestan: la lógica vive en los servicios que llaman.
 """
 
 from flask import Flask
 
-from . import backups, demo, knowledge, scheduling, setup, sla
+from . import backups, demo, knowledge, restore, scheduling, setup, sla
 
 
 def register_commands(app: Flask) -> None:
-    for area in (setup, demo, knowledge, sla, scheduling, backups):
+    for area in (setup, demo, knowledge, sla, scheduling, backups, restore):
         area.register(app)

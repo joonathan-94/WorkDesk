@@ -107,6 +107,8 @@ class AuditAction(StrEnum):
     DATOS_EXPORTADOS = "DATOS_EXPORTADOS"
     # Un respaldo creado con `backup-create`, o el intento fallido (RN-181).
     RESPALDO_CREADO = "RESPALDO_CREADO"
+    # Una restauración con `backup-restore`, o el intento fallido (RNF-042, RN-182).
+    RESPALDO_RESTAURADO = "RESPALDO_RESTAURADO"
 
 
 def record_admin_event(
