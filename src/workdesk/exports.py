@@ -20,7 +20,9 @@ de línea `\\r\\n` (RFC 4180). Las fechas se escriben en la hora local de la apl
 import csv
 import io
 import re
+import threading
 from collections.abc import Iterable, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
@@ -32,10 +34,19 @@ from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
 from .audit import AuditAction, record_admin_event
+from .extensions import db
 from .formatting import app_zone
 
 # Lo más que se exporta de una vez: más filas piden acotar los filtros.
 MAX_EXPORT_ROWS = 50_000
+
+# Exportaciones a la vez en este proceso. Una de 50 000 filas en Excel ocupa un hilo del
+# servidor y un núcleo durante unos 10 s (medido en el cierre de `v0.8.0`): sin tope, unas
+# pocas personas exportando a la vez dejarían sin hilos libres a todas las demás. Con el tope
+# ocupado se pide reintentar, sin hacer esperar a nadie.
+MAX_CONCURRENT_EXPORTS = 2
+_EXPORT_SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT_EXPORTS)
+EXPORTS_BUSY_MESSAGE = "Hay otras exportaciones en curso. Inténtalo de nuevo en unos segundos."
 
 # Lo que hace que una hoja de cálculo interprete un texto como fórmula (OWASP).
 FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
@@ -197,6 +208,32 @@ def _sheet_title(title: str, used: set[str]) -> str:
 
 
 # --- Rastro y respuesta -------------------------------------------------------------
+
+
+@contextmanager
+def export_slot():
+    """Reserva un lugar para exportar: entrega `True` si lo había y `False` si no, sin esperar."""
+    acquired = _EXPORT_SLOTS.acquire(blocking=False)
+
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            _EXPORT_SLOTS.release()
+
+
+def begin_consistent_read() -> None:
+    """Hace que el resto de la petición lea una sola foto de la base (`REPEATABLE READ`).
+
+    Una exportación cuenta sus filas y después las lee por tramos. Con el aislamiento por
+    defecto (`READ COMMITTED`) cada consulta ve lo confirmado hasta ese momento: un ticket o un
+    evento nuevo, que va primero en el orden, desplazaría las filas entre un tramo y el
+    siguiente, y una saldría dos veces y otra ninguna (y las filas auditadas no serían las
+    exportadas). Termina antes la transacción que la petición ya había abierto (cargar a la
+    persona, leer la configuración), que solo había leído.
+    """
+    db.session.commit()
+    db.session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
 
 
 def record_export(actor, *, what: str, label: str, fmt: ExportFormat, rows: int, filters: dict):

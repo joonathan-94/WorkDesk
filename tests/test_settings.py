@@ -16,6 +16,7 @@ from src.workdesk.config import Config
 from src.workdesk.settings import (
     ALL_SETTINGS,
     BOOL_SETTINGS,
+    ENGINE_SETTINGS,
     INT_SETTINGS,
     BoolSetting,
     IntSetting,
@@ -39,7 +40,9 @@ def test_every_numeric_setting_of_config_is_defined_in_settings():
         if name.isupper() and isinstance(value, int) and not isinstance(value, bool)
     }
 
-    assert numeric - NOT_ADMINISTRABLE == {setting.key for setting in INT_SETTINGS}
+    # Los de la conexión con la base también se definen aquí, en su propia lista: no son
+    # administrables porque el motor se crea una sola vez al iniciar.
+    assert numeric - NOT_ADMINISTRABLE == {setting.key for setting in INT_SETTINGS + ENGINE_SETTINGS}
 
 
 def test_there_are_no_two_definitions_of_the_same_key():
@@ -55,7 +58,7 @@ def test_the_listed_settings_are_all_the_ones_defined_in_the_module():
         if isinstance(value, IntSetting | BoolSetting)
     }
 
-    assert defined == set(ALL_SETTINGS)
+    assert defined == set(ALL_SETTINGS) | set(ENGINE_SETTINGS)
 
 
 def test_every_switch_of_config_is_defined_in_settings():

@@ -128,6 +128,27 @@ def app(tmp_path, _schema):
 
 
 @pytest.fixture()
+def make_app(app, tmp_path):
+    """Otra aplicación sobre el mismo esquema, con algunos valores distintos de los iniciales
+    (`make_app(DATABASE_POOL_SIZE=1)`): para lo que se fija al crear el motor. Pide `app`,
+    que deja la base vacía al terminar; aquí solo se cierra su motor."""
+    built = []
+
+    def build(**overrides):
+        other = create_app(_app_config(tmp_path / f"uploads-{len(built)}") | overrides)
+        built.append(other)
+
+        return other
+
+    yield build
+
+    for other in built:
+        with other.app_context():
+            db.session.remove()
+            db.engine.dispose()
+
+
+@pytest.fixture()
 def clock(app, monkeypatch):
     """«La hora» que ven los períodos de SLA: noviembre de 2026 en Santiago, y se mueve a
     mano (`clock.set(...)`). Las pruebas de SLA llaman a las funciones con esa hora y las

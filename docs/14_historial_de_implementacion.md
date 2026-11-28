@@ -134,8 +134,9 @@ La fase `v0.2.0` completó:
 
 ---
 
-## En curso: `v0.8.0`
+## Implementado en `v0.8.0`
 
+- el cierre (entrega 12): ninguna espera con la base es indefinida (tiempos máximos, reserva de conexiones comprobada y 503 cuando la base no atiende), las exportaciones en una sola foto de la base y como mucho dos a la vez, y el SLA en riesgo en una sola pasada; la suite llega a 5188 tests;
 - los tickets «sin actividad reciente» (entrega 11): en trabajo y sin ninguna acción del personal en N días, en la carga de trabajo y como filtro del listado;
 - la retención (entrega 10): cuatro políticas apagadas de inicio, aplicadas por el planificador por tandas; la pantalla muestra qué borraría cada una hoy;
 - la restauración y el estado del sistema (entrega 9): `backup-restore` en una sola transacción, con todas sus comprobaciones y un respaldo previo; las pantallas de respaldos y de estado, de solo lectura, y el latido del planificador;
@@ -150,7 +151,7 @@ La fase `v0.2.0` completó:
 
 ---
 
-# 2. Hitos de v0.3.0 a v0.7.0
+# 2. Hitos de v0.3.0 a v0.8.0
 
 ## Hito completado: v0.3.0
 
@@ -360,7 +361,7 @@ Entrega por entrega:
 
 - **Entrega 10, cierre de la fase:** se midió a escala (unos 20 000 tickets, 5000 artículos y 24 000 avisos: ninguna pantalla pasa del medio segundo), se recorrieron 162 pantallas con los cuatro roles buscando errores del servidor y de accesibilidad, y se comparó cada requisito con el código. La matriz encontró la ubicación obligatoria (RF-019), que se hizo; el recorrido, dos selectores de Grupos con el mismo `id`; y la revisión, tres formas distintas de escribir un tamaño de archivo (una mostraba «0 MB»), `sla-status` equivocado con el SLA apagado y dos comandos que fallaban en Windows al redirigir su salida. Todo con su prueba, y la documentación cerrada con la matriz de trazabilidad (`docs/12`, fase 7). La suite pasó de 4657 a 4681 tests.
 
-## Hito en curso: v0.8.0
+## Hito completado: v0.8.0
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
@@ -376,7 +377,12 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
 | 4 | Pantalla de auditoría | Integrada (PR #69) | 4807 |
 | 5 | Reportes: consultas | Integrada (PR #70) | 4843 |
 | 6 | Reportes: pantalla | Integrada (PR #71) | 4907 |
-| 7 | Exportación CSV y XLSX | En revisión (`feature/exports`) | 4970 |
+| 7 | Exportación CSV y XLSX | Integrada (PR #72) | 4970 |
+| 8 | Respaldos | Integrada (PR #73) | 5037 |
+| 9 | Restauración y estado del sistema | Integrada (PR #74) | 5099 |
+| 10 | Retención | Integrada (PR #75) | 5145 |
+| 11 | Tickets «sin actividad reciente» | Integrada (PR #76) | 5164 |
+| 12 | Cierre de la fase | Integrada (PR #77) | 5188 |
 
 - **Entrega 1, revisión previa.** Primero se midió.
   - **Velocidad de la suite.** 4681 tests en 7 min 23 s, con los 6 procesos equilibrados (de 424 a 437 s cada uno). El 55 % del trabajo eran la preparación y la limpieza de los tests, no los tests. Cada test con base de datos estrenaba una conexión (54 ms: PostgreSQL en Windows crea un proceso por conexión) y cada login pagaba Argon2id con 4 hilos y 64 MiB en seis procesos a la vez. Se dejó para la entrega 2, con un prototipo que la baja a 4 min 26 s.
@@ -502,6 +508,18 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Una mutación sobrevivió:** si los enlaces del listado perdían el filtro (pestañas, paginación y exportación), nada lo notaba. Ahora hay un test.
 
   10 mutaciones detectadas. La suite pasó de 5145 a 5164 tests.
+
+- **Entrega 12, cierre de la fase.** Además de la revisión de la fase, se auditó el código de todas las anteriores con una pregunta concreta: ¿qué pasa con muchas personas a la vez? Se montó un WorkDesk a escala (unos 20 000 tickets, 16 926 de ellos en trabajo, un caso extremo) en un esquema aparte de `workdesk_test`, y se midió antes de tocar nada.
+  - **La respuesta estaba en las esperas, no en las consultas.** Ninguna consulta tardaba demasiado, pero nada impedía que una espera durara para siempre: una transacción abierta que retiene un bloqueo, una consulta desbocada o una petición aguardando una conexión libre. Cada espera así ocupa un hilo del servidor, y cuando se acaban los hilos la aplicación deja de responder a todos. Ahora cada conexión tiene tres tiempos máximos (consulta, espera de bloqueo y transacción inactiva), la reserva de conexiones comprueba cada una antes de entregarla y una base que no atiende responde 503 «inténtalo en unos segundos».
+  - **Las pruebas provocan cada límite de verdad:** una consulta de 3 s cortada al segundo, una fila retenida por otra conexión mientras alguien inicia sesión, una transacción olvidada que PostgreSQL corta y cuyos bloqueos quedan libres, una reserva sin conexiones libres y una conexión muerta (con `pg_terminate_backend`) que se reemplaza antes de usarla. Una mutación quitó los tiempos y la prueba del bloqueo se quedó esperando para siempre: era el cuelgue que se quería evitar, y la prueba se rehízo para fallar en vez de colgarse (quien retiene la fila la suelta sola a los 8 s).
+  - **La página de error consultaba la base.** Al probar la reserva agotada, la página de «ocupado» no salía: para dibujarla, Flask-Login cargaba a la persona y el layout contaba la campana, y las dos consultas volvían a esperar una conexión. Con la base caída pasaba lo mismo. Ahora la página de error se dibuja sin los procesadores de contexto (solo usa `url_for`).
+  - **Un error real en las exportaciones,** que ninguna prueba veía. Se leen por tramos, y con el aislamiento por defecto cada tramo ve lo confirmado hasta ese momento: un ticket creado a mitad de una exportación desplazaba las filas y una salía dos veces. La prueba crea un ticket desde otra conexión al escribir la primera fila y compara con el listado de antes. Ahora todo ocurre en una sola foto (`REPEATABLE READ`), y sin ella la prueba falla.
+  - **Lo que encontró el endurecimiento:** con un tiempo máximo de transacción inactiva, `create-admin` (que comprobaba y luego esperaba a que la persona escribiera) y la foto de un respaldo (que espera a `pg_dump`) habrían sido cortados; el primero ya no deja la transacción abierta y la segunda levanta el límite solo para sí. Los errores de SQL llevaban sus valores al log (podía ser un hash de contraseña): ya no.
+  - **El SLA en riesgo, en una sola pasada.** El perfil por consulta mostró que la carga de trabajo y el dashboard contaban «vencido» y «próximo» con dos subconsultas por ticket, y PostgreSQL no reutiliza el resultado de una subconsulta entre dos expresiones. Un `CASE` sobre una CTE materializada lo resuelve una vez: el dashboard del personal pasó de 337 a 261 ms y la carga de trabajo de 268 a 189 ms. Tiene su prueba de equivalencia con la evaluación en Python, en más de mil combinaciones de ticket y momento.
+  - **La prueba de carga:** un servidor de hilos y personas que entran, navegan, consultan la campana y comentan, sin pausas entre clics. Con 25 a la vez, 45 respuestas por segundo y ningún error; con 100, el mismo rendimiento, esperas más largas y una sola respuesta «ocupado», que el log anotó sin datos. El límite resultó ser el proceso de Python, que satura un núcleo, y no PostgreSQL.
+  - **Lo que se decidió no hacer:** incorporar un servidor web aparte, que `docs/10` recomendaba. WorkDesk es un proyecto personal que se ejecuta en local, así que no tendría uso; la prueba de carga usó el servidor de hilos que ya trae Werkzeug.
+
+  18 mutaciones detectadas. La suite pasó de 5164 a 5188 tests.
 
 ---
 

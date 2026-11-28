@@ -125,7 +125,9 @@ def test_the_next_test_reuses_the_connection_and_finds_it_clean(app):
     sesión, un bloqueo consultivo) no llega al siguiente, aunque la conexión sea la misma."""
     with app.app_context():
         pid = _backend_pid()
+        default_work_mem = db.session.scalar(text("SHOW work_mem"))
         # Confirmado: un SET dentro de una transacción que se deshace ya se deshace solo.
+        db.session.execute(text("SET work_mem = '7MB'"))
         db.session.execute(text("SET statement_timeout = '7s'"))
         db.session.execute(text("SELECT pg_advisory_lock(424242)"))
         db.session.commit()
@@ -138,7 +140,9 @@ def test_the_next_test_reuses_the_connection_and_finds_it_clean(app):
     with app.app_context():
         db.session.remove()
         assert _backend_pid() == pid, "la conexión no se reutilizó"
-        assert db.session.scalar(text("SHOW statement_timeout")) == "0"
+        assert db.session.scalar(text("SHOW work_mem")) == default_work_mem
+        # Los tiempos máximos los vuelve a poner cada motor al conectarse (`database.py`).
+        assert db.session.scalar(text("SHOW statement_timeout")) == "30s"
         assert db.session.scalar(text("SHOW search_path")) == (worker_schema() or '"$user", public')
         locks = db.session.scalar(
             text(

@@ -334,6 +334,28 @@ def test_the_schema_dumped_is_the_one_the_application_uses(app, migrated):
 
 
 @needs_tools
+def test_the_snapshot_waits_for_pg_dump_without_the_idle_transaction_limit(app, seeded, migrated, monkeypatch):
+    """La transacción de la foto no hace nada mientras `pg_dump` vuelca: con el tiempo máximo
+    de inactividad de las conexiones (`database.py`), PostgreSQL la cortaría en una base
+    grande y el respaldo fallaría. Solo esa transacción lo levanta."""
+    seen = {}
+    real = creation.database_revision
+
+    def revision(connection):
+        seen["idle"] = connection.scalar(text("SHOW idle_in_transaction_session_timeout"))
+
+        return real(connection)
+
+    monkeypatch.setattr(creation, "database_revision", revision)
+    _create(app)
+
+    assert seen["idle"] == "0"
+
+    with app.app_context():
+        assert db.session.scalar(text("SHOW idle_in_transaction_session_timeout")) == "1min"
+
+
+@needs_tools
 def test_the_dump_and_the_attachments_come_from_the_same_instant(app, seeded, migrated, make_user, monkeypatch, tmp_path):
     """Lo que cambia mientras `pg_dump` trabaja no entra en el respaldo, ni en el volcado
     ni en la lista de adjuntos: los dos salen de la misma foto."""

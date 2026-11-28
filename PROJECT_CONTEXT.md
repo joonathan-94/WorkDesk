@@ -59,17 +59,17 @@ Esa evolución futura no debe introducir complejidad prematura en el MVP actual.
 ## Versión estable
 
 ```text
-v0.7.0 — Administración y base de conocimiento
+v0.8.0 — Reportes, auditoría y backups
 ```
 
-La versión `v0.7.0` está:
+La versión `v0.8.0` está:
 
 - implementada;
-- testeada (4681 tests al cerrarla);
+- testeada (5188 tests al cerrarla);
 - documentada;
-- mergeada en `main` (PR #56 a #65).
+- mergeada en `main` (PR #66 a #77).
 
-Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas`, `v0.6.0 — Dashboards y carga de trabajo` y `v0.7.0` están etiquetadas.
+Las versiones `v0.1.0 — Fundación técnica`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas`, `v0.6.0 — Dashboards y carga de trabajo`, `v0.7.0 — Administración y base de conocimiento` y `v0.8.0` están etiquetadas.
 
 ## Rama estable
 
@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/inactive-tickets
+feature/v080-closing
 ```
 
-Entrega 11 de `v0.8.0`: los tickets «sin actividad reciente». **Sin migraciones ni dependencias nuevas.** Ver «Tickets «sin actividad reciente» (entrega 11 de `v0.8.0`)».
+Entrega 12 de `v0.8.0`: el cierre de la fase, con la auditoría completa del código y una conexión con la base que nunca se queda esperando. **Sin migraciones ni dependencias nuevas.** Ver «Cierre de `v0.8.0`».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -93,7 +93,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
 
-De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72), los respaldos (PR #73), la restauración con el estado del sistema (PR #74) y la retención (PR #75).
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72), los respaldos (PR #73), la restauración con el estado del sistema (PR #74), la retención (PR #75), los tickets «sin actividad reciente» (PR #76) y el cierre (PR #77).
 
 ## Identidad visual (integrada en `main`)
 
@@ -126,6 +126,7 @@ Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su P
 | `v0.5.0` | SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 9 | #36 a #45 | 3965 |
 | `v0.6.0` | Dashboards por rol, carga de trabajo del equipo y reasignación masiva | 10 | #46 a #55 | 4175 |
 | `v0.7.0` | Configuración administrable, base de conocimiento, avisos configurables y advertencia de duplicados | 10 | #56 a #65 | 4681 |
+| `v0.8.0` | Reportes con exportación, auditoría consultable con el registro de accesos, respaldos y restauración, retención y una conexión con la base sin esperas indefinidas | 12 | #66 a #77 | 5188 |
 
 Decisiones de las fases que siguen vigentes (cada una con su detalle en las secciones de este archivo):
 
@@ -136,6 +137,7 @@ Decisiones de las fases que siguen vigentes (cada una con su detalle en las secc
 - **El SLA es solo del personal** (RN-169) y **un cambio de prioridad nunca reinicia el reloj ni borra un incumplimiento** (RN-88).
 - **Un único motor de tiempo laboral** (`worktime.py`) y **un único lugar que decide el calendario vigente** (`resolve_work_calendar`).
 - **Siempre se bloquea el ticket primero** (cambios de estado, planificador, reasignación): evita bloqueos mutuos.
+- **Ninguna espera con la base es indefinida** (`database.py`): cada consulta, espera de bloqueo y transacción inactiva tiene un tiempo máximo, y una base saturada o caída responde 503 «inténtalo en unos segundos», nunca una página colgada.
 - **Los plazos, límites e interruptores se leen con `value_of`** (`configuration.py`): la variable de entorno es solo el valor inicial y el Administrador lo cambia desde la web. Un test impide leerlos directamente de `app.config`.
 
 ## Revisión de lo construido (entrega 1 de `v0.6.0`)
@@ -313,7 +315,7 @@ RNF-015, RNF-022 y RN-178; modelo en `docs/09` (9.3). **Con una migración** (`c
 - **El registro** (`models/auth_event.py`, `AuthEvent`; servicio `auth/events.py`, `record_auth_event`, sin commit). Cada intento de entrar y cada salida, de solo añadir: `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `BLOQUEO_TEMPORAL`, `CIERRE_SESION`, `SESION_EXPIRADA` y `VERIFICACION_FALLIDA` (contraseña actual equivocada en «Cambiar contraseña»). Guarda la cuenta, la IP y el navegador (con `request_ip` y `request_user_agent`, ahora públicos en `audit/service.py` y compartidos con la auditoría). Un rechazo guarda su causa como código (`AuthFailure`): un dato interno que nunca se muestra. Tres `CHECK`: el resultado, un éxito con cuenta y la causa solo en los rechazos. Los accesos no se duplican en la auditoría administrativa: el cambio de contraseña sigue allí.
 - **Nunca guarda contraseñas.** Lo escrito como usuario se guarda solo si el evento no está ligado a una cuenta y tiene forma de username (RN-148). Un test busca la contraseña en cada columna de cada evento.
 - **El login** (`auth/routes.py`) rechaza siempre a través de `_reject_login`, que registra el evento, confirma y muestra el mensaje genérico. Ningún camino puede olvidar su evento, y la verificación de relleno (la igualdad de tiempos) se mantiene.
-- **Límite por equipo (`LOGIN_MAX_FAILED_PER_IP`,** 20 por defecto, 0 lo apaga, en «Seguridad y sesión»). Con tantos fallos desde una IP dentro del tiempo de bloqueo, en cualquier cuenta, los intentos siguientes se rechazan antes de buscar la cuenta, sin tocar su contador y con un mensaje que no dice nada de ninguna cuenta. El recuento usa el índice `(ip_origen, fecha_hora)` y se serializa con `pg_advisory_xact_lock` sobre un hash de la IP. Detrás de un proxy inverso todas las peticiones traen la misma IP: ahí se apaga con 0 (`X-Forwarded-For` no se usa porque cualquiera puede inventarla).
+- **Límite por equipo (`LOGIN_MAX_FAILED_PER_IP`,** 20 por defecto, 0 lo apaga, en «Seguridad y sesión»). Con tantos fallos desde una IP dentro del tiempo de bloqueo, en cualquier cuenta, los intentos siguientes se rechazan antes de buscar la cuenta, sin tocar su contador y con un mensaje que no dice nada de ninguna cuenta. El recuento usa el índice `(ip_origen, fecha_hora)` y se serializa con `pg_advisory_xact_lock` sobre un hash de la IP. Si todas las personas usan el mismo equipo y comparten la IP, puede apagarse con 0 (`X-Forwarded-For` no se usa porque cualquiera puede inventarla).
 - **«Mi cuenta» muestra la actividad reciente de la propia cuenta** (`recent_access`, los últimos diez eventos), con los fallidos marcados. Por eso el guardián del coste mínimo por petición (`test_request_cost`) se mide ahora en «Cambiar contraseña», que sigue costando tres consultas.
 - **Tests:** 29 nuevos (4746 → 4775), la mayoría en `tests/test_auth_events.py`; la tabla nueva entró sola en `test_data_integrity`. Doce mutaciones, todas detectadas.
 
@@ -577,26 +579,55 @@ RF-036 y RN-27; la definición es RN-184 (`docs/06`). **Sin migraciones.** Cierr
 - **Medido** en `workdesk_dev`: la carga de trabajo pasó de 33 a 37 ms, y 70 de los 108 tickets de demostración salen sin actividad (su historia tiene semanas). Se volverá a medir a escala en el cierre de la fase.
 - **Tests:** 19 nuevos (5145 → 5164), en `tests/test_inactive_tickets.py` (área `dashboards`), más la prueba de la carga de trabajo, que abre cada enlace (ahora cinco tarjetas) y compara su total. Las 10 mutaciones se detectan. Una sobrevivió al principio: los enlaces del listado perdían el filtro sin que nada lo notara.
 
+## Cierre de `v0.8.0`
+
+La entrega 12 revisó toda la fase y, además, lo construido en las anteriores: se auditó el código completo buscando errores, problemas de rendimiento y esperas que pudieran dejar colgada la aplicación con mucha gente a la vez. Se midió antes de cambiar. **Sin migraciones ni dependencias nuevas.**
+
+- **Ninguna espera con la base es indefinida** (`database.py`; detalle en `docs/10`, 135.1). La reserva de conexiones es configurable y comprueba cada conexión antes de entregarla (`pool_pre_ping`), y cada conexión recibe tres tiempos máximos: 30 s por consulta, 10 s esperando un bloqueo y 60 s en una transacción sin hacer nada. Una base saturada o caída responde **503 con `Retry-After`** y «WorkDesk no pudo atender tu solicitud a tiempo» (RNF-007); en JSON para la campana, que lo toma como pasajero. El log anota solo el tipo de error, su SQLSTATE y la ruta. La foto de un respaldo y las migraciones levantan los límites para su transacción con `SET LOCAL`. Son siete variables nuevas `DATABASE_*`, con valor por defecto, que solo se leen al arrancar (`settings.ENGINE_SETTINGS`).
+- **Un error de SQL ya no lleva sus valores** (`hide_parameters`). Antes, la excepción que llegaba al log incluía los parámetros de la sentencia, y podía ser un hash de contraseña.
+- **La página de error ya no consulta la base.** Se dibujaba con los procesadores de contexto, que cargan a la persona y cuentan la campana. Era una consulta en balde y, si el error venía de la base, la página de error volvía a fallar y aparecía la genérica del servidor.
+- **Un error real en las exportaciones.** Se leen por tramos, y con el aislamiento por defecto un ticket o un evento creado a mitad de una exportación desplazaba las filas: una salía dos veces y otra ninguna (una prueba lo reproduce). Ahora contar, auditar y leer ocurren en una sola foto de la base (`REPEATABLE READ`), y la auditoría se confirma con el archivo ya escrito. Además, hay como mucho dos exportaciones a la vez por proceso: una grande ocupa un hilo unos 10 s.
+- **`create-admin` ya no deja una transacción abierta** mientras la persona escribe sus datos.
+- **El SLA en riesgo se decide en una sola pasada** (`sla_risk`). La carga de trabajo, el dashboard del personal y la reasignación contaban «vencido» y «próximo» con dos subconsultas por ticket que PostgreSQL no comparte. Ahora es un `CASE` sobre una CTE materializada, con su prueba de equivalencia con la evaluación en Python. Con unos 20 000 tickets (16 926 en trabajo):
+
+  | Medida | Antes | Después |
+  | --- | --- | --- |
+  | Consulta de la carga por grupos | 169 ms | 100 ms |
+  | Dashboard del personal | 337 ms | 261 ms |
+  | Carga de trabajo | 268 ms | 189 ms |
+  | Reasignación | 272 ms | 182 ms |
+  | Listado «SLA en riesgo» | 210 ms | 129 ms |
+
+- **Escala y concurrencia (RNF-001 a RNF-003).** Se recorrieron 1007 pantallas con los cuatro roles sobre esos datos, sin un solo error del servidor (mediana 12 ms, p95 42 ms). En la prueba de carga, con un servidor de hilos:
+  - 25 personas a la vez y sin pausas entre clics: 45 peticiones por segundo, mediana de 0,5 s y ningún error;
+  - 100 personas: el mismo rendimiento, esperas más largas y una sola respuesta «ocupado», sin caídas.
+
+  El límite es el proceso de Python (un núcleo), no PostgreSQL.
+- **Comprobado y sin cambios.** La auditoría estática con reglas adicionales de Ruff (seguridad, errores frecuentes y rendimiento) no encontró nada real. Sus avisos eran nombres de constantes con «password», los argumentos de `pg_dump` que arma WorkDesk y el SQL de la restauración, con el esquema entrecomillado. Ninguna función supera la complejidad 12.
+- **Tests:** 24 nuevos (5164 → 5188). Cubren:
+  - `test_database_limits` (16), que provoca de verdad cada límite;
+  - la foto única y el tope de las exportaciones;
+  - la equivalencia de `sla_risk`;
+  - la foto del respaldo sin límite de inactividad;
+  - `create-admin` sin transacción abierta;
+  - la pantalla de retención, que se añadió a `test_pages_smoke`.
+
+  Las 18 mutaciones se detectan.
+
+Lo que la fase deja pendiente, con su destino, está en `docs/12_roadmap.md` (fase 8, «Cierre de la fase»).
+
 ## Próximo hito
 
 ```text
-v0.8.0 — Reportes, auditoría y backups
+v0.9.0 — Calidad visual, responsive y accesibilidad
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema ✓, retención ✓, tickets «sin actividad reciente» (RN-27) ✓ y cierre.
-
-Decisiones tomadas al planificar la fase (detalle en `docs/12`):
-
-- XLSX con `openpyxl`.
-- Reportes solo para el personal: el Técnico ve únicamente su fila en el resumen por técnico y el Solicitante nunca tiene acceso.
-- Respaldos solo por comandos, sin tabla `historial_backups`.
-- Retención guardada en `configuracion`, con tickets, historial y auditoría en «Mantener» fijo.
-- Las excepciones de SLA (RF-083) y los avisos de sobrecarga (RN-28) pasan a después del MVP.
+La revisión global de las pantallas contra `docs/11` (consistencia, responsive, teclado, contraste, estados vacíos y mensajes) y la preparación del tema oscuro: los colores escritos a mano pasan a tokens `--wd-*` sin que el tema claro cambie (`docs/12_roadmap.md`, fase 9).
 
 Pendiente, sin fase asignada:
 
 - las columnas de impacto y urgencia de `tickets`, cuando existan sus catálogos;
-- las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`).
+- las pestañas del detalle (Actividad, Archivos, Historial y Relaciones; hoy son tarjetas apiladas), el color y el orden de los estados y los modales (`v0.9.0`);
 
 ---
 
@@ -769,6 +800,7 @@ WorkDesk/
 │       ├── __init__.py
 │       ├── cleaning.py
 │       ├── config.py
+│       ├── database.py
 │       ├── errors.py
 │       ├── extensions.py
 │       ├── formatting.py
@@ -830,6 +862,13 @@ APP_TIMEZONE
 SECRET_KEY
 DATABASE_URL
 TEST_DATABASE_URL
+DATABASE_POOL_SIZE
+DATABASE_MAX_OVERFLOW
+DATABASE_POOL_TIMEOUT_SECONDS
+DATABASE_POOL_RECYCLE_SECONDS
+DATABASE_STATEMENT_TIMEOUT_SECONDS
+DATABASE_LOCK_TIMEOUT_SECONDS
+DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS
 LOGIN_MAX_FAILED_ATTEMPTS
 LOGIN_LOCK_MINUTES
 LOGIN_MAX_FAILED_PER_IP
@@ -1791,7 +1830,7 @@ Entrega 7 de `v0.5.0`. Reglas completas en `docs/06` (RN-169, que precisa RN-88 
 - **Cambia un criterio anterior:** el umbral ya no se lee de la política al evaluar (editarlo alteraba un SLA en curso); se hereda como los objetivos. Y un ticket resuelto o cerrado nunca está «próximo a vencer»: queda dentro de plazo o vencido.
 - **Evaluación por lotes** (`evaluate_tickets_sla`): el estado de muchos tickets con un número fijo de consultas (períodos, estados, primeras respuestas y un reloj por calendario distinto); `evaluate_ticket_sla` es el caso de uno. `SlaSnapshot.overdue_seconds` es lo que el consumo pasa del objetivo y `SLA_STATUS_LABELS`, los nombres de cada estado.
 
-**Filtrar y ordenar en la base de datos** (`sla/queries.py`): `SlaFilter` (`dentro`, `proximo`, `vencido`, `pausado`, `sin`), `sla_condition(opción, now)` y `sla_urgency_order()` expresan el estado del SLA como condiciones SQL con las fechas guardadas, y son el equivalente exacto de la evaluación en Python: un test los compara en catorce tipos de ticket y más de 150 momentos (con los bordes de un segundo). El orden «SLA más urgente» pone primero el vencimiento más cercano (los ya vencidos van delante) y al final los que no tienen reloj en marcha.
+**Filtrar y ordenar en la base de datos** (`sla/queries.py`): `SlaFilter` (`dentro`, `proximo`, `vencido`, `pausado`, `sin`), `sla_condition(opción, now)` y `sla_urgency_order()` expresan el estado del SLA como condiciones SQL con las fechas guardadas, y son el equivalente exacto de la evaluación en Python: un test los compara en quince tipos de ticket (el último, un ticket que venció y después pasó a una prioridad sin política, se añadió en el cierre de `v0.8.0`) y más de 150 momentos (con los bordes de un segundo). El orden «SLA más urgente» pone primero el vencimiento más cercano (los ya vencidos van delante) y al final los que no tienen reloj en marcha.
 
 **Listado** (`GET /tickets`): para el personal, parámetro `sla` (valores inválidos se ignoran), orden `orden=sla`, columna «SLA» con la insignia y el tiempo que queda o que se pasó, e insignia en las tarjetas móviles. El instante es uno por petición y lo usan el filtro, los contadores de las pestañas y las insignias. **Para un Solicitante los dos parámetros no existen** (se ignoran en la ruta y también en `list_tickets`), así que no puede deducir el SLA probando filtros. El SLA de la página sale por lotes: las mismas consultas con una fila o con quince (hay un test).
 
@@ -2447,7 +2486,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-5164 tests (unos 4 min 53 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
+5188 tests (unos 4 min 47 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).
@@ -2814,15 +2853,14 @@ Nunca presentar como implementada una funcionalidad futura únicamente porque ap
 
 # 30. Fases completadas y siguiente fase
 
-`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas`, `v0.6.0 — Dashboards y carga de trabajo` y `v0.7.0 — Administración y base de conocimiento` están completas. Lo que dejó cada una está en «Historial de versiones» y con detalle en `docs/14_historial_de_implementacion.md`; la siguiente fase es `v0.8.0 — Reportes, auditoría y backups` (ver "Próximo hito").
+`v0.1.0`, `v0.2.0 — Usuarios, autenticación completa y RBAC`, `v0.3.0 — Núcleo de tickets`, `v0.4.0 — Asignación, colaboración y ciclo de vida`, `v0.5.0 — SLA y notificaciones internas`, `v0.6.0 — Dashboards y carga de trabajo`, `v0.7.0 — Administración y base de conocimiento` y `v0.8.0 — Reportes, auditoría y backups` están completas. Lo que dejó cada una está en «Historial de versiones» y con detalle en `docs/14_historial_de_implementacion.md`; la siguiente fase es `v0.9.0 — Calidad visual, responsive y accesibilidad` (ver "Próximo hito").
 
 ## Pendiente para la siguiente fase
 
-Nada de `v0.2.0` a `v0.7.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.7.0` deja preparado o pendiente está en "Próximo hito"):
+Nada de `v0.2.0` a `v0.8.0`. Lo que falta pertenece a las fases posteriores (lo que `v0.8.0` deja preparado o pendiente está en "Próximo hito"):
 
 - las opciones de navegación y del hub de administración se añaden cuando existan sus pantallas (`navigation.py` y `admin/hub.py`);
 - las políticas de autorización adicionales se incorporan con cada módulo;
-- `v0.8.0`: reportes, la pantalla de auditoría con los eventos de autenticación, los backups locales y la retención;
 - `v0.9.0`: preparación para el tema oscuro (los colores escritos a mano en `theme.css`, `layout.css`, `auth.css` y `errors.css` pasan a tokens `--wd-*`); desde ya, toda pantalla nueva usa tokens;
 - después del MVP: modo oscuro, evaluación de actualizaciones en tiempo real (`docs/12`, sección 32) y las mejoras evaluadas en `docs/13_evolucion_post_mvp.md` (autoservicio y calidad, automatización operativa, flujos ITSM, activos y un módulo secundario de gestión de proyectos y tareas, solo para el personal); ninguna interfiere con el MVP.
 

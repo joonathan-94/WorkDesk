@@ -106,6 +106,12 @@ def run_migrations_online():
         )
 
         with context.begin_transaction():
+            # Una migración puede tardar más que una petición (un índice sobre una tabla
+            # grande): los tiempos máximos de las conexiones de la aplicación
+            # (`src/workdesk/database.py`) no rigen aquí. La espera de un bloqueo sí: mejor
+            # fallar que dejar en cola a todas las peticiones detrás de la migración.
+            connection.exec_driver_sql("SET LOCAL statement_timeout = 0")
+            connection.exec_driver_sql("SET LOCAL idle_in_transaction_session_timeout = 0")
             context.run_migrations()
 
 

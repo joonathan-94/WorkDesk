@@ -125,6 +125,11 @@ def _snapshot():
         )
 
         with connection.begin():
+            # La transacción espera, sin hacer nada, mientras `pg_dump` vuelca su foto: el tiempo
+            # máximo de inactividad de las conexiones (`database.py`) la cortaría en una base
+            # grande. Solo para esta transacción.
+            connection.execute(text("SET LOCAL idle_in_transaction_session_timeout = 0"))
+
             if not connection.scalar(select(func.pg_try_advisory_xact_lock(backup_lock_key()))):
                 raise BackupError("Ya hay un respaldo en curso de esta base de datos.")
 

@@ -28,7 +28,18 @@ guarda sus fechas ya calculadas: `fecha_vencimiento_resolucion` (cuándo vence) 
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, and_, exists, func, literal, not_, or_, select
+from sqlalchemy import (
+    DateTime,
+    and_,
+    case,
+    exists,
+    func,
+    literal,
+    not_,
+    null,
+    or_,
+    select,
+)
 from sqlalchemy.orm import aliased
 
 from ..models import Estado, PeriodoSla, Ticket
@@ -91,13 +102,39 @@ def parse_filter(value: str | None) -> SlaFilter | None:
         return None
 
 
+# Lo que devuelve `sla_risk`: un ticket vencido o próximo a vencer (o NULL si no está en
+# riesgo).
+RISK_OVERDUE = "VENCIDO"
+RISK_NEAR_DUE = "PROXIMO"
+
+
+def sla_risk(now: datetime):
+    """Expresión SQL sobre `tickets`: `RISK_OVERDUE` si está vencido, `RISK_NEAR_DUE` si está
+    próximo a vencer y NULL en cualquier otro caso. Es exactamente lo que dicen
+    `sla_condition(VENCIDO)` y `sla_condition(PROXIMO)` (un test lo comprueba), pero cada
+    subconsulta se evalúa una sola vez por ticket.
+
+    Contar las dos cosas con dos condiciones repite «tiene SLA» e «incumplió» para cada
+    ticket: PostgreSQL no comparte el resultado de una subconsulta entre dos expresiones.
+    Medido con unos 17 000 tickets en trabajo, la carga de trabajo pasaba la mitad de su
+    tiempo repitiéndolas. Para que se calcule una vez, quien cuenta varias cosas la pone en
+    una CTE materializada (ver `workload/queries.py`)."""
+    now_value = literal(now, DateTime(timezone=True))
+
+    return case(
+        (not_(_has_sla()), null()),
+        (_breached(now_value), literal(RISK_OVERDUE)),
+        (_warning_reached(now_value), literal(RISK_NEAR_DUE)),
+        else_=null(),
+    )
+
+
 def sla_condition(option: SlaFilter, now: datetime):
     """Condición SQL sobre `tickets` con los que están en esa opción del filtro en
     `now`. Se usa dentro de una consulta que ya tiene `tickets` en su `FROM`."""
     if option is SlaFilter.RIESGO:
-        return or_(
-            sla_condition(SlaFilter.VENCIDO, now), sla_condition(SlaFilter.PROXIMO, now)
-        )
+        # «Vencido o próximo», evaluando cada subconsulta una sola vez.
+        return sla_risk(now).is_not(None)
 
     now_value = literal(now, DateTime(timezone=True))
     breached = _breached(now_value)
@@ -105,14 +142,7 @@ def sla_condition(option: SlaFilter, now: datetime):
     open_paused = _period_exists(
         lambda p: (p.fecha_fin.is_(None), p.fecha_vencimiento_resolucion.is_(None))
     )
-    warning_reached = _period_exists(
-        lambda p: (
-            p.fecha_fin.is_(None),
-            p.fecha_vencimiento_resolucion.is_not(None),
-            p.fecha_umbral_aviso.is_not(None),
-            p.fecha_umbral_aviso <= now_value,
-        )
-    )
+    warning_reached = _warning_reached(now_value)
 
     if option is SlaFilter.SIN_SLA:
         return not_(has_sla)
@@ -157,6 +187,18 @@ def _period_exists(conditions):
         exists()
         .where(period.ticket_id == Ticket.id, *conditions(period))
         .correlate(Ticket)
+    )
+
+
+def _warning_reached(now_value):
+    """Hay un período en marcha cuya fecha de aviso ya llegó."""
+    return _period_exists(
+        lambda p: (
+            p.fecha_fin.is_(None),
+            p.fecha_vencimiento_resolucion.is_not(None),
+            p.fecha_umbral_aviso.is_not(None),
+            p.fecha_umbral_aviso <= now_value,
+        )
     )
 
 

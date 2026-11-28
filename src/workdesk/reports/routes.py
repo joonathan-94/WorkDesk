@@ -10,11 +10,19 @@ las mismas cifras y deja constancia en la auditoría (RN-180).
 from dataclasses import dataclass
 from datetime import date
 
-from flask import abort, render_template, request
+from flask import abort, flash, redirect, render_template, request, url_for
 
 from ..catalogs.service import list_categories, list_priorities
 from ..dashboard.requester import local_today
-from ..exports import ExportFormat, export_response, parse_format, record_export
+from ..exports import (
+    EXPORTS_BUSY_MESSAGE,
+    ExportFormat,
+    begin_consistent_read,
+    export_response,
+    export_slot,
+    parse_format,
+    record_export,
+)
 from ..extensions import db
 from ..query_params import choice_arg
 from ..security import (
@@ -170,29 +178,40 @@ def export_report():
     if fmt is None:
         abort(404)
 
-    request_data = _read_report()
-    report = request_data.report
-    names = request_data.filter_names()
-    tables = (
-        [report_long_table(report, names)]
-        if fmt is ExportFormat.CSV
-        else report_tables(report, names)
-    )
-    period = report.filters.period
+    with export_slot() as free:
+        if not free:
+            flash(EXPORTS_BUSY_MESSAGE, "warning")
+            screen = {name: value for name, value in request.args.items() if name != "formato"}
 
-    record_export(
-        current_actor(),
-        what="reportes",
-        label="Reportes",
-        fmt=fmt,
-        rows=sum(len(table.rows) for table in tables),
-        filters=request_data.params,
-    )
-    db.session.commit()
+            return redirect(url_for("reports.reports_page", **screen))
 
-    return export_response(
-        fmt, tables, f"workdesk-reportes-{period.first.isoformat()}-a-{period.last.isoformat()}"
-    )
+        # Las siete consultas del reporte con la misma foto de la base.
+        begin_consistent_read()
+        request_data = _read_report()
+        report = request_data.report
+        names = request_data.filter_names()
+        tables = (
+            [report_long_table(report, names)]
+            if fmt is ExportFormat.CSV
+            else report_tables(report, names)
+        )
+        period = report.filters.period
+
+        record_export(
+            current_actor(),
+            what="reportes",
+            label="Reportes",
+            fmt=fmt,
+            rows=sum(len(table.rows) for table in tables),
+            filters=request_data.params,
+        )
+        response = export_response(
+            fmt, tables, f"workdesk-reportes-{period.first.isoformat()}-a-{period.last.isoformat()}"
+        )
+        # La auditoría se confirma con el archivo ya escrito y antes de enviarlo.
+        db.session.commit()
+
+        return response
 
 
 def _period(today: date):

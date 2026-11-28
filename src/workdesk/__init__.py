@@ -10,6 +10,7 @@ from .catalogs import bp as catalogs_bp
 from .cli import register_commands
 from .config import Config
 from .configuration import forget_cached_settings
+from .database import configure_database
 from .errors import register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
 from .formatting import format_duration, format_elapsed, format_size, local_datetime
@@ -56,7 +57,8 @@ def create_app(
     configure_logging(app)
     _warn_about_risky_config(app)
 
-    db.init_app(app)
+    # El motor de la base con su reserva de conexiones y sus tiempos máximos (`database.py`).
+    configure_database(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     # Cada petición empieza sin lo que otra leyó de la configuración. Con un app context por
