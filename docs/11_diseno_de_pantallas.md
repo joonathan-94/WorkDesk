@@ -2664,6 +2664,11 @@ Evitar hardcodear en diseño un valor que todavía sea configurable.
 
 Debe permitir administrar políticas de conservación de información según reglas definidas.
 
+**Implementación (`v0.8.0`, entrega 10).** Es la pantalla de configuración `/admin/settings/retencion`, desde la tarjeta **Retención** del hub, solo para el Administrador. Usa la misma plantilla que las demás pantallas de configuración.
+
+- **Arriba, «Qué pasaría hoy»:** una tabla con cada política, su estado («Activa» o «Apagada»), su plazo y cuántos elementos se eliminarían hoy con ese plazo, esté encendida o no. Debajo, lo que se conserva siempre: tickets, historial y auditoría, y los logs con su rotación.
+- **Debajo, el formulario:** para cada política, su interruptor y su plazo, con el rango junto al campo, más el motivo opcional para la auditoría.
+
 ---
 
 ## UI-027 — Auditoría

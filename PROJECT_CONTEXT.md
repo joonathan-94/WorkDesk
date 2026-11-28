@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/restore
+feature/retention
 ```
 
-Entrega 9 de `v0.8.0`: la restauración y el estado del sistema. **Sin migraciones ni dependencias nuevas.** Ver «Restauración y estado del sistema (entrega 9 de `v0.8.0`)».
+Entrega 10 de `v0.8.0`: la retención. **Una migración** (`add_file_purge_date_to_attachments`), sin dependencias nuevas. Ver «Retención (entrega 10 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -93,7 +93,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
 
-De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72) y los respaldos (PR #73).
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72), los respaldos (PR #73) y la restauración con el estado del sistema (PR #74).
 
 ## Identidad visual (integrada en `main`)
 
@@ -533,13 +533,42 @@ RF-128, RF-130, RNF-037, RNF-041, RNF-042, CU-046, CU-048, UI-028 y UI-029; regl
 
   Las 22 mutaciones se detectan.
 
+## Retención (entrega 10 de `v0.8.0`)
+
+RF-110 a RF-112, RF-123, RNF-044, RNF-045 y RN-105 a RN-110; regla completa en `docs/06` (RN-183). **Una migración** (`add_file_purge_date_to_attachments`). Módulo `src/workdesk/retention.py`.
+
+- **Cuatro políticas en `configuracion`,** sin la tabla `politicas_retencion`. Cada una es un `BoolSetting` y un `IntSetting` de `settings.py`, y todas empiezan apagadas (RN-106). Al ser parámetros, heredan la validación, la auditoría de cada cambio (`CONFIGURACION_MODIFICADA`, RN-109), los conflictos y el valor inicial por entorno:
+  - notificaciones **leídas** de más de N días (90);
+  - registro de accesos de más de N días (365, mínimo 30);
+  - el **archivo** de los adjuntos eliminados hace más de N días (90);
+  - los respaldos más antiguos, conservando N (14, mínimo 1).
+
+  Los tickets, el historial y la auditoría se conservan siempre; los logs, con su rotación.
+- **El adjunto pierde el archivo, no la fila** (RN-110): la columna nueva `archivos.fecha_purga_archivo` anota cuándo se borró, con un `CHECK` (solo en un adjunto eliminado y no antes de su eliminación). Primero se borra el archivo y después se marca la fila (`FOR UPDATE SKIP LOCKED`).
+- **La aplica el planificador** en cada pasada (`run_once` → `run_retention`). Borra por tandas de 5000, con cada política en su propia transacción: una que falla se registra y suma a los errores, sin frenar a las demás. Las notificaciones y los accesos se borran con sentencias de Core: es la única excepción, explícita, a que las tablas de eventos rechacen borrados desde el ORM. Cada pasada que borra algo deja `RETENCION_APLICADA` (acción del sistema, con las cantidades), y `run-scheduler` imprime «Retención: N elementos eliminados.».
+- **Pantalla** `/admin/settings/retencion` (tarjeta **Retención** del hub; ya no queda ninguna «Próximamente»). Encima del formulario, «Qué pasaría hoy» (`retention_overview`) da, para cada política, su estado, su plazo y cuántos elementos se eliminarían hoy. Se cuenta con las mismas condiciones que el borrado, y un test comprueba que lo anunciado es lo borrado.
+- **Medido:**
+  - sin nada que borrar, la consulta de las notificaciones (sin índice por fecha) tarda unos 30 ms con 300 000 avisos: no se creó un índice;
+  - en `workdesk_dev`, la vista previa tarda 107 ms y la pasada, 19 ms.
+- **Tests:** 46 nuevos (5099 → 5145): 21 en `tests/test_retention.py` (área `backups`) y el resto en las pruebas de la configuración, que recorren solas cada parámetro y ahora incluyen los 8 de la retención. Los de `test_retention` cubren:
+  - nada se borra con las políticas apagadas;
+  - cada política y su plazo;
+  - las notificaciones sin leer y los adjuntos activos quedan;
+  - la purga del archivo con su marca y la restricción de la base;
+  - los respaldos con su huella;
+  - las tandas, la auditoría y el aislamiento de fallos;
+  - lo anunciado igual a lo borrado;
+  - el planificador, el comando y la pantalla.
+
+  Las 15 mutaciones se detectan.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema ✓, retención, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema ✓, retención ✓, tickets «sin actividad reciente» (RN-27) y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -799,6 +828,14 @@ AUTO_CLOSE_HOURS
 AUTO_CLOSE_ENABLED
 SLA_ENABLED
 LOCATION_REQUIRED
+RETENTION_NOTIFICATIONS_ENABLED
+RETENTION_NOTIFICATIONS_DAYS
+RETENTION_AUTH_EVENTS_ENABLED
+RETENTION_AUTH_EVENTS_DAYS
+RETENTION_DELETED_FILES_ENABLED
+RETENTION_DELETED_FILES_DAYS
+RETENTION_BACKUPS_ENABLED
+RETENTION_BACKUPS_KEEP
 DUPLICATE_WINDOW_DAYS
 DUPLICATE_MIN_WORDS
 SCHEDULER_INTERVAL_SECONDS
@@ -883,7 +920,7 @@ Las credenciales reales no deben quedar documentadas ni versionadas.
 
 # 9. Migraciones
 
-Existen actualmente veintiocho migraciones:
+Existen actualmente veintinueve migraciones:
 
 ```text
 create_roles_table
@@ -914,6 +951,7 @@ create_configuration_table
 create_knowledge_base_tables
 add_lock_revoker_to_ticket_edit_locks
 create_auth_events_table
+add_file_purge_date_to_attachments
 ```
 
 Alembic no detecta las secuencias de PostgreSQL: `create_tickets_tables` crea a mano `tickets_public_id_seq` (identificador público de los tickets) antes de la tabla que la usa, y la elimina en el `downgrade`. Cualquier migración autogenerada que dependa de una secuencia nueva debe completarse igual.
@@ -2121,7 +2159,7 @@ Se define en `src/workdesk/navigation.py` (`MAIN_NAVIGATION` y `ACCOUNT_NAVIGATI
 
 ## Hub de administración
 
-`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador", "Seguridad y sesión", "Auditoría", "Respaldos" y "Estado del sistema"; el resto (Retención) se muestra atenuado con la etiqueta "Próximamente" y sin enlace. Al implementar una sección basta con indicar su ruta en `hub.py`.
+`GET /admin` muestra las cuatro secciones del diseño (UI-014), definidas en `src/workdesk/admin/hub.py`: Personas y organización, Configuración de tickets, Operación y políticas, y Sistema y seguridad. Están implementadas y enlazadas "Usuarios", "Grupos", "Categorías", "Prioridades", "Ubicaciones", "Motivos de espera", "Estados y transiciones", "Comentarios y edición", "Creación de tickets", "SLA", "Cierre y reapertura", "Notificaciones", "Archivos", "Carga y planificador", "Retención", "Seguridad y sesión", "Auditoría", "Respaldos" y "Estado del sistema": todas las del diseño. Una sección futura se mostraría atenuada, con la etiqueta "Próximamente" y sin enlace, hasta indicar su ruta en `hub.py`.
 
 ## Estilos
 
@@ -2392,7 +2430,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-5099 tests (unos 5 min 13 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
+5145 tests (unos 4 min 42 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

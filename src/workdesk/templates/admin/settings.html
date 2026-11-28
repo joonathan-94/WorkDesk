@@ -16,6 +16,50 @@
         <div class="alert alert-danger" role="alert">{{ error }}</div>
     {% endif %}
 
+    {% if retention %}
+        <section class="card mb-4" aria-labelledby="retention-now-title">
+            <div class="card-body">
+                <h2 class="h6 mb-3" id="retention-now-title">Qué pasaría hoy</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Política</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col">Plazo</th>
+                                <th scope="col">Se eliminaría hoy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for state in retention %}
+                                <tr>
+                                    <td>
+                                        {{ state.policy.label }}
+                                        <div class="small text-secondary">{{ state.policy.description }}</div>
+                                    </td>
+                                    <td>
+                                        {% if state.enabled %}
+                                            <span class="badge badge-soft badge-soft-warning">Activa</span>
+                                        {% else %}
+                                            <span class="badge badge-soft badge-soft-neutral">Apagada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap">{{ state.policy.period_text(state.period) }}</td>
+                                    <td data-policy="{{ state.policy.key }}">{{ state.pending }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="small text-secondary mt-3 mb-0">
+                    <strong>Se conservan siempre:</strong> Tickets, su historial y la auditoría,
+                    que son la historia y la evidencia de WorkDesk. Los logs tienen su propio
+                    límite: la rotación por tamaño.
+                </p>
+            </div>
+        </section>
+    {% endif %}
+
     <form
         class="card form-card"
         method="post"

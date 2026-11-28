@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- la retención (entrega 10): cuatro políticas apagadas de inicio, aplicadas por el planificador por tandas; la pantalla muestra qué borraría cada una hoy;
 - la restauración y el estado del sistema (entrega 9): `backup-restore` en una sola transacción, con todas sus comprobaciones y un respaldo previo; las pantallas de respaldos y de estado, de solo lectura, y el latido del planificador;
 - los respaldos (entrega 8): la base y los adjuntos en un paquete sacado de una misma foto de la base, con el SHA-256 de cada archivo en un manifiesto firmado, y una verificación que no necesita la base;
 - la exportación a CSV y Excel (entrega 7): el listado, los reportes y la auditoría, con los filtros y permisos de cada pantalla, las fórmulas neutralizadas y cada exportación en la auditoría;
@@ -481,6 +482,16 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Mirar las pantallas otra vez sirvió.** El espacio libre de un disco se leía «654595,1 MB»: `format_size` ganó los gigabytes. En la captura móvil, el contenido parecía cortarse por la derecha, pero la pantalla de auditoría, que ya existía, se cortaba igual: era el ancho mínimo de Chrome sin interfaz.
 
   22 mutaciones detectadas. La suite pasó de 5037 a 5099 tests.
+
+- **Entrega 10, retención.** Cuánto se conserva de lo que no forma parte de la historia de un ticket. Las cuatro políticas (notificaciones leídas, registro de accesos, archivos de adjuntos eliminados y respaldos) son interruptores y plazos de la configuración, así que la validación, la auditoría de cada cambio y los conflictos venían hechos. Los tickets, su historial y la auditoría se conservan siempre.
+  - **Nada se borra sin decidirlo.** Las cuatro empiezan apagadas, y la pantalla dice antes de encenderlas cuánto borraría cada una hoy. Lo anunciado se cuenta con las mismas condiciones que el borrado, y un test comprueba, política por política, que lo anunciado es exactamente lo borrado.
+  - **Del adjunto, el archivo y no la fila.** El historial del ticket nombra al adjunto, así que borrar la fila dejaría una referencia rota. Una columna nueva, `fecha_purga_archivo` (con un `CHECK`: solo en un adjunto eliminado y no antes de su eliminación), anota cuándo se borró el archivo. Así la pasada siguiente no vuelve sobre él y queda constancia.
+  - **Medir evitó un índice.** Sin nada que borrar, la consulta de las notificaciones tarda unos 30 ms con 300 000 avisos. Una primera medida parecía pedir un índice, pero el problema era un `ORDER BY` innecesario para borrar por tandas.
+  - **La única excepción a «los eventos no se borran».** Las tablas de eventos rechazan borrados desde el ORM; la retención borra con sentencias de Core, a propósito y auditada.
+  - **Una tanda, una transacción.** Cada política va en la suya y borra como mucho 5000 filas por pasada: un atraso de un millón se pone al día en unas horas sin bloquear nada mucho tiempo. Una política que falla se registra y no frena a las demás.
+  - **Antes de empezar, una comprobación que destapó un despiste:** el PR de la entrega 9 se había quedado sin fusionar y su rama local, borrada. Se fusionó antes de seguir.
+
+  Ensayado con `workdesk_dev`: lo anunciado coincidió con lo borrado y la pasada tardó 19 ms. 15 mutaciones detectadas. La suite pasó de 5099 a 5145 tests.
 
 ---
 

@@ -45,6 +45,10 @@ def register(app: Flask) -> None:
                 f"Errores: {result.failures}."
             )
 
+            if result.retained:
+                noun = "elemento eliminado" if result.retained == 1 else "elementos eliminados"
+                click.echo(f"Retención: {result.retained} {noun}.")
+
         if once:
             result = run_once()
             report(result)

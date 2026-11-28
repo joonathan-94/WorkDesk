@@ -200,7 +200,45 @@ AUTO_CLOSE_ENABLED = BoolSetting("AUTO_CLOSE_ENABLED", "cierre.auto_cierre_habil
 # alguna ubicación activa: sin ninguna, nadie podría crear tickets.
 LOCATION_REQUIRED = BoolSetting("LOCATION_REQUIRED", "ubicaciones.obligatoria", False)
 
-BOOL_SETTINGS: tuple[BoolSetting, ...] = (SLA_ENABLED, AUTO_CLOSE_ENABLED, LOCATION_REQUIRED)
+# Retención (RF-110, RN-105 a RN-110): cuánto se conserva de lo que no forma parte de la
+# historia de un ticket. Cada política está apagada hasta que el Administrador la enciende
+# (RN-106); el plazo que traen es solo una sugerencia. Los tickets, su historial y la
+# auditoría no tienen política: se conservan siempre.
+RETENTION_NOTIFICATIONS_ENABLED = BoolSetting(
+    "RETENTION_NOTIFICATIONS_ENABLED", "retencion.notificaciones_habilitada", False
+)
+RETENTION_NOTIFICATIONS_DAYS = IntSetting(
+    "RETENTION_NOTIFICATIONS_DAYS", "retencion.notificaciones_dias", 90, maximum=3650
+)
+RETENTION_AUTH_EVENTS_ENABLED = BoolSetting(
+    "RETENTION_AUTH_EVENTS_ENABLED", "retencion.accesos_habilitada", False
+)
+# Al menos 30 días: los accesos son la evidencia de un intento de intrusión reciente.
+RETENTION_AUTH_EVENTS_DAYS = IntSetting(
+    "RETENTION_AUTH_EVENTS_DAYS", "retencion.accesos_dias", 365, minimum=30, maximum=3650
+)
+RETENTION_DELETED_FILES_ENABLED = BoolSetting(
+    "RETENTION_DELETED_FILES_ENABLED", "retencion.archivos_eliminados_habilitada", False
+)
+RETENTION_DELETED_FILES_DAYS = IntSetting(
+    "RETENTION_DELETED_FILES_DAYS", "retencion.archivos_eliminados_dias", 90, maximum=3650
+)
+RETENTION_BACKUPS_ENABLED = BoolSetting(
+    "RETENTION_BACKUPS_ENABLED", "retencion.respaldos_habilitada", False
+)
+RETENTION_BACKUPS_KEEP = IntSetting(
+    "RETENTION_BACKUPS_KEEP", "retencion.respaldos_conservados", 14, maximum=1000
+)
+
+BOOL_SETTINGS: tuple[BoolSetting, ...] = (
+    SLA_ENABLED,
+    AUTO_CLOSE_ENABLED,
+    LOCATION_REQUIRED,
+    RETENTION_NOTIFICATIONS_ENABLED,
+    RETENTION_AUTH_EVENTS_ENABLED,
+    RETENTION_DELETED_FILES_ENABLED,
+    RETENTION_BACKUPS_ENABLED,
+)
 
 INT_SETTINGS: tuple[IntSetting, ...] = (
     LOGIN_MAX_FAILED_ATTEMPTS,
@@ -220,6 +258,10 @@ INT_SETTINGS: tuple[IntSetting, ...] = (
     UPLOAD_MAX_FILES_PER_TICKET,
     DUPLICATE_WINDOW_DAYS,
     DUPLICATE_MIN_WORDS,
+    RETENTION_NOTIFICATIONS_DAYS,
+    RETENTION_AUTH_EVENTS_DAYS,
+    RETENTION_DELETED_FILES_DAYS,
+    RETENTION_BACKUPS_KEEP,
 )
 
 

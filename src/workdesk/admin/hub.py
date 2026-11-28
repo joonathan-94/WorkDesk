@@ -137,6 +137,8 @@ HUB_SECTIONS = (
                 title="Retención",
                 description="Conservación de la información.",
                 icon="archive",
+                endpoint="admin.settings_screen",
+                args=(("slug", "retencion"),),
             ),
         ),
     ),

@@ -392,6 +392,7 @@ def test_hub_links_only_the_implemented_sections(
         "Notificaciones",
         "Archivos",
         "Carga y planificador",
+        "Retención",
         "Seguridad y sesión",
         "Auditoría",
         "Respaldos",
@@ -416,6 +417,7 @@ def test_hub_links_only_the_implemented_sections(
         "colaboracion",
         "creacion",
         "operacion",
+        "retencion",
     ):
         assert f'href="/admin/settings/{slug}"' in content
     assert content.count("Próximamente") == len(planned)

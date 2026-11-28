@@ -22,6 +22,7 @@ from ..configuration import (
     value_of,
 )
 from ..extensions import db
+from ..retention import retention_overview
 from ..security import admin_only, current_actor
 from ..tickets.storage import allowed_extensions
 from ..users.forms import ReasonForm
@@ -125,6 +126,8 @@ def _render(group: SettingsGroup, form, *, error: str | None = None, status: int
             error=error,
             reason_max=MAX_REASON_LENGTH,
             extensions=allowed_extensions() if group.slug == "archivos" else None,
+            # Antes de encender una política, lo que borraría hoy (RN-106).
+            retention=retention_overview() if group.slug == "retencion" else None,
         ),
         status,
     )
