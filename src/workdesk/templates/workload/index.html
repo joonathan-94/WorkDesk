@@ -29,6 +29,9 @@
 {% block content %}
     {% set show_sla = sla_enabled() %}
     {% set summary = data.summary %}
+    {# «Sin actividad reciente» (RN-27): solo con la marca encendida (más de 0 días). #}
+    {% set show_inactive = data.inactive_days > 0 %}
+    {% set inactive_label = data.inactive_days ~ (' día' if data.inactive_days == 1 else ' días') %}
 
     {% call page_header(
         'Carga de trabajo',
@@ -90,6 +93,18 @@
             icon='hourglass-split',
             tone='danger',
             alert=summary.at_risk > 0,
+        ) }}
+        {% endif %}
+
+        {% if show_inactive %}
+        {{ kpi_card(
+            'Sin actividad reciente',
+            summary.inactive,
+            hint='Ninguna acción del equipo en ' ~ inactive_label,
+            href=list_link(sin_actividad=1),
+            icon='clock-history',
+            tone='warning',
+            alert=summary.inactive > 0,
         ) }}
         {% endif %}
     </section>
@@ -261,6 +276,9 @@
                         {% if show_sla %}
                         <th scope="col" class="text-end">SLA en riesgo</th>
                         {% endif %}
+                        {% if show_inactive %}
+                        <th scope="col" class="text-end">Sin actividad</th>
+                        {% endif %}
                         <th scope="col" class="text-end">Resueltos</th>
                         <th scope="col">Distribución</th>
                     </tr>
@@ -298,6 +316,9 @@
                                 {% endif %}
                             </td>
                             {% endif %}
+                            {% if show_inactive %}
+                            <td class="text-end">{{ count_link(row.inactive, list_link(tecnico=who.id, sin_actividad=1), 'sin actividad reciente') }}</td>
+                            {% endif %}
                             <td class="text-end">{{ count_link(row.resolved, list_link(tecnico=who.id, estado=resolved_id), 'resueltos') }}</td>
                             <td class="distribution-cell">
                                 {% if row.active %}
@@ -324,7 +345,7 @@
                     {% else %}
                         <tr>
                             <td
-                                colspan="{{ 8 if show_sla else 7 }}"
+                                colspan="{{ 7 + (1 if show_sla else 0) + (1 if show_inactive else 0) }}"
                                 class="text-center text-secondary py-4"
                             >
                                 {% if filtered %}
@@ -368,6 +389,9 @@
                         {% if show_sla %}
                         <th scope="col" class="text-end">SLA en riesgo</th>
                         {% endif %}
+                        {% if show_inactive %}
+                        <th scope="col" class="text-end">Sin actividad</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -391,6 +415,9 @@
                                 {% if show_sla %}
                                     <td class="text-end">{{ count_link(row.at_risk, list_link(grupo=group.id, activos=1, sla='riesgo'), 'con SLA en riesgo') }}</td>
                                 {% endif %}
+                                {% if show_inactive %}
+                                    <td class="text-end">{{ count_link(row.inactive, list_link(grupo=group.id, sin_actividad=1), 'sin actividad reciente') }}</td>
+                                {% endif %}
                             {% else %}
                                 <td class="text-end">{{ row.active }}</td>
                                 <td class="text-end">{{ row.unassigned }}</td>
@@ -398,12 +425,15 @@
                                 {% if show_sla %}
                                     <td class="text-end">{{ row.at_risk }}</td>
                                 {% endif %}
+                                {% if show_inactive %}
+                                    <td class="text-end">{{ row.inactive }}</td>
+                                {% endif %}
                             {% endif %}
                         </tr>
                     {% else %}
                         <tr>
                             <td
-                                colspan="{{ 5 if show_sla else 4 }}"
+                                colspan="{{ 4 + (1 if show_sla else 0) + (1 if show_inactive else 0) }}"
                                 class="text-center text-secondary py-4"
                             >Todavía no hay grupos.</td>
                         </tr>

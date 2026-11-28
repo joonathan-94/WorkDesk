@@ -8,12 +8,14 @@ from datetime import date
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from ... import settings
 from ...catalogs.service import (
     list_categories,
     list_locations,
     list_priorities,
     list_states,
 )
+from ...configuration import value_of
 from ...dashboard.requester import local_today
 from ...exports import (
     MAX_EXPORT_ROWS,
@@ -120,6 +122,7 @@ def list_tickets_page():
                 filters.unassigned or None,
                 filters.active_only or None,
                 filters.pending_review or None,
+                filters.inactive or None,
             )
         ),
         states=options["states"],
@@ -130,6 +133,8 @@ def list_tickets_page():
         groups=options["groups"],
         unassigned_value=UNASSIGNED_VALUE,
         is_staff=is_staff,
+        # Con 0 días la marca está apagada y la casilla no se ofrece.
+        inactive_days=value_of(settings.INACTIVE_TICKET_DAYS),
     )
 
 
@@ -247,6 +252,8 @@ def read_listing_filters(
         closed_from=_date_arg("cerrado_desde"),
         resolved_from=_date_arg("resuelto_desde"),
         resolved_to=_date_arg("resuelto_hasta"),
+        # Como el SLA, solo del personal: para un Solicitante el parámetro no existe.
+        inactive=is_staff and request.args.get("sin_actividad") == "1",
     )
 
 

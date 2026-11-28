@@ -44,6 +44,7 @@ def filters_of(href, app):
         unassigned=technician == "ninguno",
         active_only=query.get("activos") == "1",
         sla=SlaFilter(query["sla"]) if "sla" in query else None,
+        inactive=query.get("sin_actividad") == "1",
     )
 
 
@@ -106,7 +107,8 @@ def test_every_linked_number_equals_the_total_of_its_list(seeded, client, app):
     cards = KPI.findall(html)
     cells = CELL.findall(html)
 
-    assert len(cards) == 4
+    # Activos, sin asignar, críticos, SLA en riesgo y sin actividad reciente.
+    assert len(cards) == 5
     assert len(cells) >= 20
 
     for href, label, value in cards:

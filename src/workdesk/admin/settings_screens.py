@@ -211,6 +211,14 @@ GROUPS = (
                 unit="tickets",
             ),
             SettingField(
+                settings.INACTIVE_TICKET_DAYS,
+                "Días sin actividad para marcar un ticket",
+                "Un ticket en trabajo en el que nadie del equipo hizo nada en estos días se cuenta "
+                "como «sin actividad reciente» en la carga de trabajo. Los comentarios del "
+                "solicitante no cuentan como actividad. Solo informa; 0 lo desactiva.",
+                unit="días",
+            ),
+            SettingField(
                 settings.SCHEDULER_INTERVAL_SECONDS,
                 "Frecuencia del planificador",
                 "Cada cuánto revisa avisos de SLA y cierres automáticos cuando está en marcha "

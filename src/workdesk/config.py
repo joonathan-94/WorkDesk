@@ -58,6 +58,8 @@ class Config:
     UPLOAD_MAX_BYTES = settings.UPLOAD_MAX_BYTES.from_environment()
     UPLOAD_MAX_FILES_PER_TICKET = settings.UPLOAD_MAX_FILES_PER_TICKET.from_environment()
     DUPLICATE_WINDOW_DAYS = settings.DUPLICATE_WINDOW_DAYS.from_environment()
+    # Días sin actividad del personal para marcar un ticket en trabajo (0 lo desactiva).
+    INACTIVE_TICKET_DAYS = settings.INACTIVE_TICKET_DAYS.from_environment()
     DUPLICATE_MIN_WORDS = settings.DUPLICATE_MIN_WORDS.from_environment()
     # Interruptores (también en `settings.py`): el SLA, el cierre automático y la ubicación
     # obligatoria al crear un ticket.

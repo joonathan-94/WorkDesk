@@ -1954,6 +1954,13 @@ Rechazo:
 
 Mostrar distribución actual del trabajo.
 
+**«Sin actividad reciente» (`v0.8.0`, entrega 11, RN-184).** Con la marca encendida (`INACTIVE_TICKET_DAYS` mayor que 0), la pantalla suma:
+
+- una quinta tarjeta, «Sin actividad reciente» («Ninguna acción del equipo en N días»);
+- una columna «Sin actividad» en la tabla por técnico y en la de grupos.
+
+Cada cifra enlaza con el listado filtrado (`sin_actividad=1`). Con la marca apagada no aparece nada de esto. El listado ofrece la misma casilla al personal, en «Más filtros».
+
 No es un ranking de técnicos.
 
 KPIs:

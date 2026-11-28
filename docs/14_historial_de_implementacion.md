@@ -136,6 +136,7 @@ La fase `v0.2.0` completó:
 
 ## En curso: `v0.8.0`
 
+- los tickets «sin actividad reciente» (entrega 11): en trabajo y sin ninguna acción del personal en N días, en la carga de trabajo y como filtro del listado;
 - la retención (entrega 10): cuatro políticas apagadas de inicio, aplicadas por el planificador por tandas; la pantalla muestra qué borraría cada una hoy;
 - la restauración y el estado del sistema (entrega 9): `backup-restore` en una sola transacción, con todas sus comprobaciones y un respaldo previo; las pantallas de respaldos y de estado, de solo lectura, y el latido del planificador;
 - los respaldos (entrega 8): la base y los adjuntos en un paquete sacado de una misma foto de la base, con el SHA-256 de cada archivo en un manifiesto firmado, y una verificación que no necesita la base;
@@ -492,6 +493,15 @@ Se planificó en doce entregas (`docs/12`, fase 8). Como en las dos fases anteri
   - **Antes de empezar, una comprobación que destapó un despiste:** el PR de la entrega 9 se había quedado sin fusionar y su rama local, borrada. Se fusionó antes de seguir.
 
   Ensayado con `workdesk_dev`: lo anunciado coincidió con lo borrado y la pasada tardó 19 ms. 15 mutaciones detectadas. La suite pasó de 5099 a 5145 tests.
+
+- **Entrega 11, tickets «sin actividad reciente».** Lo último de RF-036 y RN-27, aplazado desde `v0.6.0` porque había que decidir qué es «reciente». Quedó así: un ticket en trabajo, creado hace más de N días (7, configurable) y en el que nadie del personal hizo nada en ese tiempo.
+  - **La actividad es del equipo.** Los comentarios del solicitante no cuentan: un ticket donde el solicitante pregunta y nadie responde es justamente el que hay que mirar. Los eventos del sistema tampoco.
+  - **El test encontró un fallo de la definición.** Un ticket recién creado por un solicitante no tiene ninguna acción del personal, así que contaba como «sin actividad» desde el primer minuto. Ahora también hace falta que el ticket tenga más días que el plazo; uno nuevo y desatendido ya lo muestran «Sin asignar» y el SLA.
+  - **La misma regla de siempre:** la cifra se cuenta con la misma condición que el filtro del listado (`sin_actividad=1`), y la prueba de la carga de trabajo, que abre cada enlace y compara su total, la cubre sin cambios más allá de leer el filtro nuevo.
+  - **Sin consultas nuevas.** La cifra entra en los `COUNT ... FILTER` que ya calculaban la carga; en `workdesk_dev` la pantalla pasó de 33 a 37 ms.
+  - **Una mutación sobrevivió:** si los enlaces del listado perdían el filtro (pestañas, paginación y exportación), nada lo notaba. Ahora hay un test.
+
+  10 mutaciones detectadas. La suite pasó de 5145 a 5164 tests.
 
 ---
 

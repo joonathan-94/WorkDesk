@@ -68,7 +68,13 @@ AREAS: dict[str, tuple[str, ...]] = {
     ),
     "groups": ("test_groups",),
     # Los dashboards por rol y la carga de trabajo (v0.6.0).
-    "dashboards": ("test_dashboard_requester", "test_workload_queries", "test_workload_screen", "test_dashboard_staff"),
+    "dashboards": (
+        "test_dashboard_requester",
+        "test_workload_queries",
+        "test_workload_screen",
+        "test_dashboard_staff",
+        "test_inactive_tickets",
+    ),
     # Los reportes operativos y la exportación a CSV y XLSX (v0.8.0).
     "reports": ("test_report_queries", "test_report_screen", "test_exports"),
     # Los respaldos, la restauración, el estado del sistema y la retención (v0.8.0).
