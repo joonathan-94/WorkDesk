@@ -11,6 +11,8 @@ from datetime import date, timedelta
 from sqlalchemy import false, func, true
 from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
+from .. import settings
+from ..configuration import value_of
 from ..extensions import db
 from ..formatting import start_of_local_day
 from ..models import (
@@ -19,6 +21,7 @@ from ..models import (
     Prioridad,
     Role,
     Ticket,
+    TicketHistory,
     TicketRequester,
     TicketTechnician,
     User,
@@ -112,6 +115,9 @@ class TicketFilters:
     # vigente: un ticket rechazado o reabierto ya no la tiene (los reportes, v0.8.0).
     resolved_from: date | None = None
     resolved_to: date | None = None
+    # En trabajo y sin ninguna acción del personal en los últimos días (RN-27). Solo del
+    # personal, como el SLA: para un Solicitante se ignora.
+    inactive: bool = False
 
 
 def visible_tickets_condition(user):
@@ -347,6 +353,9 @@ def listing_conditions(user, filters: TicketFilters, now=None) -> list:
     if query_text:
         conditions.append(_search_condition(user, query_text))
 
+    if filters.inactive and has_any_role(user, *STAFF_ROLES):
+        conditions.append(inactive_condition(now or sla_periods.current_time()))
+
     if (
         filters.sla is not None
         and has_any_role(user, *STAFF_ROLES)
@@ -391,6 +400,7 @@ def listing_params(filters: TicketFilters) -> dict:
         "cerrado_desde": _iso(filters.closed_from),
         "resuelto_desde": _iso(filters.resolved_from),
         "resuelto_hasta": _iso(filters.resolved_to),
+        "sin_actividad": "1" if filters.inactive else None,
     }
 
 
@@ -436,6 +446,41 @@ def has_current_technician(technician_id: int | None = None):
 def active_state_condition():
     """Estado en trabajo: ni `Resuelto` ni `Cerrado`. Necesita `Estado` en el JOIN."""
     return Estado.codigo.not_in(sorted(STOPPING_STATES))
+
+
+def inactive_condition(now):
+    """«Sin actividad reciente» (RN-27): en trabajo (ni `Resuelto` ni `Cerrado`), creado hace
+    más de `INACTIVE_TICKET_DAYS` días corridos y sin ninguna acción del personal en ese
+    tiempo. Necesita `Estado` en el JOIN.
+
+    Actividad es cualquier evento del historial hecho por alguien del personal: un comentario,
+    una nota interna, un cambio de estado, una asignación, una edición o un adjunto. No
+    cuentan los del solicitante (un ticket donde pregunta y nadie responde es justamente el
+    que hay que mirar) ni los del sistema (avisos de SLA, cierres automáticos). Se mira el rol
+    de hoy. Con 0 días está desactivado y no hay ninguno. La consulta usa el índice
+    `(ticket_id, fecha_hora)` del historial.
+    """
+    days = value_of(settings.INACTIVE_TICKET_DAYS)
+
+    if days == 0:
+        return false()
+
+    cutoff = now - timedelta(days=days)
+    staff_action = (
+        db.select(TicketHistory.id)
+        .join(User, User.id == TicketHistory.actor_usuario_id)
+        .join(Role, Role.id == User.rol_id)
+        .where(
+            TicketHistory.ticket_id == Ticket.id,
+            TicketHistory.fecha_hora >= cutoff,
+            Role.codigo.in_(sorted(STAFF_ROLES)),
+        )
+        .exists()
+    )
+
+    # Un ticket más nuevo que el plazo no se cuenta: que nadie lo haya tocado todavía ya lo
+    # dicen «Sin asignar» y el SLA.
+    return db.and_(active_state_condition(), Ticket.fecha_creacion < cutoff, ~staff_action)
 
 
 def pending_review_condition(user):

@@ -362,6 +362,8 @@ Podrá incluir:
 * Distribución por prioridad.
 * Tickets sin actividad reciente.
 
+Qué es «sin actividad reciente» lo precisa RN-184 (`v0.8.0`).
+
 ---
 
 ## RN-28 — Advertencias de sobrecarga
@@ -2025,6 +2027,22 @@ Aplica RF-110 a RF-112, RF-123, RNF-044, RNF-045 y RN-105 a RN-110 (`v0.8.0`, en
 * **Antes de encenderla, el Administrador ve qué borraría hoy,** contado con las mismas condiciones que usa el borrado.
 * **Encender, apagar o cambiar un plazo se audita** como cualquier parámetro (`CONFIGURACION_MODIFICADA`, RN-109). **Cada pasada que borra algo deja `RETENCION_APLICADA`**, como acción del sistema y con las cantidades de cada política.
 * **La aplica el planificador** en cada pasada, por tandas y con cada política en su propia transacción: una que falla se registra y no frena a las demás.
+
+---
+
+## RN-184 — Tickets sin actividad reciente
+
+Precisa RN-27 y RF-036 (`v0.8.0`, entrega 11).
+
+* **Definición:** un ticket es «sin actividad reciente» si cumple las tres condiciones:
+  * está en trabajo: ni Resuelto ni Cerrado. Uno En espera también cuenta, porque llevar días sin seguimiento es justo lo que hay que mirar;
+  * se creó hace más de N días corridos;
+  * nadie del personal hizo nada en él en esos N días.
+* **Actividad** es cualquier evento del historial hecho por alguien del personal: un comentario, una nota interna, un cambio de estado, una asignación, una edición o un adjunto. **No cuentan los del solicitante** (un ticket donde pregunta y nadie responde es justamente el que hay que mirar) **ni los del sistema** (avisos de SLA, cierres automáticos).
+* **N es `INACTIVE_TICKET_DAYS`** (7 por defecto), configurable en «Carga y planificador». **0 desactiva la marca:** no se cuenta ni se muestra.
+* **Un ticket más nuevo que el plazo no se cuenta.** Que nadie lo haya tocado todavía ya lo dicen «Sin asignar» y el SLA.
+* **Solo informa** (como la carga alta, RN-26): no bloquea nada ni envía avisos. Es información del equipo, como el SLA: el Solicitante no la ve ni puede filtrar por ella.
+* **Cada cifra es el total de su listado** (`sin_actividad=1`), en la carga de trabajo: el total, cada técnico y cada grupo.
 
 ---
 

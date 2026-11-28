@@ -119,7 +119,7 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
 
-`v0.8.0` está en curso y tiene hechas sus diez primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel, los respaldos firmados de la base y los adjuntos, su restauración con la pantalla de estado del sistema y la retención. Hoy la suite cuenta con **5145 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+`v0.8.0` está en curso y tiene hechas sus once primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel, los respaldos firmados de la base y los adjuntos, su restauración con la pantalla de estado del sistema, la retención y los tickets «sin actividad reciente». Hoy la suite cuenta con **5164 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
@@ -568,6 +568,7 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `AUTO_CLOSE_ENABLED` | `true` | Si el planificador cierra solo los tickets resueltos que nadie valida. Se puede cambiar desde Administración → Cierre y reapertura. |
 | `LOCATION_REQUIRED` | `false` | Si la ubicación es obligatoria al crear un ticket. Solo se exige mientras haya alguna ubicación activa. Se puede cambiar desde Administración → Creación de tickets. |
 | `SCHEDULER_INTERVAL_SECONDS` | `60` | Cada cuántos segundos revisa el planificador (`run-scheduler`) los avisos de SLA y los cierres automáticos cuando se deja en marcha. Debe ser mayor que cero. |
+| `INACTIVE_TICKET_DAYS` | `7` | Días sin ninguna acción del personal para contar un ticket en trabajo como «sin actividad reciente» en la carga de trabajo (los comentarios del solicitante no cuentan). Solo informa. `0` lo desactiva. |
 | `WORKLOAD_HIGH_ACTIVE_TICKETS` | `10` | A partir de cuántos tickets activos (ni Resueltos ni Cerrados) se marca a un técnico con «carga alta» en la carga de trabajo. Solo informa: nunca bloquea una asignación. `0` desactiva la marca. Debe ser un entero mayor o igual que cero. |
 | `EDIT_LOCK_TTL_SECONDS` | `120` | Segundos que dura el bloqueo de edición de un ticket sin renovarse. Debe ser mayor que cero. |
 | `EDIT_LOCK_HEARTBEAT_SECONDS` | `45` | Cada cuántos segundos renueva el bloqueo la pantalla de edición mientras está abierta. Debe ser mayor que cero y menor que `EDIT_LOCK_TTL_SECONDS`. |
@@ -945,12 +946,13 @@ Las definiciones son las de la carga de trabajo (un ticket *activo* no está Res
 
 El personal (Técnico, Supervisor y Administrador) tiene la opción **Carga de trabajo** del menú (`/workload`). Es una pantalla para *analizar* cómo está repartido el trabajo, no un ranking:
 
-- **Cuatro indicadores** enlazados al listado que los explica: *Tickets activos* (ni Resueltos ni Cerrados), *Sin asignar*, *Críticos* y *SLA en riesgo* (próximos a vencer más vencidos).
+- **Cinco indicadores** enlazados al listado que los explica: *Tickets activos* (ni Resueltos ni Cerrados), *Sin asignar*, *Críticos*, *SLA en riesgo* (próximos a vencer más vencidos) y *Sin actividad reciente*.
 - **Carga por técnico:** activos, en progreso, en espera, críticos y SLA en riesgo, con una barra de distribución por prioridad (comparativa, con su texto equivalente). Cada número abre el listado de esos tickets.
 - **Carga por grupo**, con una fila «Sin grupo».
 - **Filtros** por grupo, prioridad, estado y técnico, búsqueda por nombre y orden de la tabla.
 - Un ticket con varios técnicos cuenta en cada uno: la suma de la tabla puede superar al total, y la pantalla lo explica.
 - **Carga alta:** si un técnico llega a `WORKLOAD_HIGH_ACTIVE_TICKETS` tickets activos (10 por defecto, `0` lo desactiva) aparece una insignia con texto. Solo informa: no impide asignarle más tickets.
+- **Sin actividad reciente:** tickets en trabajo, creados hace más de 7 días (`INACTIVE_TICKET_DAYS`, configurable en **Administración → Carga y planificador**; `0` lo apaga) en los que nadie del equipo hizo nada en ese tiempo. Los comentarios del solicitante no cuentan: un ticket donde pregunta y nadie responde es justo el que hay que mirar. Aparece en la tarjeta, en una columna por técnico y por grupo, y como casilla en «Más filtros» del listado. Solo informa.
 
 Con los datos de demostración, Valentina Pizarro aparece con carga alta. Un Solicitante que abre `/workload` recibe un error 403.
 

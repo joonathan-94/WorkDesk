@@ -1203,7 +1203,7 @@ Se revisó todo lo de `v0.6.0` y se comparó cada requisito de la fase con el c�
 | RF-033 reasignar según la carga | Hecho | `/reassign` muestra la carga de cada destino, solo como dato | `test_reassignment_screen` |
 | RF-034 reasignación masiva | Hecho | `tickets/reassignment.py`, `/reassign` | `test_ticket_reassignment`, `test_reassignment_screen` |
 | RF-035 conservar el historial | Hecho | asignación cerrada y conservada, eventos con lote y motivo, una auditoría | `test_ticket_reassignment` |
-| RF-036 / RN-27 información de carga | Hecho, salvo «sin actividad reciente» | `workload/queries.py`, `/workload` (asignados y activos, en progreso, en espera, críticos, SLA, resueltos y distribución por prioridad) | `test_workload_queries`, `test_workload_screen` |
+| RF-036 / RN-27 información de carga | Hecho («sin actividad reciente» en `v0.8.0`, entrega 11) | `workload/queries.py`, `/workload` (asignados y activos, en progreso, en espera, críticos, SLA, resueltos y distribución por prioridad) | `test_workload_queries`, `test_workload_screen` |
 | RF-037 / RN-28 sobrecarga informativa | Hecho como insignia con texto; **los avisos internos quedan para `v0.7.0`** | `WORKLOAD_HIGH_ACTIVE_TICKETS` | `test_workload_queries` |
 | RF-038 carga consolidada | Hecho | `/workload` (técnicos, grupos y sin asignar) | `test_workload_screen` |
 | RF-093 dashboard según el rol | Hecho | `main/routes.py` | `test_dashboard_requester`, `test_dashboard_staff` |
@@ -1382,7 +1382,7 @@ buscar solución
 **Segunda mitad de semana 9 y semana 10**  
 **Versión:** `v0.8.0`
 
-**Estado de ejecución:** en curso. Doce entregas planificadas; diez terminadas.
+**Estado de ejecución:** en curso. Doce entregas planificadas; once terminadas.
 
 ### Entregas de `v0.8.0`
 
@@ -1396,7 +1396,7 @@ buscar solución
 8. **Respaldos** ✓ (RF-127, RNF-038 a RNF-040, RNF-043, RN-181): comandos `backup-create`, `backup-verify` y `backup-list`. Un `.zip` con el volcado de `pg_dump` y los adjuntos, sacados de una misma foto de la base (`--snapshot`), un manifiesto con el SHA-256 de cada archivo firmado con una clave derivada de `SECRET_KEY` y la huella del paquete al lado. La verificación no necesita la base. La contraseña nunca llega a la línea de comandos ni al entorno de `pg_dump`. Sin migraciones.
 9. **Restauración y estado del sistema** ✓ (RF-128, RF-130, RNF-037, RNF-041, RNF-042, UI-028, UI-029, RN-182): `backup-restore` comprueba el respaldo, la revisión de migraciones, el esquema y que no haya nadie conectado, pide escribir el nombre de la base y respalda lo actual. Restaura la base en una sola transacción de `psql` (si algo falla, queda como estaba), cambia los adjuntos y cierra todas las sesiones. Hay dos pantallas de solo lectura, Respaldos y Estado del sistema, y el planificador deja un latido en cada pasada. Sin migraciones.
 10. **Retención** ✓ (RF-110 a RF-112, RF-123, RN-183): cuatro políticas en `configuracion`, apagadas por defecto y ejecutadas por el planificador en cada pasada: las notificaciones leídas, el registro de accesos, el archivo de los adjuntos eliminados (la fila se conserva) y los respaldos más antiguos. Los tickets, el historial y la auditoría se conservan siempre. La pantalla muestra lo que cada política borraría hoy. Una migración (`add_file_purge_date_to_attachments`).
-11. **Tickets «sin actividad reciente»** (RN-27).
+11. **Tickets «sin actividad reciente»** ✓ (RN-27, RF-036, RN-184): en trabajo, creados hace más de N días (7, configurable; 0 la apaga) y sin ninguna acción del personal en ese tiempo. Los comentarios del solicitante y los eventos del sistema no cuentan. Se muestran en la carga de trabajo (tarjeta y columnas por técnico y grupo, cada cifra el total de su listado) y como filtro del listado para el personal. Solo informa. Sin migraciones.
 12. **Cierre de la fase:** revisión completa, escala con ~20 000 tickets, matriz de trazabilidad y etiqueta.
 
 ### Decisiones de la fase

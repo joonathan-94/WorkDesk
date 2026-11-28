@@ -183,6 +183,12 @@ UPLOAD_MAX_FILES_PER_TICKET = IntSetting(
     maximum=1000,
 )
 
+# Tickets «sin actividad reciente» (RN-27): en trabajo y sin ninguna acción del personal en
+# este número de días corridos. Solo informa en la carga de trabajo; 0 lo desactiva.
+INACTIVE_TICKET_DAYS = IntSetting(
+    "INACTIVE_TICKET_DAYS", "carga.dias_sin_actividad", 7, minimum=0, maximum=365
+)
+
 # Posibles duplicados al crear un ticket: cuántos días atrás se mira (0 desactiva la
 # advertencia) y cuántas palabras del título deben coincidir.
 DUPLICATE_WINDOW_DAYS = IntSetting(
@@ -254,6 +260,7 @@ INT_SETTINGS: tuple[IntSetting, ...] = (
     EDIT_LOCK_HEARTBEAT_SECONDS,
     SCHEDULER_INTERVAL_SECONDS,
     WORKLOAD_HIGH_ACTIVE_TICKETS,
+    INACTIVE_TICKET_DAYS,
     UPLOAD_MAX_BYTES,
     UPLOAD_MAX_FILES_PER_TICKET,
     DUPLICATE_WINDOW_DAYS,

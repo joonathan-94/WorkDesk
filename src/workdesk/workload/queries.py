@@ -13,9 +13,11 @@ Definiciones (una sola vez, aquí):
 - **Crítico:** su prioridad es la de código `CRITICA`.
 - **SLA en riesgo:** próximo a vencer o vencido (`SlaFilter.RIESGO`); aquí se cuentan por
   separado y la suma de ambos es el «en riesgo».
+- **Sin actividad reciente:** en trabajo y sin ninguna acción del personal en los últimos
+  `INACTIVE_TICKET_DAYS` días (`inactive_condition`, RN-27); 0 lo desactiva.
 
 **Cada cifra coincide con el total del listado al que enlaza** (los filtros `tecnico`,
-`grupo`, `activos`, `sla`, `prioridad` y `estado` del listado): un test lo comprueba para
+`grupo`, `activos`, `sla`, `sin_actividad`, `prioridad` y `estado` del listado): un test lo comprueba para
 cada técnico y cada grupo. Un ticket con varios técnicos cuenta en cada uno de ellos y una
 sola vez en los totales, así que la suma por técnico puede superar al total.
 
@@ -44,7 +46,11 @@ from ..models.prioridad import CRITICAL_PRIORITY_CODE
 from ..security import RESOLVED_STATE, RoleCode, can_view_workload
 from ..sla import periods as sla_periods
 from ..sla.queries import SlaFilter, sla_condition
-from ..tickets.queries import active_state_condition, has_current_technician
+from ..tickets.queries import (
+    active_state_condition,
+    has_current_technician,
+    inactive_condition,
+)
 from ..tickets.service import CLOSED_STATE_CODE
 
 
@@ -71,6 +77,7 @@ class TechnicianLoad:
     resolved: int
     by_priority: dict[int, int] = field(default_factory=dict)
     high: bool = False
+    inactive: int = 0
 
     @property
     def at_risk(self) -> int:
@@ -87,6 +94,7 @@ class GroupLoad:
     critical: int
     near_due: int
     overdue: int
+    inactive: int = 0
 
     @property
     def at_risk(self) -> int:
@@ -108,6 +116,7 @@ class WorkloadSummary:
     # Técnicos con trabajo activo y cuántos de ellos están en «carga alta».
     technicians_with_work: int
     high_load_technicians: int
+    inactive: int = 0
 
     @property
     def assigned(self) -> int:
@@ -126,6 +135,8 @@ class WorkloadOverview:
     priorities: list[Prioridad]
     # El umbral con el que se marcó la carga alta (0 = la marca está desactivada).
     high_threshold: int
+    # Los días de «sin actividad reciente» (0 = la marca está desactivada).
+    inactive_days: int = 0
 
 
 def is_high_load(active: int, threshold: int) -> bool:
@@ -152,7 +163,14 @@ def workload_overview(
 
     priorities = list(db.session.scalars(db.select(Prioridad).order_by(Prioridad.nivel)))
 
-    return WorkloadOverview(summary, technicians, groups, priorities, threshold)
+    return WorkloadOverview(
+        summary,
+        technicians,
+        groups,
+        priorities,
+        threshold,
+        value_of(settings.INACTIVE_TICKET_DAYS),
+    )
 
 
 # --- Piezas -----------------------------------------------------------------------
@@ -191,6 +209,8 @@ def _counts(now: datetime) -> dict:
         ),
         "near_due": func.count(Ticket.id).filter(active, near_due),
         "overdue": func.count(Ticket.id).filter(active, overdue),
+        # Ya incluye «en trabajo». Va al final: es una subconsulta por ticket.
+        "inactive": func.count(Ticket.id).filter(inactive_condition(now)),
     }
 
 
@@ -253,6 +273,7 @@ def _technician_loads(filters, now, threshold) -> list[TechnicianLoad]:
             near_due=row.near_due,
             overdue=row.overdue,
             resolved=row.resolved,
+            inactive=row.inactive,
             by_priority=distribution.get(row.User.id, {}),
             high=is_high_load(row.active, threshold),
         )
@@ -324,10 +345,16 @@ def _group_rows(filters, now) -> dict:
 def _group_loads(by_group: dict) -> list[GroupLoad]:
     def load(group, row):
         if row is None:
-            return GroupLoad(group, 0, 0, 0, 0, 0)
+            return GroupLoad(group, 0, 0, 0, 0, 0, 0)
 
         return GroupLoad(
-            group, row.active, row.unassigned, row.critical, row.near_due, row.overdue
+            group,
+            row.active,
+            row.unassigned,
+            row.critical,
+            row.near_due,
+            row.overdue,
+            row.inactive,
         )
 
     # Los grupos activos aparecen aunque no tengan trabajo; uno desactivado solo si aún
@@ -360,4 +387,5 @@ def _summary(by_group: dict, technicians) -> WorkloadSummary:
         unassigned_critical=total("unassigned_critical"),
         technicians_with_work=sum(1 for t in technicians if t.active > 0),
         high_load_technicians=sum(1 for t in technicians if t.high),
+        inactive=total("inactive"),
     )

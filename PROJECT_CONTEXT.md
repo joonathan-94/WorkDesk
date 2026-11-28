@@ -82,10 +82,10 @@ main
 ## Rama de trabajo actual
 
 ```text
-feature/retention
+feature/inactive-tickets
 ```
 
-Entrega 10 de `v0.8.0`: la retención. **Una migración** (`add_file_purge_date_to_attachments`), sin dependencias nuevas. Ver «Retención (entrega 10 de `v0.8.0`)».
+Entrega 11 de `v0.8.0`: los tickets «sin actividad reciente». **Sin migraciones ni dependencias nuevas.** Ver «Tickets «sin actividad reciente» (entrega 11 de `v0.8.0`)».
 
 Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR #5), los límites de sesión (PR #6), la auditoría administrativa (PR #7), la base de seguridad de contraseñas (PR #8), el cambio de contraseña propio y obligatorio (PR #9), el listado y creación de usuarios (PR #10), la administración de usuarios existentes (PR #11), la base de la interfaz administrativa (PR #12), "Mi cuenta" y los datos demo (PR #13, cierre de `v0.2.0`), los catálogos de tickets (PR #14), el modelo de tickets (PR #15), la administración de catálogos (PR #16), la creación de tickets (PR #17), el listado de tickets (PR #18), la edición de tickets (PR #19), el cierre de `v0.3.0` (PR #20), el seed `seed-demo-tickets` (PR #21), el plan del módulo de proyectos posterior al MVP (PR #22) y las 12 entregas de `v0.4.0` (PR #23 a #35): visibilidad y vocabulario del historial (PR #23), catálogo de motivos de espera (PR #24), estados y transiciones (PR #25), grupos (PR #26), asignación (PR #27) y solicitantes del ticket (PR #28), un arreglo del refresco de fechas del seed con escalamientos hechos a mano (PR #29), comentarios y notas internas (PR #30), adjuntos (PR #31), resolución y cierre (PR #32), relaciones y duplicados (PR #33), el bloqueo temporal de edición (PR #34) y la pantalla de Estados y transiciones con el cierre de la versión (PR #35), y las nueve entregas de `v0.5.0` (y la optimización de la suite de tests, PR #42): el motor de tiempo laboral compartido (PR #36), el calendario laboral administrable (PR #37), las políticas de SLA por prioridad (PR #38), los períodos de SLA (PR #39), el centro de notificaciones (PR #40), los avisos por los eventos de un ticket (PR #41), los indicadores de SLA (PR #43), el planificador (PR #44) y el cierre de la versión (PR #45).
 
@@ -93,7 +93,7 @@ Ya integradas en `main`: la sincronización documental (PR #4), la base RBAC (PR
 
 `v0.7.0` se construyó en 10 entregas (PR #56 a #65): la revisión previa, la tabla `configuracion`, sus pantallas e interruptores, la configuración de notificaciones, la base de conocimiento (modelo y pantallas), el conocimiento en los tickets con la advertencia de duplicados, los adjuntos al crear y la liberación de bloqueos, la estructura y protecciones, y el cierre de la fase.
 
-De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72), los respaldos (PR #73) y la restauración con el estado del sistema (PR #74).
+De `v0.8.0` ya están integradas la revisión previa (PR #66), la velocidad de la suite (PR #67), los eventos de autenticación (PR #68), la pantalla de auditoría (PR #69), las consultas de los reportes (PR #70), su pantalla (PR #71), la exportación a CSV y XLSX (PR #72), los respaldos (PR #73), la restauración con el estado del sistema (PR #74) y la retención (PR #75).
 
 ## Identidad visual (integrada en `main`)
 
@@ -562,13 +562,28 @@ RF-110 a RF-112, RF-123, RNF-044, RNF-045 y RN-105 a RN-110; regla completa en `
 
   Las 15 mutaciones se detectan.
 
+## Tickets «sin actividad reciente» (entrega 11 de `v0.8.0`)
+
+RF-036 y RN-27; la definición es RN-184 (`docs/06`). **Sin migraciones.** Cierra lo que `v0.6.0` dejó pendiente de la carga de trabajo.
+
+- **Definición** (`tickets/queries.py`, `inactive_condition(now)`): en trabajo (ni Resuelto ni Cerrado; En espera sí cuenta), creado hace más de `INACTIVE_TICKET_DAYS` días corridos y sin ningún evento del historial hecho por alguien del personal (por su rol de hoy) en ese tiempo. Los eventos del solicitante y del sistema no cuentan. 7 días por defecto, entre 0 y 365; 0 la apaga y la condición es `false()`. Se configura en «Carga y planificador».
+- **El test encontró un fallo de la primera versión:** un ticket recién creado contaba como inactivo desde el primer minuto. Ahora también hace falta que el ticket tenga más días que el plazo.
+- **Listado:** `TicketFilters.inactive`, parámetro `sin_actividad=1`. Es solo del personal, como el SLA: se ignora en la ruta y en la consulta. La casilla de «Más filtros» dice los días vigentes y no aparece con la marca apagada. `listing_params` lo conserva en pestañas, paginación y exportación.
+- **Carga de trabajo:** `_counts` añade `inactive` a los `COUNT ... FILTER` que ya había, así que no suma consultas. `TechnicianLoad`, `GroupLoad` y `WorkloadSummary` llevan la cifra, y `WorkloadOverview.inactive_days` dice si la marca está encendida. La pantalla añade:
+  - la tarjeta «Sin actividad reciente»;
+  - una columna «Sin actividad» por técnico y por grupo.
+
+  Todo enlaza con su listado y desaparece con 0 días.
+- **Medido** en `workdesk_dev`: la carga de trabajo pasó de 33 a 37 ms, y 70 de los 108 tickets de demostración salen sin actividad (su historia tiene semanas). Se volverá a medir a escala en el cierre de la fase.
+- **Tests:** 19 nuevos (5145 → 5164), en `tests/test_inactive_tickets.py` (área `dashboards`), más la prueba de la carga de trabajo, que abre cada enlace (ahora cinco tarjetas) y compara su total. Las 10 mutaciones se detectan. Una sobrevivió al principio: los enlaces del listado perdían el filtro sin que nada lo notara.
+
 ## Próximo hito
 
 ```text
 v0.8.0 — Reportes, auditoría y backups
 ```
 
-El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema ✓, retención ✓, tickets «sin actividad reciente» (RN-27) y cierre.
+El plan aprobado tiene 12 entregas (`docs/12_roadmap.md`, fase 8): revisión previa ✓, velocidad de la suite ✓, eventos de autenticación ✓, pantalla de auditoría ✓, reportes: consultas ✓, reportes: pantalla ✓, exportación CSV y XLSX ✓, respaldos ✓, restauración y estado del sistema ✓, retención ✓, tickets «sin actividad reciente» (RN-27) ✓ y cierre.
 
 Decisiones tomadas al planificar la fase (detalle en `docs/12`):
 
@@ -840,6 +855,7 @@ DUPLICATE_WINDOW_DAYS
 DUPLICATE_MIN_WORDS
 SCHEDULER_INTERVAL_SECONDS
 WORKLOAD_HIGH_ACTIVE_TICKETS
+INACTIVE_TICKET_DAYS
 EDIT_LOCK_TTL_SECONDS
 EDIT_LOCK_HEARTBEAT_SECONDS
 UPLOAD_MAX_BYTES
@@ -876,6 +892,7 @@ DUPLICATE_WINDOW_DAYS=30
 DUPLICATE_MIN_WORDS=2
 SCHEDULER_INTERVAL_SECONDS=60
 WORKLOAD_HIGH_ACTIVE_TICKETS=10
+INACTIVE_TICKET_DAYS=7
 EDIT_LOCK_TTL_SECONDS=120
 EDIT_LOCK_HEARTBEAT_SECONDS=45
 UPLOAD_MAX_BYTES=10485760
@@ -2430,7 +2447,7 @@ Detalle y comandos en el `README.md` (sección «Tests»). Resumen de las decisi
 ## Estado actual de la suite
 
 ```text
-5145 tests (unos 4 min 42 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
+5164 tests (unos 4 min 53 s con `-n 6`; en Windows se salta uno, el de los permisos de POSIX; varía con la carga del equipo)
 ```
 
 Los tests cubren, por área: autenticación y sesiones; usuarios y autorización; catálogos; el núcleo de tickets y todo su ciclo de vida; SLA, calendario y planificador; notificaciones; seeds de demostración; y la plataforma (rutas, cabeceras, migraciones y coherencia con los documentos).

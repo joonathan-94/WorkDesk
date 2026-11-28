@@ -380,6 +380,25 @@
                     </label>
                 </div>
 
+                {% if is_staff and inactive_days %}
+                    <div class="form-check">
+                        <input
+                            class="form-check-input"
+                            id="sin_actividad"
+                            name="sin_actividad"
+                            type="checkbox"
+                            value="1"
+                            {% if filters.inactive %}checked{% endif %}
+                        >
+                        <label
+                            class="form-check-label"
+                            for="sin_actividad"
+                        >
+                            Sin actividad del equipo en {{ inactive_days }} {{ 'día' if inactive_days == 1 else 'días' }}
+                        </label>
+                    </div>
+                {% endif %}
+
                 {% if not is_staff %}
                     <div class="form-check">
                         <input
