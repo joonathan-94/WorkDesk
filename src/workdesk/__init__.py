@@ -162,6 +162,10 @@ def _configure_storage(app: Flask) -> None:
     if not app.config.get("BACKUPS_DIR"):
         app.config["BACKUPS_DIR"] = os.path.join(app.instance_path, "backups")
 
+    # La última pasada del planificador, para la pantalla de estado (`system/heartbeat.py`).
+    if not app.config.get("SCHEDULER_HEARTBEAT_FILE"):
+        app.config["SCHEDULER_HEARTBEAT_FILE"] = os.path.join(app.instance_path, "scheduler-heartbeat.json")
+
     problems = storage_problems(
         uploads_dir=app.config["UPLOADS_DIR"],
         backups_dir=app.config["BACKUPS_DIR"],

@@ -36,19 +36,18 @@ from src.workdesk.backups.package import Signature
 from src.workdesk.extensions import db
 from src.workdesk.models import AdminAuditLog, Attachment, Ticket, User
 from src.workdesk.security.startup import storage_problems
+from tests.backup_helpers import (
+    MOMENT,
+    PG_RESTORE,
+    SECRET,
+    install_alembic_version,
+    needs_tools,
+)
+from tests.backup_helpers import entry as _entry
+from tests.backup_helpers import members as _members
+from tests.backup_helpers import resigned as _resigned
+from tests.backup_helpers import rewrite as _rewrite
 from tests.database import checked_database_url
-
-MOMENT = datetime(2026, 11, 27, 18, 35, 22, tzinfo=UTC)
-SECRET = "test-secret-key"
-
-try:
-    PG_DUMP = postgres.find_tool("pg_dump", os.getenv("PG_BIN_DIR"))
-    PG_RESTORE = postgres.find_tool("pg_restore", os.getenv("PG_BIN_DIR"))
-except postgres.BackupError:
-    PG_DUMP = PG_RESTORE = None
-
-needs_tools = pytest.mark.skipif(PG_DUMP is None, reason="pg_dump y pg_restore no están instalados")
-
 
 # --- Ayudantes ------------------------------------------------------------------------
 
@@ -67,37 +66,8 @@ def _audit_rows(app):
         ).all()
 
 
-def _members(path: Path) -> dict[str, bytes]:
-    with zipfile.ZipFile(path) as archive:
-        return {info.filename: archive.read(info) for info in archive.infolist()}
-
-
 def _manifest(path: Path) -> dict:
     return json.loads(_members(path)[package.MANIFEST_MEMBER])
-
-
-def _rewrite(source: Path, target: Path, members, *, checksum=True) -> Path:
-    """Escribe un paquete con los miembros dados (lista de pares nombre, contenido)."""
-    with zipfile.ZipFile(target, "w") as archive:
-        for name, data in members:
-            archive.writestr(zipfile.ZipInfo(name, date_time=(2026, 11, 27, 0, 0, 0)), data)
-
-    if checksum:
-        package.checksum_path(target).write_text(
-            package.checksum_line(package.file_sha256(target), target), encoding="ascii"
-        )
-
-    return target
-
-
-def _resigned(members: dict[str, bytes], manifest: dict, secret=SECRET) -> dict[str, bytes]:
-    raw = package.encode_manifest(manifest)
-
-    return {**members, package.MANIFEST_MEMBER: raw, package.SIGNATURE_MEMBER: package.sign(raw, secret).encode()}
-
-
-def _entry(data: bytes, name: str) -> dict:
-    return {"ruta": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
 
 
 def _verify(path: Path, secret=SECRET):
@@ -117,39 +87,10 @@ def _dump_rows(dump: bytes, table: str, tmp_path: Path) -> int:
     return lines.index("\\.")
 
 
-def _set_aside_alembic_version(app):
-    """Aparta la tabla `alembic_version` que ya tuviera el esquema (sin `-n`, la suite usa el
-    `public` de `workdesk_test`, que puede tenerla) y devuelve cómo dejarla como estaba."""
-    with app.app_context():
-        existed = db.session.scalar(text("SELECT to_regclass('alembic_version') IS NOT NULL"))
-
-        if existed:
-            db.session.execute(text("ALTER TABLE alembic_version RENAME TO alembic_version_apartada"))
-            db.session.commit()
-
-    def put_back():
-        with app.app_context():
-            db.session.execute(text("DROP TABLE IF EXISTS alembic_version"))
-
-            if existed:
-                db.session.execute(text("ALTER TABLE alembic_version_apartada RENAME TO alembic_version"))
-
-            db.session.commit()
-
-    return put_back
-
-
 @pytest.fixture()
 def migrated(app):
-    """Una tabla `alembic_version` como la que deja `db upgrade` (la suite crea el esquema
-    desde los modelos, sin migraciones)."""
-    put_back = _set_aside_alembic_version(app)
-
-    with app.app_context():
-        db.session.execute(text("CREATE TABLE alembic_version (version_num varchar(32) PRIMARY KEY)"))
-        db.session.execute(text("INSERT INTO alembic_version VALUES ('abc123def456')"))
-        db.session.commit()
-
+    """Una tabla `alembic_version` como la que deja `db upgrade`, con una revisión de prueba."""
+    put_back = install_alembic_version(app, "abc123def456")
     yield
     put_back()
 
@@ -157,7 +98,7 @@ def migrated(app):
 @pytest.fixture()
 def unmigrated(app):
     """Un esquema sin `alembic_version`, como uno creado sin las migraciones."""
-    put_back = _set_aside_alembic_version(app)
+    put_back = install_alembic_version(app, None)
     yield
     put_back()
 
@@ -675,7 +616,7 @@ def _tamper_unreadable_dump(members, manifest):
 def test_an_altered_backup_does_not_verify(golden, tmp_path, tamper, expected):
     members = _members(golden)
     manifest = json.loads(members[package.MANIFEST_MEMBER])
-    altered = _rewrite(golden, tmp_path / golden.name, list(tamper(members, manifest).items()))
+    altered = _rewrite(tmp_path / golden.name, list(tamper(members, manifest).items()))
 
     result = _verify(altered)
 
@@ -688,7 +629,7 @@ def test_a_name_that_climbs_out_is_caught_inside_the_zip_even_if_the_manifest_do
     """Las dos defensas por separado: los nombres del `.zip` se revisan aunque el manifiesto
     no los mencione (una entrada así sobra, y además podría escribir fuera)."""
     members = {**_members(golden), "../../fuera.txt": b"intruso"}
-    altered = _rewrite(golden, tmp_path / golden.name, list(members.items()))
+    altered = _rewrite(tmp_path / golden.name, list(members.items()))
 
     problems = _verify(altered).problems
 
@@ -702,7 +643,7 @@ def test_a_duplicated_name_inside_the_zip_does_not_verify(golden, tmp_path):
     items = [*members.items(), (name, b"otra version")]
 
     with pytest.warns(UserWarning, match="Duplicate name"):
-        altered = _rewrite(golden, tmp_path / golden.name, items)
+        altered = _rewrite(tmp_path / golden.name, items)
 
     assert any("repetido" in problem for problem in _verify(altered).problems)
 
@@ -823,7 +764,7 @@ def test_verifying_an_altered_backup_ends_with_an_error(app, golden):
     folder.mkdir(parents=True, exist_ok=True)
     members = _members(golden)
     altered = _tamper_attachment_content(members, None)
-    _rewrite(golden, folder / golden.name, list(altered.items()))
+    _rewrite(folder / golden.name, list(altered.items()))
 
     result = _run(app, "backup-verify", golden.name)
 

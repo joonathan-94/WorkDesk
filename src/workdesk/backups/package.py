@@ -37,8 +37,9 @@ FORMAT = "workdesk-respaldo/1"
 PREFIX = "workdesk-respaldo-"
 EXTENSION = ".zip"
 CHECKSUM_SUFFIX = ".sha256"
-# Lo que deja un respaldo a medias (un proceso cortado): se puede borrar.
+# Lo que deja un respaldo o una restauración a medias (un proceso cortado): se puede borrar.
 TEMP_PREFIX = ".tmp-respaldo-"
+RESTORE_TEMP_PREFIX = ".tmp-restauracion-"
 
 DATABASE_MEMBER = "database.dump"
 UPLOADS_MEMBER = "uploads"
@@ -295,11 +296,11 @@ def list_backups(folder: Path, secret_key: str) -> list[BackupInfo]:
 
 
 def leftover_temporaries(folder: Path) -> list[Path]:
-    """Lo que dejaron respaldos interrumpidos (el proceso se cortó a la mitad)."""
+    """Lo que dejaron respaldos o restauraciones interrumpidos (el proceso se cortó a la mitad)."""
     if not folder.is_dir():
         return []
 
-    return sorted(path for path in folder.iterdir() if path.name.startswith(TEMP_PREFIX))
+    return sorted(path for path in folder.iterdir() if path.name.startswith((TEMP_PREFIX, RESTORE_TEMP_PREFIX)))
 
 
 def resolve_backup(folder: Path, name: str | None) -> Path:

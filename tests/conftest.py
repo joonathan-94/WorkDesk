@@ -67,6 +67,9 @@ def _app_config(uploads_dir) -> dict:
         "UPLOADS_DIR": str(uploads_dir),
         # Igual con los respaldos: nunca llegan a `instance/backups`.
         "BACKUPS_DIR": str(Path(uploads_dir).parent / "backups"),
+        # Ni el latido del planificador ni la lectura de los logs tocan `instance/`.
+        "SCHEDULER_HEARTBEAT_FILE": str(Path(uploads_dir).parent / "scheduler-heartbeat.json"),
+        "LOG_DIR": str(Path(uploads_dir).parent / "logs"),
     }
 
 

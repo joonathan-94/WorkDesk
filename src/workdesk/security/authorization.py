@@ -506,6 +506,12 @@ def can_view_audit(user) -> bool:
     return has_any_role(user, RoleCode.ADMINISTRADOR)
 
 
+def can_view_system(user) -> bool:
+    """El estado del sistema y los respaldos (UI-028 y UI-029): solo el Administrador. Muestran
+    rutas del servidor, versiones y la salud de cada pieza, nada que el resto necesite."""
+    return has_any_role(user, RoleCode.ADMINISTRADOR)
+
+
 def roles_required(*role_codes: RoleCode):
     """Restringe una vista a los roles indicados, comprobado en backend.
 

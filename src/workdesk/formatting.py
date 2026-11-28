@@ -74,20 +74,20 @@ def format_elapsed(seconds: float | None) -> str:
 
 
 def format_size(size: int) -> str:
-    """Un tamaño en bytes como lo lee una persona: «500 KB», «1,5 MB» o «10 MB».
+    """Un tamaño en bytes como lo lee una persona: «500 KB», «1,5 MB» o «931,3 GB».
 
-    Desde 1 MB se muestran megabytes con un decimal **hacia abajo** (un límite nunca
-    aparenta ser mayor de lo que es); por debajo, kilobytes **hacia arriba** (un archivo de
-    pocos bytes es «1 KB», no «0 KB»).
+    Desde 1 MB se muestran megabytes (y desde 1 GB, gigabytes, para un disco o un respaldo)
+    con un decimal **hacia abajo** (un límite nunca aparenta ser mayor de lo que es); por
+    debajo, kilobytes **hacia arriba** (un archivo de pocos bytes es «1 KB», no «0 KB»).
     """
     if size < 0:
         raise ValueError("Un tamaño no puede ser negativo.")
 
-    if size >= 1024 * 1024:
-        tenths = size * 10 // (1024 * 1024)
-        whole, decimal = divmod(tenths, 10)
+    for unit, factor in (("GB", 1024**3), ("MB", 1024**2)):
+        if size >= factor:
+            whole, decimal = divmod(size * 10 // factor, 10)
 
-        return f"{whole} MB" if decimal == 0 else f"{whole},{decimal} MB"
+            return f"{whole} {unit}" if decimal == 0 else f"{whole},{decimal} {unit}"
 
     return f"{max(1, -(-size // 1024))} KB"
 

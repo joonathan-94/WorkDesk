@@ -160,11 +160,13 @@ HUB_SECTIONS = (
                 title="Respaldos",
                 description="Copias de seguridad y restauración.",
                 icon="hdd",
+                endpoint="admin.backups",
             ),
             HubCard(
                 title="Estado del sistema",
                 description="Salud de la aplicación y la base de datos.",
                 icon="activity",
+                endpoint="admin.system_status_page",
             ),
         ),
     ),

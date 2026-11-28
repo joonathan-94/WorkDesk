@@ -99,6 +99,8 @@ ADMIN_PAGES = [
     "/admin/audit",
     "/admin/audit?vista=accesos",
     "/admin/audit?vista=tickets",
+    "/admin/backups",
+    "/admin/system",
 ]
 
 # Quién entra en qué pantallas: 200 si puede, 403 si no.

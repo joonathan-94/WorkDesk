@@ -1,0 +1,178 @@
+{% extends "layouts/app.html" %}
+{% from "_ui_macros.html" import page_header, breadcrumb %}
+
+{% block title %}Respaldos{% endblock %}
+
+{% block styles %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/system.css') }}"
+    >
+{% endblock %}
+
+{% block content %}
+    {{ breadcrumb([
+        ("Administración", url_for('admin.index')),
+        ("Respaldos", None),
+    ]) }}
+
+    {{ page_header(
+        "Respaldos",
+        "Copias de la base de datos y de los adjuntos. Se crean, comprueban y restauran con comandos en el servidor: esta página solo las muestra."
+    ) }}
+
+    {# --- Respaldos guardados ------------------------------------------------- #}
+    <section class="card mb-4" aria-labelledby="backups-title">
+        <div class="card-body">
+            <h2 class="h6 mb-1" id="backups-title">Respaldos guardados</h2>
+            <p class="small text-secondary mb-3">En <code>{{ folder }}</code>, del más reciente al más antiguo.</p>
+
+            {% if rows %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Creado</th>
+                                <th scope="col">Archivo</th>
+                                <th scope="col" class="text-end">Tamaño</th>
+                                <th scope="col">Contenido</th>
+                                <th scope="col">Firma</th>
+                                <th scope="col">Migraciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for info, revision in rows %}
+                                <tr>
+                                    <td class="text-nowrap">
+                                        {% if info.created_at %}
+                                            {{ info.created_at | local_datetime }}
+                                            <div class="small text-secondary">{{ ago(info.created_at, now) }}</div>
+                                        {% else %}
+                                            <span class="text-secondary">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code>{{ info.name }}</code>
+                                        {% if not info.has_checksum and info.manifest %}
+                                            <div class="small text-secondary">Sin archivo .sha256</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-nowrap">{{ info.size | filesize }}</td>
+                                    {% if info.manifest %}
+                                        <td>
+                                            {{ info.content.tickets }} tickets ·
+                                            {{ info.content.usuarios }} usuarios ·
+                                            {{ info.content.adjuntos_copiados }} adjuntos
+                                        </td>
+                                        <td>
+                                            {% if info.signature == Signature.VALIDA %}
+                                                <span class="badge badge-soft badge-soft-success">De esta instalación</span>
+                                            {% else %}
+                                                <span class="badge badge-soft badge-soft-warning">{{ signature_labels[info.signature] | capitalize }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if revision == RevisionMatch.AL_DIA %}
+                                                <span class="badge badge-soft badge-soft-success">Al día</span>
+                                            {% else %}
+                                                <span class="badge badge-soft badge-soft-warning">{{ revision_labels[revision] | capitalize }}</span>
+                                            {% endif %}
+                                        </td>
+                                    {% else %}
+                                        <td colspan="3">
+                                            <span class="badge badge-soft badge-soft-danger">No se puede leer</span>
+                                            <span class="small text-secondary">{{ info.problem }}</span>
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="small text-secondary mt-3 mb-0">
+                    La firma y el contenido se leen del manifiesto. Para comprobar un respaldo
+                    entero, archivo por archivo, usa <code>backup-verify</code>.
+                </p>
+            {% else %}
+                <p class="mb-0">Todavía no hay respaldos. Crea el primero con <code>backup-create</code>.</p>
+            {% endif %}
+
+            {% if leftovers %}
+                <div class="alert alert-warning mt-3 mb-0" role="alert">
+                    Restos de un respaldo o una restauración interrumpidos (se pueden borrar):
+                    {% for path in leftovers %}<code>{{ path.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {# --- Lo que dice la auditoría ------------------------------------------- #}
+    <section class="card mb-4" aria-labelledby="events-title">
+        <div class="card-body">
+            <h2 class="h6 mb-1" id="events-title">Últimas creaciones y restauraciones</h2>
+            <p class="small text-secondary mb-3">
+                De la <a href="{{ url_for('admin.audit', vista='administrativa', entidad='respaldo') }}">auditoría</a>,
+                también las que fallaron.
+            </p>
+
+            {% if events %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Fecha</th>
+                                <th scope="col">Qué pasó</th>
+                                <th scope="col">Resultado</th>
+                                <th scope="col">Respaldo</th>
+                                <th scope="col">Cuenta del servidor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in events %}
+                                {% set values = event.valor_nuevo or {} %}
+                                <tr>
+                                    <td class="text-nowrap">{{ event.fecha_hora | local_datetime }}</td>
+                                    <td>{{ action_label(event.accion) }}</td>
+                                    <td>
+                                        {% if event.resultado == "FALLIDO" %}
+                                            <span class="badge badge-soft badge-soft-danger">Fallido</span>
+                                            {% if values.error %}<div class="small text-secondary">{{ values.error }}</div>{% endif %}
+                                        {% else %}
+                                            <span class="badge badge-soft badge-soft-success">Correcto</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ event.detalle }}</code></td>
+                                    <td>{{ values.usuario_sistema or "—" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="mb-0">La auditoría no registra respaldos ni restauraciones.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    {# --- Cómo se usan -------------------------------------------------------- #}
+    <section class="card mb-4" aria-labelledby="commands-title">
+        <div class="card-body">
+            <h2 class="h6 mb-3" id="commands-title">Cómo se crean, comprueban y restauran</h2>
+            <p class="small mb-1">En el servidor, con el entorno virtual activado y desde la carpeta del proyecto:</p>
+
+            <p class="small mb-0">Crear un respaldo (WorkDesk puede seguir en uso):</p>
+            <code class="command-line">python -m flask --app src.workdesk backup-create</code>
+
+            <p class="small mb-0">Comprobar uno sin restaurarlo (no necesita la base de datos):</p>
+            <code class="command-line">python -m flask --app src.workdesk backup-verify NOMBRE</code>
+
+            <div class="alert alert-danger mb-2" role="note">
+                <strong>Restaurar reemplaza la base de datos y los adjuntos</strong> por los del
+                respaldo: se pierde lo que se hizo después. Detén antes WorkDesk y el
+                planificador. El comando lo comprueba todo, pide escribir el nombre de la base,
+                guarda antes un respaldo de lo actual y cierra todas las sesiones.
+            </div>
+            <code class="command-line">python -m flask --app src.workdesk backup-restore NOMBRE</code>
+        </div>
+    </section>
+{% endblock %}

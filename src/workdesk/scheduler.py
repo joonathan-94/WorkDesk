@@ -34,6 +34,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from flask import current_app
 from sqlalchemy import and_, or_
@@ -45,6 +46,7 @@ from .models import Estado, PeriodoSla, Ticket, TicketEvent
 from .notifications.events import notify_sla_breach, notify_sla_warning
 from .security.authorization import RESOLVED_STATE
 from .sla.periods import current_time, sla_enabled
+from .system.heartbeat import record_heartbeat
 from .tickets.lifecycle import close_automatically
 from .tickets.service import record_ticket_event
 from .tickets.storage import remove_stale_temp_files
@@ -267,13 +269,24 @@ def run_once(now: datetime | None = None) -> SchedulerResult:
     notices, notice_failures = run_sla_notices(now)
     closed, close_failures = run_auto_close(now)
     _remove_stale_uploads()
-
-    return SchedulerResult(
+    result = SchedulerResult(
         warnings=notices.warnings,
         breaches=notices.breaches,
         closed=closed,
         failures=notice_failures + close_failures,
     )
+    _beat(result)
+
+    return result
+
+
+def _beat(result: SchedulerResult) -> None:
+    """Deja constancia de la pasada para la pantalla de estado del sistema (ver
+    `system/heartbeat.py`). Un fallo del disco se registra y no detiene nada."""
+    try:
+        record_heartbeat(Path(current_app.config["SCHEDULER_HEARTBEAT_FILE"]), failures=result.failures)
+    except OSError:
+        logger.exception("No se pudo escribir el latido del planificador.")
 
 
 def _remove_stale_uploads() -> None:

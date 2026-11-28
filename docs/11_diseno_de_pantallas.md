@@ -2709,6 +2709,13 @@ La restauración requiere confirmación explícita.
 
 La arquitectura de respaldo contempla base de datos, archivos y manifest cuando corresponda.
 
+**Implementación (`v0.8.0`, entrega 9).** La pantalla es `/admin/backups`, solo para el Administrador, desde la tarjeta **Respaldos** del hub. Es **de solo lectura**: crear y restaurar se hace con comandos en el servidor (RN-181 y RN-182), porque una restauración no puede ocurrir mientras la propia aplicación atiende peticiones. Muestra:
+
+- la tabla de respaldos: fecha (y hace cuánto), archivo, tamaño, contenido, firma («De esta instalación» o el motivo, en ámbar) y migraciones («Al día» o «Anterior al código»);
+- los restos de operaciones interrumpidas;
+- las últimas diez creaciones y restauraciones de la auditoría, con su resultado y su error si fallaron;
+- una tarjeta con los tres comandos. La restauración lleva una alerta roja de alto impacto: reemplaza la base y los adjuntos, se pierde lo posterior y hay que detener antes WorkDesk y el planificador.
+
 ---
 
 ## UI-029 — Estado del sistema
@@ -2722,6 +2729,13 @@ Ejemplo:
 ```
 
 El verde solo complementa el texto.
+
+**Implementación (`v0.8.0`, entrega 9).** `/admin/system`, solo para el Administrador, desde la tarjeta **Estado del sistema** del hub.
+
+- Arriba va el estado general: el peor de todos, con su punto de color y el texto «Operativo», «Requiere atención» o «Con fallos».
+- Debajo, una tarjeta por pieza: aplicación, base de datos, migraciones, planificador, almacenamiento, respaldos y errores. Cada tarjeta lleva un borde izquierdo del color de su estado, el mismo texto, una frase y sus datos en una lista de definición.
+- Los colores son tokens `--wd-success`, `--wd-warning` y `--wd-danger` (`static/css/system.css`), y siempre acompañan al texto.
+- Se comprueba al abrir la página; no se actualiza sola.
 
 ---
 

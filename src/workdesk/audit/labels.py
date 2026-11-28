@@ -48,6 +48,7 @@ AUDIT_ACTION_LABELS: dict[AuditAction, str] = {
     AuditAction.SLA_RECALCULADO: "SLA recalculado desde la consola",
     AuditAction.DATOS_EXPORTADOS: "Datos exportados",
     AuditAction.RESPALDO_CREADO: "Respaldo creado",
+    AuditAction.RESPALDO_RESTAURADO: "Respaldo restaurado",
 }
 
 # Los tipos de entidad que aparecen en `entidad_tipo`. Uno desconocido se muestra tal cual.

@@ -39,6 +39,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from ..audit import AuditAction, AuditResult, record_admin_event
 from ..extensions import db
 from ..models import Attachment, Ticket, User
+from ..system.migrations import database_revision
 from ..tickets.storage import absolute_path
 from .package import (
     CHUNK_SIZE,
@@ -109,16 +110,6 @@ def _count(connection, model) -> int:
     return connection.scalar(select(func.count()).select_from(model.__table__))
 
 
-def _revision(connection) -> str | None:
-    """La revisión de Alembic, o `None` si la base no se creó con las migraciones."""
-    if connection.scalar(text("SELECT to_regclass('alembic_version') IS NOT NULL")):
-        revisions = connection.scalars(text("SELECT version_num FROM alembic_version")).all()
-
-        return ",".join(sorted(revisions)) or None
-
-    return None
-
-
 def backup_lock_key():
     """La clave del bloqueo de los respaldos: una por esquema. Los bloqueos consultivos valen
     para toda la base, y dos instalaciones en esquemas distintos no deben estorbarse."""
@@ -157,7 +148,7 @@ def _snapshot():
                 database=database,
                 schema=schema,
                 server_version=server_version,
-                revision=_revision(connection),
+                revision=database_revision(connection),
                 tickets=_count(connection, Ticket),
                 users=_count(connection, User),
                 attachments=[_AttachmentRow(*row) for row in rows],
@@ -308,12 +299,13 @@ def _system_user() -> str | None:
         return None
 
 
-def _record(result: AuditResult, detail: str, values: dict) -> bool:
-    """Registra el intento en la auditoría. Devuelve si se pudo (la base puede ser
-    justamente lo que falló)."""
+def record_backup_event(action: AuditAction, result: AuditResult, detail: str, values: dict) -> bool:
+    """Registra en la auditoría un respaldo o una restauración, como acción del sistema y con
+    la cuenta que ejecutó el comando. Devuelve si se pudo (la base puede ser justamente lo
+    que falló)."""
     try:
         record_admin_event(
-            AuditAction.RESPALDO_CREADO,
+            action,
             actor=None,
             entity_type="respaldo",
             detail=detail,
@@ -323,7 +315,7 @@ def _record(result: AuditResult, detail: str, values: dict) -> bool:
         db.session.commit()
     except SQLAlchemyError:
         db.session.rollback()
-        current_app.logger.exception("No se pudo registrar el respaldo en la auditoría.")
+        current_app.logger.exception("No se pudo registrar en la auditoría: %s.", detail)
         return False
 
     return True
@@ -350,12 +342,13 @@ def create_backup(*, now: datetime | None = None) -> BackupResult:
             current_app.logger.exception("Fallo de la base de datos al crear un respaldo.")
             message = "No se pudo leer la base de datos (el detalle está en el log)."
 
-        _record(AuditResult.FALLIDO, name, {"archivo": name, "error": message[:MAX_ERROR_LENGTH]})
+        record_backup_event(AuditAction.RESPALDO_CREADO, AuditResult.FALLIDO, name, {"archivo": name, "error": message[:MAX_ERROR_LENGTH]})
         raise BackupError(message) from error
 
     content = result.manifest["contenido"]
     notices = result.manifest["avisos"]
-    recorded = _record(
+    recorded = record_backup_event(
+        AuditAction.RESPALDO_CREADO,
         AuditResult.EXITOSO,
         name,
         {
