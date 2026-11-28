@@ -77,8 +77,8 @@ GROUPS = (
                 "Intentos fallidos desde un mismo equipo",
                 "Al alcanzarlos dentro del tiempo de bloqueo, en cualquier cuenta, ese equipo "
                 "no puede intentarlo de nuevo hasta que pase ese tiempo. Frena a quien prueba "
-                "pocas contraseñas en muchas cuentas. 0 lo desactiva: hazlo si todas las "
-                "personas llegan a WorkDesk a través de un mismo proxy.",
+                "pocas contraseñas en muchas cuentas. 0 lo desactiva: útil si todas las "
+                "personas usan WorkDesk desde el mismo equipo.",
                 unit="intentos",
             ),
             SettingField(

@@ -22,6 +22,7 @@ from sqlalchemy import event
 
 from src.workdesk import exports, settings
 from src.workdesk.audit import AuditAction
+from src.workdesk.audit import export as audit_export
 from src.workdesk.audit.queries import AuditFilters, AuditView, count_audit_rows
 from src.workdesk.configuration import save_setting
 from src.workdesk.exports import (
@@ -40,7 +41,9 @@ from src.workdesk.reports import ReportFilters, build_report, preset_period
 from src.workdesk.sla import periods as sla_periods
 from src.workdesk.sla.evaluation import evaluate_tickets_sla
 from src.workdesk.sla.queries import SLA_FILTER_LABELS, filter_of
+from src.workdesk.tickets import export as ticket_export
 from src.workdesk.tickets.queries import TAB_ALL, TicketFilters, list_tickets
+from src.workdesk.tickets.service import create_ticket
 from tests.demo_data import DEMO_PASSWORD, NOW, SOLICITANTES
 from tests.ticket_helpers import login, make_ticket, person
 
@@ -529,3 +532,140 @@ def test_exporting_the_audit_is_recorded_too(seeded, app, client, make_user):
 
     assert entry.valor_nuevo["exportacion"] == "auditoria"
     assert entry.valor_nuevo["filtros"] == {"vista": "accesos"}
+
+
+# --- Exportar con muchas personas a la vez -----------------------------------------------
+
+
+def _create_ticket_elsewhere(app, title="Llega durante la exportación"):
+    """Crea y confirma un ticket desde otra sesión (otra conexión), como otra persona."""
+    with app.app_context():
+        actor = db.session.scalar(db.select(User).where(User.username == "camila.rojas"))
+        sample = db.session.scalars(db.select(Ticket).order_by(Ticket.id).limit(1)).one()
+        create_ticket(
+            actor=actor,
+            title=title,
+            description="Se crea mientras otra persona exporta.",
+            category_id=sample.categoria_id,
+            priority_id=sample.prioridad_id,
+        )
+        db.session.commit()
+
+
+def _arriving_after_the_first_row(app, monkeypatch, target, name):
+    """Cambia `target.name` (una función que escribe una fila) para que, al escribir la
+    primera, llegue un ticket nuevo: el primero en el orden «recientes»."""
+    real = getattr(target, name)
+    calls = []
+
+    def write(*args, **kwargs):
+        if not calls:
+            _create_ticket_elsewhere(app)
+
+        calls.append(1)
+
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(target, name, write)
+
+
+def test_a_ticket_created_during_the_export_does_not_repeat_or_drop_a_row(
+    seeded, app, client, monkeypatch
+):
+    """Se lee por tramos: sin una sola foto, el ticket nuevo desplazaría las filas entre un
+    tramo y el siguiente y una saldría dos veces."""
+    expected = _listing_numbers(app, "camila.rojas", TicketFilters(), TAB_ALL)
+    monkeypatch.setattr("src.workdesk.tickets.export.CHUNK", 7)
+    _arriving_after_the_first_row(app, monkeypatch, ticket_export, "_row")
+    sign_in(client, "camila.rojas")
+
+    rows = read_csv(client.get("/tickets/export?formato=csv&vista=todos"))
+
+    assert [int(row[0]) for row in rows[1:]] == expected
+
+    with app.app_context():
+        (entry,) = _exports_in_audit()
+
+        assert entry.valor_nuevo["filas"] == len(expected)
+        assert db.session.scalar(db.select(db.func.count()).select_from(Ticket)) == len(expected) + 1
+
+
+def test_an_event_recorded_during_the_audit_export_does_not_repeat_or_drop_a_row(
+    seeded, app, client, make_user, monkeypatch
+):
+    admin = make_user("ADMINISTRADOR", username="admin_export")
+    login(client, admin)
+    expected = read_csv(client.get("/admin/audit/export?formato=csv&vista=tickets"))
+    monkeypatch.setattr("src.workdesk.audit.export.CHUNK", 9)
+    real = audit_export._LINES[AuditView.TICKETS]
+    calls = []
+
+    def write(*args):
+        if not calls:
+            _create_ticket_elsewhere(app)
+
+        calls.append(1)
+
+        return real(*args)
+
+    monkeypatch.setitem(audit_export._LINES, AuditView.TICKETS, write)
+
+    assert read_csv(client.get("/admin/audit/export?formato=csv&vista=tickets")) == expected
+
+
+def test_while_the_export_slots_are_taken_an_export_asks_to_retry_and_is_not_recorded(
+    seeded, app, client
+):
+    sign_in(client, "camila.rojas")
+    taken = [exports._EXPORT_SLOTS.acquire(blocking=False) for _ in range(exports.MAX_CONCURRENT_EXPORTS)]
+
+    try:
+        responses = [
+            client.get(url, follow_redirects=True)
+            for url in (
+                "/tickets/export?formato=xlsx&vista=todos",
+                "/reports/export?formato=xlsx&periodo=90",
+            )
+        ]
+    finally:
+        for _ in taken:
+            exports._EXPORT_SLOTS.release()
+
+    assert all(taken)
+
+    for response in responses:
+        assert response.mimetype == "text/html"
+        assert "Hay otras exportaciones en curso" in response.get_data(as_text=True)
+
+    with app.app_context():
+        assert _exports_in_audit() == []
+
+
+def test_the_audit_export_asks_to_retry_too(seeded, client, make_user):
+    login(client, make_user("ADMINISTRADOR", username="admin_export"))
+    taken = [exports._EXPORT_SLOTS.acquire(blocking=False) for _ in range(exports.MAX_CONCURRENT_EXPORTS)]
+
+    try:
+        response = client.get("/admin/audit/export?formato=csv&vista=tickets", follow_redirects=True)
+    finally:
+        for _ in taken:
+            exports._EXPORT_SLOTS.release()
+
+    assert "Hay otras exportaciones en curso" in response.get_data(as_text=True)
+
+
+def test_an_export_gives_back_its_slot_also_when_it_is_refused(seeded, client, monkeypatch):
+    monkeypatch.setattr("src.workdesk.tickets.routes.listing.MAX_EXPORT_ROWS", 1)
+    sign_in(client, "camila.rojas")
+    client.get("/tickets/export?formato=csv&vista=todos")
+    monkeypatch.undo()
+    client.get("/reports/export?formato=csv&periodo=90")
+
+    free = [exports._EXPORT_SLOTS.acquire(blocking=False) for _ in range(exports.MAX_CONCURRENT_EXPORTS)]
+
+    for acquired in free:
+        if acquired:
+            exports._EXPORT_SLOTS.release()
+
+    assert all(free)
+

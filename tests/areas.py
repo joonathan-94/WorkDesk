@@ -39,6 +39,7 @@ AREAS: dict[str, tuple[str, ...]] = {
         "test_docs_coherence",
         "test_frontend_conventions",
         "test_suite_infrastructure",
+        "test_database_limits",
     ),
     # Autenticación, sesiones, contraseñas, roles y «Mi cuenta».
     "auth": (

@@ -1812,7 +1812,7 @@ Un login exitoso podrá reiniciar los intentos fallidos de acuerdo con la polít
 
 **Concurrencia (`v0.8.0`).** El contador se lee, se compara y se escribe. Si dos intentos llegan a la vez y ninguno bloquea la fila, los dos leen el mismo valor y el contador pierde actualizaciones: medido, 20 intentos simultáneos lo dejaban en 2, sin bloquear la cuenta. Por eso el login y el cambio de contraseña leen al usuario con `SELECT ... FOR UPDATE` antes de mirar el bloqueo y verificar la contraseña (`auth/security.py`). Los intentos sobre una misma cuenta se atienden de uno en uno, y los de cuentas distintas no se esperan entre sí. Es el mismo principio que el resto del sistema: bloquear la fila antes de decidir.
 
-**Límite por equipo (`v0.8.0`, RN-178).** El bloqueo por cuenta no ve a quien prueba pocas contraseñas en muchas cuentas. Con `eventos_autenticacion` se puede contar: si desde una IP hubo `LOGIN_MAX_FAILED_PER_IP` fallos dentro del tiempo de bloqueo, los siguientes intentos desde ella se rechazan **antes** de buscar la cuenta. El recuento usa el índice `(ip_origen, fecha_hora)` y se serializa con un bloqueo consultivo por IP (`pg_advisory_xact_lock` sobre un hash de la IP), igual que la cuenta se serializa con su fila. Así, doce intentos simultáneos con un límite de tres dejan exactamente tres que llegan a mirar una cuenta. La IP es `request.remote_addr`. Detrás de un proxy inverso todas las peticiones traerían la del proxy: en ese caso el límite se desactiva con 0, o habría que configurar el proxy y la aplicación para confiar en `X-Forwarded-For`, cosa que WorkDesk no hace por defecto porque esa cabecera la puede inventar cualquiera.
+**Límite por equipo (`v0.8.0`, RN-178).** El bloqueo por cuenta no ve a quien prueba pocas contraseñas en muchas cuentas. Con `eventos_autenticacion` se puede contar: si desde una IP hubo `LOGIN_MAX_FAILED_PER_IP` fallos dentro del tiempo de bloqueo, los siguientes intentos desde ella se rechazan **antes** de buscar la cuenta. El recuento usa el índice `(ip_origen, fecha_hora)` y se serializa con un bloqueo consultivo por IP (`pg_advisory_xact_lock` sobre un hash de la IP), igual que la cuenta se serializa con su fila. Así, doce intentos simultáneos con un límite de tres dejan exactamente tres que llegan a mirar una cuenta. La IP es `request.remote_addr`; WorkDesk no confía en `X-Forwarded-For` porque esa cabecera la puede inventar cualquiera. Si todas las personas usan el mismo equipo y comparten la IP, el límite puede desactivarse con 0.
 
 ---
 
@@ -3017,15 +3017,9 @@ No se deshabilitarán claves foráneas para forzar eliminaciones.
 
 # 119. Servidor web local
 
-Durante desarrollo podrá utilizarse el servidor de Flask.
+WorkDesk se ejecuta en el equipo local con el servidor que trae Flask (`flask run`).
 
-Este servidor será únicamente para desarrollo.
-
-Para demostraciones locales más próximas a una ejecución real se recomienda:
-
-> **Waitress**
-
-Waitress funciona adecuadamente en entornos Windows y permite ejecutar la aplicación WSGI sin depender del servidor de desarrollo.
+**Decisión (cierre de `v0.8.0`):** no se incorpora un servidor web aparte ni ninguna otra tecnología para publicar la aplicación fuera del equipo. Es un proyecto personal que se ejecuta en local, y una dependencia así no tendría uso.
 
 ---
 
@@ -3040,7 +3034,7 @@ La ejecución local podrá representarse así:
          │ HTTP
          ▼
 ┌──────────────────┐
-│ Flask / Waitress │
+│      Flask       │
 │    WorkDesk      │
 └────────┬─────────┘
          │
@@ -3113,7 +3107,6 @@ Podrán incorporarse cuando la funcionalidad correspondiente sea implementada:
 
 ```text
 openpyxl
-Waitress
 ```
 
 No deberán instalarse anticipadamente únicamente porque aparezcan en la arquitectura objetivo.
@@ -3355,6 +3348,37 @@ pool_pre_ping
 para detectar conexiones inválidas cuando resulte conveniente.
 
 La configuración exacta del pool deberá ajustarse mediante pruebas antes de incrementar arbitrariamente sus valores.
+
+## 135.1. Implementación (cierre de `v0.8.0`)
+
+Con muchas personas a la vez, lo que deja colgada a una aplicación web casi nunca es una consulta lenta: es una espera que no termina. Una transacción que quedó abierta y retiene un bloqueo, una consulta desbocada o una petición esperando para siempre una conexión libre ocupan un hilo del servidor, y cuando se acaban los hilos nadie más es atendido. El módulo `src/workdesk/database.py` hace que **ninguna espera sea indefinida**:
+
+| Variable | Por defecto | Qué limita |
+| --- | --- | --- |
+| `DATABASE_POOL_SIZE` y `DATABASE_MAX_OVERFLOW` | 10 y 10 | conexiones abiertas por proceso y las que se suman en un pico |
+| `DATABASE_POOL_TIMEOUT_SECONDS` | 10 | lo que una petición espera una conexión libre |
+| `DATABASE_POOL_RECYCLE_SECONDS` | 1800 | la edad de una conexión antes de renovarla (0: nunca) |
+| `DATABASE_STATEMENT_TIMEOUT_SECONDS` | 30 | la duración de una consulta (`statement_timeout`) |
+| `DATABASE_LOCK_TIMEOUT_SECONDS` | 10 | la espera de un bloqueo (`lock_timeout`); debe ser menor que la anterior |
+| `DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS` | 60 | una transacción abierta sin hacer nada (`idle_in_transaction_session_timeout`) |
+
+- **Se leen solo al iniciar** (`settings.py`, `ENGINE_SETTINGS`): el motor se crea una vez, así que no están en la tabla `configuracion` ni tienen pantalla. Se validan al arrancar, todas a la vez. 0 desactiva los tres tiempos de PostgreSQL.
+- **Los tiempos se fijan en cada conexión nueva** (evento `connect` con `set_config`), no en la URL: valen igual para la reserva de conexiones de la suite de tests, que no usa la URL.
+- **Quien necesita más lo pide solo para su transacción** con `SET LOCAL`: la foto de un respaldo, que espera sin hacer nada mientras `pg_dump` vuelca, y las migraciones (`migrations/env.py`), que pueden crear un índice sobre una tabla grande. La espera de un bloqueo sigue rigiendo en las migraciones: es mejor que una falle a que deje en cola a todas las peticiones detrás de ella.
+- **`pool_pre_ping`:** antes de entregar una conexión de la reserva se comprueba que siga viva, así que después de reiniciar PostgreSQL ninguna petición falla por una conexión muerta.
+- **`hide_parameters`:** el texto de un error de SQL lleva la sentencia pero no sus valores, así que el log nunca recibe un hash ni un dato personal.
+- **Lo que ve la persona** (`errors.py`): una consulta o un bloqueo que pasa de su tiempo, ninguna conexión libre o la base caída responden **503 con `Retry-After: 5`** y «WorkDesk no pudo atender tu solicitud a tiempo. Espera unos segundos e inténtalo de nuevo.» (RNF-007), en JSON para las consultas del propio JavaScript; la campana lo toma como pasajero y vuelve a consultar en el ciclo siguiente. El log anota el tipo de error, su SQLSTATE, el método y la ruta, sin la sentencia ni la consulta de la URL. **La página de error se dibuja sin los procesadores de contexto:** ellos calculan la persona, el menú y la campana, que consultarían la base en balde y, si el error vino de ella, volverían a fallar dentro del propio manejador. Antes, una página de error de una persona con sesión costaba una consulta (la campana) y, con la base caída, terminaba en la página genérica del servidor.
+- **Ningún comando espera a una persona con una transacción abierta:** `create-admin` termina la suya antes de pedir los datos (el servicio vuelve a comprobarlo todo, con bloqueo, al crear).
+- **Exportaciones** (`exports.py`): como mucho dos a la vez por proceso (`MAX_CONCURRENT_EXPORTS`). Una de 50 000 filas en Excel ocupa un hilo y un núcleo unos 10 s: sin tope, unas pocas personas exportando dejarían sin hilos al resto. Con el tope ocupado se pide reintentar, sin hacer esperar a nadie. Además, contar, auditar y leer las filas por tramos ocurre ahora **en una sola foto de la base** (`REPEATABLE READ`): antes, un ticket o un evento nuevo que llegara a mitad de la exportación desplazaba las filas entre un tramo y el siguiente, y una salía dos veces y otra ninguna (lo demostró una prueba).
+
+**Medido** (cierre de `v0.8.0`, unos 20 000 tickets de los que 16 926 están en trabajo, un caso extremo; servidor de hilos y clientes en el mismo equipo de 6 núcleos):
+
+| Personas a la vez, sin pausas entre clics | Peticiones por segundo | Mediana | p95 | Errores del servidor |
+| --- | --- | --- | --- | --- |
+| 25 | 45 | 0,5 s | 1,0 s | 0 |
+| 100 | 44 | 2,2 s | 4,9 s | 0 (una respuesta 503 «ocupado») |
+
+El rendimiento se mantiene al cuadruplicar la carga: las esperas crecen, pero nada se cae ni se cuelga. El límite es el del proceso de Python (un núcleo: el intérprete ejecuta un hilo a la vez) y no PostgreSQL, que apenas trabaja. Cada petición gasta unos 27 ms de CPU de Python de media (en el listado, unos 10 ms son dibujar la plantilla). Estas cifras se obtuvieron en el equipo local, con el servidor de hilos que ya trae Werkzeug. El proceso web no guarda en memoria nada que otro proceso necesite (la sesión va en la cookie y todo lo demás, en la base).
 
 ---
 
@@ -3869,7 +3893,7 @@ Durante el desarrollo deberán mantenerse las siguientes reglas:
 | ARQ-025 | Backups BD | pg_dump |
 | ARQ-026 | Testing | pytest |
 | ARQ-027 | Calidad código | Ruff |
-| ARQ-028 | Servidor de demostración | Waitress |
+| ARQ-028 | Servidor web | El de Flask, en local |
 | ARQ-029 | Contenedores | No obligatorios |
 | ARQ-030 | Microservicios | No para MVP |
 
@@ -3894,7 +3918,7 @@ Durante el desarrollo deberán mantenerse las siguientes reglas:
 | Usabilidad | SSR + Bootstrap + JS selectivo |
 | Mantenibilidad | módulos + capas |
 | Testing | pytest |
-| Ejecución local | Flask/Waitress + PostgreSQL |
+| Ejecución local | Flask + PostgreSQL |
 | Funcionamiento offline | recursos frontend locales |
 | Evolución | servicios y módulos desacoplados |
 

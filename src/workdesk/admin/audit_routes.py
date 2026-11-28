@@ -26,8 +26,11 @@ from ..audit.queries import (
 from ..audit.service import AuditAction
 from ..dashboard.requester import local_today
 from ..exports import (
+    EXPORTS_BUSY_MESSAGE,
     MAX_EXPORT_ROWS,
+    begin_consistent_read,
     export_response,
+    export_slot,
     parse_format,
     record_export,
     too_many_rows_message,
@@ -97,28 +100,40 @@ def export_audit():
 
     view, _known, filters = _read_audit()
     params = _params(view, filters)
-    rows = count_audit_rows(view, filters)
 
-    if rows > MAX_EXPORT_ROWS:
-        flash(too_many_rows_message(rows), "warning")
+    with export_slot() as free:
+        if not free:
+            flash(EXPORTS_BUSY_MESSAGE, "warning")
 
-        return redirect(url_for("admin.audit", **params))
+            return redirect(url_for("admin.audit", **params))
 
-    record_export(
-        current_actor(),
-        what="auditoria",
-        label=f"Auditoría, pestaña {VIEW_LABELS[view]}",
-        fmt=fmt,
-        rows=rows,
-        filters=params,
-    )
-    db.session.commit()
+        # Contar, auditar y leer las filas por tramos, todo con la misma foto de la base: los
+        # accesos y los eventos llegan sin parar y van primero en el orden.
+        begin_consistent_read()
+        rows = count_audit_rows(view, filters)
 
-    return export_response(
-        fmt,
-        [audit_table(view, filters)],
-        f"workdesk-auditoria-{view.value}-{local_today().isoformat()}",
-    )
+        if rows > MAX_EXPORT_ROWS:
+            flash(too_many_rows_message(rows), "warning")
+
+            return redirect(url_for("admin.audit", **params))
+
+        record_export(
+            current_actor(),
+            what="auditoria",
+            label=f"Auditoría, pestaña {VIEW_LABELS[view]}",
+            fmt=fmt,
+            rows=rows,
+            filters=params,
+        )
+        response = export_response(
+            fmt,
+            [audit_table(view, filters)],
+            f"workdesk-auditoria-{view.value}-{local_today().isoformat()}",
+        )
+        # La auditoría se confirma con el archivo ya escrito y antes de enviarlo.
+        db.session.commit()
+
+        return response
 
 
 # --- Lectura de la URL --------------------------------------------------------------------

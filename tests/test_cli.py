@@ -1,6 +1,7 @@
 import ast
 from pathlib import Path
 
+import click
 import pytest
 
 from src.workdesk.extensions import db
@@ -54,6 +55,26 @@ def test_create_admin_creates_the_initial_administrator(app):
     assert admin is not None
     assert verify_password(admin.password_hash, VALID_PASSWORD)
     assert admin.debe_cambiar_password is False
+
+
+def test_create_admin_holds_no_transaction_while_the_person_types(app, monkeypatch):
+    """Mientras la persona escribe, la conexión no queda en una transacción abierta: la
+    retendría sin hacer nada y PostgreSQL la cortaría pasado el tiempo máximo de inactividad
+    (`database.py`)."""
+    seed_admin_role(app)
+    open_while_typing = []
+    real_prompt = click.prompt
+
+    def prompt(*args, **kwargs):
+        open_while_typing.append(db.session().in_transaction())
+
+        return real_prompt(*args, **kwargs)
+
+    monkeypatch.setattr(click, "prompt", prompt)
+    result = run_create_admin(app, VALID_PASSWORD)
+
+    assert result.exit_code == 0
+    assert open_while_typing and not any(open_while_typing)
 
 
 def test_create_admin_rejects_a_password_below_the_minimum(app):

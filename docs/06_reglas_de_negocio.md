@@ -1951,7 +1951,7 @@ Aplica RNF-015 y RNF-022 (`v0.8.0`, entrega 3). Precisa RN-118: los accesos no v
 * **La causa es un dato interno.** Quien intenta entrar lee siempre «Usuario o contraseña incorrectos.», salvo con el límite del equipo, cuyo mensaje no dice nada de ninguna cuenta.
 * **Nunca se registran contraseñas.** Lo que se escribió como usuario solo se guarda si el evento no está ligado a una cuenta y además tiene forma de username (RN-148): alguien pudo escribir ahí su contraseña.
 * **El registro es de solo añadir**, como la auditoría y el historial.
-* **Límite por equipo.** Si desde una misma IP ya hubo `LOGIN_MAX_FAILED_PER_IP` intentos fallidos (20 por defecto) dentro del tiempo de bloqueo, en cualquier cuenta, los siguientes desde esa IP se rechazan sin mirar la cuenta ni la contraseña, y tampoco suman al contador de ninguna cuenta. Frena a quien prueba pocas contraseñas en muchas cuentas, algo que el bloqueo por cuenta (RNF-015) no ve. Con 0 se desactiva, que es lo que conviene si todas las personas llegan a WorkDesk a través de un mismo proxy.
+* **Límite por equipo.** Si desde una misma IP ya hubo `LOGIN_MAX_FAILED_PER_IP` intentos fallidos (20 por defecto) dentro del tiempo de bloqueo, en cualquier cuenta, los siguientes desde esa IP se rechazan sin mirar la cuenta ni la contraseña, y tampoco suman al contador de ninguna cuenta. Frena a quien prueba pocas contraseñas en muchas cuentas, algo que el bloqueo por cuenta (RNF-015) no ve. Con 0 se desactiva, que puede convenir si todas las personas usan WorkDesk desde el mismo equipo.
 * **Cada persona ve su propia actividad de acceso** en «Mi cuenta» (los últimos diez eventos de su cuenta). Así puede detectar intentos que no reconoce. Nadie más la ve ahí: la consulta general es de la pantalla de auditoría (RF-109).
 
 ## RN-179 — Definiciones de los reportes
@@ -1978,6 +1978,8 @@ Aplica RF-099 a RF-101 (`v0.8.0`, entrega 7).
 * **Nada se ejecuta al abrir un archivo exportado.** Un texto que empieza como una fórmula (`=`, `+`, `-`, `@`, tabulador o retorno de carro) se escribe como texto: con un apóstrofo delante en CSV y con el tipo «texto» en XLSX.
 * **Cada exportación queda en la auditoría administrativa** (`DATOS_EXPORTADOS`): quién, qué, en qué formato, cuántas filas y con qué filtros. Exportar la auditoría también.
 * **Como mucho 50 000 filas por exportación.** Si son más, se pide acotar los filtros y no se exporta nada.
+* **Un archivo es una foto de un instante** (cierre de `v0.8.0`): las filas se cuentan, se auditan y se leen en una misma foto de la base, así que lo que otras personas crean mientras tanto no repite ni hace perder filas, y las filas auditadas son las exportadas.
+* **Como mucho dos exportaciones a la vez por proceso del servidor.** Con las dos en curso, se pide reintentar en unos segundos y no se exporta ni se audita nada.
 
 ---
 

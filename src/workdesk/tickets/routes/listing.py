@@ -18,8 +18,11 @@ from ...catalogs.service import (
 from ...configuration import value_of
 from ...dashboard.requester import local_today
 from ...exports import (
+    EXPORTS_BUSY_MESSAGE,
     MAX_EXPORT_ROWS,
+    begin_consistent_read,
     export_response,
+    export_slot,
     parse_format,
     record_export,
     too_many_rows_message,
@@ -194,29 +197,41 @@ def export_tickets():
 
     listing = _read_listing()
     params = listing_params(listing.filters) | {"vista": listing.tab, "orden": listing.sort}
-    now = sla_periods.current_time() if listing.is_staff else None
-    rows = count_ticket_rows(current_user, listing.filters, listing.tab, now)
 
-    if rows > MAX_EXPORT_ROWS:
-        flash(too_many_rows_message(rows), "warning")
+    with export_slot() as free:
+        if not free:
+            flash(EXPORTS_BUSY_MESSAGE, "warning")
 
-        return redirect(url_for("tickets.list_tickets_page", **params))
+            return redirect(url_for("tickets.list_tickets_page", **params))
 
-    record_export(
-        current_actor(),
-        what="tickets",
-        label="Listado de tickets",
-        fmt=fmt,
-        rows=rows,
-        filters=params,
-    )
-    db.session.commit()
+        # Contar, auditar y leer las filas por tramos, todo con la misma foto de la base.
+        begin_consistent_read()
+        now = sla_periods.current_time() if listing.is_staff else None
+        rows = count_ticket_rows(current_user, listing.filters, listing.tab, now)
 
-    table = ticket_table(
-        current_user, listing.filters, tab=listing.tab, sort=listing.sort, now=now
-    )
+        if rows > MAX_EXPORT_ROWS:
+            flash(too_many_rows_message(rows), "warning")
 
-    return export_response(fmt, [table], f"workdesk-tickets-{local_today(now).isoformat()}")
+            return redirect(url_for("tickets.list_tickets_page", **params))
+
+        record_export(
+            current_actor(),
+            what="tickets",
+            label="Listado de tickets",
+            fmt=fmt,
+            rows=rows,
+            filters=params,
+        )
+        table = ticket_table(
+            current_user, listing.filters, tab=listing.tab, sort=listing.sort, now=now
+        )
+        response = export_response(
+            fmt, [table], f"workdesk-tickets-{local_today(now).isoformat()}"
+        )
+        # La auditoría se confirma con el archivo ya escrito y antes de enviarlo.
+        db.session.commit()
+
+        return response
 
 
 def read_listing_filters(

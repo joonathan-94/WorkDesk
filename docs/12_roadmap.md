@@ -1382,7 +1382,7 @@ buscar solución
 **Segunda mitad de semana 9 y semana 10**  
 **Versión:** `v0.8.0`
 
-**Estado de ejecución:** en curso. Doce entregas planificadas; once terminadas.
+**Estado de ejecución:** completada. Doce entregas (PR #66 a #77).
 
 ### Entregas de `v0.8.0`
 
@@ -1397,7 +1397,40 @@ buscar solución
 9. **Restauración y estado del sistema** ✓ (RF-128, RF-130, RNF-037, RNF-041, RNF-042, UI-028, UI-029, RN-182): `backup-restore` comprueba el respaldo, la revisión de migraciones, el esquema y que no haya nadie conectado, pide escribir el nombre de la base y respalda lo actual. Restaura la base en una sola transacción de `psql` (si algo falla, queda como estaba), cambia los adjuntos y cierra todas las sesiones. Hay dos pantallas de solo lectura, Respaldos y Estado del sistema, y el planificador deja un latido en cada pasada. Sin migraciones.
 10. **Retención** ✓ (RF-110 a RF-112, RF-123, RN-183): cuatro políticas en `configuracion`, apagadas por defecto y ejecutadas por el planificador en cada pasada: las notificaciones leídas, el registro de accesos, el archivo de los adjuntos eliminados (la fila se conserva) y los respaldos más antiguos. Los tickets, el historial y la auditoría se conservan siempre. La pantalla muestra lo que cada política borraría hoy. Una migración (`add_file_purge_date_to_attachments`).
 11. **Tickets «sin actividad reciente»** ✓ (RN-27, RF-036, RN-184): en trabajo, creados hace más de N días (7, configurable; 0 la apaga) y sin ninguna acción del personal en ese tiempo. Los comentarios del solicitante y los eventos del sistema no cuentan. Se muestran en la carga de trabajo (tarjeta y columnas por técnico y grupo, cada cifra el total de su listado) y como filtro del listado para el personal. Solo informa. Sin migraciones.
-12. **Cierre de la fase:** revisión completa, escala con ~20 000 tickets, matriz de trazabilidad y etiqueta.
+12. **Cierre de la fase** ✓: revisión completa de esta fase y de las anteriores (ver abajo). Ninguna espera con la base es indefinida: reserva de conexiones configurable y comprobada, tiempos máximos por consulta, bloqueo y transacción inactiva, y 503 «inténtalo en unos segundos» cuando la base no atiende. Las exportaciones leen una sola foto de la base (antes podían repetir o perder filas) y hay como mucho dos a la vez. El SLA en riesgo se decide en una sola pasada. Escala con unos 20 000 tickets y prueba de carga con 100 personas a la vez. Sin migraciones.
+
+### Cierre de la fase (entrega 12)
+
+Se revisó la fase y, además, lo construido en las anteriores: se auditó el código completo buscando errores, problemas de rendimiento y esperas que pudieran dejar colgada la aplicación con mucha gente a la vez. Se midió antes de cambiar.
+
+- **Ninguna espera con la base es indefinida** (`database.py`, `docs/10` 135.1): `pool_pre_ping`, una reserva de conexiones configurable y tres tiempos máximos en cada conexión (consulta, espera de un bloqueo y transacción inactiva). Una base saturada o caída responde 503 con `Retry-After` y un texto que invita a reintentar (RNF-007), y la página de error ya no consulta la base: antes, si el error venía de ella, la página de error volvía a fallar. Los errores de SQL tampoco llevan ya sus valores al log (`hide_parameters`).
+- **Un error real en las exportaciones:** al leer por tramos, un ticket o un evento creado a mitad de la exportación desplazaba las filas y una salía dos veces y otra ninguna. Ahora todo ocurre en una sola foto (`REPEATABLE READ`) y hay como mucho dos exportaciones a la vez por proceso.
+- **`create-admin`** ya no deja una transacción abierta mientras la persona escribe.
+- **El SLA en riesgo en una sola pasada** (`sla_risk`, con su prueba de equivalencia): con unos 20 000 tickets, de los que 16 926 están en trabajo, el dashboard del personal pasó de 337 a 261 ms, la carga de trabajo de 268 a 189 ms, la reasignación de 272 a 182 ms y el listado «SLA en riesgo» de 210 a 129 ms.
+- **Escala y concurrencia (RNF-001 a RNF-003).** Se recorrieron 1007 pantallas con los cuatro roles sobre esos datos, sin un error del servidor (mediana 12 ms, p95 42 ms). Con un servidor de hilos, 25 personas a la vez y sin pausas entre clics recibieron 45 respuestas por segundo, con mediana de 0,5 s y ningún error. Con 100 personas, el mismo rendimiento, esperas más largas y una sola respuesta «ocupado», sin caídas.
+- **Auditoría estática** con reglas adicionales de Ruff (seguridad, errores frecuentes, rendimiento): ningún hallazgo real. Ninguna función supera la complejidad 12.
+
+#### Matriz de trazabilidad
+
+| Requisito | Estado | Dónde | Pruebas |
+| --- | --- | --- | --- |
+| RF-098 reportes operativos · RN-179 | Hecho; solo el personal, el Técnico solo con su fila | `reports/`, `/reports` | `test_report_queries`, `test_report_screen` |
+| RF-099 a RF-101 exportación CSV y XLSX con los filtros · RN-180 | Hecho, con una sola foto de la base y como mucho dos a la vez | `exports.py`, `/tickets/export`, `/reports/export`, `/admin/audit/export` | `test_exports` |
+| RF-106 y RF-107 historial del ticket | Hecho en fases anteriores; consultable entero en la pestaña Tickets de la auditoría | `tickets/history.py`, `/admin/audit` | `test_ticket_history`, `test_audit_screen` |
+| RF-108 y RF-109 auditoría administrativa y su consulta · RNF-024, RNF-025 | Hecho, solo el Administrador | `audit/`, `/admin/audit` | `test_audit`, `test_audit_screen` |
+| RF-110, RF-111, RF-112 y RF-123 retención · RN-105 a RN-110, RN-183 · RNF-044 a RNF-047 | Hecho para notificaciones leídas, accesos, archivos de adjuntos eliminados y respaldos; tickets, historial y auditoría en «Mantener» fijo; «Archivar», después del MVP; los logs, con su rotación | `retention.py`, `/admin/settings/retencion` | `test_retention` |
+| RF-127 respaldo manual · RNF-038 a RNF-040, RNF-043 · RN-181 | Hecho, por comandos | `backups/`, `backup-create`, `backup-verify` | `test_backups` |
+| RF-128 restauración controlada · RNF-041, RNF-042 · RN-182 | Hecho, por comando y probada | `backup-restore` | `test_restore` |
+| RF-129 registro de errores · RNF-032 a RNF-036 | Hecho: un log por proceso, con rotación; una base que no atiende queda registrada sin datos | `logging_config.py`, `errors.py` | `test_logging`, `test_database_limits` |
+| RF-130 indicadores de estado · RNF-037 | Hecho: `/health` público y **Estado del sistema** para el Administrador | `system/status.py`, `/admin/system` | `test_system`, `test_system_status` |
+| RNF-015 y RNF-022 eventos de autenticación · RN-178 | Hecho, con el límite por equipo | `auth/events.py` | `test_auth_events` |
+| RNF-001 a RNF-003 tiempo de respuesta, consultas y concurrencia | Medido con unos 20 000 tickets y 100 personas a la vez | `docs/10` (135.1) | `test_pages_smoke`, `test_request_cost` |
+| RNF-006 y RNF-007 errores no críticos y fallos de la base | Hecho en el cierre: tiempos máximos y 503 sin detalles técnicos | `database.py`, `errors.py` | `test_database_limits` |
+| RF-036 / RN-27 tickets «sin actividad reciente» · RN-184 | Hecho | `tickets/queries.py` (`inactive_condition`), `/workload` | `test_inactive_tickets` |
+| RN-28 avisos de sobrecarga | Cubierto con la marca «Carga alta»; las notificaciones, después del MVP | `/workload`, dashboards | `test_workload_screen` |
+| RF-083 excepciones de SLA | **Fuera de la fase** (después del MVP) | — | — |
+
+**Queda fuera de la fase,** con su destino: las excepciones de SLA (RF-083), «Archivar» como acción de retención (RF-111) y los avisos de sobrecarga como notificación (RN-28), después del MVP.
 
 ### Decisiones de la fase
 
@@ -1854,7 +1887,7 @@ El MVP no utiliza WebSockets (RNF-095 y ARQ-022): las notificaciones se actualiz
 
 Lo que cualquiera de las dos exigiría, y por eso se pospone:
 
-- **Un servidor con soporte para conexiones largas.** Waitress, el servidor previsto (ARQ-028), ejecuta cada petición en un hilo de un grupo reducido (4 por defecto), de modo que unas pocas conexiones abiertas lo agotarían.
+- **Un servidor con soporte para conexiones largas.** Cada conexión abierta ocupa un hilo del proceso web (y, si consulta la base, una conexión de la reserva) mientras dure.
 - **Un canal entre procesos.** El scheduler (`run-scheduler`) corre en un proceso separado del web (`docs/10`, sección 85): para que un evento generado por él llegue a las conexiones abiertas haría falta un intermediario. Redis está excluido del MVP; `LISTEN/NOTIFY` de PostgreSQL es una alternativa a evaluar que no añade tecnologías.
 - **Autorización por evento.** Autenticar la conexión no basta: cada evento debe comprobarse contra su destinatario (una nota interna nunca debe llegar a un Solicitante).
 - **Cortar la conexión cuando cambia el contexto de seguridad**, por ejemplo al cambiar el rol o desactivar a la persona (`token_version`).
@@ -1880,7 +1913,7 @@ Mientras tanto, la regla para el desarrollo de interfaz es usar siempre tokens (
 
 # 33. Próximo paso inmediato
 
-`v0.1.0` a `v0.7.0` están integradas en `main` y etiquetadas:
+`v0.1.0` a `v0.8.0` están integradas en `main` y etiquetadas:
 
 ```text
 main
@@ -1892,21 +1925,22 @@ main
 → v0.5.0 integrado (PR #36 a #45) y etiquetado
 → v0.6.0 integrado (PR #46 a #55) y etiquetado
 → v0.7.0 integrado (PR #56 a #65) y etiquetado
+→ v0.8.0 integrado (PR #66 a #77) y etiquetado
 ```
 
-El siguiente paso es `v0.8.0 — Reportes, auditoría y backups` (fase 8, sección 21). Antes de escribir código conviene:
+El siguiente paso es `v0.9.0 — Calidad visual, responsive y accesibilidad` (fase 9, sección 22). Antes de escribir código conviene:
 
 ```text
-1. empezar, como en las dos fases anteriores, por una revisión de lo
-   construido (medir antes de cambiar);
-2. decidir lo que v0.7.0 dejó sin regla: la retención (RF-110 y RF-123),
-   que va con los backups, y si los reportes absorben los tickets «sin
-   actividad reciente» (RF-036, RN-27);
+1. empezar, como en las fases anteriores, por una revisión de lo
+   construido (medir antes de cambiar), esta vez de las pantallas:
+   capturas de cada una en escritorio y móvil, con los cuatro roles;
+2. hacer el inventario de los colores escritos a mano antes de
+   convertirlos a tokens, para comprobar que el tema claro no cambia;
 3. dividir la fase en entregas pequeñas, cada una con su rama, tests y
    Pull Request.
 ```
 
-`v0.8.0` reutiliza lo que ya está validado: la auditoría administrativa (append-only, desde `v0.2.0`), las consultas con la visibilidad resuelta en SQL, la configuración administrable (`configuration.py`) y la prueba de pantallas con presupuesto de consultas.
+`v0.9.0` reutiliza lo que ya está validado: los tokens `--wd-*` que ya usan las pantallas nuevas, la prueba de pantallas con presupuesto de consultas y el recorrido automático de todas las pantallas con los cuatro roles.
 
 ---
 

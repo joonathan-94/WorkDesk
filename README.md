@@ -107,7 +107,7 @@ Si algo falla por el camino, consulta la [solución de problemas](#solución-de-
 
 ## Estado del proyecto
 
-La última versión estable es **`v0.7.0 — Administración y base de conocimiento`** y la fase siguiente es **`v0.8.0 — Reportes, auditoría y backups`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
+La última versión estable es **`v0.8.0 — Reportes, auditoría y backups`** y la fase siguiente es **`v0.9.0 — Calidad visual, responsive y accesibilidad`**. Cada versión se construyó en entregas pequeñas, con su rama, sus tests y su Pull Request.
 
 | Versión | Qué hace WorkDesk con ella | Tests al cerrar |
 | --- | --- | --- |
@@ -118,12 +118,13 @@ La última versión estable es **`v0.7.0 — Administración y base de conocimie
 | `v0.5.0` | Mide el tiempo y avisa: SLA en tiempo laboral, calendario administrable, notificaciones internas y planificador | 3965 |
 | `v0.6.0` | Da la vista de conjunto: un dashboard por rol, la carga de trabajo del equipo y la reasignación masiva de tickets | 4175 |
 | `v0.7.0` | Se administra desde la web y guarda lo aprendido: configuración sin tocar el `.env`, avisos configurables, base de conocimiento y advertencia de duplicados | 4681 |
+| `v0.8.0` | Rinde cuentas y se protege: reportes con exportación a CSV y Excel, auditoría consultable con el registro de accesos, respaldos firmados con su restauración, retención y una conexión con la base que nunca se queda esperando | 5188 |
 
-`v0.8.0` está en curso y tiene hechas sus once primeras entregas: la revisión previa con el refuerzo de seguridad, una suite de tests un 39 % más rápida, el registro de accesos, la pantalla de auditoría, los reportes con sus gráficos, la exportación a CSV y Excel, los respaldos firmados de la base y los adjuntos, su restauración con la pantalla de estado del sistema, la retención y los tickets «sin actividad reciente». Hoy la suite cuenta con **5164 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
+Hoy la suite cuenta con **5188 tests automatizados**. El relato completo de cada versión (qué se decidió, qué errores se encontraron y cómo se corrigieron) está en [`docs/14_historial_de_implementacion.md`](docs/14_historial_de_implementacion.md). Si vienes de una versión anterior, mira cómo [actualizar una instalación existente](#actualizar-una-instalación-existente) y el [recorrido de prueba](#recorrido-de-prueba).
 
 ### Próximo hito
 
-`v0.8.0 — Reportes, auditoría y backups`: reportes con filtros, la pantalla de auditoría con los eventos de autenticación y los backups locales de la base de datos y los archivos, con su restauración probada. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 8).
+`v0.9.0 — Calidad visual, responsive y accesibilidad`: la revisión de todas las pantallas en móvil y escritorio, la accesibilidad y la preparación del tema oscuro. El detalle está en [`docs/12_roadmap.md`](docs/12_roadmap.md) (fase 9).
 
 ---
 
@@ -148,8 +149,8 @@ WorkDesk se construye por fases hasta completar un MVP (la primera versión comp
 | Base de conocimiento y advertencia de duplicados | ✅ Hecho | `v0.7.0` |
 | Reportes, con exportación a CSV y Excel | ✅ Hecho | `v0.8.0` |
 | Pantalla de auditoría y registro de accesos | ✅ Hecho | `v0.8.0` |
-| Respaldos locales y su restauración | 🔨 En curso | `v0.8.0` |
-| Retención de datos | 🔨 En curso | `v0.8.0` |
+| Respaldos locales y su restauración | ✅ Hecho | `v0.8.0` |
+| Retención de datos | ✅ Hecho | `v0.8.0` |
 | Revisión visual, responsive y accesibilidad | ⏳ Pendiente | `v0.9.0` |
 | Estabilización y versión 1.0 | ⏳ Pendiente | `v1.0.0` |
 
@@ -542,9 +543,15 @@ Solo `SECRET_KEY` y `DATABASE_URL` son obligatorias para arrancar la aplicación
 | `SESSION_COOKIE_SECURE` | `false` | `false` mientras uses HTTP local; `true` solo con HTTPS. |
 | `DATABASE_URL` | — (obligatoria) | Conexión a la base de la aplicación (`workdesk_dev`). |
 | `TEST_DATABASE_URL` | — | Conexión a la base de los tests (`workdesk_test`). |
+| `DATABASE_POOL_SIZE` y `DATABASE_MAX_OVERFLOW` | `10` y `10` | Conexiones con la base que mantiene abiertas cada proceso, y cuántas más puede abrir en un momento de mucha carga. |
+| `DATABASE_POOL_TIMEOUT_SECONDS` | `10` | Segundos que una petición espera una conexión libre antes de responder «inténtalo en unos segundos» en vez de quedarse colgada. |
+| `DATABASE_POOL_RECYCLE_SECONDS` | `1800` | Las conexiones más antiguas que esto se renuevan. `0`: nunca. |
+| `DATABASE_STATEMENT_TIMEOUT_SECONDS` | `30` | Lo más que puede durar una consulta. `0`: sin límite. |
+| `DATABASE_LOCK_TIMEOUT_SECONDS` | `10` | Lo más que una consulta espera a que otra suelte un dato que necesita. Debe ser menor que el anterior. `0`: sin límite. |
+| `DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS` | `60` | Lo más que puede quedar abierta una transacción sin hacer nada (así nunca retiene datos que otros esperan). `0`: sin límite. |
 | `LOGIN_MAX_FAILED_ATTEMPTS` | `5` | Intentos fallidos de inicio de sesión antes de bloquear la cuenta. |
 | `LOGIN_LOCK_MINUTES` | `15` | Minutos que dura ese bloqueo. |
-| `LOGIN_MAX_FAILED_PER_IP` | `20` | Intentos fallidos desde un mismo equipo (IP), en cualquier cuenta y dentro de `LOGIN_LOCK_MINUTES`, antes de rechazar los siguientes desde ese equipo. Frena a quien prueba pocas contraseñas en muchas cuentas. `0` lo desactiva: hazlo si todas las peticiones llegan a través de un mismo proxy. |
+| `LOGIN_MAX_FAILED_PER_IP` | `20` | Intentos fallidos desde un mismo equipo (IP), en cualquier cuenta y dentro de `LOGIN_LOCK_MINUTES`, antes de rechazar los siguientes desde ese equipo. Frena a quien prueba pocas contraseñas en muchas cuentas. `0` lo desactiva: útil si todas las personas usan WorkDesk desde el mismo equipo. |
 | `PASSWORD_MIN_LENGTH` | `12` | Longitud mínima de las contraseñas (entre 8 y 128). |
 | `SESSION_IDLE_MINUTES` | `30` | Minutos de inactividad tras los cuales se cierra la sesión. Solo cuenta lo que hace la persona: la consulta automática de la campana de notificaciones no renueva la sesión. |
 | `SESSION_MAX_HOURS` | `8` | Duración máxima de una sesión, aunque se use todo el tiempo. |
@@ -742,6 +749,7 @@ Al pasar de `v0.7.0` a `v0.8.0` conviene saber que:
 - **Los [respaldos](#respaldos) necesitan `pg_dump`, `pg_restore` y `psql`,** que vienen con PostgreSQL. Si no están en el `PATH`, indica su carpeta en `PG_BIN_DIR`. Las variables nuevas (`BACKUPS_DIR`, `PG_BIN_DIR`, `SCHEDULER_HEARTBEAT_FILE` y `LOG_DIR`) son opcionales.
 - **Administración → Estado del sistema** dirá que el planificador «no hay constancia de que se haya ejecutado» hasta su primera pasada con esta versión.
 - **Una migración más** (`add_file_purge_date_to_attachments`, para la retención): el paso 2 la aplica; añade una columna vacía. Las políticas de retención empiezan apagadas, así que actualizar no borra nada.
+- **Ninguna espera con la base es indefinida.** Una consulta, la espera de un dato bloqueado o una transacción inactiva tienen ahora un tiempo máximo, y si la base está saturada o no responde se ve «WorkDesk no pudo atender tu solicitud a tiempo», en vez de una página que no termina de cargar. Las variables nuevas (`DATABASE_POOL_SIZE` y las demás `DATABASE_*` de la [tabla](#todas-las-variables)) tienen valor por defecto: no hace falta tocar tu `.env`.
 
 Al pasar de `v0.6.0` a `v0.7.0` conviene saber que:
 
@@ -995,6 +1003,8 @@ El listado de tickets, los reportes y la auditoría tienen dos botones, **CSV** 
 - **Nada se ejecuta al abrir el archivo:** un texto que parece una fórmula (por ejemplo, un título que empieza por `=`) llega como texto. Es una defensa contra la inyección de fórmulas, un ataque conocido con las exportaciones.
 - **Cada exportación queda en la auditoría,** con quién la hizo, qué, en qué formato, cuántas filas y con qué filtros.
 - **Como mucho 50 000 filas.** Si son más, WorkDesk te pide acotar los filtros.
+- **El archivo es una foto de un instante:** lo que otras personas crean mientras se escribe no se cuela a medias ni repite filas.
+- **Como mucho dos exportaciones a la vez.** Una exportación grande ocupa al servidor unos segundos; si ya hay dos en curso, WorkDesk te pide reintentar en unos segundos.
 
 ---
 
@@ -1111,7 +1121,7 @@ Si dos personas actúan sobre el mismo ticket a la vez, la segunda recibe un avi
 
 ## Recorrido de prueba
 
-Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos lo que hace WorkDesk hasta `v0.7.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
+Una lista de comprobación, de media hora si la sigues entera, para ver con tus propios ojos lo que hace WorkDesk hasta `v0.8.0`. Parte de una instalación terminada: los pasos 1 a 8 de la [preparación inicial](#preparación-inicial), es decir, con los usuarios de demostración (personas de cada rol), las categorías y ubicaciones de la demostración y los tickets de ejemplo ya cargados. Si prefieres no cargar los tickets de ejemplo, crea algunos a mano desde **Crear ticket**.
 
 ### Tener tickets con los que probar
 
@@ -1341,7 +1351,7 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | `seed-demo-tickets` dice "Creados: 0. Actualizados (ya existían): 108" | Ya los habías cargado: el comando no duplica, solo refresca sus fechas respecto de hoy. | Es lo esperado. |
 | `create-admin`: "Ya existe un usuario con rol ADMINISTRADOR." | El comando solo crea el Administrador inicial. | Entra con esa cuenta; los demás usuarios se crean en **Administración → Usuarios**. |
 | `create-admin`: "Username: Usa solo letras minúsculas..." (o `Email: ...`) | El username o el correo no cumplen las reglas de la pantalla de alta. | Vuelve a ejecutarlo con un username de 3 a 50 caracteres (letras minúsculas, números, `.`, `-` y `_`) y un correo con forma `algo@dominio.tld`. No se creó nada. |
-| "Hubo demasiados intentos fallidos desde este equipo" | Desde esa IP se alcanzó el límite de intentos fallidos (`LOGIN_MAX_FAILED_PER_IP`, 20 por defecto) dentro del tiempo de bloqueo. | Espera ese tiempo (`LOGIN_LOCK_MINUTES`). Si todas las personas llegan a WorkDesk a través de un mismo proxy, desactiva el límite con 0 en **Administración → Seguridad y sesión**. |
+| "Hubo demasiados intentos fallidos desde este equipo" | Desde esa IP se alcanzó el límite de intentos fallidos (`LOGIN_MAX_FAILED_PER_IP`, 20 por defecto) dentro del tiempo de bloqueo. | Espera ese tiempo (`LOGIN_LOCK_MINUTES`). Si todas las personas usan WorkDesk desde el mismo equipo, puedes desactivar el límite con 0 en **Administración → Seguridad y sesión**. |
 | Tras actualizar a `v0.8.0` todos vuelven a ver el login | La cookie de sesión cambió de nombre, así que las sesiones anteriores dejan de valer. | Es esperado y ocurre una sola vez: inicia sesión de nuevo. |
 | Siempre aparece "Usuario o contraseña incorrectos." aunque los datos sean correctos | Tras 5 intentos fallidos la cuenta se bloquea 15 minutos, y el mensaje es el mismo a propósito para no revelar nada. | Espera esos 15 minutos (`LOGIN_LOCK_MINUTES`). Si es otra persona, un Administrador puede restablecerle la contraseña y eso levanta el bloqueo. |
 | "Tu sesión expiró. Inicia sesión nuevamente." | Pasaron 30 minutos sin actividad o 8 horas desde que iniciaste sesión. | Es el comportamiento esperado; se ajusta con `SESSION_IDLE_MINUTES` y `SESSION_MAX_HOURS`. |
@@ -1349,6 +1359,8 @@ Un Técnico o un Solicitante que abre `/groups` recibe **Acceso denegado**: pert
 | En **Crear ticket** solo aparece `Sin clasificar` como categoría | Todavía no se crearon categorías. | **Administración → Categorías → Nueva categoría** (ver [Configurar categorías y ubicaciones](#configurar-categorías-y-ubicaciones)). |
 | Las fechas aparecen en hora UTC | `APP_TIMEZONE` no es un nombre de zona válido. | Usa un nombre IANA, como `America/Santiago`, y reinicia WorkDesk. |
 | El puerto 5000 está ocupado | Otro programa lo usa (en macOS, AirPlay). | Añade `--port 5001` al comando de arranque. |
+| «WorkDesk no pudo atender tu solicitud a tiempo. Espera unos segundos e inténtalo de nuevo.» | La base de datos no respondió a tiempo: está saturada, otra operación retenía un dato demasiado tiempo o PostgreSQL está detenido. El log (`workdesk.log`) anota cuál fue, sin datos. | Reintenta. Si se repite, comprueba que PostgreSQL esté en marcha (**Estado del sistema** o `/health`). Los tiempos máximos están en las variables `DATABASE_*`. |
+| «Hay otras exportaciones en curso. Inténtalo de nuevo en unos segundos.» | Ya hay dos exportaciones a la vez: es el máximo, para que una exportación grande no deje sin atender al resto. | Espera unos segundos y vuelve a pulsar el botón. |
 | Tests: "Falta TEST_DATABASE_URL para ejecutar los tests." | `.env` no define `TEST_DATABASE_URL`. | Defínela apuntando a `workdesk_test`. |
 | Tests: "Los tests solo pueden ejecutarse sobre workdesk_test." | `TEST_DATABASE_URL` apunta a otra base. | Corrígela. La protección es intencional: protege `workdesk_dev`. |
 | Tests que fallan al azar con tablas que "no existen" | Hay dos ejecuciones de `pytest` a la vez sobre `workdesk_test`. | Ejecuta una sola cada vez: comparten la misma base y, al terminar, cada una elimina el esquema que usa. |
@@ -1882,7 +1894,7 @@ v1.0.0  MVP
 
 El desarrollo prioriza mantener cada incremento ejecutable, probado y documentado antes de avanzar al siguiente.
 
-`v0.1.0` a `v0.7.0` están terminadas; la siguiente es `v0.8.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
+`v0.1.0` a `v0.8.0` están terminadas; la siguiente es `v0.9.0`. Después del MVP están previstos el modo oscuro, la evaluación de actualizaciones en tiempo real y otras mejoras evaluadas (autoservicio, automatización, flujos ITSM y activos), además de un módulo secundario de proyectos y tareas, solo para el personal, que deja a los tickets como núcleo. El roadmap está en [`docs/12_roadmap.md`](docs/12_roadmap.md) y las mejoras posteriores en [`docs/13_evolucion_post_mvp.md`](docs/13_evolucion_post_mvp.md).
 
 ---
 

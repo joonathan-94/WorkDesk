@@ -27,8 +27,9 @@ class IntSetting:
     rango válido."""
 
     key: str
-    # Nombre del parámetro en la tabla `configuracion` (docs/09, sección 26.1).
-    table_key: str
+    # Nombre del parámetro en la tabla `configuracion` (docs/09, sección 26.1). `None` en los
+    # de la conexión con la base (`ENGINE_SETTINGS`), que solo se leen del entorno al iniciar.
+    table_key: str | None
     default: int
     minimum: int = 1
     maximum: int | None = None
@@ -116,7 +117,7 @@ LOGIN_LOCK_MINUTES = IntSetting(
 # Intentos fallidos desde un mismo equipo (IP) dentro del tiempo de bloqueo, en cualquier
 # cuenta, antes de rechazar los siguientes desde ese equipo. El bloqueo por cuenta no frena a
 # quien prueba unas pocas contraseñas en muchas cuentas. 0 lo desactiva (por ejemplo, si
-# todas las peticiones llegan a través de un proxy con la misma IP).
+# todas las personas usan el mismo equipo y comparten la IP).
 LOGIN_MAX_FAILED_PER_IP = IntSetting(
     "LOGIN_MAX_FAILED_PER_IP", "autenticacion.max_intentos_por_ip", 20, minimum=0, maximum=10_000
 )
@@ -236,6 +237,45 @@ RETENTION_BACKUPS_KEEP = IntSetting(
     "RETENTION_BACKUPS_KEEP", "retencion.respaldos_conservados", 14, maximum=1000
 )
 
+# Conexión con PostgreSQL (`database.py`). No son administrables: el motor de la base se crea
+# una sola vez al iniciar, así que solo se leen del entorno (no tienen clave en la tabla ni
+# pantalla) y cambiarlos pide reiniciar.
+#
+# Las conexiones que cada proceso mantiene abiertas y cuántas más puede abrir en un pico. Cada
+# petición usa una mientras dura: la suma debe cubrir los hilos del servidor web. PostgreSQL
+# admite 100 conexiones por defecto entre todos los procesos.
+DATABASE_POOL_SIZE = IntSetting("DATABASE_POOL_SIZE", None, 10, maximum=100)
+DATABASE_MAX_OVERFLOW = IntSetting("DATABASE_MAX_OVERFLOW", None, 10, minimum=0, maximum=100)
+# Lo que una petición espera una conexión libre antes de responder «ocupado» (503) en lugar de
+# quedarse colgada.
+DATABASE_POOL_TIMEOUT_SECONDS = IntSetting("DATABASE_POOL_TIMEOUT_SECONDS", None, 10, maximum=120)
+# Una conexión más antigua que esto se renueva (un cortafuegos puede cortar las que llevan
+# mucho tiempo abiertas). 0: nunca.
+DATABASE_POOL_RECYCLE_SECONDS = IntSetting(
+    "DATABASE_POOL_RECYCLE_SECONDS", None, 1800, minimum=0, maximum=86_400
+)
+# Lo más que puede durar una consulta, esperar un bloqueo y quedar abierta una transacción sin
+# hacer nada (que retendría sus bloqueos). 0: sin límite.
+DATABASE_STATEMENT_TIMEOUT_SECONDS = IntSetting(
+    "DATABASE_STATEMENT_TIMEOUT_SECONDS", None, 30, minimum=0, maximum=3600
+)
+DATABASE_LOCK_TIMEOUT_SECONDS = IntSetting(
+    "DATABASE_LOCK_TIMEOUT_SECONDS", None, 10, minimum=0, maximum=3600
+)
+DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS = IntSetting(
+    "DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS", None, 60, minimum=0, maximum=3600
+)
+
+ENGINE_SETTINGS: tuple[IntSetting, ...] = (
+    DATABASE_POOL_SIZE,
+    DATABASE_MAX_OVERFLOW,
+    DATABASE_POOL_TIMEOUT_SECONDS,
+    DATABASE_POOL_RECYCLE_SECONDS,
+    DATABASE_STATEMENT_TIMEOUT_SECONDS,
+    DATABASE_LOCK_TIMEOUT_SECONDS,
+    DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS,
+)
+
 BOOL_SETTINGS: tuple[BoolSetting, ...] = (
     SLA_ENABLED,
     AUTO_CLOSE_ENABLED,
@@ -308,3 +348,22 @@ def validate_settings(config) -> None:
     """
     if problems := settings_problems(config):
         raise RuntimeError(" ".join(problems))
+
+
+def engine_settings_problems(config) -> list[str]:
+    """Lo que está mal en los parámetros de la conexión con la base (vacío si nada)."""
+    problems = [
+        message for setting in ENGINE_SETTINGS if (message := setting.problem(config[setting.key]))
+    ]
+    statement = config[DATABASE_STATEMENT_TIMEOUT_SECONDS.key]
+    lock = config[DATABASE_LOCK_TIMEOUT_SECONDS.key]
+
+    # Una espera de bloqueo que no es más corta que la consulta nunca llegaría a cortar: la
+    # consulta se cancelaría antes, con un error que no dice que esperaba a otra transacción.
+    if not problems and statement and lock >= statement:
+        problems.append(
+            f"{DATABASE_LOCK_TIMEOUT_SECONDS.key} debe ser menor que "
+            f"{DATABASE_STATEMENT_TIMEOUT_SECONDS.key}."
+        )
+
+    return problems

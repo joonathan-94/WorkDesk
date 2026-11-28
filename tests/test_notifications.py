@@ -227,10 +227,13 @@ def test_a_recipient_or_a_ticket_with_notifications_cannot_be_deleted(
 
 def test_the_listing_index_exists(app):
     with app.app_context():
+        # Solo el esquema de este proceso: el mismo índice existe en el de los demás procesos
+        # y en el esquema desechable de `test_migrations`, que puede estar borrándose ahora.
         definition = db.session.scalar(
             db.text(
                 "select indexdef from pg_indexes "
-                "where indexname = 'ix_notificaciones_usuario_leida_fecha'"
+                "where schemaname = current_schema() "
+                "and indexname = 'ix_notificaciones_usuario_leida_fecha'"
             )
         )
 

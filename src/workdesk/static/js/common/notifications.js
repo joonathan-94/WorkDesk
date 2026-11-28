@@ -28,6 +28,12 @@ if (bell) {
             });
             const type = response.headers.get("Content-Type") || "";
 
+            // El servidor está ocupado (503): es pasajero, se vuelve a consultar en el ciclo
+            // siguiente.
+            if (response.status === 503) {
+                return;
+            }
+
             // Si la sesión expiró, el servidor responde 401 (o, si ya no hay sesión, con
             // la pantalla de acceso: no es JSON): se deja de consultar. Esta consulta no
             // cuenta como actividad: no mantiene viva una sesión abandonada.

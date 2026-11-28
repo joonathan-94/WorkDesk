@@ -27,10 +27,13 @@ from src.workdesk.sla.evaluation import (
 )
 from src.workdesk.sla.periods import list_periods, warning_seconds
 from src.workdesk.sla.queries import (
+    RISK_NEAR_DUE,
+    RISK_OVERDUE,
     SLA_PARTITION,
     SlaFilter,
     filter_of,
     sla_condition,
+    sla_risk,
     sla_urgency_order,
 )
 from src.workdesk.sla.rebuild import fill_missing_warning_dates
@@ -398,6 +401,12 @@ def scenarios(app, clock, staff, catalog):
         db.session.commit()
         create("sin_politica", "BAJA", at(16, 10))
 
+        # Venció y después pasó a una prioridad sin política: conserva su período incumplido,
+        # pero ya no tiene SLA (ni vencido ni en riesgo).
+        ticket = create("pierde_politica_tras_vencer", "ALTA", at(16, 9))
+        clock.set(at(16, 15, 10))
+        set_priority(ticket, me, "BAJA")
+
         return {name: ticket.id for name, ticket in made.items()}
 
 
@@ -487,6 +496,7 @@ def test_the_expected_status_of_each_scenario(app, scenarios):
         assert status("cerrado_pausado") is SlaStatus.DENTRO
         assert status("sin_periodos") is None
         assert status("sin_politica") is None
+        assert status("pierde_politica_tras_vencer") is None
         # Sin fecha de aviso nunca llega a «próximo a vencer».
         assert status("sin_aviso") is SlaStatus.DENTRO
 
@@ -524,7 +534,7 @@ def test_evaluating_many_tickets_costs_the_same_number_of_queries_as_one(app, sc
         finally:
             event.remove(db.engine, "before_cursor_execute", count)
 
-        assert len(ids) == 14
+        assert len(ids) == 15
         # Los períodos, los estados, las primeras respuestas y el calendario: no depende
         # de cuántos tickets se evalúen.
         assert all_of_them <= one + 2
@@ -632,6 +642,33 @@ def test_at_risk_is_the_union_of_close_to_due_and_overdue(app, scenarios):
             assert selected[SlaFilter.RIESGO] == (
                 selected[SlaFilter.PROXIMO] | selected[SlaFilter.VENCIDO]
             ), now
+
+
+def test_the_risk_column_says_overdue_or_near_due_exactly_like_the_evaluation(app, scenarios):
+    """`sla_risk` decide en una sola pasada «vencido», «próximo» o nada: es lo que cuentan la
+    carga de trabajo y el dashboard, y debe coincidir con la evaluación en cada momento."""
+    expected_value = {SlaFilter.VENCIDO: RISK_OVERDUE, SlaFilter.PROXIMO: RISK_NEAR_DUE}
+
+    with app.app_context():
+        ids = list(scenarios.values())
+        checked = 0
+
+        for now in moments_to_check(ids):
+            risk = dict(
+                db.session.execute(
+                    db.select(Ticket.id, sla_risk(now)).where(Ticket.id.in_(ids))
+                ).all()
+            )
+
+            for ticket_id, snapshot in evaluate_tickets_sla(ids, now).items():
+                assert risk[ticket_id] == expected_value.get(filter_of(snapshot)), (ticket_id, now)
+                checked += 1
+
+            # Un ticket sin SLA no está en riesgo.
+            for ticket_id in set(ids) - set(evaluate_tickets_sla(ids, now)):
+                assert risk[ticket_id] is None
+
+        assert checked > 1000
 
 
 def test_a_ticket_that_changes_option_over_time_does_it_at_its_dates(

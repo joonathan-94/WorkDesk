@@ -29,6 +29,19 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
+    # La conexión con PostgreSQL: la reserva de conexiones y los tiempos máximos de cada
+    # consulta, espera de bloqueo y transacción inactiva (`database.py`). Solo se leen al
+    # iniciar; se validan con `settings.engine_settings_problems`.
+    DATABASE_POOL_SIZE = settings.DATABASE_POOL_SIZE.from_environment()
+    DATABASE_MAX_OVERFLOW = settings.DATABASE_MAX_OVERFLOW.from_environment()
+    DATABASE_POOL_TIMEOUT_SECONDS = settings.DATABASE_POOL_TIMEOUT_SECONDS.from_environment()
+    DATABASE_POOL_RECYCLE_SECONDS = settings.DATABASE_POOL_RECYCLE_SECONDS.from_environment()
+    DATABASE_STATEMENT_TIMEOUT_SECONDS = settings.DATABASE_STATEMENT_TIMEOUT_SECONDS.from_environment()
+    DATABASE_LOCK_TIMEOUT_SECONDS = settings.DATABASE_LOCK_TIMEOUT_SECONDS.from_environment()
+    DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS = (
+        settings.DATABASE_IDLE_TRANSACTION_TIMEOUT_SECONDS.from_environment()
+    )
+
     # Parámetros numéricos: su nombre, valor por defecto y rango viven en `settings.py`
     # (la única definición); aquí solo se leen del entorno. Se validan al iniciar la
     # aplicación (`settings.validate_settings`) y son el valor inicial: rigen mientras el

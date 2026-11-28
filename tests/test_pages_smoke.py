@@ -95,6 +95,7 @@ ADMIN_PAGES = [
     "/admin/settings/colaboracion",
     "/admin/settings/operacion",
     "/admin/settings/creacion",
+    "/admin/settings/retencion",
     "/admin/notifications",
     "/admin/audit",
     "/admin/audit?vista=accesos",

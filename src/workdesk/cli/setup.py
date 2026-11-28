@@ -61,6 +61,11 @@ def register(app: Flask) -> None:
         if db.session.scalar(db.select(User.id).where(User.rol_id == admin_role).limit(1)):
             raise click.ClickException("Ya existe un usuario con rol ADMINISTRADOR.")
 
+        # No se deja una transacción abierta mientras la persona escribe: retendría su conexión
+        # y PostgreSQL la cortaría pasado el tiempo máximo de inactividad (`database.py`). El
+        # servicio vuelve a comprobarlo todo, con bloqueo, al crear.
+        db.session.rollback()
+
         nombre = click.prompt("Nombre")
         apellido = click.prompt("Apellido")
         username = click.prompt("Username")
